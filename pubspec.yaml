@@ -1,0 +1,49 @@
+name: ear_trainer
+description: "A playful ear-training mobile app for kids"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.10.7
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Icons
+  cupertino_icons: ^1.0.8
+
+  # Audio - low-latency game audio
+  flutter_soloud: ^3.1.5
+
+  # Animations - squishy effects
+  flutter_animate: ^4.5.2
+
+  # Celebrations
+  confetti: ^0.8.0
+
+  # Navigation
+  go_router: ^14.8.1
+
+  # Local storage
+  shared_preferences: ^2.3.5
+
+  # State management
+  provider: ^6.1.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  mockito: ^5.4.5
+  build_runner: ^2.4.15
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/audio/notes/
+    - assets/audio/sfx/
+    - assets/images/characters/
+    - assets/images/icons/
+    - assets/images/stickers/
