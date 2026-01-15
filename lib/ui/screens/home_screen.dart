@@ -121,14 +121,14 @@ class HomeScreen extends StatelessWidget {
                 .fade(duration: AppAnimations.medium)
                 .slideY(begin: 0.1, end: 0, duration: AppAnimations.medium),
             const SizedBox(width: AppSpacing.md),
-            // Same vs Different game (locked for now)
+            // Scale Direction game
             Expanded(
                   child: GameCard(
-                    title: 'Same or Different',
-                    subtitle: 'Coming soon!',
-                    icon: Icons.compare_arrows_rounded,
+                    title: 'Scale Direction',
+                    subtitle: 'Up or down?',
+                    icon: Icons.stairs_rounded,
                     accentColor: AppColors.secondary,
-                    isLocked: true,
+                    onTap: () => context.go(AppRoutes.scaleDirection),
                   ),
                 )
                 .animate(delay: const Duration(milliseconds: 400))

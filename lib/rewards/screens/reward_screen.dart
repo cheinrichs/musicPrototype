@@ -230,6 +230,8 @@ class _RewardScreenState extends State<RewardScreen> {
     switch (widget.gameType) {
       case 'high_low':
         return AppRoutes.highLow;
+      case 'scale_direction':
+        return AppRoutes.scaleDirection;
       default:
         return AppRoutes.highLow;
     }

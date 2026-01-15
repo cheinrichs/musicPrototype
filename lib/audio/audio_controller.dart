@@ -17,6 +17,7 @@ class AudioController {
   final Map<SfxType, AudioSource> _sfxCache = {};
   bool _isInitialized = false;
   bool _isMuted = false;
+  SoundHandle? _currentNoteHandle;
 
   /// Check if audio system is initialized
   bool get isInitialized => _isInitialized;
@@ -98,6 +99,36 @@ class AudioController {
     final source = _noteCache[note];
     if (source != null) {
       await _soloud!.play(source);
+    }
+  }
+
+  /// Play a note for scale playback, stopping the previous note first
+  /// Use this for sequential scale notes to prevent overlap
+  Future<void> playNoteForScale(Note note) async {
+    if (!_isInitialized || _isMuted) return;
+
+    // Stop the previous note if still playing
+    if (_currentNoteHandle != null) {
+      _soloud!.stop(_currentNoteHandle!);
+      _currentNoteHandle = null;
+    }
+
+    // Try to load if not cached
+    if (!_noteCache.containsKey(note)) {
+      await _preloadNote(note);
+    }
+
+    final source = _noteCache[note];
+    if (source != null) {
+      _currentNoteHandle = await _soloud!.play(source);
+    }
+  }
+
+  /// Stop the current scale note (call at end of scale)
+  void stopCurrentNote() {
+    if (_currentNoteHandle != null && _isInitialized) {
+      _soloud!.stop(_currentNoteHandle!);
+      _currentNoteHandle = null;
     }
   }
 
