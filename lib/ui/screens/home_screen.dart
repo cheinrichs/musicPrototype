@@ -21,11 +21,11 @@ class HomeScreen extends StatelessWidget {
           child: Column(
             children: [
               _buildHeader(context),
-              const Spacer(),
-              _buildGameSelection(context),
-              const Spacer(),
+              const Spacer(flex: 1),
+              Flexible(flex: 4, child: _buildGameSelection(context)),
+              const Spacer(flex: 1),
               _buildPlayButton(context),
-              const SizedBox(height: AppSpacing.xl),
+              const SizedBox(height: AppSpacing.md),
             ],
           ),
         ),
@@ -96,47 +96,72 @@ class HomeScreen extends StatelessWidget {
   }
 
   Widget _buildGameSelection(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text('Choose a game', style: AppTypography.bodyMedium)
-            .animate(delay: const Duration(milliseconds: 200))
-            .fade(duration: AppAnimations.medium),
-        const SizedBox(height: AppSpacing.lg),
-        // Game cards grid
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // High vs Low game
-            Expanded(
-                  child: GameCard(
-                    title: 'High vs Low',
-                    subtitle: 'Which note is higher?',
-                    icon: Icons.swap_vert_rounded,
-                    accentColor: AppColors.primary,
-                    onTap: () => context.go(AppRoutes.highLow),
-                  ),
-                )
-                .animate(delay: const Duration(milliseconds: 300))
-                .fade(duration: AppAnimations.medium)
-                .slideY(begin: 0.1, end: 0, duration: AppAnimations.medium),
-            const SizedBox(width: AppSpacing.md),
-            // Scale Direction game
-            Expanded(
-                  child: GameCard(
-                    title: 'Scale Direction',
-                    subtitle: 'Up or down?',
-                    icon: Icons.stairs_rounded,
-                    accentColor: AppColors.secondary,
-                    onTap: () => context.go(AppRoutes.scaleDirection),
-                  ),
-                )
-                .animate(delay: const Duration(milliseconds: 400))
-                .fade(duration: AppAnimations.medium)
-                .slideY(begin: 0.1, end: 0, duration: AppAnimations.medium),
-          ],
-        ),
-      ],
+    return SingleChildScrollView(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text('Choose a game', style: AppTypography.bodyMedium)
+              .animate(delay: const Duration(milliseconds: 200))
+              .fade(duration: AppAnimations.medium),
+          const SizedBox(height: AppSpacing.lg),
+          // Game cards grid - first row
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // High vs Low game
+              Expanded(
+                    child: GameCard(
+                      title: 'High vs Low',
+                      subtitle: 'Which note is higher?',
+                      icon: Icons.swap_vert_rounded,
+                      accentColor: AppColors.primary,
+                      onTap: () => context.go(AppRoutes.highLow),
+                    ),
+                  )
+                  .animate(delay: const Duration(milliseconds: 300))
+                  .fade(duration: AppAnimations.medium)
+                  .slideY(begin: 0.1, end: 0, duration: AppAnimations.medium),
+              const SizedBox(width: AppSpacing.md),
+              // Scale Direction game
+              Expanded(
+                    child: GameCard(
+                      title: 'Scale Direction',
+                      subtitle: 'Up or down?',
+                      icon: Icons.stairs_rounded,
+                      accentColor: AppColors.secondary,
+                      onTap: () => context.go(AppRoutes.scaleDirection),
+                    ),
+                  )
+                  .animate(delay: const Duration(milliseconds: 400))
+                  .fade(duration: AppAnimations.medium)
+                  .slideY(begin: 0.1, end: 0, duration: AppAnimations.medium),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          // Game cards grid - second row
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Match the Note game
+              Expanded(
+                    child: GameCard(
+                      title: 'Match the Note',
+                      subtitle: 'Find the matching sound',
+                      icon: Icons.music_note_rounded,
+                      accentColor: AppColors.gold,
+                      onTap: () => context.go(AppRoutes.matchNote),
+                    ),
+                  )
+                  .animate(delay: const Duration(milliseconds: 500))
+                  .fade(duration: AppAnimations.medium)
+                  .slideY(begin: 0.1, end: 0, duration: AppAnimations.medium),
+              const SizedBox(width: AppSpacing.md),
+              // Placeholder for future game
+              const Expanded(child: SizedBox()),
+            ],
+          ),
+        ],
+      ),
     );
   }
 

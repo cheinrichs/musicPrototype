@@ -232,6 +232,8 @@ class _RewardScreenState extends State<RewardScreen> {
         return AppRoutes.highLow;
       case 'scale_direction':
         return AppRoutes.scaleDirection;
+      case 'match_note':
+        return AppRoutes.matchNote;
       default:
         return AppRoutes.highLow;
     }
