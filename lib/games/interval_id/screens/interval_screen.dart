@@ -5,27 +5,27 @@ import 'package:provider/provider.dart';
 import '../../../app/router.dart';
 import '../../../app/state/progress_state.dart';
 import '../../../models/game_status.dart';
-import '../../../models/pitch_direction.dart';
+import '../../../models/interval_type.dart';
 import '../../../ui/components/progress_dots.dart';
 import '../../../ui/components/squishy_button.dart';
 import '../../../ui/theme/theme.dart';
-import '../state/high_low_game_state.dart';
+import '../state/interval_game_state.dart';
 
-/// Main game screen for High/Low ear training
-class HighLowScreen extends StatefulWidget {
-  const HighLowScreen({super.key});
+/// Main game screen for Interval Identification ear training
+class IntervalScreen extends StatefulWidget {
+  const IntervalScreen({super.key});
 
   @override
-  State<HighLowScreen> createState() => _HighLowScreenState();
+  State<IntervalScreen> createState() => _IntervalScreenState();
 }
 
-class _HighLowScreenState extends State<HighLowScreen> {
-  late HighLowGameState _gameState;
+class _IntervalScreenState extends State<IntervalScreen> {
+  late IntervalGameState _gameState;
 
   @override
   void initState() {
     super.initState();
-    _gameState = HighLowGameState();
+    _gameState = IntervalGameState();
     _gameState.addListener(_onGameStateChanged);
 
     // Start the game automatically
@@ -46,7 +46,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
       // Record progress
       final progressState = context.read<ProgressState>();
       progressState.completeSession(
-        gameType: 'high_low',
+        gameType: 'interval_id',
         correctCount: _gameState.correctCount,
         totalCount: _gameState.totalPrompts,
       );
@@ -59,7 +59,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
         extra: {
           'correctCount': _gameState.correctCount,
           'totalCount': _gameState.totalPrompts,
-          'gameType': 'high_low',
+          'gameType': 'interval_id',
           'fromPath': routeExtra?['fromPath'] ?? false,
           'nodeId': routeExtra?['nodeId'],
         },
@@ -121,7 +121,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
         const SizedBox(height: AppSpacing.xl),
         // Question text
         Text(
-              'Is the second note\nhigher or lower?',
+              'What interval is this?',
               style: AppTypography.heading3,
               textAlign: TextAlign.center,
             )
@@ -176,7 +176,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
       case GameStatus.notStarted:
         text = 'Get ready...';
       case GameStatus.playing:
-        text = 'Listen carefully...';
+        text = 'Listen to the interval...';
       case GameStatus.awaitingInput:
         text = 'Tap your answer!';
       case GameStatus.showingFeedback:
@@ -197,29 +197,22 @@ class _HighLowScreenState extends State<HighLowScreen> {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Answer buttons
+        // Answer buttons - 2x2 grid
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            GameChoiceButton(
-              label: 'Higher',
-              icon: Icons.arrow_upward_rounded,
-              color: AppColors.higherButton,
-              enabled: canAnswer,
-              onTap: canAnswer
-                  ? () => _gameState.submitAnswer(PitchDirection.higher)
-                  : null,
-            ),
-            const SizedBox(width: AppSpacing.lg),
-            GameChoiceButton(
-              label: 'Lower',
-              icon: Icons.arrow_downward_rounded,
-              color: AppColors.lowerButton,
-              enabled: canAnswer,
-              onTap: canAnswer
-                  ? () => _gameState.submitAnswer(PitchDirection.lower)
-                  : null,
-            ),
+            _buildIntervalButton(IntervalType.minorThird, canAnswer),
+            const SizedBox(width: AppSpacing.md),
+            _buildIntervalButton(IntervalType.majorThird, canAnswer),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.md),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _buildIntervalButton(IntervalType.perfectFifth, canAnswer),
+            const SizedBox(width: AppSpacing.md),
+            _buildIntervalButton(IntervalType.octave, canAnswer),
           ],
         ),
         const SizedBox(height: AppSpacing.xl),
@@ -231,6 +224,52 @@ class _HighLowScreenState extends State<HighLowScreen> {
           style: TextButton.styleFrom(foregroundColor: AppColors.textSecondary),
         ),
       ],
+    );
+  }
+
+  Widget _buildIntervalButton(IntervalType interval, bool enabled) {
+    // Different colors for each interval
+    Color color;
+    switch (interval) {
+      case IntervalType.minorThird:
+        color = AppColors.primary;
+      case IntervalType.majorThird:
+        color = AppColors.secondary;
+      case IntervalType.perfectFifth:
+        color = AppColors.gold;
+      case IntervalType.octave:
+        color = AppColors.higherButton;
+    }
+
+    return SizedBox(
+      width: 140,
+      child: SquishyButton(
+        onTap: enabled ? () => _gameState.submitAnswer(interval) : null,
+        backgroundColor: enabled ? color : color.withValues(alpha: 0.3),
+        padding: const EdgeInsets.symmetric(
+          vertical: AppSpacing.md,
+          horizontal: AppSpacing.sm,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              interval.shortLabel,
+              style: AppTypography.heading3.copyWith(
+                color: AppColors.textOnPrimary,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              interval.displayName,
+              style: AppTypography.label.copyWith(
+                color: AppColors.textOnPrimary.withValues(alpha: 0.8),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

@@ -51,13 +51,17 @@ class _ScaleDirectionScreenState extends State<ScaleDirectionScreen> {
         totalCount: _gameState.totalPrompts,
       );
 
-      // Navigate to reward screen
+      // Navigate to reward screen, forwarding path context if present.
+      final routeExtra =
+          GoRouterState.of(context).extra as Map<String, dynamic>?;
       context.go(
         AppRoutes.reward,
         extra: {
           'correctCount': _gameState.correctCount,
           'totalCount': _gameState.totalPrompts,
           'gameType': 'scale_direction',
+          'fromPath': routeExtra?['fromPath'] ?? false,
+          'nodeId': routeExtra?['nodeId'],
         },
       );
     }

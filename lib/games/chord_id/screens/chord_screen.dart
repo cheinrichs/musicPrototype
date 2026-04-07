@@ -5,27 +5,27 @@ import 'package:provider/provider.dart';
 import '../../../app/router.dart';
 import '../../../app/state/progress_state.dart';
 import '../../../models/game_status.dart';
-import '../../../models/pitch_direction.dart';
+import '../../../models/chord_type.dart';
 import '../../../ui/components/progress_dots.dart';
 import '../../../ui/components/squishy_button.dart';
 import '../../../ui/theme/theme.dart';
-import '../state/high_low_game_state.dart';
+import '../state/chord_game_state.dart';
 
-/// Main game screen for High/Low ear training
-class HighLowScreen extends StatefulWidget {
-  const HighLowScreen({super.key});
+/// Main game screen for Chord Identification ear training
+class ChordScreen extends StatefulWidget {
+  const ChordScreen({super.key});
 
   @override
-  State<HighLowScreen> createState() => _HighLowScreenState();
+  State<ChordScreen> createState() => _ChordScreenState();
 }
 
-class _HighLowScreenState extends State<HighLowScreen> {
-  late HighLowGameState _gameState;
+class _ChordScreenState extends State<ChordScreen> {
+  late ChordGameState _gameState;
 
   @override
   void initState() {
     super.initState();
-    _gameState = HighLowGameState();
+    _gameState = ChordGameState();
     _gameState.addListener(_onGameStateChanged);
 
     // Start the game automatically
@@ -46,7 +46,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
       // Record progress
       final progressState = context.read<ProgressState>();
       progressState.completeSession(
-        gameType: 'high_low',
+        gameType: 'chord_id',
         correctCount: _gameState.correctCount,
         totalCount: _gameState.totalPrompts,
       );
@@ -59,7 +59,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
         extra: {
           'correctCount': _gameState.correctCount,
           'totalCount': _gameState.totalPrompts,
-          'gameType': 'high_low',
+          'gameType': 'chord_id',
           'fromPath': routeExtra?['fromPath'] ?? false,
           'nodeId': routeExtra?['nodeId'],
         },
@@ -121,7 +121,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
         const SizedBox(height: AppSpacing.xl),
         // Question text
         Text(
-              'Is the second note\nhigher or lower?',
+              'Is this chord\nmajor or minor?',
               style: AppTypography.heading3,
               textAlign: TextAlign.center,
             )
@@ -176,9 +176,9 @@ class _HighLowScreenState extends State<HighLowScreen> {
       case GameStatus.notStarted:
         text = 'Get ready...';
       case GameStatus.playing:
-        text = 'Listen carefully...';
+        text = 'Listen to the chord...';
       case GameStatus.awaitingInput:
-        text = 'Tap your answer!';
+        text = 'Happy or sad?';
       case GameStatus.showingFeedback:
         final isCorrect = _gameState.lastResult?.isCorrect ?? false;
         text = isCorrect ? 'Great job!' : 'Try the next one!';
@@ -201,25 +201,9 @@ class _HighLowScreenState extends State<HighLowScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            GameChoiceButton(
-              label: 'Higher',
-              icon: Icons.arrow_upward_rounded,
-              color: AppColors.higherButton,
-              enabled: canAnswer,
-              onTap: canAnswer
-                  ? () => _gameState.submitAnswer(PitchDirection.higher)
-                  : null,
-            ),
+            _buildChordButton(ChordType.major, canAnswer),
             const SizedBox(width: AppSpacing.lg),
-            GameChoiceButton(
-              label: 'Lower',
-              icon: Icons.arrow_downward_rounded,
-              color: AppColors.lowerButton,
-              enabled: canAnswer,
-              onTap: canAnswer
-                  ? () => _gameState.submitAnswer(PitchDirection.lower)
-                  : null,
-            ),
+            _buildChordButton(ChordType.minor, canAnswer),
           ],
         ),
         const SizedBox(height: AppSpacing.xl),
@@ -231,6 +215,46 @@ class _HighLowScreenState extends State<HighLowScreen> {
           style: TextButton.styleFrom(foregroundColor: AppColors.textSecondary),
         ),
       ],
+    );
+  }
+
+  Widget _buildChordButton(ChordType chordType, bool enabled) {
+    final color = chordType == ChordType.major
+        ? AppColors.gold
+        : AppColors.primary;
+    final icon = chordType == ChordType.major
+        ? Icons.sentiment_very_satisfied_rounded
+        : Icons.sentiment_dissatisfied_rounded;
+
+    return SizedBox(
+      width: 140,
+      child: SquishyButton(
+        onTap: enabled ? () => _gameState.submitAnswer(chordType) : null,
+        backgroundColor: enabled ? color : color.withValues(alpha: 0.3),
+        padding: const EdgeInsets.symmetric(
+          vertical: AppSpacing.lg,
+          horizontal: AppSpacing.md,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 40, color: AppColors.textOnPrimary),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              chordType.label,
+              style: AppTypography.buttonMedium.copyWith(
+                color: AppColors.textOnPrimary,
+              ),
+            ),
+            Text(
+              chordType.description,
+              style: AppTypography.label.copyWith(
+                color: AppColors.textOnPrimary.withValues(alpha: 0.8),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

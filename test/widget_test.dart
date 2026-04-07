@@ -5,10 +5,14 @@ void main() {
   testWidgets('App renders home screen', (WidgetTester tester) async {
     // Build our app and trigger a frame.
     await tester.pumpWidget(const EarTrainerApp());
-    await tester.pumpAndSettle();
+    // Pump past the longest animation delay in the app (800ms delay + 300ms
+    // duration) so all flutter_animate Timers fire before the test ends.
+    // We can't use pumpAndSettle because the Learning Path screen has a
+    // repeating Ticker-based animation that never settles.
+    await tester.pump(const Duration(milliseconds: 1200));
 
-    // Verify that home screen renders with game cards
-    expect(find.text('Ear Trainer'), findsOneWidget);
-    expect(find.text('High vs Low'), findsOneWidget);
+    // Verify that home screen renders with title and game cards
+    expect(find.text('Ear Training Games'), findsOneWidget);
+    expect(find.text('Choose a game'), findsOneWidget);
   });
 }

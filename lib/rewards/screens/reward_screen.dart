@@ -2,7 +2,9 @@ import 'package:confetti/confetti.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 import '../../app/router.dart';
+import '../../app/state/progress_state.dart';
 import '../../ui/components/squishy_button.dart';
 import '../../ui/theme/theme.dart';
 
@@ -11,12 +13,16 @@ class RewardScreen extends StatefulWidget {
   final int correctCount;
   final int totalCount;
   final String gameType;
+  final bool fromPath;
+  final String? nodeId;
 
   const RewardScreen({
     super.key,
     required this.correctCount,
     required this.totalCount,
     required this.gameType,
+    this.fromPath = false,
+    this.nodeId,
   });
 
   @override
@@ -172,9 +178,15 @@ class _RewardScreenState extends State<RewardScreen> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        // Home button
+        // Home / Back to Path button
         SquishyButton(
-              onTap: () => context.go(AppRoutes.home),
+              onTap: () {
+                if (widget.fromPath && widget.nodeId != null) {
+                  context.read<ProgressState>().completeNode(widget.nodeId!);
+                  context.read<ProgressState>().requestPathReturn();
+                }
+                context.go(AppRoutes.home);
+              },
               backgroundColor: AppColors.surface,
               shadowColor: AppColors.shadow,
               padding: const EdgeInsets.symmetric(
@@ -184,10 +196,13 @@ class _RewardScreenState extends State<RewardScreen> {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.home_rounded, color: AppColors.textPrimary),
+                  Icon(
+                    widget.fromPath ? Icons.map_outlined : Icons.home_rounded,
+                    color: AppColors.textPrimary,
+                  ),
                   const SizedBox(width: AppSpacing.sm),
                   Text(
-                    'Home',
+                    widget.fromPath ? 'Back to Path' : 'Home',
                     style: AppTypography.buttonMedium.copyWith(
                       color: AppColors.textPrimary,
                     ),
@@ -201,7 +216,12 @@ class _RewardScreenState extends State<RewardScreen> {
         const SizedBox(width: AppSpacing.md),
         // Play again button
         SquishyButton(
-              onTap: () => context.go(_getGameRoute()),
+              onTap: () => context.go(
+                _getGameRoute(),
+                extra: widget.fromPath
+                    ? {'fromPath': true, 'nodeId': widget.nodeId}
+                    : null,
+              ),
               backgroundColor: AppColors.primary,
               padding: const EdgeInsets.symmetric(
                 horizontal: AppSpacing.lg,
@@ -234,6 +254,12 @@ class _RewardScreenState extends State<RewardScreen> {
         return AppRoutes.scaleDirection;
       case 'match_note':
         return AppRoutes.matchNote;
+      case 'interval_id':
+        return AppRoutes.intervalId;
+      case 'chord_id':
+        return AppRoutes.chordId;
+      case 'same_different':
+        return AppRoutes.sameDifferent;
       default:
         return AppRoutes.highLow;
     }

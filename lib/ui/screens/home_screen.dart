@@ -21,9 +21,9 @@ class HomeScreen extends StatelessWidget {
           child: Column(
             children: [
               _buildHeader(context),
-              const Spacer(flex: 1),
-              Flexible(flex: 4, child: _buildGameSelection(context)),
-              const Spacer(flex: 1),
+              const SizedBox(height: AppSpacing.lg),
+              Expanded(child: _buildGameSelection(context)),
+              const SizedBox(height: AppSpacing.lg),
               _buildPlayButton(context),
               const SizedBox(height: AppSpacing.md),
             ],
@@ -41,7 +41,7 @@ class HomeScreen extends StatelessWidget {
           children: [
             // App title
             Text(
-                  'Ear Trainer',
+                  'Ear Training Games',
                   style: AppTypography.heading2.copyWith(
                     color: AppColors.primary,
                   ),
@@ -96,17 +96,16 @@ class HomeScreen extends StatelessWidget {
   }
 
   Widget _buildGameSelection(BuildContext context) {
-    return SingleChildScrollView(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text('Choose a game', style: AppTypography.bodyMedium)
-              .animate(delay: const Duration(milliseconds: 200))
-              .fade(duration: AppAnimations.medium),
-          const SizedBox(height: AppSpacing.lg),
-          // Game cards grid - first row
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+    return Column(
+      children: [
+        Text('Choose a game', style: AppTypography.bodyMedium)
+            .animate(delay: const Duration(milliseconds: 200))
+            .fade(duration: AppAnimations.medium),
+        const SizedBox(height: AppSpacing.lg),
+        // Game cards grid - first row
+        Expanded(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // High vs Low game
               Expanded(
@@ -137,10 +136,12 @@ class HomeScreen extends StatelessWidget {
                   .slideY(begin: 0.1, end: 0, duration: AppAnimations.medium),
             ],
           ),
-          const SizedBox(height: AppSpacing.md),
-          // Game cards grid - second row
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+        ),
+        const SizedBox(height: AppSpacing.md),
+        // Game cards grid - second row
+        Expanded(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // Match the Note game
               Expanded(
@@ -156,12 +157,59 @@ class HomeScreen extends StatelessWidget {
                   .fade(duration: AppAnimations.medium)
                   .slideY(begin: 0.1, end: 0, duration: AppAnimations.medium),
               const SizedBox(width: AppSpacing.md),
-              // Placeholder for future game
-              const Expanded(child: SizedBox()),
+              // Interval Identification game
+              Expanded(
+                    child: GameCard(
+                      title: 'Intervals',
+                      subtitle: 'Name the interval',
+                      icon: Icons.straighten_rounded,
+                      accentColor: AppColors.higherButton,
+                      onTap: () => context.go(AppRoutes.intervalId),
+                    ),
+                  )
+                  .animate(delay: const Duration(milliseconds: 600))
+                  .fade(duration: AppAnimations.medium)
+                  .slideY(begin: 0.1, end: 0, duration: AppAnimations.medium),
             ],
           ),
-        ],
-      ),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        // Game cards grid - third row
+        Expanded(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Chord Identification game
+              Expanded(
+                    child: GameCard(
+                      title: 'Chords',
+                      subtitle: 'Major or minor?',
+                      icon: Icons.piano_rounded,
+                      accentColor: AppColors.lowerButton,
+                      onTap: () => context.go(AppRoutes.chordId),
+                    ),
+                  )
+                  .animate(delay: const Duration(milliseconds: 700))
+                  .fade(duration: AppAnimations.medium)
+                  .slideY(begin: 0.1, end: 0, duration: AppAnimations.medium),
+              const SizedBox(width: AppSpacing.md),
+              // Same or Different game
+              Expanded(
+                    child: GameCard(
+                      title: 'Same or Different',
+                      subtitle: 'Listen & compare',
+                      icon: Icons.compare_rounded,
+                      accentColor: AppColors.correct,
+                      onTap: () => context.go(AppRoutes.sameDifferent),
+                    ),
+                  )
+                  .animate(delay: const Duration(milliseconds: 800))
+                  .fade(duration: AppAnimations.medium)
+                  .slideY(begin: 0.1, end: 0, duration: AppAnimations.medium),
+            ],
+          ),
+        ),
+      ],
     );
   }
 

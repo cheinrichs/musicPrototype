@@ -5,27 +5,26 @@ import 'package:provider/provider.dart';
 import '../../../app/router.dart';
 import '../../../app/state/progress_state.dart';
 import '../../../models/game_status.dart';
-import '../../../models/pitch_direction.dart';
 import '../../../ui/components/progress_dots.dart';
 import '../../../ui/components/squishy_button.dart';
 import '../../../ui/theme/theme.dart';
-import '../state/high_low_game_state.dart';
+import '../state/same_different_game_state.dart';
 
-/// Main game screen for High/Low ear training
-class HighLowScreen extends StatefulWidget {
-  const HighLowScreen({super.key});
+/// Main game screen for Same or Different ear training
+class SameDifferentScreen extends StatefulWidget {
+  const SameDifferentScreen({super.key});
 
   @override
-  State<HighLowScreen> createState() => _HighLowScreenState();
+  State<SameDifferentScreen> createState() => _SameDifferentScreenState();
 }
 
-class _HighLowScreenState extends State<HighLowScreen> {
-  late HighLowGameState _gameState;
+class _SameDifferentScreenState extends State<SameDifferentScreen> {
+  late SameDifferentGameState _gameState;
 
   @override
   void initState() {
     super.initState();
-    _gameState = HighLowGameState();
+    _gameState = SameDifferentGameState();
     _gameState.addListener(_onGameStateChanged);
 
     // Start the game automatically
@@ -46,7 +45,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
       // Record progress
       final progressState = context.read<ProgressState>();
       progressState.completeSession(
-        gameType: 'high_low',
+        gameType: 'same_different',
         correctCount: _gameState.correctCount,
         totalCount: _gameState.totalPrompts,
       );
@@ -59,7 +58,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
         extra: {
           'correctCount': _gameState.correctCount,
           'totalCount': _gameState.totalPrompts,
-          'gameType': 'high_low',
+          'gameType': 'same_different',
           'fromPath': routeExtra?['fromPath'] ?? false,
           'nodeId': routeExtra?['nodeId'],
         },
@@ -121,7 +120,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
         const SizedBox(height: AppSpacing.xl),
         // Question text
         Text(
-              'Is the second note\nhigher or lower?',
+              'Same or different?',
               style: AppTypography.heading3,
               textAlign: TextAlign.center,
             )
@@ -131,6 +130,9 @@ class _HighLowScreenState extends State<HighLowScreen> {
         const SizedBox(height: AppSpacing.md),
         // Status indicator
         _buildStatusText(),
+        const SizedBox(height: AppSpacing.lg),
+        // Melody phase indicator
+        _buildMelodyIndicator(),
       ],
     );
   }
@@ -176,19 +178,105 @@ class _HighLowScreenState extends State<HighLowScreen> {
       case GameStatus.notStarted:
         text = 'Get ready...';
       case GameStatus.playing:
-        text = 'Listen carefully...';
+        if (_gameState.melodyPhase == MelodyPhase.first) {
+          text = 'Listen to melody 1...';
+        } else {
+          text = 'Listen to melody 2...';
+        }
       case GameStatus.awaitingInput:
-        text = 'Tap your answer!';
+        text = 'Were they the same?';
       case GameStatus.showingFeedback:
         final isCorrect = _gameState.lastResult?.isCorrect ?? false;
-        text = isCorrect ? 'Great job!' : 'Try the next one!';
+        text = isCorrect ? 'Great ears!' : 'Try the next one!';
       case GameStatus.completed:
         text = 'Well done!';
     }
 
     return Text(text, style: AppTypography.bodyMedium)
-        .animate(key: ValueKey(_gameState.status))
+        .animate(
+          key: ValueKey('${_gameState.status}_${_gameState.melodyPhase}'),
+        )
         .fade(duration: AppAnimations.fast);
+  }
+
+  Widget _buildMelodyIndicator() {
+    final isPlaying = _gameState.status == GameStatus.playing;
+    final phase = _gameState.melodyPhase;
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        // Melody 1 indicator
+        _buildMelodyDot(
+          label: '1',
+          isActive: isPlaying && phase == MelodyPhase.first,
+          isComplete: phase != MelodyPhase.first || !isPlaying,
+        ),
+        const SizedBox(width: AppSpacing.lg),
+        // Arrow
+        Icon(
+          Icons.arrow_forward_rounded,
+          color: AppColors.textSecondary,
+          size: 24,
+        ),
+        const SizedBox(width: AppSpacing.lg),
+        // Melody 2 indicator
+        _buildMelodyDot(
+          label: '2',
+          isActive: isPlaying && phase == MelodyPhase.second,
+          isComplete: phase == MelodyPhase.done,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMelodyDot({
+    required String label,
+    required bool isActive,
+    required bool isComplete,
+  }) {
+    return Container(
+      width: 48,
+      height: 48,
+      decoration: BoxDecoration(
+        color: isActive
+            ? AppColors.primary
+            : isComplete
+            ? AppColors.primary.withValues(alpha: 0.3)
+            : AppColors.surface,
+        shape: BoxShape.circle,
+        border: Border.all(color: AppColors.primary, width: 2),
+      ),
+      child: Center(
+        child: isActive
+            ? Icon(
+                    Icons.music_note_rounded,
+                    color: AppColors.textOnPrimary,
+                    size: 24,
+                  )
+                  .animate(onPlay: (controller) => controller.repeat())
+                  .scale(
+                    begin: const Offset(0.8, 0.8),
+                    end: const Offset(1.2, 1.2),
+                    duration: const Duration(milliseconds: 400),
+                  )
+                  .then()
+                  .scale(
+                    begin: const Offset(1.2, 1.2),
+                    end: const Offset(0.8, 0.8),
+                    duration: const Duration(milliseconds: 400),
+                  )
+            : Text(
+                label,
+                style: AppTypography.bodyLarge.copyWith(
+                  color: isComplete
+                      ? AppColors.primary
+                      : AppColors.textSecondary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+      ),
+    );
   }
 
   Widget _buildControls() {
@@ -201,24 +289,20 @@ class _HighLowScreenState extends State<HighLowScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            GameChoiceButton(
-              label: 'Higher',
-              icon: Icons.arrow_upward_rounded,
-              color: AppColors.higherButton,
+            _buildAnswerButton(
+              label: 'Same',
+              icon: Icons.drag_handle_rounded,
+              color: AppColors.correct,
+              isSame: true,
               enabled: canAnswer,
-              onTap: canAnswer
-                  ? () => _gameState.submitAnswer(PitchDirection.higher)
-                  : null,
             ),
             const SizedBox(width: AppSpacing.lg),
-            GameChoiceButton(
-              label: 'Lower',
-              icon: Icons.arrow_downward_rounded,
-              color: AppColors.lowerButton,
+            _buildAnswerButton(
+              label: 'Different',
+              icon: Icons.compare_arrows_rounded,
+              color: AppColors.secondary,
+              isSame: false,
               enabled: canAnswer,
-              onTap: canAnswer
-                  ? () => _gameState.submitAnswer(PitchDirection.lower)
-                  : null,
             ),
           ],
         ),
@@ -231,6 +315,39 @@ class _HighLowScreenState extends State<HighLowScreen> {
           style: TextButton.styleFrom(foregroundColor: AppColors.textSecondary),
         ),
       ],
+    );
+  }
+
+  Widget _buildAnswerButton({
+    required String label,
+    required IconData icon,
+    required Color color,
+    required bool isSame,
+    required bool enabled,
+  }) {
+    return SizedBox(
+      width: 140,
+      child: SquishyButton(
+        onTap: enabled ? () => _gameState.submitAnswer(isSame) : null,
+        backgroundColor: enabled ? color : color.withValues(alpha: 0.3),
+        padding: const EdgeInsets.symmetric(
+          vertical: AppSpacing.lg,
+          horizontal: AppSpacing.md,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 40, color: AppColors.textOnPrimary),
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              label,
+              style: AppTypography.buttonMedium.copyWith(
+                color: AppColors.textOnPrimary,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

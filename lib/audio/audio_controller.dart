@@ -132,6 +132,24 @@ class AudioController {
     }
   }
 
+  /// Play multiple notes simultaneously (for chords)
+  Future<void> playChord(List<Note> notes) async {
+    if (!_isInitialized || _isMuted) return;
+
+    for (final note in notes) {
+      // Try to load if not cached
+      if (!_noteCache.containsKey(note)) {
+        await _preloadNote(note);
+      }
+
+      final source = _noteCache[note];
+      if (source != null) {
+        // Play without awaiting - allows simultaneous playback
+        _soloud!.play(source);
+      }
+    }
+  }
+
   /// Play a sound effect
   Future<void> playSfx(SfxType sfx) async {
     if (!_isInitialized || _isMuted) return;
