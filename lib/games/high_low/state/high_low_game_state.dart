@@ -36,7 +36,7 @@ class HighLowGameState extends ChangeNotifier {
   HighLowGameState({
     AudioController? audio,
     PromptGenerator? generator,
-    this.totalPrompts = 10,
+    this.totalPrompts = 5,
     this.difficulty = 1,
   }) : _audio = audio ?? AudioController.instance,
        _generator = generator ?? PromptGenerator();
@@ -82,13 +82,13 @@ class HighLowGameState extends ChangeNotifier {
     notifyListeners();
 
     // Play first note
-    await _audio.playNote(prompt.firstNote);
+    await _audio.playNoteForScale(prompt.firstNote);
 
     // Wait between notes
     await Future.delayed(const Duration(milliseconds: 800));
 
     // Play second note
-    await _audio.playNote(prompt.secondNote);
+    await _audio.playNoteForScale(prompt.secondNote);
 
     // Now awaiting input
     _status = GameStatus.awaitingInput;

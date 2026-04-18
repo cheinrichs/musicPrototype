@@ -40,7 +40,7 @@ class SameDifferentGameState extends ChangeNotifier {
   SameDifferentGameState({
     AudioController? audio,
     SameDifferentGenerator? generator,
-    this.totalPrompts = 10,
+    this.totalPrompts = 5,
   }) : _audio = audio ?? AudioController.instance,
        _generator = generator ?? SameDifferentGenerator();
 
@@ -123,7 +123,7 @@ class SameDifferentGameState extends ChangeNotifier {
   Future<void> _playMelody(List<Note> melody) async {
     for (final note in melody) {
       if (_isDisposed) return;
-      await _audio.playNote(note);
+      await _audio.playNoteForScale(note);
       await Future.delayed(const Duration(milliseconds: 400));
     }
   }

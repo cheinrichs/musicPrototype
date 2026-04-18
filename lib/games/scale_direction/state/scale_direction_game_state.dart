@@ -35,7 +35,7 @@ class ScaleDirectionGameState extends ChangeNotifier {
   ScaleDirectionGameState({
     AudioController? audio,
     ScaleGenerator? generator,
-    this.totalPrompts = 10,
+    this.totalPrompts = 5,
   }) : _audio = audio ?? AudioController.instance,
        _generator = generator ?? ScaleGenerator();
 

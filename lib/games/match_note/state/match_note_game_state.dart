@@ -35,7 +35,7 @@ class MatchNoteGameState extends ChangeNotifier {
   MatchNoteGameState({
     AudioController? audio,
     MatchNoteGenerator? generator,
-    this.totalPrompts = 10,
+    this.totalPrompts = 5,
   }) : _audio = audio ?? AudioController.instance,
        _generator = generator ?? MatchNoteGenerator();
 

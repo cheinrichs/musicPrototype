@@ -35,7 +35,7 @@ class ChordGameState extends ChangeNotifier {
   ChordGameState({
     AudioController? audio,
     ChordGenerator? generator,
-    this.totalPrompts = 10,
+    this.totalPrompts = 5,
   }) : _audio = audio ?? AudioController.instance,
        _generator = generator ?? ChordGenerator();
 

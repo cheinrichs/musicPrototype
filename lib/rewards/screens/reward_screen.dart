@@ -175,93 +175,39 @@ class _RewardScreenState extends State<RewardScreen> {
   }
 
   Widget _buildButtons() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        // Home / Back to Path button
-        SquishyButton(
-              onTap: () {
-                if (widget.fromPath && widget.nodeId != null) {
-                  context.read<ProgressState>().completeNode(widget.nodeId!);
-                  context.read<ProgressState>().requestPathReturn();
-                }
-                context.go(AppRoutes.home);
-              },
-              backgroundColor: AppColors.surface,
-              shadowColor: AppColors.shadow,
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.lg,
-                vertical: AppSpacing.md,
+    return SquishyButton(
+          onTap: () {
+            if (widget.fromPath && widget.nodeId != null) {
+              context.read<ProgressState>().completeNode(widget.nodeId!);
+              context.read<ProgressState>().requestPathReturn();
+            }
+            context.go(AppRoutes.home);
+          },
+          backgroundColor: AppColors.surface,
+          shadowColor: AppColors.shadow,
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.lg,
+            vertical: AppSpacing.md,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                widget.fromPath ? Icons.map_outlined : Icons.home_rounded,
+                color: AppColors.textPrimary,
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    widget.fromPath ? Icons.map_outlined : Icons.home_rounded,
-                    color: AppColors.textPrimary,
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Text(
-                    widget.fromPath ? 'Back to Path' : 'Home',
-                    style: AppTypography.buttonMedium.copyWith(
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                ],
+              const SizedBox(width: AppSpacing.sm),
+              Text(
+                widget.fromPath ? 'Back to Path' : 'Home',
+                style: AppTypography.buttonMedium.copyWith(
+                  color: AppColors.textPrimary,
+                ),
               ),
-            )
-            .animate(delay: const Duration(milliseconds: 600))
-            .fade(duration: AppAnimations.medium)
-            .slideX(begin: -0.2, end: 0, duration: AppAnimations.medium),
-        const SizedBox(width: AppSpacing.md),
-        // Play again button
-        SquishyButton(
-              onTap: () => context.go(
-                _getGameRoute(),
-                extra: widget.fromPath
-                    ? {'fromPath': true, 'nodeId': widget.nodeId}
-                    : null,
-              ),
-              backgroundColor: AppColors.primary,
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.lg,
-                vertical: AppSpacing.md,
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(
-                    Icons.replay_rounded,
-                    color: AppColors.textOnPrimary,
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Text('Play Again', style: AppTypography.buttonMedium),
-                ],
-              ),
-            )
-            .animate(delay: const Duration(milliseconds: 600))
-            .fade(duration: AppAnimations.medium)
-            .slideX(begin: 0.2, end: 0, duration: AppAnimations.medium),
-      ],
-    );
-  }
-
-  String _getGameRoute() {
-    switch (widget.gameType) {
-      case 'high_low':
-        return AppRoutes.highLow;
-      case 'scale_direction':
-        return AppRoutes.scaleDirection;
-      case 'match_note':
-        return AppRoutes.matchNote;
-      case 'interval_id':
-        return AppRoutes.intervalId;
-      case 'chord_id':
-        return AppRoutes.chordId;
-      case 'same_different':
-        return AppRoutes.sameDifferent;
-      default:
-        return AppRoutes.highLow;
-    }
+            ],
+          ),
+        )
+        .animate(delay: const Duration(milliseconds: 600))
+        .fade(duration: AppAnimations.medium)
+        .slideY(begin: 0.2, end: 0, duration: AppAnimations.medium);
   }
 }

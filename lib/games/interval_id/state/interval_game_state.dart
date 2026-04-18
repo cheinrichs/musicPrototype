@@ -35,7 +35,7 @@ class IntervalGameState extends ChangeNotifier {
   IntervalGameState({
     AudioController? audio,
     IntervalGenerator? generator,
-    this.totalPrompts = 10,
+    this.totalPrompts = 5,
   }) : _audio = audio ?? AudioController.instance,
        _generator = generator ?? IntervalGenerator();
 
@@ -77,11 +77,11 @@ class IntervalGameState extends ChangeNotifier {
     notifyListeners();
 
     // Play root note
-    await _audio.playNote(prompt.rootNote);
+    await _audio.playNoteForScale(prompt.rootNote);
     await Future.delayed(const Duration(milliseconds: 600));
 
     // Play second note
-    await _audio.playNote(prompt.secondNote);
+    await _audio.playNoteForScale(prompt.secondNote);
 
     // Now awaiting input
     _status = GameStatus.awaitingInput;

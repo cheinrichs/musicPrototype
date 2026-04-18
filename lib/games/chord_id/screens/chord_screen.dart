@@ -95,7 +95,14 @@ class _ChordScreenState extends State<ChordScreen> {
       children: [
         // Close button
         IconButton(
-          onPressed: () => context.go(AppRoutes.home),
+          onPressed: () {
+            final extra =
+                GoRouterState.of(context).extra as Map<String, dynamic>?;
+            if (extra?['fromPath'] == true) {
+              context.read<ProgressState>().requestPathReturn();
+            }
+            context.go(AppRoutes.home);
+          },
           icon: const Icon(Icons.close),
           iconSize: 28,
           color: AppColors.textSecondary,
