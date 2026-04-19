@@ -5,7 +5,6 @@ import 'package:provider/provider.dart';
 import '../../app/router.dart';
 import '../../app/state/progress_state.dart';
 import '../components/game_card.dart';
-import '../components/squishy_button.dart';
 import '../theme/theme.dart';
 
 /// Home screen with game selection and progress display
@@ -23,9 +22,6 @@ class HomeScreen extends StatelessWidget {
               _buildHeader(context),
               const SizedBox(height: AppSpacing.lg),
               Expanded(child: _buildGameSelection(context)),
-              const SizedBox(height: AppSpacing.lg),
-              _buildPlayButton(context),
-              const SizedBox(height: AppSpacing.md),
             ],
           ),
         ),
@@ -230,29 +226,5 @@ class HomeScreen extends StatelessWidget {
         ),
       ],
     );
-  }
-
-  Widget _buildPlayButton(BuildContext context) {
-    return SquishyButton(
-          onTap: () => context.go(AppRoutes.highLow),
-          backgroundColor: AppColors.primary,
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: AppSpacing.lg),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(
-                Icons.play_arrow_rounded,
-                size: 32,
-                color: AppColors.textOnPrimary,
-              ),
-              const SizedBox(width: AppSpacing.sm),
-              Text('Play', style: AppTypography.buttonLarge),
-            ],
-          ),
-        )
-        .animate(delay: const Duration(milliseconds: 500))
-        .fade(duration: AppAnimations.medium)
-        .slideY(begin: 0.2, end: 0, duration: AppAnimations.medium);
   }
 }

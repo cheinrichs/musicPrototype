@@ -47,7 +47,10 @@ class _PlaygroundScreenState extends State<PlaygroundScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: AppSpacing.sm),
-            Text('Sound Playground', style: AppTypography.heading2),
+            Text(
+              'Sound Playground',
+              style: AppTypography.heading2.copyWith(color: AppColors.primary),
+            ),
             const SizedBox(height: AppSpacing.sm),
             Text(
               'Tap an instrument to hear it!',

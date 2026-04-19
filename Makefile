@@ -1,4 +1,4 @@
-.PHONY: bootstrap test lint format run-ios build-ios clean help
+.PHONY: bootstrap test lint format run-ios run-ios-dev build-ios clean help
 
 # Default target
 help:
@@ -8,6 +8,7 @@ help:
 	@echo "  make lint       - Run analyzer and check formatting"
 	@echo "  make format     - Apply dart formatting"
 	@echo "  make run-ios    - Run on iOS simulator"
+	@echo "  make run-ios-dev - Run on iOS simulator with dev tools enabled"
 	@echo "  make build-ios  - Build iOS app"
 	@echo "  make clean      - Clean build artifacts"
 
@@ -30,6 +31,9 @@ format:
 
 run-ios:
 	flutter run -d "iPhone"
+
+run-ios-dev:
+	flutter run -d "iPhone" --dart-define=DEV_MODE=true
 
 build-ios:
 	flutter build ios --debug

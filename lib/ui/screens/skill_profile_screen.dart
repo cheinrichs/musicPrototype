@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import '../../app/config.dart';
 import '../../app/state/skill_state.dart';
 import '../../models/musical_skill.dart';
 import '../theme/theme.dart';
@@ -46,33 +47,36 @@ class SkillProfileScreen extends StatelessWidget {
 
   Widget _buildHeader(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.sm,
-        AppSpacing.sm,
-        AppSpacing.md,
-        0,
-      ),
+      padding: AppSpacing.screenPadding,
       child: Row(
         children: [
           IconButton(
             onPressed: () => context.go('/'),
             icon: const Icon(Icons.arrow_back_rounded),
             color: AppColors.textSecondary,
+            padding: EdgeInsets.zero,
           ),
           const SizedBox(width: AppSpacing.xs),
-          Expanded(child: Text('Skill Profile', style: AppTypography.heading2)),
-          IconButton(
-            onPressed: () => context.read<SkillState>().seedRandom(),
-            icon: const Icon(Icons.casino_rounded),
-            color: AppColors.textSecondary,
-            tooltip: 'Seed random data',
+          Expanded(
+            child: Text(
+              'Skill Profile',
+              style: AppTypography.heading2.copyWith(color: AppColors.primary),
+            ),
           ),
-          IconButton(
-            onPressed: () => context.read<SkillState>().reset(),
-            icon: const Icon(Icons.delete_outline_rounded),
-            color: AppColors.textSecondary,
-            tooltip: 'Reset all XP',
-          ),
+          if (kDevMode) ...[
+            IconButton(
+              onPressed: () => context.read<SkillState>().seedRandom(),
+              icon: const Icon(Icons.casino_rounded),
+              color: AppColors.textSecondary,
+              tooltip: 'Seed random data',
+            ),
+            IconButton(
+              onPressed: () => context.read<SkillState>().reset(),
+              icon: const Icon(Icons.delete_outline_rounded),
+              color: AppColors.textSecondary,
+              tooltip: 'Reset all XP',
+            ),
+          ],
         ],
       ),
     );
