@@ -59,11 +59,8 @@ class PathNodeWidget extends StatelessWidget {
         );
 
       case NodeState.locked:
-        return Opacity(
-          opacity: 0.4,
-          child: AbsorbPointer(
-            child: _buildSimpleCircle(AppColors.textSecondary, node.icon),
-          ),
+        return AbsorbPointer(
+          child: _buildSimpleCircle(AppColors.textSecondary, node.icon),
         );
     }
   }
@@ -89,7 +86,7 @@ class PathNodeWidget extends StatelessWidget {
 
   Widget _buildLabel() {
     final color = node.state == NodeState.locked
-        ? AppColors.textSecondary.withValues(alpha: 0.45)
+        ? AppColors.textSecondary
         : AppColors.textPrimary;
     return Text(
       node.title,

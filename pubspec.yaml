@@ -44,6 +44,7 @@ flutter:
   assets:
     - assets/audio/notes/
     - assets/audio/sfx/
+    - assets/audio/playground/
     - assets/images/characters/
     - assets/images/icons/
     - assets/images/stickers/

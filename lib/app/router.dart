@@ -7,6 +7,7 @@ import '../games/interval_id/screens/interval_screen.dart';
 import '../games/chord_id/screens/chord_screen.dart';
 import '../games/same_different/screens/same_different_screen.dart';
 import '../rewards/screens/reward_screen.dart';
+import '../ui/screens/skill_profile_screen.dart';
 
 /// App routes configuration
 class AppRoutes {
@@ -18,6 +19,7 @@ class AppRoutes {
   static const String chordId = '/chord-id';
   static const String sameDifferent = '/same-different';
   static const String reward = '/reward';
+  static const String skillProfile = '/skill-profile';
 }
 
 /// Create the app router
@@ -51,6 +53,10 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: AppRoutes.sameDifferent,
       builder: (context, state) => const SameDifferentScreen(),
+    ),
+    GoRoute(
+      path: AppRoutes.skillProfile,
+      builder: (context, state) => const SkillProfileScreen(),
     ),
     GoRoute(
       path: AppRoutes.reward,

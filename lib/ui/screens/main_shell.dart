@@ -4,6 +4,7 @@ import '../../app/state/progress_state.dart';
 import '../../ui/theme/theme.dart';
 import 'home_screen.dart';
 import 'learning_path_screen.dart';
+import 'playground_screen.dart';
 
 /// Top-level shell with bottom navigation between app sections
 class MainShell extends StatefulWidget {
@@ -16,7 +17,11 @@ class MainShell extends StatefulWidget {
 class _MainShellState extends State<MainShell> {
   int _selectedIndex = 0;
 
-  static const _pages = [HomeScreen(), LearningPathScreen()];
+  static const _pages = [
+    HomeScreen(),
+    LearningPathScreen(),
+    PlaygroundScreen(),
+  ];
 
   @override
   Widget build(BuildContext context) {
@@ -48,6 +53,10 @@ class _MainShellState extends State<MainShell> {
           BottomNavigationBarItem(
             icon: Icon(Icons.map_outlined),
             label: 'Learning Path',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.spatial_audio_rounded),
+            label: 'Playground',
           ),
         ],
       ),

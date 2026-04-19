@@ -40,55 +40,74 @@ class HomeScreen extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             // App title
-            Text(
-                  'Ear Training Games',
-                  style: AppTypography.heading2.copyWith(
-                    color: AppColors.primary,
-                  ),
-                )
-                .animate()
-                .fade(duration: AppAnimations.medium)
-                .slideX(begin: -0.1, end: 0, duration: AppAnimations.medium),
-            // Streak badge
-            if (progress.currentStreak > 0)
-              Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.md,
-                      vertical: AppSpacing.sm,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppColors.gold.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(
-                        AppSpacing.radiusRound,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.local_fire_department_rounded,
-                          size: 20,
-                          color: AppColors.gold,
+            Flexible(
+              child:
+                  Text(
+                        'Ear Training Games',
+                        style: AppTypography.heading2.copyWith(
+                          color: AppColors.primary,
                         ),
-                        const SizedBox(width: AppSpacing.xs),
-                        Text(
-                          '${progress.currentStreak}',
-                          style: AppTypography.bodyLarge.copyWith(
-                            color: AppColors.gold,
-                            fontWeight: FontWeight.w800,
+                        overflow: TextOverflow.ellipsis,
+                      )
+                      .animate()
+                      .fade(duration: AppAnimations.medium)
+                      .slideX(
+                        begin: -0.1,
+                        end: 0,
+                        duration: AppAnimations.medium,
+                      ),
+            ),
+            // Right side: streak badge + skill profile icon
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  onPressed: () => context.go(AppRoutes.skillProfile),
+                  icon: const Icon(Icons.insights_rounded),
+                  color: AppColors.textSecondary,
+                  tooltip: 'Skill Profile',
+                ),
+                if (progress.currentStreak > 0)
+                  Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.md,
+                          vertical: AppSpacing.sm,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.gold.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(
+                            AppSpacing.radiusRound,
                           ),
                         ),
-                      ],
-                    ),
-                  )
-                  .animate()
-                  .fade(duration: AppAnimations.medium)
-                  .scale(
-                    begin: const Offset(0.8, 0.8),
-                    end: const Offset(1, 1),
-                    duration: AppAnimations.medium,
-                    curve: AppAnimations.bounceCurve,
-                  ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.local_fire_department_rounded,
+                              size: 20,
+                              color: AppColors.gold,
+                            ),
+                            const SizedBox(width: AppSpacing.xs),
+                            Text(
+                              '${progress.currentStreak}',
+                              style: AppTypography.bodyLarge.copyWith(
+                                color: AppColors.gold,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                      .animate()
+                      .fade(duration: AppAnimations.medium)
+                      .scale(
+                        begin: const Offset(0.8, 0.8),
+                        end: const Offset(1, 1),
+                        duration: AppAnimations.medium,
+                        curve: AppAnimations.bounceCurve,
+                      ),
+              ],
+            ),
           ],
         );
       },

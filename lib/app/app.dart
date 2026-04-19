@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../ui/theme/theme.dart';
 import 'router.dart';
 import 'state/progress_state.dart';
+import 'state/skill_state.dart';
 
 /// Main app widget
 class EarTrainerApp extends StatelessWidget {
@@ -13,6 +14,7 @@ class EarTrainerApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => ProgressState()..load()),
+        ChangeNotifierProvider(create: (_) => SkillState()..load()),
       ],
       child: MaterialApp.router(
         title: 'Ear Trainer',

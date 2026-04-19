@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import '../../../app/router.dart';
 import '../../../app/state/progress_state.dart';
+import '../../../app/state/skill_state.dart';
+import '../../../models/musical_skill.dart';
 import '../../../models/game_status.dart';
 import '../../../models/scale_direction.dart';
 import '../../../ui/components/progress_dots.dart';
@@ -49,6 +51,10 @@ class _ScaleDirectionScreenState extends State<ScaleDirectionScreen> {
         gameType: 'scale_direction',
         correctCount: _gameState.correctCount,
         totalCount: _gameState.totalPrompts,
+      );
+      context.read<SkillState>().awardXp(
+        MusicalSkill.contourAndShape,
+        _gameState.correctCount * 10,
       );
 
       // Navigate to reward screen, forwarding path context if present.

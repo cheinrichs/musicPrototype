@@ -15,9 +15,11 @@ class AudioController {
   SoLoud? _soloud;
   final Map<Note, AudioSource> _noteCache = {};
   final Map<SfxType, AudioSource> _sfxCache = {};
+  final Map<String, AudioSource> _clipCache = {};
   bool _isInitialized = false;
   bool _isMuted = false;
   SoundHandle? _currentNoteHandle;
+  SoundHandle? _currentClipHandle;
 
   /// Check if audio system is initialized
   bool get isInitialized => _isInitialized;
@@ -165,6 +167,55 @@ class AudioController {
     }
   }
 
+  /// Preload a list of audio clip asset paths (e.g., playground melodies)
+  Future<void> preloadClips(List<String> assetPaths) async {
+    if (!_isInitialized) return;
+    for (final path in assetPaths) {
+      await _preloadClip(path);
+    }
+  }
+
+  Future<void> _preloadClip(String assetPath) async {
+    if (_clipCache.containsKey(assetPath)) return;
+    try {
+      final bytes = await rootBundle.load(assetPath);
+      final source = await _soloud!.loadMem(
+        assetPath,
+        bytes.buffer.asUint8List(),
+      );
+      _clipCache[assetPath] = source;
+    } catch (e) {
+      // Clip not found — playground is silent for this instrument until added
+    }
+  }
+
+  /// Play a clip by asset path, stopping any currently playing clip first
+  Future<void> playClip(String assetPath) async {
+    if (!_isInitialized || _isMuted) return;
+
+    if (_currentClipHandle != null) {
+      _soloud!.stop(_currentClipHandle!);
+      _currentClipHandle = null;
+    }
+
+    if (!_clipCache.containsKey(assetPath)) {
+      await _preloadClip(assetPath);
+    }
+
+    final source = _clipCache[assetPath];
+    if (source != null) {
+      _currentClipHandle = await _soloud!.play(source);
+    }
+  }
+
+  /// Stop the currently playing clip
+  void stopCurrentClip() {
+    if (_currentClipHandle != null && _isInitialized) {
+      _soloud!.stop(_currentClipHandle!);
+      _currentClipHandle = null;
+    }
+  }
+
   /// Toggle mute state
   void toggleMute() {
     _isMuted = !_isMuted;
@@ -194,9 +245,13 @@ class AudioController {
     for (final source in _sfxCache.values) {
       _soloud?.disposeSource(source);
     }
+    for (final source in _clipCache.values) {
+      _soloud?.disposeSource(source);
+    }
 
     _noteCache.clear();
     _sfxCache.clear();
+    _clipCache.clear();
 
     _soloud?.deinit();
     _isInitialized = false;
