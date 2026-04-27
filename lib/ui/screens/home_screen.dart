@@ -110,118 +110,103 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
+  static const _games = [
+    (
+      title: 'High vs Low',
+      subtitle: 'Which note is higher?',
+      icon: Icons.swap_vert_rounded,
+      color: AppColors.primary,
+      route: AppRoutes.highLow,
+    ),
+    (
+      title: 'Scale Direction',
+      subtitle: 'Up or down?',
+      icon: Icons.stairs_rounded,
+      color: AppColors.secondary,
+      route: AppRoutes.scaleDirection,
+    ),
+    (
+      title: 'Match the Note',
+      subtitle: 'Find the matching sound',
+      icon: Icons.music_note_rounded,
+      color: AppColors.gold,
+      route: AppRoutes.matchNote,
+    ),
+    (
+      title: 'Intervals',
+      subtitle: 'Name the interval',
+      icon: Icons.straighten_rounded,
+      color: AppColors.higherButton,
+      route: AppRoutes.intervalId,
+    ),
+    (
+      title: 'Chords',
+      subtitle: 'Major or minor?',
+      icon: Icons.piano_rounded,
+      color: AppColors.lowerButton,
+      route: AppRoutes.chordId,
+    ),
+    (
+      title: 'Same or Different',
+      subtitle: 'Listen & compare',
+      icon: Icons.compare_rounded,
+      color: AppColors.correct,
+      route: AppRoutes.sameDifferent,
+    ),
+    (
+      title: 'Which Instrument?',
+      subtitle: 'Name the sound',
+      icon: Icons.spatial_audio_rounded,
+      color: Color(0xFF74B9FF),
+      route: AppRoutes.timbreId,
+    ),
+    (
+      title: 'Same Beat?',
+      subtitle: 'Match the rhythm',
+      icon: Icons.av_timer_rounded,
+      color: Color(0xFFE17055),
+      route: AppRoutes.rhythmId,
+    ),
+    (
+      title: 'Name That Note',
+      subtitle: 'Do Re Mi...',
+      icon: Icons.record_voice_over_rounded,
+      color: AppColors.primaryLight,
+      route: AppRoutes.pitchName,
+    ),
+  ];
+
   Widget _buildGameSelection(BuildContext context) {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text('Choose a game', style: AppTypography.bodyMedium)
             .animate(delay: const Duration(milliseconds: 200))
             .fade(duration: AppAnimations.medium),
         const SizedBox(height: AppSpacing.lg),
-        // Game cards grid - first row
         Expanded(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // High vs Low game
-              Expanded(
-                    child: GameCard(
-                      title: 'High vs Low',
-                      subtitle: 'Which note is higher?',
-                      icon: Icons.swap_vert_rounded,
-                      accentColor: AppColors.primary,
-                      onTap: () => context.go(AppRoutes.highLow),
-                    ),
+          child: GridView.builder(
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              crossAxisSpacing: AppSpacing.md,
+              mainAxisSpacing: AppSpacing.md,
+            ),
+            itemCount: _games.length,
+            itemBuilder: (context, i) {
+              final game = _games[i];
+              return GameCard(
+                    title: game.title,
+                    subtitle: game.subtitle,
+                    icon: game.icon,
+                    accentColor: game.color,
+                    onTap: () => context.go(game.route),
                   )
-                  .animate(delay: const Duration(milliseconds: 300))
-                  .fade(duration: AppAnimations.medium)
-                  .slideY(begin: 0.1, end: 0, duration: AppAnimations.medium),
-              const SizedBox(width: AppSpacing.md),
-              // Scale Direction game
-              Expanded(
-                    child: GameCard(
-                      title: 'Scale Direction',
-                      subtitle: 'Up or down?',
-                      icon: Icons.stairs_rounded,
-                      accentColor: AppColors.secondary,
-                      onTap: () => context.go(AppRoutes.scaleDirection),
-                    ),
+                  .animate(
+                    delay: Duration(milliseconds: 300 + i * 75),
                   )
-                  .animate(delay: const Duration(milliseconds: 400))
                   .fade(duration: AppAnimations.medium)
-                  .slideY(begin: 0.1, end: 0, duration: AppAnimations.medium),
-            ],
-          ),
-        ),
-        const SizedBox(height: AppSpacing.md),
-        // Game cards grid - second row
-        Expanded(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Match the Note game
-              Expanded(
-                    child: GameCard(
-                      title: 'Match the Note',
-                      subtitle: 'Find the matching sound',
-                      icon: Icons.music_note_rounded,
-                      accentColor: AppColors.gold,
-                      onTap: () => context.go(AppRoutes.matchNote),
-                    ),
-                  )
-                  .animate(delay: const Duration(milliseconds: 500))
-                  .fade(duration: AppAnimations.medium)
-                  .slideY(begin: 0.1, end: 0, duration: AppAnimations.medium),
-              const SizedBox(width: AppSpacing.md),
-              // Interval Identification game
-              Expanded(
-                    child: GameCard(
-                      title: 'Intervals',
-                      subtitle: 'Name the interval',
-                      icon: Icons.straighten_rounded,
-                      accentColor: AppColors.higherButton,
-                      onTap: () => context.go(AppRoutes.intervalId),
-                    ),
-                  )
-                  .animate(delay: const Duration(milliseconds: 600))
-                  .fade(duration: AppAnimations.medium)
-                  .slideY(begin: 0.1, end: 0, duration: AppAnimations.medium),
-            ],
-          ),
-        ),
-        const SizedBox(height: AppSpacing.md),
-        // Game cards grid - third row
-        Expanded(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Chord Identification game
-              Expanded(
-                    child: GameCard(
-                      title: 'Chords',
-                      subtitle: 'Major or minor?',
-                      icon: Icons.piano_rounded,
-                      accentColor: AppColors.lowerButton,
-                      onTap: () => context.go(AppRoutes.chordId),
-                    ),
-                  )
-                  .animate(delay: const Duration(milliseconds: 700))
-                  .fade(duration: AppAnimations.medium)
-                  .slideY(begin: 0.1, end: 0, duration: AppAnimations.medium),
-              const SizedBox(width: AppSpacing.md),
-              // Same or Different game
-              Expanded(
-                    child: GameCard(
-                      title: 'Same or Different',
-                      subtitle: 'Listen & compare',
-                      icon: Icons.compare_rounded,
-                      accentColor: AppColors.correct,
-                      onTap: () => context.go(AppRoutes.sameDifferent),
-                    ),
-                  )
-                  .animate(delay: const Duration(milliseconds: 800))
-                  .fade(duration: AppAnimations.medium)
-                  .slideY(begin: 0.1, end: 0, duration: AppAnimations.medium),
-            ],
+                  .slideY(begin: 0.1, end: 0, duration: AppAnimations.medium);
+            },
           ),
         ),
       ],
