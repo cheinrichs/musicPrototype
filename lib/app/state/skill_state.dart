@@ -5,8 +5,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/musical_skill.dart';
 
 /// XP thresholds for each level boundary (index = level number).
-/// e.g. reaching index 2 (150 XP) puts the skill at Level 2.
-const List<int> _levelThresholds = [0, 50, 150, 350, 700, 1200];
+/// Level 0 = 0 XP (not started). Any XP at all puts you at Level 1
+/// with visible bar progress, avoiding the "just leveled up, bar is empty" look.
+const List<int> _levelThresholds = [0, 1, 100, 300, 600, 1000];
 
 const int _maxLevel = 5;
 

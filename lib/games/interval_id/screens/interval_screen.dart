@@ -52,10 +52,12 @@ class _IntervalScreenState extends State<IntervalScreen> {
         correctCount: _gameState.correctCount,
         totalCount: _gameState.totalPrompts,
       );
-      context.read<SkillState>().awardXp(
-        MusicalSkill.pitchAwareness,
-        _gameState.correctCount * 10,
-      );
+      if (_gameState.correctCount >= 4) {
+        context.read<SkillState>().awardXp(
+          MusicalSkill.pitchAwareness,
+          _gameState.correctCount * 10,
+        );
+      }
 
       // Navigate to reward screen, forwarding path context if present.
       final routeExtra =

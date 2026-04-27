@@ -51,10 +51,12 @@ class _SameDifferentScreenState extends State<SameDifferentScreen> {
         correctCount: _gameState.correctCount,
         totalCount: _gameState.totalPrompts,
       );
-      context.read<SkillState>().awardXp(
-        MusicalSkill.soundAwareness,
-        _gameState.correctCount * 10,
-      );
+      if (_gameState.correctCount >= 4) {
+        context.read<SkillState>().awardXp(
+          MusicalSkill.soundAwareness,
+          _gameState.correctCount * 10,
+        );
+      }
 
       // Navigate to reward screen, forwarding path context if present.
       final routeExtra =
