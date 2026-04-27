@@ -7,8 +7,8 @@ import '../models/scale_direction_prompt.dart';
 class ScaleGenerator {
   final Random _random;
 
-  /// Major scale intervals in semitones: W-W-H-W-W-W-H
-  static const List<int> majorScaleIntervals = [0, 2, 4, 5, 7, 9, 11, 12];
+  /// First 3 notes of a major scale: root, major 2nd, major 3rd
+  static const List<int> majorScaleIntervals = [0, 2, 4];
 
   ScaleGenerator({Random? random}) : _random = random ?? Random();
 
