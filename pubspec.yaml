@@ -43,6 +43,7 @@ flutter:
 
   assets:
     - assets/audio/notes/
+    - assets/audio/notes/percussion/
     - assets/audio/sfx/
     - assets/audio/playground/
     - assets/images/characters/
