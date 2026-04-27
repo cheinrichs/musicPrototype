@@ -19,7 +19,7 @@ class _PlaygroundScreenState extends State<PlaygroundScreen> {
     super.initState();
     // Preload all clips — silent no-op for any that don't exist yet
     AudioController.instance.preloadClips(
-      Instrument.values.map((i) => i.assetPath).toList(),
+      Instrument.values.expand((i) => i.assetPaths).toList(),
     );
   }
 
@@ -31,7 +31,7 @@ class _PlaygroundScreenState extends State<PlaygroundScreen> {
 
   Future<void> _play(Instrument instrument) async {
     setState(() => _activeInstrument = instrument);
-    await AudioController.instance.playClip(instrument.assetPath);
+    await AudioController.instance.playClip(instrument.randomAssetPath);
   }
 
   @override
