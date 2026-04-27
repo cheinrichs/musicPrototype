@@ -6,6 +6,9 @@ import '../games/match_note/screens/match_note_screen.dart';
 import '../games/interval_id/screens/interval_screen.dart';
 import '../games/chord_id/screens/chord_screen.dart';
 import '../games/same_different/screens/same_different_screen.dart';
+import '../games/timbre_id/screens/timbre_screen.dart';
+import '../games/rhythm_id/screens/rhythm_screen.dart';
+import '../games/pitch_name/screens/pitch_name_screen.dart';
 import '../rewards/screens/reward_screen.dart';
 import '../ui/screens/skill_profile_screen.dart';
 
@@ -18,6 +21,9 @@ class AppRoutes {
   static const String intervalId = '/interval-id';
   static const String chordId = '/chord-id';
   static const String sameDifferent = '/same-different';
+  static const String timbreId = '/timbre-id';
+  static const String rhythmId = '/rhythm-id';
+  static const String pitchName = '/pitch-name';
   static const String reward = '/reward';
   static const String skillProfile = '/skill-profile';
 }
@@ -53,6 +59,18 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: AppRoutes.sameDifferent,
       builder: (context, state) => const SameDifferentScreen(),
+    ),
+    GoRoute(
+      path: AppRoutes.timbreId,
+      builder: (context, state) => const TimbreScreen(),
+    ),
+    GoRoute(
+      path: AppRoutes.rhythmId,
+      builder: (context, state) => const RhythmScreen(),
+    ),
+    GoRoute(
+      path: AppRoutes.pitchName,
+      builder: (context, state) => const PitchNameScreen(),
     ),
     GoRoute(
       path: AppRoutes.skillProfile,

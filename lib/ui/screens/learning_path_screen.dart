@@ -64,6 +64,27 @@ class LearningPathScreen extends StatelessWidget {
       state: NodeState.locked,
       gameRoute: AppRoutes.chordId,
     ),
+    PathNode(
+      id: 'timbre_id',
+      title: 'Which Instrument?',
+      icon: Icons.spatial_audio_rounded,
+      state: NodeState.locked,
+      gameRoute: AppRoutes.timbreId,
+    ),
+    PathNode(
+      id: 'rhythm_id',
+      title: 'Same Beat?',
+      icon: Icons.av_timer_rounded,
+      state: NodeState.locked,
+      gameRoute: AppRoutes.rhythmId,
+    ),
+    PathNode(
+      id: 'pitch_name',
+      title: 'Name That Note',
+      icon: Icons.music_note_rounded,
+      state: NodeState.locked,
+      gameRoute: AppRoutes.pitchName,
+    ),
   ];
 
   /// Derive NodeState for each node from the persisted completed set.

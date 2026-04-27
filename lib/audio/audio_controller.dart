@@ -208,6 +208,38 @@ class AudioController {
     }
   }
 
+  /// Play a clip and await its natural completion before returning.
+  /// Falls back to a 3-second delay when muted or uninitialized.
+  Future<void> playClipAndAwait(String assetPath) async {
+    if (!_isInitialized || _isMuted) {
+      await Future.delayed(const Duration(seconds: 3));
+      return;
+    }
+
+    if (_currentClipHandle != null) {
+      _soloud!.stop(_currentClipHandle!);
+      _currentClipHandle = null;
+    }
+
+    if (!_clipCache.containsKey(assetPath)) {
+      await _preloadClip(assetPath);
+    }
+
+    final source = _clipCache[assetPath];
+    if (source == null) {
+      await Future.delayed(const Duration(seconds: 3));
+      return;
+    }
+
+    final handle = await _soloud!.play(source);
+    _currentClipHandle = handle;
+
+    while (_soloud!.getIsValidVoiceHandle(handle)) {
+      await Future.delayed(const Duration(milliseconds: 100));
+    }
+    if (_currentClipHandle == handle) _currentClipHandle = null;
+  }
+
   /// Stop the currently playing clip
   void stopCurrentClip() {
     if (_currentClipHandle != null && _isInitialized) {
