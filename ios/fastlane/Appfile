@@ -1,0 +1,8 @@
+# Appfile — Fastlane app identity configuration
+#
+# Matches PRODUCT_BUNDLE_IDENTIFIER in Runner.xcodeproj/project.pbxproj.
+app_identifier("com.eartrainer.earTrainer")
+
+# apple_id is not needed when authenticating via App Store Connect API key
+# (which is what this lane uses). Uncomment only if you need password auth.
+# apple_id("cooper.heinrichs@gmail.com")

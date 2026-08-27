@@ -1,0 +1,46 @@
+name: Deploy to TestFlight
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    name: Build Flutter iOS and Upload to TestFlight
+    # NOTE: matches SongStone's runner. Requires a self-hosted GitHub Actions
+    # runner (a Mac with Xcode, Flutter, and Ruby/bundler installed) registered
+    # to this repo — confirm this repo has one, or swap to `macos-latest` to
+    # use GitHub-hosted macOS runners instead (costs Actions minutes, no setup).
+    runs-on: self-hosted
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4.2.2
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Install Flutter dependencies
+        run: flutter pub get
+
+      - name: Build iOS (unsigned)
+        run: flutter build ios --release --no-codesign
+
+      - name: Decode certificate and profile
+        run: |
+          echo "${{ secrets.APPLE_DISTRIBUTION_CERTIFICATE }}" | base64 --decode > /tmp/distribution.p12
+          echo "${{ secrets.APPLE_PROVISIONING_PROFILE }}" | base64 --decode > /tmp/distribution.mobileprovision
+
+      - name: Deploy to TestFlight
+        env:
+          APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
+          APP_STORE_CONNECT_API_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
+          APP_STORE_CONNECT_API_KEY_CONTENT: ${{ secrets.APP_STORE_CONNECT_API_KEY_CONTENT }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_PROVISIONING_PROFILE_NAME: ${{ secrets.APPLE_PROVISIONING_PROFILE_NAME }}
+          MATCH_KEYCHAIN_NAME: build.keychain
+          MATCH_KEYCHAIN_PASSWORD: ${{ secrets.MATCH_KEYCHAIN_PASSWORD }}
+        working-directory: ios
+        run: bundle exec fastlane beta

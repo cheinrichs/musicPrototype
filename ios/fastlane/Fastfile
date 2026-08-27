@@ -1,0 +1,70 @@
+default_platform(:ios)
+
+platform :ios do
+  desc "Archive, sign, and upload to TestFlight"
+  lane :beta do
+    # Create an isolated keychain for CI (cleaned up automatically after the lane)
+    keychain_name = "fastlane_tmp_keychain"
+    keychain_password = ENV["MATCH_KEYCHAIN_PASSWORD"]
+
+    create_keychain(
+      name: keychain_name,
+      password: keychain_password,
+      default_keychain: true,
+      unlock: true,
+      timeout: 3600,
+      lock_when_sleeps: false
+    )
+
+    # Import the distribution certificate into the CI keychain
+    import_certificate(
+      certificate_path: "/tmp/distribution.p12",
+      certificate_password: ENV["APPLE_CERTIFICATE_PASSWORD"],
+      keychain_name: keychain_name,
+      keychain_password: keychain_password
+    )
+
+    # Install the App Store distribution provisioning profile
+    install_provisioning_profile(path: "/tmp/distribution.mobileprovision")
+
+    # Authenticate with App Store Connect (API key — no password/2FA needed)
+    api_key = app_store_connect_api_key(
+      key_id: ENV["APP_STORE_CONNECT_API_KEY_ID"],
+      issuer_id: ENV["APP_STORE_CONNECT_API_ISSUER_ID"],
+      key_content: ENV["APP_STORE_CONNECT_API_KEY_CONTENT"],
+      is_key_content_base64: true
+    )
+
+    # Archive and export the .ipa. Assumes `flutter build ios --release --no-codesign`
+    # has already run (see the GitHub Actions workflow) so Pods/Flutter.framework
+    # are in place — gym just needs to archive + sign + export.
+    #
+    # TODO: PROVISIONING_PROFILE_NAME below must match the exact name of the
+    # App Store distribution profile you create/download in the Apple Developer
+    # portal for com.eartrainer.earTrainer (Certificates, IDs & Profiles → Profiles).
+    gym(
+      workspace: "Runner.xcworkspace",
+      scheme: "Runner",
+      configuration: "Release",
+      export_method: "app-store",
+      output_directory: "output",
+      output_name: "EarTrainer.ipa",
+      export_options: {
+        method: "app-store",
+        provisioningProfiles: {
+          "com.eartrainer.earTrainer" => ENV["APPLE_PROVISIONING_PROFILE_NAME"] || "Ear Trainer App Store"
+        }
+      }
+    )
+
+    # Upload to TestFlight; don't wait for Apple's processing in CI
+    pilot(
+      api_key: api_key,
+      ipa: "output/EarTrainer.ipa",
+      skip_waiting_for_build_processing: true
+    )
+
+    # Clean up the temporary keychain
+    delete_keychain(name: keychain_name)
+  end
+end
