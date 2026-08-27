@@ -8,14 +8,21 @@ on:
 jobs:
   build-and-deploy:
     name: Build Flutter iOS and Upload to TestFlight
-    # NOTE: matches SongStone's runner. Requires a self-hosted GitHub Actions
-    # runner (a Mac with Xcode, Flutter, and Ruby/bundler installed) registered
-    # to this repo — confirm this repo has one, or swap to `macos-latest` to
-    # use GitHub-hosted macOS runners instead (costs Actions minutes, no setup).
-    runs-on: self-hosted
+    # GitHub-hosted macOS runner — comes with Xcode preinstalled, no self-hosted
+    # runner needed (unlike SongStone/Unity, Flutter has no Editor/license
+    # dependency). Free on public repos, billed at the macOS minute rate on
+    # private ones — see DEPLOYMENT.md.
+    runs-on: macos-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4.2.2
+
+      - name: Set up Ruby (for Fastlane)
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.2"
+          bundler-cache: true
+          working-directory: ios
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2

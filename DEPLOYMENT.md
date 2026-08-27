@@ -8,7 +8,7 @@ This project uses GitHub Actions + Fastlane to build the Flutter iOS app and shi
 Push to main (or manual "Run workflow")
       │
       ▼
-  build-and-deploy job (self-hosted runner)
+  build-and-deploy job (GitHub-hosted macOS runner)
   ├── flutter pub get
   ├── flutter build ios --release --no-codesign
   ├── decode .p12 cert + .mobileprovision from secrets
@@ -23,15 +23,11 @@ Push to main (or manual "Run workflow")
 
 ## One-time setup checklist
 
-### 1. Confirm the self-hosted runner
+### 1. Make sure the repo is public
 
-The workflow runs on `self-hosted`, same as SongStone's. If SongStone's runner is registered at the **repository** level, it won't automatically pick up jobs for this repo — you'll need either:
-- a runner registered specifically for `musicPrototype`, or
-- an **organization-level** runner both repos share.
+The workflow runs on `runs-on: macos-latest` — a GitHub-hosted runner, no setup needed (unlike SongStone/Unity, Flutter has no Editor license to babysit). macOS minutes are free and uncapped on **public** repos. On a private repo they'd draw from your plan's included minutes at a 10x multiplier, billed beyond that.
 
-Check under this repo's **Settings → Actions → Runners**. If none shows up, either register one (the same Mac SongStone uses is fine — it already has Xcode/Ruby) or change `runs-on: self-hosted` to `runs-on: macos-latest` in `.github/workflows/deploy.yml` to use GitHub-hosted macOS runners instead (no setup, but costs Actions minutes at the macOS multiplier).
-
-The runner machine needs: Xcode, Ruby + bundler, and the Flutter SDK on `PATH` (the workflow installs Flutter itself via `subosito/flutter-action`, but Xcode/Ruby must already be present, same as for SongStone).
+Check this repo's visibility under **Settings → General → Danger Zone → Change visibility**. If it's private, switch it to public to keep this free.
 
 ### 2. App Store Connect API key
 
