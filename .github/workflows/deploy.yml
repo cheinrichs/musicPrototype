@@ -32,8 +32,18 @@ jobs:
       - name: Install Flutter dependencies
         run: flutter pub get
 
+      - name: Analyze
+        run: flutter analyze
+
+      - name: Run tests
+        run: flutter test
+
       - name: Build iOS (unsigned)
-        run: flutter build ios --release --no-codesign
+        # --build-number is set from the GitHub Actions run number so every
+        # upload is unique and strictly increasing, as TestFlight requires.
+        # pubspec.yaml's version+build number is otherwise static and would
+        # cause every deploy after the first to be rejected.
+        run: flutter build ios --release --no-codesign --build-number=${{ github.run_number }}
 
       - name: Decode certificate and profile
         run: |

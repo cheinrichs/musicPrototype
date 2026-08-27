@@ -71,5 +71,7 @@ Push to `main`, or trigger manually from **Actions → Deploy to TestFlight → 
 ## Notes
 
 - **Trigger:** currently runs on every push to `main`. If you'd rather gate deploys behind a manual click (like SongStone currently does), remove the `push` trigger in `.github/workflows/deploy.yml` and keep only `workflow_dispatch`.
+- **Pre-flight checks:** `flutter analyze` and `flutter test` run before the build, so a change that doesn't compile or fails a test never reaches TestFlight.
+- **Build number:** `pubspec.yaml` has a static `version: 1.0.0+1`. The workflow overrides the build number at build time with `--build-number=${{ github.run_number }}` so every upload is unique and increasing — TestFlight rejects repeats. Bump the `1.0.0` version part in `pubspec.yaml` yourself when you want to mark a real release milestone.
 - **Build time:** Flutter iOS builds are much faster than Unity's (minutes, not 25-50 min).
 - **TestFlight processing:** Apple processes the uploaded build asynchronously; the job exits right after upload (`skip_waiting_for_build_processing: true`).
