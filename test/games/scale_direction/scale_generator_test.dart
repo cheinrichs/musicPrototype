@@ -20,11 +20,11 @@ void main() {
       expect(prompts.length, 10);
     });
 
-    test('each prompt has 8 notes (full major scale)', () {
+    test('each prompt has 3 notes (root, major 2nd, major 3rd)', () {
       final prompts = generator.generatePrompts(count: 10);
 
       for (final prompt in prompts) {
-        expect(prompt.scaleNotes.length, 8);
+        expect(prompt.scaleNotes.length, 3);
       }
     });
 
@@ -73,7 +73,7 @@ void main() {
     });
 
     test('major scale intervals are correct for ascending', () {
-      // Major scale intervals: 0, 2, 4, 5, 7, 9, 11, 12 semitones from root
+      // Root, major 2nd, major 3rd: 0, 2, 4 semitones from root
       final prompts = generator.generatePrompts(count: 50);
       final ascendingPrompts = prompts.where(
         (p) => p.direction == ScaleDirection.ascending,
@@ -83,7 +83,7 @@ void main() {
         final notes = prompt.scaleNotes;
         final rootMidi = notes.first.midiNumber;
 
-        final expectedIntervals = [0, 2, 4, 5, 7, 9, 11, 12];
+        final expectedIntervals = [0, 2, 4];
         for (int i = 0; i < notes.length; i++) {
           final actualInterval = notes[i].midiNumber - rootMidi;
           expect(
@@ -97,7 +97,7 @@ void main() {
     });
 
     test('major scale intervals are correct for descending', () {
-      // Descending: 0, -2, -4, -5, -7, -9, -11, -12 semitones from root
+      // Descending: 0, -2, -4 semitones from root
       final prompts = generator.generatePrompts(count: 50);
       final descendingPrompts = prompts.where(
         (p) => p.direction == ScaleDirection.descending,
@@ -107,7 +107,7 @@ void main() {
         final notes = prompt.scaleNotes;
         final rootMidi = notes.first.midiNumber;
 
-        final expectedIntervals = [0, -2, -4, -5, -7, -9, -11, -12];
+        final expectedIntervals = [0, -2, -4];
         for (int i = 0; i < notes.length; i++) {
           final actualInterval = notes[i].midiNumber - rootMidi;
           expect(
