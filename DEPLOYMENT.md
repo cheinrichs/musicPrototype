@@ -55,6 +55,7 @@ Go to this repo → **Settings → Secrets and variables → Actions → New rep
 | `APPLE_CERTIFICATE_PASSWORD` | The password you set exporting the `.p12` |
 | `APPLE_PROVISIONING_PROFILE` | `base64 -i YourProfile.mobileprovision \| pbcopy`, paste |
 | `APPLE_PROVISIONING_PROFILE_NAME` | The exact profile name (e.g. `Ear Trainer App Store`) — must match what Xcode shows for it |
+| `APPLE_TEAM_ID` | Your 10-character Apple Developer Team ID — found on [developer.apple.com/account](https://developer.apple.com/account) under Membership, or in Xcode's Signing & Capabilities tab |
 | `APP_STORE_CONNECT_API_KEY_ID` | From step 2 |
 | `APP_STORE_CONNECT_API_ISSUER_ID` | From step 2 |
 | `APP_STORE_CONNECT_API_KEY_CONTENT` | `base64 -i AuthKey_XXXX.p8 \| pbcopy`, paste |

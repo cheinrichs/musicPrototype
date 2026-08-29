@@ -39,9 +39,14 @@ platform :ios do
     # has already run (see the GitHub Actions workflow) so Pods/Flutter.framework
     # are in place — gym just needs to archive + sign + export.
     #
-    # TODO: PROVISIONING_PROFILE_NAME below must match the exact name of the
-    # App Store distribution profile you create/download in the Apple Developer
-    # portal for com.eartrainer.earTrainer (Certificates, IDs & Profiles → Profiles).
+    # `export_options` only controls the export (archive → .ipa) step. The
+    # archive step itself still uses whatever signing style is baked into the
+    # Xcode project, which defaults to Automatic on a fresh Flutter project —
+    # and Automatic signing can't work in CI (no interactive Apple ID login).
+    # `xcargs` overrides the build settings for the archive step so it uses
+    # manual signing with our imported cert + profile instead.
+    profile_name = ENV["APPLE_PROVISIONING_PROFILE_NAME"] || "Ear Trainer App Store"
+
     gym(
       workspace: "Runner.xcworkspace",
       scheme: "Runner",
@@ -52,9 +57,15 @@ platform :ios do
       export_options: {
         method: "app-store",
         provisioningProfiles: {
-          "com.eartrainer.earTrainer" => ENV["APPLE_PROVISIONING_PROFILE_NAME"] || "Ear Trainer App Store"
+          "com.eartrainer.earTrainer" => profile_name
         }
-      }
+      },
+      xcargs: [
+        "CODE_SIGN_STYLE=Manual",
+        "CODE_SIGN_IDENTITY=\"Apple Distribution\"",
+        "PROVISIONING_PROFILE_SPECIFIER=\"#{profile_name}\"",
+        "DEVELOPMENT_TEAM=#{ENV["APPLE_TEAM_ID"]}"
+      ].join(" ")
     )
 
     # Upload to TestFlight; don't wait for Apple's processing in CI
