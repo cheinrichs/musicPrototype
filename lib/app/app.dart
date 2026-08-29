@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../ui/theme/theme.dart';
 import 'router.dart';
@@ -34,8 +35,12 @@ class EarTrainerApp extends StatelessWidget {
         surface: AppColors.surface,
       ),
       scaffoldBackgroundColor: AppColors.background,
-      fontFamily: 'Nunito',
-      textTheme: const TextTheme(
+      // Base text theme comes from Nunito (the Lumi "UI" font); individual
+      // styles below override specific roles with Fraunces (the "display"
+      // font) where the design calls for it. AppTypography styles are no
+      // longer `const` (GoogleFonts.* isn't a const constructor), so this
+      // whole ThemeData/TextTheme build is non-const too.
+      textTheme: GoogleFonts.nunitoTextTheme().copyWith(
         displayLarge: AppTypography.heading1,
         displayMedium: AppTypography.heading2,
         displaySmall: AppTypography.heading3,

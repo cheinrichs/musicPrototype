@@ -14,15 +14,26 @@ class HomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: Padding(
-          padding: AppSpacing.screenPadding,
-          child: Column(
-            children: [
-              _buildHeader(context),
-              const SizedBox(height: AppSpacing.lg),
-              Expanded(child: _buildGameSelection(context)),
-            ],
+      body: Container(
+        // Warm parchment backdrop, matching the radial gradients in
+        // kit.css `body { background-image: ... }`
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [AppColors.ivory, AppColors.paper],
+          ),
+        ),
+        child: SafeArea(
+          child: Padding(
+            padding: AppSpacing.screenPadding,
+            child: Column(
+              children: [
+                _buildHeader(context),
+                const SizedBox(height: AppSpacing.lg),
+                Expanded(child: _buildGameSelection(context)),
+              ],
+            ),
           ),
         ),
       ),
@@ -35,23 +46,41 @@ class HomeScreen extends StatelessWidget {
         return Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            // App title
+            // Mascot + app title
             Flexible(
-              child:
-                  Text(
-                        'Ear Training Games',
-                        style: AppTypography.heading2.copyWith(
-                          color: AppColors.primary,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      )
-                      .animate()
-                      .fade(duration: AppAnimations.medium)
-                      .slideX(
-                        begin: -0.1,
-                        end: 0,
-                        duration: AppAnimations.medium,
-                      ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Image.asset(
+                    'assets/images/characters/Piper_1.png',
+                    width: 44,
+                    height: 44,
+                  ).animate().fade(duration: AppAnimations.medium).scale(
+                    begin: const Offset(0.6, 0.6),
+                    end: const Offset(1, 1),
+                    duration: AppAnimations.medium,
+                    curve: AppAnimations.bounceCurve,
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Flexible(
+                    child:
+                        Text(
+                              'Ear Training Games',
+                              style: AppTypography.heading2.copyWith(
+                                color: AppColors.primary,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            )
+                            .animate()
+                            .fade(duration: AppAnimations.medium)
+                            .slideX(
+                              begin: -0.1,
+                              end: 0,
+                              duration: AppAnimations.medium,
+                            ),
+                  ),
+                ],
+              ),
             ),
             // Right side: streak badge + skill profile icon
             Row(

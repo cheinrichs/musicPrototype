@@ -2,13 +2,28 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../theme/theme.dart';
 
-/// A playful button with "squishy" press animation
-/// Used throughout the app for primary interactions
+/// A playful button with "squishy" press animation.
+///
+/// Visual style ported from the Lumi design system's `.c-action`/`.c-cta`
+/// components (see SongStone-UI-Kit/UI/kit.css): a gradient face sitting
+/// on top of a solid, hard-edged "step" shadow that shortens on press —
+/// giving a painterly, embossed 3D-button look rather than a flat
+/// material button with a blurred drop shadow.
 class SquishyButton extends StatefulWidget {
   final Widget child;
   final VoidCallback? onTap;
   final Color backgroundColor;
   final Color? shadowColor;
+
+  /// Optional gradient face. When set, this is used instead of
+  /// [backgroundColor] for the fill — pass one of AppColors' gradients
+  /// (e.g. buttonGreenGradient) for the full Lumi look.
+  final Gradient? gradient;
+
+  /// Height of the solid "step" shadow below the button face, matching
+  /// the CSS `box-shadow: 0 <stepHeight>px 0 <shadowColor>` recipe.
+  final double stepHeight;
+
   final double? width;
   final double? height;
   final EdgeInsets padding;
@@ -21,6 +36,8 @@ class SquishyButton extends StatefulWidget {
     this.onTap,
     this.backgroundColor = AppColors.primary,
     this.shadowColor,
+    this.gradient,
+    this.stepHeight = 5,
     this.width,
     this.height,
     this.padding = const EdgeInsets.symmetric(
@@ -42,38 +59,49 @@ class _SquishyButtonState extends State<SquishyButton>
   @override
   Widget build(BuildContext context) {
     final effectiveShadowColor =
-        widget.shadowColor ?? widget.backgroundColor.withValues(alpha: 0.3);
+        widget.shadowColor ?? widget.backgroundColor.withValues(alpha: 0.55);
+    final currentStep = _isPressed ? widget.stepHeight / 2.5 : widget.stepHeight;
 
     return GestureDetector(
       onTapDown: widget.enabled ? (_) => _handleTapDown() : null,
       onTapUp: widget.enabled ? (_) => _handleTapUp() : null,
       onTapCancel: widget.enabled ? _handleTapCancel : null,
-      child: AnimatedScale(
-        scale: _isPressed ? AppAnimations.buttonPressScale : 1.0,
-        duration: _isPressed
-            ? AppAnimations.buttonPressDown
-            : AppAnimations.buttonPressUp,
-        curve: _isPressed ? Curves.easeOut : AppAnimations.bounceCurve,
-        child: AnimatedContainer(
-          duration: AppAnimations.fast,
-          width: widget.width,
-          height: widget.height,
-          padding: widget.padding,
-          decoration: BoxDecoration(
-            color: widget.enabled
-                ? widget.backgroundColor
-                : widget.backgroundColor.withValues(alpha: 0.5),
-            borderRadius: BorderRadius.circular(widget.borderRadius),
-            boxShadow: [
-              BoxShadow(
-                color: effectiveShadowColor,
-                blurRadius: _isPressed ? 4 : 8,
-                offset: Offset(0, _isPressed ? 2 : 4),
-              ),
-            ],
-          ),
-          child: Center(child: widget.child),
+      child: AnimatedContainer(
+        duration: AppAnimations.fast,
+        curve: AppAnimations.defaultCurve,
+        width: widget.width,
+        height: widget.height,
+        padding: widget.padding,
+        transform: Matrix4.translationValues(
+          0,
+          _isPressed ? widget.stepHeight - currentStep : 0,
+          0,
         ),
+        decoration: BoxDecoration(
+          gradient: widget.gradient,
+          color: widget.gradient == null
+              ? (widget.enabled
+                    ? widget.backgroundColor
+                    : widget.backgroundColor.withValues(alpha: 0.5))
+              : null,
+          borderRadius: BorderRadius.circular(widget.borderRadius),
+          boxShadow: widget.enabled
+              ? [
+                  // Hard-edged "step" — the embossed 3D edge
+                  BoxShadow(
+                    color: effectiveShadowColor,
+                    offset: Offset(0, currentStep),
+                  ),
+                  // Soft ambient shadow for depth
+                  BoxShadow(
+                    color: AppColors.shadow,
+                    blurRadius: _isPressed ? 6 : 14,
+                    offset: Offset(0, _isPressed ? 3 : 7),
+                  ),
+                ]
+              : null,
+        ),
+        child: Center(child: widget.child),
       ),
     );
   }

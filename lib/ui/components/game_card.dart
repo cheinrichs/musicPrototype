@@ -2,7 +2,11 @@ import 'package:flutter/material.dart';
 import '../theme/theme.dart';
 import 'squishy_button.dart';
 
-/// Card for selecting a game from the home screen
+/// Card for selecting a game from the home screen.
+///
+/// Restyled to match the Lumi "choice card" (`.card-base`/`.card-choice`
+/// in kit.css): a warm parchment gradient with a hard-edged step shadow,
+/// replacing the previous flat white Material card.
 class GameCard extends StatelessWidget {
   final String title;
   final String subtitle;
@@ -25,8 +29,10 @@ class GameCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return SquishyButton(
       onTap: isLocked ? null : onTap,
-      backgroundColor: AppColors.surface,
-      shadowColor: AppColors.shadow,
+      gradient: AppColors.cardGradient,
+      backgroundColor: AppColors.card,
+      shadowColor: AppColors.cardShadow,
+      stepHeight: 4,
       enabled: !isLocked,
       padding: const EdgeInsets.all(AppSpacing.sm),
       borderRadius: AppSpacing.radiusLg,
@@ -47,6 +53,12 @@ class GameCard extends StatelessWidget {
                     ? AppColors.textSecondary.withValues(alpha: 0.2)
                     : accentColor.withValues(alpha: 0.15),
                 shape: BoxShape.circle,
+                border: Border.all(
+                  color: isLocked
+                      ? AppColors.textSecondary.withValues(alpha: 0.3)
+                      : accentColor.withValues(alpha: 0.5),
+                  width: 1.5,
+                ),
               ),
               child: Icon(
                 isLocked ? Icons.lock_outline : icon,

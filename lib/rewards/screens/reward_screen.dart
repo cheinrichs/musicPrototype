@@ -116,20 +116,8 @@ class _RewardScreenState extends State<RewardScreen> {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Star/trophy icon
-        Container(
-              width: 120,
-              height: 120,
-              decoration: BoxDecoration(
-                color: AppColors.gold.withValues(alpha: 0.2),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.star_rounded,
-                size: 72,
-                color: AppColors.gold,
-              ),
-            )
+        // Star badge — Lumi design system asset
+        Image.asset('assets/images/ui/badge-star.png', width: 120, height: 120)
             .animate()
             .scale(
               begin: const Offset(0, 0),
@@ -183,8 +171,10 @@ class _RewardScreenState extends State<RewardScreen> {
             }
             context.go(AppRoutes.home);
           },
-          backgroundColor: AppColors.surface,
-          shadowColor: AppColors.shadow,
+          gradient: AppColors.ctaGradient,
+          backgroundColor: AppColors.primary,
+          shadowColor: AppColors.ctaShadow,
+          borderRadius: AppSpacing.radiusRound,
           padding: const EdgeInsets.symmetric(
             horizontal: AppSpacing.lg,
             vertical: AppSpacing.md,
@@ -194,14 +184,12 @@ class _RewardScreenState extends State<RewardScreen> {
             children: [
               Icon(
                 widget.fromPath ? Icons.map_outlined : Icons.home_rounded,
-                color: AppColors.textPrimary,
+                color: AppColors.textOnPrimary,
               ),
               const SizedBox(width: AppSpacing.sm),
               Text(
                 widget.fromPath ? 'Back to Path' : 'Home',
-                style: AppTypography.buttonMedium.copyWith(
-                  color: AppColors.textPrimary,
-                ),
+                style: AppTypography.buttonMedium,
               ),
             ],
           ),

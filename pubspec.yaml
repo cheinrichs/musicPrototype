@@ -31,6 +31,9 @@ dependencies:
   # State management
   provider: ^6.1.2
 
+  # Lumi design system fonts (Fraunces display / Nunito UI)
+  google_fonts: ^8.2.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -47,5 +50,9 @@ flutter:
     - assets/audio/sfx/
     - assets/audio/playground/
     - assets/images/characters/
+    - assets/images/characters/instruments/
     - assets/images/icons/
     - assets/images/stickers/
+    - assets/images/ui/
+    - assets/images/backgrounds/
+    - assets/images/backgrounds/learning_paths/
