@@ -39,13 +39,29 @@ platform :ios do
     # has already run (see the GitHub Actions workflow) so Pods/Flutter.framework
     # are in place — gym just needs to archive + sign + export.
     #
-    # `export_options` only controls the export (archive → .ipa) step. The
+    # `export_options` only controls the export (archive → ipa) step. The
     # archive step itself still uses whatever signing style is baked into the
     # Xcode project, which defaults to Automatic on a fresh Flutter project —
     # and Automatic signing can't work in CI (no interactive Apple ID login).
-    # `xcargs` overrides the build settings for the archive step so it uses
-    # manual signing with our imported cert + profile instead.
+    #
+    # update_code_signing_settings switches JUST the "Runner" app target to
+    # manual signing with our imported cert + profile. Scoping it to Runner
+    # only matters: an earlier attempt used xcargs, which applies build
+    # settings to every target in the project — including CocoaPods framework
+    # targets (Pods-Runner, flutter_soloud, shared_preferences_foundation,
+    # etc.), which aren't apps and don't support having a provisioning
+    # profile assigned at all. Those stay on whatever CocoaPods set them to.
     profile_name = ENV["APPLE_PROVISIONING_PROFILE_NAME"] || "Ear Trainer App Store"
+
+    update_code_signing_settings(
+      use_automatic_signing: false,
+      path: "Runner.xcodeproj",
+      team_id: ENV["APPLE_TEAM_ID"],
+      code_sign_identity: "Apple Distribution",
+      profile_name: profile_name,
+      targets: ["Runner"],
+      build_configurations: ["Release"]
+    )
 
     gym(
       workspace: "Runner.xcworkspace",
@@ -59,13 +75,7 @@ platform :ios do
         provisioningProfiles: {
           "com.eartrainer.earTrainer" => profile_name
         }
-      },
-      xcargs: [
-        "CODE_SIGN_STYLE=Manual",
-        "CODE_SIGN_IDENTITY=\"Apple Distribution\"",
-        "PROVISIONING_PROFILE_SPECIFIER=\"#{profile_name}\"",
-        "DEVELOPMENT_TEAM=#{ENV["APPLE_TEAM_ID"]}"
-      ].join(" ")
+      }
     )
 
     # Upload to TestFlight; don't wait for Apple's processing in CI
