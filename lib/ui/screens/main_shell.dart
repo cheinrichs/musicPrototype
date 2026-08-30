@@ -8,14 +8,19 @@ import 'playground_screen.dart';
 
 /// Top-level shell with bottom navigation between app sections
 class MainShell extends StatefulWidget {
-  const MainShell({super.key});
+  /// Which tab to open on. Defaults to the games grid (index 0). The
+  /// SongStone landing screen passes this via its route `extra` so its
+  /// "Playground"/"Learning Path"/"Games" buttons land on the matching tab.
+  final int initialTabIndex;
+
+  const MainShell({super.key, this.initialTabIndex = 0});
 
   @override
   State<MainShell> createState() => _MainShellState();
 }
 
 class _MainShellState extends State<MainShell> {
-  int _selectedIndex = 0;
+  late int _selectedIndex = widget.initialTabIndex.clamp(0, _pages.length - 1);
 
   static const _pages = [
     HomeScreen(),

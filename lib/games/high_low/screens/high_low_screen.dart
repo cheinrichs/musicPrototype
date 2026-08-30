@@ -9,19 +9,23 @@ import '../../../models/musical_skill.dart';
 import '../../../models/game_status.dart';
 import '../../../models/pitch_direction.dart';
 import '../../../ui/components/game_screen_layout.dart';
+import '../../../ui/components/glow_wiggle_character.dart';
 import '../../../ui/components/progress_dots.dart';
 import '../../../ui/theme/theme.dart';
+import '../models/high_low_instrument.dart';
 import '../state/high_low_game_state.dart';
 
 /// Main game screen for High/Low ear training.
 ///
-/// Redesigned per the Trello concept art: two guitars sit on stumps in an
-/// illustrated forest clearing (SongStone-UI-Kit/Assets/Backgrounds/
+/// Redesigned per the Trello concept art: two characters sit on stumps in
+/// an illustrated forest clearing (SongStone-UI-Kit/Assets/Backgrounds/
 /// Forest.png). Piper (the fox) and Clef (the animated treble clef —
 /// replacement for the deprecated "blob" character) flank the scene. The
-/// left guitar always plays the first note, the right guitar the second;
-/// the child taps whichever guitar they think played the higher note
-/// instead of choosing from Higher/Lower buttons.
+/// left character always plays the first note, the right character the
+/// second; the child taps whichever one they think played the higher note
+/// instead of choosing from Higher/Lower buttons. Which instrument pair
+/// shows (guitar, piano, violin, ...) is randomized each round — see
+/// [HighLowInstrument].
 class HighLowScreen extends StatefulWidget {
   const HighLowScreen({super.key});
 
@@ -84,16 +88,23 @@ class _HighLowScreenState extends State<HighLowScreen> {
     setState(() {});
   }
 
-  /// Tapping a guitar submits an answer. Left guitar = "the first note was
+  /// Tapping a character submits an answer. Left = "the first note was
   /// higher" (PitchDirection.lower, since correctness is defined relative
-  /// to whether the *second* note was higher). Right guitar = "the second
-  /// note was higher" (PitchDirection.higher).
-  void _onGuitarTap(int side) {
+  /// to whether the *second* note was higher). Right = "the second note
+  /// was higher" (PitchDirection.higher).
+  void _onCharacterTap(int side) {
     if (_gameState.status != GameStatus.awaitingInput) return;
     _gameState.submitAnswer(
       side == 0 ? PitchDirection.lower : PitchDirection.higher,
     );
   }
+
+  /// Estimated fixed heights of [_buildHeader] and [_buildTipStrip]. Used
+  /// to budget how much vertical space is actually left for the scrollable
+  /// [GameScreenLayout] body so it can be scaled to fit instead of
+  /// scrolling — see [_buildBody].
+  static const double _headerHeight = 56;
+  static const double _footerHeight = 56;
 
   @override
   Widget build(BuildContext context) {
@@ -106,19 +117,50 @@ class _HighLowScreenState extends State<HighLowScreen> {
         fit: BoxFit.cover,
       ),
       header: _buildHeader(),
-      body: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _buildQuestionText(),
-          const SizedBox(height: AppSpacing.md),
-          _buildListenAgainButton(),
-          const SizedBox(height: AppSpacing.lg),
-          _buildScene(),
-          const SizedBox(height: AppSpacing.md),
-          _buildStatusText(),
-        ],
-      ),
+      body: _buildBody(context),
       footer: _buildTipStrip(),
+    );
+  }
+
+  /// The app is landscape-only, so the available height for everything
+  /// between the header and the footer is tight and varies a lot by
+  /// device. [GameScreenLayout] falls back to scrolling if the body
+  /// overflows that space, but a kid mid-round shouldn't have to scroll to
+  /// see the rest of the scene — so instead we measure the real budget and
+  /// scale the whole scene down to fit it, uniformly, rather than letting
+  /// any one piece get clipped or overlap its neighbors.
+  Widget _buildBody(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final media = MediaQuery.of(context);
+        final budget =
+            media.size.height -
+            media.padding.vertical -
+            AppSpacing.sm * 2 -
+            _headerHeight -
+            _footerHeight -
+            AppSpacing.sm;
+
+        return SizedBox(
+          width: constraints.maxWidth,
+          height: budget.clamp(160.0, 900.0),
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildQuestionText(),
+                const SizedBox(height: AppSpacing.sm),
+                _buildListenAgainButton(),
+                const SizedBox(height: AppSpacing.sm),
+                _buildScene(),
+                const SizedBox(height: AppSpacing.xs),
+                _buildStatusText(),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -158,20 +200,21 @@ class _HighLowScreenState extends State<HighLowScreen> {
   }
 
   Widget _buildQuestionText() {
+    final name = _gameState.currentInstrument.displayName;
     return Column(
       children: [
         Text(
-              'Which guitar played\na higher note?',
-              style: AppTypography.heading2,
+              'Which $name played\na higher note?',
+              style: AppTypography.heading3,
               textAlign: TextAlign.center,
             )
-            .animate()
+            .animate(key: ValueKey('question-$name'))
             .fade(duration: AppAnimations.medium)
             .slideY(begin: -0.1, end: 0, duration: AppAnimations.medium),
         const SizedBox(height: AppSpacing.xs),
         Text(
-          'Listen carefully and touch the guitar\nthat played the higher note.',
-          style: AppTypography.bodyMedium,
+          'Listen carefully and touch the $name\nthat played the higher note.',
+          style: AppTypography.label,
           textAlign: TextAlign.center,
         ),
       ],
@@ -189,8 +232,8 @@ class _HighLowScreenState extends State<HighLowScreen> {
             opacity: canReplay ? 1 : 0.5,
             duration: AppAnimations.fast,
             child: Container(
-              width: 64,
-              height: 64,
+              width: 48,
+              height: 48,
               decoration: BoxDecoration(
                 gradient: AppColors.cardGradient,
                 shape: BoxShape.circle,
@@ -206,12 +249,12 @@ class _HighLowScreenState extends State<HighLowScreen> {
               child: const Icon(
                 Icons.volume_up_rounded,
                 color: AppColors.secondary,
-                size: 30,
+                size: 24,
               ),
             ),
           ),
         ),
-        const SizedBox(height: AppSpacing.xs),
+        const SizedBox(height: 2),
         Text('Listen Again', style: AppTypography.label),
       ],
     );
@@ -221,21 +264,23 @@ class _HighLowScreenState extends State<HighLowScreen> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth;
-        final guitarSize = (width * 0.32).clamp(90.0, 160.0);
+        final charSize = (width * 0.22).clamp(60.0, 110.0);
+        final instrument = _gameState.currentInstrument;
 
         return SizedBox(
-          height: guitarSize + 90,
+          height: charSize + 60,
           child: Stack(
-            alignment: Alignment.center,
             clipBehavior: Clip.none,
             children: [
-              // Piper (fox) — left flank
+              // Piper (fox) — left flank, bottom-anchored so it, Clef, and
+              // the instrument pair all share one ground line (matching
+              // where the stumps sit in the background art).
               Positioned(
                 left: 0,
                 bottom: 0,
                 child: Image.asset(
                   'assets/images/characters/Piper_1.png',
-                  width: guitarSize * 0.6,
+                  width: charSize * 0.6,
                 ).animate().fade(duration: AppAnimations.medium),
               ),
               // Clef — right flank (replacement for the deprecated blob)
@@ -245,7 +290,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
                 child:
                     Image.asset(
                           'assets/images/characters/Clef.png',
-                          width: guitarSize * 0.55,
+                          width: charSize * 0.55,
                         )
                         .animate(onPlay: (c) => c.repeat(reverse: true))
                         .moveY(
@@ -255,29 +300,36 @@ class _HighLowScreenState extends State<HighLowScreen> {
                           curve: Curves.easeInOut,
                         ),
               ),
-              // Guitars
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  _GuitarButton(
-                    assetPath: 'assets/images/characters/instruments/Guitar1.png',
-                    size: guitarSize,
-                    glowing: _gameState.playingIndex == 0,
-                    feedback: _feedbackFor(0),
-                    enabled: _gameState.status == GameStatus.awaitingInput,
-                    onTap: () => _onGuitarTap(0),
-                  ),
-                  SizedBox(width: guitarSize * 0.5),
-                  _GuitarButton(
-                    assetPath: 'assets/images/characters/instruments/Guitar2.png',
-                    size: guitarSize,
-                    glowing: _gameState.playingIndex == 1,
-                    feedback: _feedbackFor(1),
-                    enabled: _gameState.status == GameStatus.awaitingInput,
-                    onTap: () => _onGuitarTap(1),
-                  ),
-                ],
+              // Instrument pair, bottom-anchored onto the stumps
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    _InstrumentButton(
+                      key: ValueKey('left-${instrument.name}'),
+                      assetPath: instrument.leftAssetPath,
+                      size: charSize,
+                      glowing: _gameState.playingIndex == 0,
+                      feedback: _feedbackFor(0),
+                      enabled: _gameState.status == GameStatus.awaitingInput,
+                      onTap: () => _onCharacterTap(0),
+                    ),
+                    SizedBox(width: charSize * 0.5),
+                    _InstrumentButton(
+                      key: ValueKey('right-${instrument.name}'),
+                      assetPath: instrument.rightAssetPath,
+                      size: charSize,
+                      glowing: _gameState.playingIndex == 1,
+                      feedback: _feedbackFor(1),
+                      enabled: _gameState.status == GameStatus.awaitingInput,
+                      onTap: () => _onCharacterTap(1),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -286,8 +338,8 @@ class _HighLowScreenState extends State<HighLowScreen> {
     );
   }
 
-  /// Correct/incorrect glow for a guitar side while feedback is showing.
-  _GuitarFeedback? _feedbackFor(int side) {
+  /// Correct/incorrect glow for a character side while feedback is showing.
+  _CharacterFeedback? _feedbackFor(int side) {
     if (_gameState.status != GameStatus.showingFeedback) return null;
     final result = _gameState.lastResult;
     if (result == null) return null;
@@ -297,14 +349,15 @@ class _HighLowScreenState extends State<HighLowScreen> {
     final correctSide = result.prompt.correctAnswer == PitchDirection.higher
         ? 1
         : 0;
-    if (side == correctSide) return _GuitarFeedback.correct;
+    if (side == correctSide) return _CharacterFeedback.correct;
     if (side == (result.userAnswer == PitchDirection.higher ? 1 : 0)) {
-      return _GuitarFeedback.incorrect;
+      return _CharacterFeedback.incorrect;
     }
     return null;
   }
 
   Widget _buildStatusText() {
+    final name = _gameState.currentInstrument.displayName;
     String text;
     switch (_gameState.status) {
       case GameStatus.notStarted:
@@ -312,7 +365,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
       case GameStatus.playing:
         text = 'Listen carefully...';
       case GameStatus.awaitingInput:
-        text = 'Touch a guitar!';
+        text = 'Touch a $name!';
       case GameStatus.showingFeedback:
         final isCorrect = _gameState.lastResult?.isCorrect ?? false;
         text = isCorrect ? 'Great job!' : 'Try the next one!';
@@ -320,7 +373,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
         text = 'Well done!';
     }
 
-    return Text(text, style: AppTypography.bodyLarge)
+    return Text(text, style: AppTypography.bodyMedium)
         .animate(key: ValueKey(_gameState.status))
         .fade(duration: AppAnimations.fast);
   }
@@ -366,7 +419,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
   }
 }
 
-enum _GuitarFeedback { correct, incorrect }
+enum _CharacterFeedback { correct, incorrect }
 
 /// Small circular icon button used for the header's close/skip controls,
 /// styled to match the parchment-card look used elsewhere in the Lumi
@@ -407,17 +460,20 @@ class _HeaderIconButton extends StatelessWidget {
   }
 }
 
-/// A guitar image sitting on a stump, glowing while its note plays and
-/// tappable once the round is awaiting an answer.
-class _GuitarButton extends StatelessWidget {
+/// An instrument character sitting on a stump — glows and wiggles (via the
+/// shared [GlowWiggleCharacter] treatment, same as the Sound Playground)
+/// while its note plays, and tappable once the round is awaiting an
+/// answer.
+class _InstrumentButton extends StatelessWidget {
   final String assetPath;
   final double size;
   final bool glowing;
-  final _GuitarFeedback? feedback;
+  final _CharacterFeedback? feedback;
   final bool enabled;
   final VoidCallback onTap;
 
-  const _GuitarButton({
+  const _InstrumentButton({
+    super.key,
     required this.assetPath,
     required this.size,
     required this.glowing,
@@ -429,9 +485,9 @@ class _GuitarButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     Color glowColor;
-    if (feedback == _GuitarFeedback.correct) {
+    if (feedback == _CharacterFeedback.correct) {
       glowColor = AppColors.correct;
-    } else if (feedback == _GuitarFeedback.incorrect) {
+    } else if (feedback == _CharacterFeedback.incorrect) {
       glowColor = AppColors.incorrect;
     } else {
       glowColor = AppColors.gold;
@@ -440,28 +496,12 @@ class _GuitarButton extends StatelessWidget {
 
     return GestureDetector(
       onTap: enabled ? onTap : null,
-      child: AnimatedContainer(
-        duration: AppAnimations.fast,
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          boxShadow: showGlow
-              ? [
-                  BoxShadow(
-                    color: glowColor.withValues(alpha: 0.55),
-                    blurRadius: 24,
-                    spreadRadius: 6,
-                  ),
-                ]
-              : null,
-        ),
+      child: GlowWiggleCharacter(
+        size: size,
+        isActive: showGlow,
+        glowColor: glowColor,
         child: Image.asset(assetPath, fit: BoxFit.contain),
       ),
-    ).animate(target: showGlow ? 1 : 0).scale(
-      begin: const Offset(1, 1),
-      end: const Offset(1.06, 1.06),
-      duration: AppAnimations.fast,
     );
   }
 }

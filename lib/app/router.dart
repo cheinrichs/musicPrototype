@@ -1,5 +1,6 @@
 import 'package:go_router/go_router.dart';
 import '../ui/screens/main_shell.dart';
+import '../ui/screens/songstone_home_screen.dart';
 import '../games/high_low/screens/high_low_screen.dart';
 import '../games/scale_direction/screens/scale_direction_screen.dart';
 import '../games/match_note/screens/match_note_screen.dart';
@@ -14,6 +15,7 @@ import '../ui/screens/skill_profile_screen.dart';
 
 /// App routes configuration
 class AppRoutes {
+  static const String landing = '/welcome';
   static const String home = '/';
   static const String highLow = '/high-low';
   static const String scaleDirection = '/scale-direction';
@@ -30,11 +32,18 @@ class AppRoutes {
 
 /// Create the app router
 final GoRouter appRouter = GoRouter(
-  initialLocation: AppRoutes.home,
+  initialLocation: AppRoutes.landing,
   routes: [
     GoRoute(
+      path: AppRoutes.landing,
+      builder: (context, state) => const SongStoneHomeScreen(),
+    ),
+    GoRoute(
       path: AppRoutes.home,
-      builder: (context, state) => const MainShell(),
+      builder: (context, state) {
+        final extra = state.extra as Map<String, dynamic>?;
+        return MainShell(initialTabIndex: extra?['initialTab'] as int? ?? 0);
+      },
     ),
     GoRoute(
       path: AppRoutes.highLow,

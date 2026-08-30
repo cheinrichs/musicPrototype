@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:flutter/foundation.dart';
 import '../../../audio/audio_controller.dart';
 import '../../../audio/sfx_type.dart';
 import '../../../models/game_status.dart';
 import '../../../models/pitch_direction.dart';
+import '../models/high_low_instrument.dart';
 import '../models/high_low_prompt.dart';
 import '../services/prompt_generator.dart';
 
@@ -24,6 +26,7 @@ class PromptResult {
 class HighLowGameState extends ChangeNotifier {
   final AudioController _audio;
   final PromptGenerator _generator;
+  final Random _instrumentRandom;
   final int totalPrompts;
   final int difficulty;
 
@@ -32,6 +35,7 @@ class HighLowGameState extends ChangeNotifier {
   int _currentPromptIndex = 0;
   final List<PromptResult> _results = [];
   int _consecutiveCorrect = 0;
+  HighLowInstrument _currentInstrument = HighLowInstrument.guitar;
 
   /// Which note is currently sounding: 0 = first (left guitar), 1 = second
   /// (right guitar), null = nothing playing right now. UI uses this to
@@ -41,10 +45,12 @@ class HighLowGameState extends ChangeNotifier {
   HighLowGameState({
     AudioController? audio,
     PromptGenerator? generator,
+    Random? instrumentRandom,
     this.totalPrompts = 5,
     this.difficulty = 1,
   }) : _audio = audio ?? AudioController.instance,
-       _generator = generator ?? PromptGenerator();
+       _generator = generator ?? PromptGenerator(),
+       _instrumentRandom = instrumentRandom ?? Random();
 
   // Getters
   GameStatus get status => _status;
@@ -54,6 +60,10 @@ class HighLowGameState extends ChangeNotifier {
   List<PromptResult> get results => List.unmodifiable(_results);
   bool get isGameComplete => _status == GameStatus.completed;
   int? get playingIndex => _playingIndex;
+
+  /// Which instrument is showing for the current round. Changes each new
+  /// prompt; stays put across a replay so the pair doesn't swap mid-round.
+  HighLowInstrument get currentInstrument => _currentInstrument;
 
   HighLowPrompt? get currentPrompt =>
       _prompts.isNotEmpty && _currentPromptIndex < _prompts.length
@@ -72,11 +82,20 @@ class HighLowGameState extends ChangeNotifier {
     _currentPromptIndex = 0;
     _results.clear();
     _consecutiveCorrect = 0;
+    _pickInstrument();
     _status = GameStatus.playing;
     notifyListeners();
 
     // Play the first prompt
     _playCurrentPrompt();
+  }
+
+  /// Randomly reskin the pair of characters for the round about to play.
+  void _pickInstrument() {
+    _currentInstrument =
+        HighLowInstrument.values[_instrumentRandom.nextInt(
+          HighLowInstrument.values.length,
+        )];
   }
 
   /// Play the current prompt's notes
@@ -164,6 +183,7 @@ class HighLowGameState extends ChangeNotifier {
 
   void _nextPrompt() {
     _currentPromptIndex++;
+    _pickInstrument();
     _playCurrentPrompt();
   }
 

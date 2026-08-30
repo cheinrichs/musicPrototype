@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import '../../audio/audio_controller.dart';
 import '../../models/instrument.dart';
+import '../components/glow_wiggle_character.dart';
 import '../theme/theme.dart';
 
 /// Where an instrument stands in the meadow.
@@ -268,17 +268,12 @@ class _InstrumentCharacterState extends State<_InstrumentCharacter>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            SizedBox(
-              height: widget.size,
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  // Positioned.fill so the halo takes its size *from* the
-                  // artwork instead of dictating the character's footprint.
-                  Positioned.fill(child: _buildGlow()),
-                  _buildArt(),
-                ],
-              ),
+            GlowWiggleCharacter(
+              size: widget.size,
+              isActive: widget.isActive,
+              glowColor: widget.instrument.color,
+              bobDelay: widget.bobDelay,
+              child: _buildArt(),
             ),
             const SizedBox(height: AppSpacing.xs),
             _buildNamePlate(),
@@ -288,30 +283,10 @@ class _InstrumentCharacterState extends State<_InstrumentCharacter>
     );
   }
 
-  /// Warm halo behind the character while its clip is playing — the "this
-  /// one is singing" cue that the old card border used to carry.
-  Widget _buildGlow() {
-    return AnimatedOpacity(
-      opacity: widget.isActive ? 1 : 0,
-      duration: AppAnimations.medium,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          gradient: RadialGradient(
-            radius: 0.7,
-            colors: [
-              widget.instrument.color.withValues(alpha: 0.55),
-              widget.instrument.color.withValues(alpha: 0.0),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildArt() {
     final art = widget.instrument.artAssetPath;
 
-    final Widget character = art != null
+    return art != null
         ? Image.asset(art, height: widget.size, fit: BoxFit.contain)
         // No kit character for this instrument yet — fall back to the emoji
         // at roughly the same visual weight so the scene still balances. The
@@ -327,21 +302,6 @@ class _InstrumentCharacterState extends State<_InstrumentCharacter>
               ),
             ),
           );
-
-    return AnimatedScale(
-      scale: widget.isActive ? 1.12 : 1.0,
-      duration: AppAnimations.medium,
-      curve: AppAnimations.bounceCurve,
-      child: character
-          .animate(onPlay: (c) => c.repeat(reverse: true))
-          .moveY(
-            begin: 0,
-            end: -5,
-            delay: widget.bobDelay,
-            duration: const Duration(milliseconds: 1600),
-            curve: Curves.easeInOut,
-          ),
-    );
   }
 
   Widget _buildNamePlate() {
