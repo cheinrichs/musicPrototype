@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_soloud/flutter_soloud.dart';
+import 'audio_session.dart';
 import 'note.dart';
 import 'sfx_type.dart';
 
@@ -20,6 +22,7 @@ class AudioController {
   bool _isMuted = false;
   SoundHandle? _currentNoteHandle;
   SoundHandle? _currentClipHandle;
+  AppLifecycleListener? _lifecycleListener;
 
   /// Check if audio system is initialized
   bool get isInitialized => _isInitialized;
@@ -35,12 +38,31 @@ class AudioController {
     try {
       _soloud = SoLoud.instance;
       await _soloud!.init();
+
+      // Opt out of the iOS ring/silent switch. This has to happen *after*
+      // the engine starts: flutter_soloud configures the shared
+      // AVAudioSession while it spins up its device, so a category set
+      // before this point can be overwritten. No-op off iOS.
+      await AudioSession.configureForPlayback();
+      _registerLifecycleListener();
+
       _isInitialized = true;
     } catch (e) {
       // Audio initialization failed - app can still work without audio
       _isInitialized = false;
       rethrow;
     }
+  }
+
+  /// Re-assert the playback audio session when the app comes back to the
+  /// foreground — an interruption (phone call, Siri, another audio app) can
+  /// leave the session deactivated behind us.
+  void _registerLifecycleListener() {
+    _lifecycleListener ??= AppLifecycleListener(
+      onResume: () {
+        unawaited(AudioSession.configureForPlayback());
+      },
+    );
   }
 
   /// Preload all audio assets for smooth playback
@@ -269,6 +291,9 @@ class AudioController {
   /// Call when app is closing
   Future<void> dispose() async {
     if (!_isInitialized) return;
+
+    _lifecycleListener?.dispose();
+    _lifecycleListener = null;
 
     // Dispose all cached sources
     for (final source in _noteCache.values) {
