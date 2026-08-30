@@ -9,6 +9,7 @@ import '../../../audio/audio_controller.dart';
 import '../../../models/game_status.dart';
 import '../../../models/instrument.dart';
 import '../../../models/musical_skill.dart';
+import '../../../ui/components/game_screen_layout.dart';
 import '../../../ui/components/progress_dots.dart';
 import '../../../ui/theme/theme.dart';
 import '../state/timbre_game_state.dart';
@@ -71,23 +72,17 @@ class _TimbreScreenState extends State<TimbreScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
-        child: Padding(
-          padding: AppSpacing.screenPadding,
-          child: Column(
-            children: [
-              _buildHeader(),
-              const Spacer(),
-              _buildPromptArea(),
-              const SizedBox(height: AppSpacing.xl),
-              _buildInstrumentGrid(),
-              const Spacer(),
-              _buildReplayButton(),
-              const SizedBox(height: AppSpacing.xl),
-            ],
-          ),
-        ),
+    return GameScreenLayout(
+      header: _buildHeader(),
+      body: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _buildPromptArea(),
+          const SizedBox(height: AppSpacing.xl),
+          _buildInstrumentGrid(),
+          const SizedBox(height: AppSpacing.xl),
+          _buildReplayButton(),
+        ],
       ),
     );
   }
@@ -286,10 +281,13 @@ class _InstrumentButtonState extends State<_InstrumentButton>
     widget.onTap?.call();
   }
 
+  // Fixed tile size — Wrap flows more tiles per row on the wide landscape
+  // layout instead of a screen-width-derived size stretching each tile.
+  static const double _size = 128;
+
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.sizeOf(context).width;
-    final size = (screenWidth - AppSpacing.md * 2 - AppSpacing.md) / 2;
+    const size = _size;
     final color = widget.instrument.color;
 
     return GestureDetector(

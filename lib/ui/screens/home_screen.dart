@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
 import '../../app/router.dart';
-import '../../app/state/progress_state.dart';
 import '../components/game_card.dart';
 import '../theme/theme.dart';
 
@@ -41,101 +39,53 @@ class HomeScreen extends StatelessWidget {
   }
 
   Widget _buildHeader(BuildContext context) {
-    return Consumer<ProgressState>(
-      builder: (context, progress, _) {
-        return Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            // Mascot + app title
-            Flexible(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Image.asset(
-                    'assets/images/characters/Piper_1.png',
-                    width: 44,
-                    height: 44,
-                  ).animate().fade(duration: AppAnimations.medium).scale(
-                    begin: const Offset(0.6, 0.6),
-                    end: const Offset(1, 1),
-                    duration: AppAnimations.medium,
-                    curve: AppAnimations.bounceCurve,
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Flexible(
-                    child:
-                        Text(
-                              'Ear Training Games',
-                              style: AppTypography.heading2.copyWith(
-                                color: AppColors.primary,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            )
-                            .animate()
-                            .fade(duration: AppAnimations.medium)
-                            .slideX(
-                              begin: -0.1,
-                              end: 0,
-                              duration: AppAnimations.medium,
-                            ),
-                  ),
-                ],
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        // Mascot + app title
+        Flexible(
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Image.asset(
+                'assets/images/characters/Piper_1.png',
+                width: 44,
+                height: 44,
+              ).animate().fade(duration: AppAnimations.medium).scale(
+                begin: const Offset(0.6, 0.6),
+                end: const Offset(1, 1),
+                duration: AppAnimations.medium,
+                curve: AppAnimations.bounceCurve,
               ),
-            ),
-            // Right side: streak badge + skill profile icon
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                IconButton(
-                  onPressed: () => context.go(AppRoutes.skillProfile),
-                  icon: const Icon(Icons.insights_rounded),
-                  color: AppColors.textSecondary,
-                  tooltip: 'Skill Profile',
-                ),
-                if (progress.currentStreak > 0)
-                  Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AppSpacing.md,
-                          vertical: AppSpacing.sm,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.gold.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(
-                            AppSpacing.radiusRound,
+              const SizedBox(width: AppSpacing.sm),
+              Flexible(
+                child:
+                    Text(
+                          'Ear Training Games',
+                          style: AppTypography.heading2.copyWith(
+                            color: AppColors.primary,
                           ),
+                          overflow: TextOverflow.ellipsis,
+                        )
+                        .animate()
+                        .fade(duration: AppAnimations.medium)
+                        .slideX(
+                          begin: -0.1,
+                          end: 0,
+                          duration: AppAnimations.medium,
                         ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              Icons.local_fire_department_rounded,
-                              size: 20,
-                              color: AppColors.gold,
-                            ),
-                            const SizedBox(width: AppSpacing.xs),
-                            Text(
-                              '${progress.currentStreak}',
-                              style: AppTypography.bodyLarge.copyWith(
-                                color: AppColors.gold,
-                                fontWeight: FontWeight.w800,
-                              ),
-                            ),
-                          ],
-                        ),
-                      )
-                      .animate()
-                      .fade(duration: AppAnimations.medium)
-                      .scale(
-                        begin: const Offset(0.8, 0.8),
-                        end: const Offset(1, 1),
-                        duration: AppAnimations.medium,
-                        curve: AppAnimations.bounceCurve,
-                      ),
-              ],
-            ),
-          ],
-        );
-      },
+              ),
+            ],
+          ),
+        ),
+        // Right side: skill profile icon
+        IconButton(
+          onPressed: () => context.go(AppRoutes.skillProfile),
+          icon: const Icon(Icons.insights_rounded),
+          color: AppColors.textSecondary,
+          tooltip: 'Skill Profile',
+        ),
+      ],
     );
   }
 
@@ -214,27 +164,44 @@ class HomeScreen extends StatelessWidget {
             .fade(duration: AppAnimations.medium),
         const SizedBox(height: AppSpacing.lg),
         Expanded(
-          child: GridView.builder(
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              crossAxisSpacing: AppSpacing.md,
-              mainAxisSpacing: AppSpacing.md,
-            ),
-            itemCount: _games.length,
-            itemBuilder: (context, i) {
-              final game = _games[i];
-              return GameCard(
-                    title: game.title,
-                    subtitle: game.subtitle,
-                    icon: game.icon,
-                    accentColor: game.color,
-                    onTap: () => context.go(game.route),
-                  )
-                  .animate(
-                    delay: Duration(milliseconds: 300 + i * 75),
-                  )
-                  .fade(duration: AppAnimations.medium)
-                  .slideY(begin: 0.1, end: 0, duration: AppAnimations.medium);
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              // Fixed 2 columns assumed a tall, narrow portrait screen.
+              // Now that the app is locked to landscape, pick the column
+              // count from available width so cards stay a sensible size
+              // instead of stretching edge-to-edge.
+              const targetCardWidth = 170.0;
+              final crossAxisCount = (constraints.maxWidth /
+                      (targetCardWidth + AppSpacing.md))
+                  .floor()
+                  .clamp(2, 5);
+
+              return GridView.builder(
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: crossAxisCount,
+                  crossAxisSpacing: AppSpacing.md,
+                  mainAxisSpacing: AppSpacing.md,
+                  childAspectRatio: 1.1,
+                ),
+                itemCount: _games.length,
+                itemBuilder: (context, i) {
+                  final game = _games[i];
+                  return GameCard(
+                        title: game.title,
+                        subtitle: game.subtitle,
+                        icon: game.icon,
+                        accentColor: game.color,
+                        onTap: () => context.go(game.route),
+                      )
+                      .animate(delay: Duration(milliseconds: 300 + i * 75))
+                      .fade(duration: AppAnimations.medium)
+                      .slideY(
+                        begin: 0.1,
+                        end: 0,
+                        duration: AppAnimations.medium,
+                      );
+                },
+              );
             },
           ),
         ),

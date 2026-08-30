@@ -33,6 +33,11 @@ class HighLowGameState extends ChangeNotifier {
   final List<PromptResult> _results = [];
   int _consecutiveCorrect = 0;
 
+  /// Which note is currently sounding: 0 = first (left guitar), 1 = second
+  /// (right guitar), null = nothing playing right now. UI uses this to
+  /// glow the guitar that's currently making sound.
+  int? _playingIndex;
+
   HighLowGameState({
     AudioController? audio,
     PromptGenerator? generator,
@@ -48,6 +53,7 @@ class HighLowGameState extends ChangeNotifier {
   int get consecutiveCorrect => _consecutiveCorrect;
   List<PromptResult> get results => List.unmodifiable(_results);
   bool get isGameComplete => _status == GameStatus.completed;
+  int? get playingIndex => _playingIndex;
 
   HighLowPrompt? get currentPrompt =>
       _prompts.isNotEmpty && _currentPromptIndex < _prompts.length
@@ -79,20 +85,38 @@ class HighLowGameState extends ChangeNotifier {
     if (prompt == null) return;
 
     _status = GameStatus.playing;
+    _playingIndex = 0;
     notifyListeners();
 
-    // Play first note
+    // Play first note (left guitar)
     await _audio.playNoteForScale(prompt.firstNote);
 
     // Wait between notes
     await Future.delayed(const Duration(milliseconds: 800));
 
-    // Play second note
+    // Play second note (right guitar)
+    _playingIndex = 1;
+    notifyListeners();
     await _audio.playNoteForScale(prompt.secondNote);
 
     // Now awaiting input
+    _playingIndex = null;
     _status = GameStatus.awaitingInput;
     notifyListeners();
+  }
+
+  /// Skip the current prompt without recording a right/wrong result.
+  /// Replays nothing — just advances (or completes the game if this was
+  /// the last prompt).
+  void skipPrompt() {
+    if (_status != GameStatus.awaitingInput) return;
+    _audio.playSfx(SfxType.tap);
+
+    if (_currentPromptIndex < totalPrompts - 1) {
+      _nextPrompt();
+    } else {
+      _completeGame();
+    }
   }
 
   /// Replay the current prompt

@@ -8,6 +8,7 @@ import '../../../app/state/skill_state.dart';
 import '../../../models/musical_skill.dart';
 import '../../../models/game_status.dart';
 import '../../../models/scale_direction.dart';
+import '../../../ui/components/game_screen_layout.dart';
 import '../../../ui/components/progress_dots.dart';
 import '../../../ui/components/squishy_button.dart';
 import '../../../ui/theme/theme.dart';
@@ -78,21 +79,15 @@ class _ScaleDirectionScreenState extends State<ScaleDirectionScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
-        child: Padding(
-          padding: AppSpacing.screenPadding,
-          child: Column(
-            children: [
-              _buildHeader(),
-              const Spacer(),
-              _buildGameContent(),
-              const Spacer(),
-              _buildControls(),
-              const SizedBox(height: AppSpacing.xl),
-            ],
-          ),
-        ),
+    return GameScreenLayout(
+      header: _buildHeader(),
+      body: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _buildGameContent(),
+          const SizedBox(height: AppSpacing.xl),
+          _buildControls(),
+        ],
       ),
     );
   }

@@ -134,19 +134,36 @@ class LearningPathScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: AppSpacing.screenPadding,
-              child: Text(
-                'Learning Path',
-                style: AppTypography.heading2.copyWith(
-                  color: AppColors.primary,
-                ),
-              ),
-            ),
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          // Forest backdrop — from SongStone-UI-Kit
+          // (assets/images/backgrounds/learning_paths/Forest.png). Every
+          // node currently uses this one background; per-node/per-stage
+          // art can be swapped in once unlock milestones are designed.
+          Image.asset(
+            'assets/images/backgrounds/learning_paths/Forest.png',
+            fit: BoxFit.cover,
+          ),
+          // Soft scrim so text/nodes stay legible over the illustration.
+          Container(color: AppColors.background.withValues(alpha: 0.55)),
+          SafeArea(child: _buildContent(context)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildContent(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: AppSpacing.screenPadding,
+          child: Text(
+            'Learning Path',
+            style: AppTypography.heading2.copyWith(color: AppColors.primary),
+          ),
+        ),
             Expanded(
               child: Consumer<ProgressState>(
                 builder: (context, progress, _) {
@@ -242,9 +259,7 @@ class LearningPathScreen extends StatelessWidget {
               ),
             ),
           ],
-        ),
-      ),
-    );
+        );
   }
 }
 

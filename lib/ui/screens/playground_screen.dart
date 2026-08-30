@@ -36,45 +36,58 @@ class _PlaygroundScreenState extends State<PlaygroundScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.sizeOf(context).width;
-    // Two columns with md spacing on sides and between cards
-    final cardSize = (screenWidth - AppSpacing.md * 2 - AppSpacing.md) / 2;
-
     return SafeArea(
       child: Padding(
         padding: AppSpacing.screenPadding,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SizedBox(height: AppSpacing.sm),
             Text(
               'Sound Playground',
               style: AppTypography.heading2.copyWith(color: AppColors.primary),
             ),
-            const SizedBox(height: AppSpacing.sm),
+            const SizedBox(height: AppSpacing.xs),
             Text(
               'Tap an instrument to hear it!',
               style: AppTypography.bodyMedium,
             ),
-            const SizedBox(height: AppSpacing.lg),
+            const SizedBox(height: AppSpacing.md),
             Expanded(
-              child: SingleChildScrollView(
-                child: Wrap(
-                  spacing: AppSpacing.md,
-                  runSpacing: AppSpacing.md,
-                  alignment: WrapAlignment.center,
-                  children: Instrument.values.map((instrument) {
-                    return SizedBox(
-                      width: cardSize,
-                      height: cardSize,
-                      child: _InstrumentCard(
-                        instrument: instrument,
-                        isActive: _activeInstrument == instrument,
-                        onTap: () => _play(instrument),
-                      ),
-                    );
-                  }).toList(),
-                ),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  // Pick a column count from available width instead of a
+                  // fixed 2 columns — landscape gives much more width than
+                  // portrait ever did, so a fixed split left the cards
+                  // oversized.
+                  const targetCardSize = 150.0;
+                  final columns = (constraints.maxWidth /
+                          (targetCardSize + AppSpacing.md))
+                      .floor()
+                      .clamp(2, 5);
+                  final cardSize =
+                      (constraints.maxWidth -
+                          AppSpacing.md * (columns - 1)) /
+                      columns;
+
+                  return SingleChildScrollView(
+                    child: Wrap(
+                      spacing: AppSpacing.md,
+                      runSpacing: AppSpacing.md,
+                      alignment: WrapAlignment.center,
+                      children: Instrument.values.map((instrument) {
+                        return SizedBox(
+                          width: cardSize,
+                          height: cardSize,
+                          child: _InstrumentCard(
+                            instrument: instrument,
+                            isActive: _activeInstrument == instrument,
+                            onTap: () => _play(instrument),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  );
+                },
               ),
             ),
           ],

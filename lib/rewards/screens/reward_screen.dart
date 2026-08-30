@@ -77,14 +77,17 @@ class _RewardScreenState extends State<RewardScreen> {
           SafeArea(
             child: Padding(
               padding: AppSpacing.screenPadding,
-              child: Column(
-                children: [
-                  const Spacer(),
-                  _buildCelebration(),
-                  const Spacer(),
-                  _buildButtons(),
-                  const SizedBox(height: AppSpacing.xl),
-                ],
+              child: Center(
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _buildCelebration(),
+                      const SizedBox(height: AppSpacing.xl),
+                      _buildButtons(),
+                    ],
+                  ),
+                ),
               ),
             ),
           ),
