@@ -82,11 +82,31 @@ extension NoteExtension on Note {
     }
   }
 
-  /// Asset path for the note's audio file
-  String get assetPath {
+  /// Instruments with their own recorded, per-note sample library under
+  /// `assets/audio/notes/<instrument>/` (roughly two octaves each, one
+  /// dynamic level, trimmed and loudness-matched — see Trello card 44).
+  /// Anything else falls back to the shared instrument-agnostic set.
+  static const Set<String> _instrumentsWithSamples = {
+    'bells',
+    'cello',
+    'flute',
+    'guitar',
+    'piano',
+    'violin',
+  };
+
+  /// Asset path for the note's audio file.
+  ///
+  /// Pass [instrument] (e.g. 'cello') to use that instrument's own sample
+  /// library when one exists; otherwise (or when omitted) this falls back
+  /// to the shared instrument-agnostic tone under assets/audio/notes/.
+  String assetPath({String? instrument}) {
     final filename = name
         .replaceAll('Sharp', '_sharp_')
         .replaceAllMapped(RegExp(r'(\d)'), (m) => '${m[1]}');
+    if (instrument != null && _instrumentsWithSamples.contains(instrument)) {
+      return 'assets/audio/notes/$instrument/$filename.mp3';
+    }
     return 'assets/audio/notes/$filename.mp3';
   }
 

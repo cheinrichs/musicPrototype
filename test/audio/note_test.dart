@@ -28,16 +28,39 @@ void main() {
       expect(Note.c4.intervalTo(Note.d4), equals(2)); // Major 2nd
     });
 
-    test('assetPath generates correct path', () {
-      expect(Note.c4.assetPath, equals('assets/audio/notes/c4.mp3'));
+    test('assetPath generates correct generic path', () {
+      expect(Note.c4.assetPath(), equals('assets/audio/notes/c4.mp3'));
       expect(
-        Note.cSharp4.assetPath,
+        Note.cSharp4.assetPath(),
         equals('assets/audio/notes/c_sharp_4.mp3'),
       );
-      expect(Note.a5.assetPath, equals('assets/audio/notes/a5.mp3'));
+      expect(Note.a5.assetPath(), equals('assets/audio/notes/a5.mp3'));
       expect(
-        Note.fSharp5.assetPath,
+        Note.fSharp5.assetPath(),
         equals('assets/audio/notes/f_sharp_5.mp3'),
+      );
+    });
+
+    test('assetPath uses the instrument sample library when covered', () {
+      expect(
+        Note.c4.assetPath(instrument: 'cello'),
+        equals('assets/audio/notes/cello/c4.mp3'),
+      );
+      expect(
+        Note.cSharp4.assetPath(instrument: 'piano'),
+        equals('assets/audio/notes/piano/c_sharp_4.mp3'),
+      );
+    });
+
+    test('assetPath falls back to the generic tone for uncovered '
+        'instruments', () {
+      expect(
+        Note.c4.assetPath(instrument: 'drum'),
+        equals('assets/audio/notes/c4.mp3'),
+      );
+      expect(
+        Note.c4.assetPath(instrument: null),
+        equals('assets/audio/notes/c4.mp3'),
       );
     });
 

@@ -92,10 +92,8 @@ class HighLowGameState extends ChangeNotifier {
 
   /// Randomly reskin the pair of characters for the round about to play.
   void _pickInstrument() {
-    _currentInstrument =
-        HighLowInstrument.values[_instrumentRandom.nextInt(
-          HighLowInstrument.values.length,
-        )];
+    _currentInstrument = HighLowInstrument
+        .values[_instrumentRandom.nextInt(HighLowInstrument.values.length)];
   }
 
   /// Play the current prompt's notes
@@ -107,16 +105,22 @@ class HighLowGameState extends ChangeNotifier {
     _playingIndex = 0;
     notifyListeners();
 
-    // Play first note (left guitar)
-    await _audio.playNoteForScale(prompt.firstNote);
+    // Play first note (left character)
+    await _audio.playNoteForScale(
+      prompt.firstNote,
+      instrument: _currentInstrument.sampleInstrument,
+    );
 
     // Wait between notes
     await Future.delayed(const Duration(milliseconds: 800));
 
-    // Play second note (right guitar)
+    // Play second note (right character)
     _playingIndex = 1;
     notifyListeners();
-    await _audio.playNoteForScale(prompt.secondNote);
+    await _audio.playNoteForScale(
+      prompt.secondNote,
+      instrument: _currentInstrument.sampleInstrument,
+    );
 
     // Now awaiting input
     _playingIndex = null;

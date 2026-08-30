@@ -47,6 +47,12 @@ flutter:
   assets:
     - assets/audio/notes/
     - assets/audio/notes/percussion/
+    - assets/audio/notes/bells/
+    - assets/audio/notes/cello/
+    - assets/audio/notes/flute/
+    - assets/audio/notes/guitar/
+    - assets/audio/notes/piano/
+    - assets/audio/notes/violin/
     - assets/audio/sfx/
     - assets/audio/playground/
     - assets/images/characters/

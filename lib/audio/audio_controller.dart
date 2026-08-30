@@ -15,7 +15,10 @@ class AudioController {
   factory AudioController() => instance;
 
   SoLoud? _soloud;
-  final Map<Note, AudioSource> _noteCache = {};
+  // Keyed by resolved asset path (Note.assetPath) rather than by Note alone,
+  // since the same note can now resolve to a different sample depending on
+  // which instrument (if any) is playing it.
+  final Map<String, AudioSource> _noteCache = {};
   final Map<SfxType, AudioSource> _sfxCache = {};
   final Map<String, AudioSource> _clipCache = {};
   bool _isInitialized = false;
@@ -81,16 +84,14 @@ class AudioController {
     }
   }
 
-  Future<void> _preloadNote(Note note) async {
-    if (_noteCache.containsKey(note)) return;
+  Future<void> _preloadNote(Note note, {String? instrument}) async {
+    final path = note.assetPath(instrument: instrument);
+    if (_noteCache.containsKey(path)) return;
 
     try {
-      final bytes = await rootBundle.load(note.assetPath);
-      final source = await _soloud!.loadMem(
-        note.assetPath,
-        bytes.buffer.asUint8List(),
-      );
-      _noteCache[note] = source;
+      final bytes = await rootBundle.load(path);
+      final source = await _soloud!.loadMem(path, bytes.buffer.asUint8List());
+      _noteCache[path] = source;
     } catch (e) {
       // Note failed to load - continue without it
     }
@@ -111,24 +112,30 @@ class AudioController {
     }
   }
 
-  /// Play a musical note
-  Future<void> playNote(Note note) async {
+  /// Play a musical note. Pass [instrument] (e.g. 'cello') to use that
+  /// instrument's own sample library when one exists; otherwise this plays
+  /// the shared instrument-agnostic tone.
+  Future<void> playNote(Note note, {String? instrument}) async {
     if (!_isInitialized || _isMuted) return;
 
+    final path = note.assetPath(instrument: instrument);
     // Try to load if not cached
-    if (!_noteCache.containsKey(note)) {
-      await _preloadNote(note);
+    if (!_noteCache.containsKey(path)) {
+      await _preloadNote(note, instrument: instrument);
     }
 
-    final source = _noteCache[note];
+    final source = _noteCache[path];
     if (source != null) {
       await _soloud!.play(source);
     }
   }
 
   /// Play a note for scale playback, stopping the previous note first
-  /// Use this for sequential scale notes to prevent overlap
-  Future<void> playNoteForScale(Note note) async {
+  /// Use this for sequential scale notes to prevent overlap. Pass
+  /// [instrument] (e.g. 'cello') to use that instrument's own sample
+  /// library when one exists; otherwise this plays the shared
+  /// instrument-agnostic tone.
+  Future<void> playNoteForScale(Note note, {String? instrument}) async {
     if (!_isInitialized || _isMuted) return;
 
     // Stop the previous note if still playing
@@ -137,12 +144,13 @@ class AudioController {
       _currentNoteHandle = null;
     }
 
+    final path = note.assetPath(instrument: instrument);
     // Try to load if not cached
-    if (!_noteCache.containsKey(note)) {
-      await _preloadNote(note);
+    if (!_noteCache.containsKey(path)) {
+      await _preloadNote(note, instrument: instrument);
     }
 
-    final source = _noteCache[note];
+    final source = _noteCache[path];
     if (source != null) {
       _currentNoteHandle = await _soloud!.play(source);
     }
@@ -161,12 +169,13 @@ class AudioController {
     if (!_isInitialized || _isMuted) return;
 
     for (final note in notes) {
+      final path = note.assetPath();
       // Try to load if not cached
-      if (!_noteCache.containsKey(note)) {
+      if (!_noteCache.containsKey(path)) {
         await _preloadNote(note);
       }
 
-      final source = _noteCache[note];
+      final source = _noteCache[path];
       if (source != null) {
         // Play without awaiting - allows simultaneous playback
         _soloud!.play(source);
