@@ -5,7 +5,7 @@
 /// card 44), so every rotation plays genuinely instrument-appropriate
 /// audio — there's no generic-tone fallback reachable from this game.
 ///
-/// Drum is deliberately not among the six values below (Trello card 45):
+/// Drum is deliberately not among the values below (Trello card 45):
 /// a real drum isn't chromatically pitched, which makes it a poor vehicle
 /// for teaching high vs. low. The character and its art are still used
 /// elsewhere (the rhythm games), just not here — see
@@ -17,6 +17,7 @@ enum HighLowInstrument {
   flute('Flute', 'flute', 'flute'),
   guitar('Guitar', 'guitar', 'guitar'),
   piano('Piano', 'piano', 'piano'),
+  trumpet('Trumpet', 'trumpet', 'trumpet'),
   violin('Violin', 'violin', 'violin');
 
   const HighLowInstrument(
