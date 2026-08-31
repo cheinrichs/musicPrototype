@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../app/router.dart';
 import '../../app/state/progress_state.dart';
 import '../../models/path_node.dart';
+import '../components/circle_icon_button.dart';
 import '../components/path_node_widget.dart';
 import '../theme/theme.dart';
 
@@ -159,107 +160,110 @@ class LearningPathScreen extends StatelessWidget {
       children: [
         Padding(
           padding: AppSpacing.screenPadding,
-          child: Text(
-            'Learning Path',
-            style: AppTypography.heading2.copyWith(color: AppColors.primary),
+          child: Row(
+            children: [
+              const BackToLandingButton(),
+              const SizedBox(width: AppSpacing.sm),
+              Text(
+                'Learning Path',
+                style: AppTypography.heading2.copyWith(
+                  color: AppColors.primary,
+                ),
+              ),
+            ],
           ),
         ),
-            Expanded(
-              child: Consumer<ProgressState>(
-                builder: (context, progress, _) {
-                  final nodes = _computeNodes(progress.completedNodeIds);
-                  return LayoutBuilder(
-                    builder: (context, constraints) {
-                      final width = constraints.maxWidth;
-                      final centers = List.generate(
-                        nodes.length,
-                        (i) => Offset(_xFor(i, width), _yFor(i)),
-                      );
-                      final totalHeight =
-                          _topPadding +
-                          nodes.length * _rowHeight +
-                          _bottomPadding;
-                      final activeIndex = nodes.indexWhere(
-                        (n) => n.state == NodeState.active,
-                      );
+        Expanded(
+          child: Consumer<ProgressState>(
+            builder: (context, progress, _) {
+              final nodes = _computeNodes(progress.completedNodeIds);
+              return LayoutBuilder(
+                builder: (context, constraints) {
+                  final width = constraints.maxWidth;
+                  final centers = List.generate(
+                    nodes.length,
+                    (i) => Offset(_xFor(i, width), _yFor(i)),
+                  );
+                  final totalHeight =
+                      _topPadding + nodes.length * _rowHeight + _bottomPadding;
+                  final activeIndex = nodes.indexWhere(
+                    (n) => n.state == NodeState.active,
+                  );
 
-                      return SingleChildScrollView(
-                        child: SizedBox(
-                          width: width,
-                          height: totalHeight,
-                          child: Stack(
-                            clipBehavior: Clip.none,
-                            children: [
-                              // Connection lines
-                              Positioned.fill(
-                                child: CustomPaint(
-                                  painter: _PathLinePainter(
-                                    nodeCenters: centers,
+                  return SingleChildScrollView(
+                    child: SizedBox(
+                      width: width,
+                      height: totalHeight,
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          // Connection lines
+                          Positioned.fill(
+                            child: CustomPaint(
+                              painter: _PathLinePainter(nodeCenters: centers),
+                            ),
+                          ),
+                          // Player marker — AnimatedPositioned slides
+                          // smoothly when activeIndex changes.
+                          if (activeIndex != -1)
+                            AnimatedPositioned(
+                              duration: const Duration(milliseconds: 600),
+                              curve: Curves.easeInOutCubic,
+                              left: centers[activeIndex].dx - _markerSize / 2,
+                              top:
+                                  centers[activeIndex].dy -
+                                  _circleHalf -
+                                  _markerSize -
+                                  6,
+                              child: const _PlayerMarker(),
+                            ),
+                          // Nodes
+                          for (int i = 0; i < nodes.length; i++)
+                            Positioned(
+                              left: centers[i].dx - _nodeWidgetWidth / 2,
+                              top: centers[i].dy - _circleHalf,
+                              width: _nodeWidgetWidth,
+                              child: PathNodeWidget(
+                                node: nodes[i],
+                                onTap:
+                                    nodes[i].state == NodeState.active &&
+                                        nodes[i].gameRoute != null
+                                    ? () => context.go(
+                                        nodes[i].gameRoute!,
+                                        extra: {
+                                          'fromPath': true,
+                                          'nodeId': nodes[i].id,
+                                        },
+                                      )
+                                    : null,
+                              ),
+                            ),
+                          // All-done banner when every node is completed
+                          if (activeIndex == -1)
+                            Positioned(
+                              left: 0,
+                              right: 0,
+                              bottom: _bottomPadding,
+                              child: Center(
+                                child: Text(
+                                  '🎉 Path complete!',
+                                  style: AppTypography.heading3.copyWith(
+                                    color: AppColors.correct,
                                   ),
                                 ),
                               ),
-                              // Player marker — AnimatedPositioned slides
-                              // smoothly when activeIndex changes.
-                              if (activeIndex != -1)
-                                AnimatedPositioned(
-                                  duration: const Duration(milliseconds: 600),
-                                  curve: Curves.easeInOutCubic,
-                                  left:
-                                      centers[activeIndex].dx - _markerSize / 2,
-                                  top:
-                                      centers[activeIndex].dy -
-                                      _circleHalf -
-                                      _markerSize -
-                                      6,
-                                  child: const _PlayerMarker(),
-                                ),
-                              // Nodes
-                              for (int i = 0; i < nodes.length; i++)
-                                Positioned(
-                                  left: centers[i].dx - _nodeWidgetWidth / 2,
-                                  top: centers[i].dy - _circleHalf,
-                                  width: _nodeWidgetWidth,
-                                  child: PathNodeWidget(
-                                    node: nodes[i],
-                                    onTap:
-                                        nodes[i].state == NodeState.active &&
-                                            nodes[i].gameRoute != null
-                                        ? () => context.go(
-                                            nodes[i].gameRoute!,
-                                            extra: {
-                                              'fromPath': true,
-                                              'nodeId': nodes[i].id,
-                                            },
-                                          )
-                                        : null,
-                                  ),
-                                ),
-                              // All-done banner when every node is completed
-                              if (activeIndex == -1)
-                                Positioned(
-                                  left: 0,
-                                  right: 0,
-                                  bottom: _bottomPadding,
-                                  child: Center(
-                                    child: Text(
-                                      '🎉 Path complete!',
-                                      style: AppTypography.heading3.copyWith(
-                                        color: AppColors.correct,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
+                            ),
+                        ],
+                      ),
+                    ),
                   );
                 },
-              ),
-            ),
-          ],
-        );
+              );
+            },
+          ),
+        ),
+      ],
+    );
   }
 }
 

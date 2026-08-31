@@ -32,10 +32,10 @@ class GameCard extends StatelessWidget {
       gradient: AppColors.cardGradient,
       backgroundColor: AppColors.card,
       shadowColor: AppColors.cardShadow,
-      stepHeight: 4,
+      stepHeight: 3,
       enabled: !isLocked,
-      padding: const EdgeInsets.all(AppSpacing.sm),
-      borderRadius: AppSpacing.radiusLg,
+      padding: const EdgeInsets.all(AppSpacing.xs),
+      borderRadius: AppSpacing.radiusMd,
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -43,10 +43,10 @@ class GameCard extends StatelessWidget {
             flex: 2,
             child: Container(
               constraints: const BoxConstraints(
-                minWidth: 40,
-                minHeight: 40,
-                maxWidth: 56,
-                maxHeight: 56,
+                minWidth: 22,
+                minHeight: 22,
+                maxWidth: 30,
+                maxHeight: 30,
               ),
               decoration: BoxDecoration(
                 color: isLocked
@@ -57,33 +57,33 @@ class GameCard extends StatelessWidget {
                   color: isLocked
                       ? AppColors.textSecondary.withValues(alpha: 0.3)
                       : accentColor.withValues(alpha: 0.5),
-                  width: 1.5,
+                  width: 1,
                 ),
               ),
               child: Icon(
                 isLocked ? Icons.lock_outline : icon,
-                size: 28,
+                size: 16,
                 color: isLocked ? AppColors.textSecondary : accentColor,
               ),
             ),
           ),
-          const SizedBox(height: AppSpacing.sm),
+          const SizedBox(height: 4),
           Text(
             title,
             style: AppTypography.bodyLarge.copyWith(
               color: isLocked ? AppColors.textSecondary : AppColors.textPrimary,
-              fontSize: 16,
+              fontSize: 12,
             ),
             textAlign: TextAlign.center,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: 1),
           Text(
             subtitle,
             style: AppTypography.bodyMedium.copyWith(
               color: AppColors.textSecondary,
-              fontSize: 12,
+              fontSize: 10,
             ),
             textAlign: TextAlign.center,
             maxLines: 1,

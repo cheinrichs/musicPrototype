@@ -8,6 +8,7 @@ import '../../../app/state/skill_state.dart';
 import '../../../models/musical_skill.dart';
 import '../../../models/game_status.dart';
 import '../../../models/pitch_direction.dart';
+import '../../../ui/components/circle_icon_button.dart';
 import '../../../ui/components/game_screen_layout.dart';
 import '../../../ui/components/glow_wiggle_character.dart';
 import '../../../ui/components/progress_dots.dart';
@@ -99,12 +100,11 @@ class _HighLowScreenState extends State<HighLowScreen> {
     );
   }
 
-  /// Estimated fixed heights of [_buildHeader] and [_buildTipStrip]. Used
-  /// to budget how much vertical space is actually left for the scrollable
-  /// [GameScreenLayout] body so it can be scaled to fit instead of
-  /// scrolling — see [_buildBody].
+  /// Estimated fixed height of [_buildHeader]. Used to budget how much
+  /// vertical space is actually left for the scrollable [GameScreenLayout]
+  /// body so it can be scaled to fit instead of scrolling — see
+  /// [_buildBody].
   static const double _headerHeight = 56;
-  static const double _footerHeight = 56;
 
   @override
   Widget build(BuildContext context) {
@@ -118,7 +118,6 @@ class _HighLowScreenState extends State<HighLowScreen> {
       ),
       header: _buildHeader(),
       body: _buildBody(context),
-      footer: _buildTipStrip(),
     );
   }
 
@@ -137,9 +136,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
             media.size.height -
             media.padding.vertical -
             AppSpacing.sm * 2 -
-            _headerHeight -
-            _footerHeight -
-            AppSpacing.sm;
+            _headerHeight;
 
         return SizedBox(
           width: constraints.maxWidth,
@@ -153,7 +150,15 @@ class _HighLowScreenState extends State<HighLowScreen> {
                 const SizedBox(height: AppSpacing.sm),
                 _buildListenAgainButton(),
                 const SizedBox(height: AppSpacing.sm),
-                _buildScene(),
+                // FittedBox always lays its child out with unbounded (0..∞)
+                // constraints so it can measure a "natural" size to scale —
+                // that's true no matter how tightly *this* LayoutBuilder is
+                // itself constrained. _buildScene used to read its own
+                // width from a LayoutBuilder nested in here, which saw
+                // maxWidth: infinity and silently produced a degenerate
+                // layout (see _buildScene's doc comment). Pass the real,
+                // finite width down from this outer LayoutBuilder instead.
+                _buildScene(constraints.maxWidth),
                 const SizedBox(height: AppSpacing.xs),
                 _buildStatusText(),
               ],
@@ -169,7 +174,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         // Close button
-        _HeaderIconButton(
+        CircleIconButton(
           icon: Icons.close_rounded,
           tooltip: 'Close',
           onTap: () {
@@ -188,7 +193,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
           results: _gameState.results.map((r) => r.isCorrect).toList(),
         ),
         // Skip button
-        _HeaderIconButton(
+        CircleIconButton(
           icon: Icons.skip_next_rounded,
           tooltip: 'Skip',
           onTap: _gameState.status == GameStatus.awaitingInput
@@ -260,81 +265,101 @@ class _HighLowScreenState extends State<HighLowScreen> {
     );
   }
 
-  Widget _buildScene() {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final width = constraints.maxWidth;
-        final charSize = (width * 0.22).clamp(60.0, 110.0);
-        final instrument = _gameState.currentInstrument;
+  /// [width] is the *real* available width, measured by the outer
+  /// LayoutBuilder in [_buildBody] — not by a LayoutBuilder nested in here.
+  ///
+  /// This whole subtree sits inside a FittedBox (see [_buildBody]), and
+  /// FittedBox always lays its child out with unbounded constraints so it
+  /// can measure an unconstrained "natural" size to scale down. A
+  /// LayoutBuilder nested inside that subtree would see `maxWidth:
+  /// infinity` no matter how this screen is actually laid out on a real
+  /// device — that was the card-35 regression (card 46): it silently
+  /// corrupted this method's own width-based sizing, *and* left the
+  /// returned [Stack] below with no explicit width for the same reason
+  /// (every child is `Positioned`, so with no non-positioned child to size
+  /// off, Stack falls back to `constraints.biggest`, which is infinite
+  /// here — and then to `constraints.smallest`, i.e. zero). A zero-width
+  /// Stack squeezes the `Positioned(left: 0, right: 0, ...)` instrument Row
+  /// to zero, which is what painted the stray overflow bar on the left
+  /// edge, and corrupted the whole Column's measured size that FittedBox
+  /// uses to place everything else. Giving the SizedBox below an explicit,
+  /// finite width breaks that dependency on ambient constraints.
+  Widget _buildScene(double width) {
+    final charSize = (width * 0.22).clamp(60.0, 110.0);
+    final instrument = _gameState.currentInstrument;
+    final sceneHeight = charSize + 60;
 
-        return SizedBox(
-          height: charSize + 60,
-          child: Stack(
-            clipBehavior: Clip.none,
-            children: [
-              // Piper (fox) — left flank, bottom-anchored so it, Clef, and
-              // the instrument pair all share one ground line (matching
-              // where the stumps sit in the background art).
-              Positioned(
-                left: 0,
-                bottom: 0,
-                child: Image.asset(
-                  'assets/images/characters/Piper_1.png',
-                  width: charSize * 0.6,
-                ).animate().fade(duration: AppAnimations.medium),
-              ),
-              // Clef — right flank (replacement for the deprecated blob)
-              Positioned(
-                right: 0,
-                bottom: 0,
-                child:
-                    Image.asset(
-                          'assets/images/characters/Clef.png',
-                          width: charSize * 0.55,
-                        )
-                        .animate(onPlay: (c) => c.repeat(reverse: true))
-                        .moveY(
-                          begin: 0,
-                          end: -6,
-                          duration: const Duration(milliseconds: 1200),
-                          curve: Curves.easeInOut,
-                        ),
-              ),
-              // Instrument pair, bottom-anchored onto the stumps
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    _InstrumentButton(
-                      key: ValueKey('left-${instrument.name}'),
-                      assetPath: instrument.leftAssetPath,
-                      size: charSize,
-                      glowing: _gameState.playingIndex == 0,
-                      feedback: _feedbackFor(0),
-                      enabled: _gameState.status == GameStatus.awaitingInput,
-                      onTap: () => _onCharacterTap(0),
-                    ),
-                    SizedBox(width: charSize * 0.5),
-                    _InstrumentButton(
-                      key: ValueKey('right-${instrument.name}'),
-                      assetPath: instrument.rightAssetPath,
-                      size: charSize,
-                      glowing: _gameState.playingIndex == 1,
-                      feedback: _feedbackFor(1),
-                      enabled: _gameState.status == GameStatus.awaitingInput,
-                      onTap: () => _onCharacterTap(1),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+    return SizedBox(
+      width: width,
+      height: sceneHeight,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          // Piper (fox) — full-body "Encouraging" pose (SongStone-UI-Kit
+          // Assets/Cast/Piper.png, pose 7), left flank, bottom-anchored so
+          // it, Clef, and the instrument pair all share one ground line
+          // (matching where the stumps sit in the background art). Sized a
+          // little short of the full scene height so he doesn't crowd the
+          // question text sitting right above this box.
+          Positioned(
+            left: 0,
+            bottom: 0,
+            child: Image.asset(
+              'assets/images/characters/Piper_Encouraging.png',
+              height: sceneHeight * 0.85,
+              fit: BoxFit.contain,
+            ).animate().fade(duration: AppAnimations.medium),
           ),
-        );
-      },
+          // Clef — right flank (replacement for the deprecated blob)
+          Positioned(
+            right: 0,
+            bottom: 0,
+            child:
+                Image.asset(
+                      'assets/images/characters/Clef.png',
+                      width: charSize * 0.55,
+                    )
+                    .animate(onPlay: (c) => c.repeat(reverse: true))
+                    .moveY(
+                      begin: 0,
+                      end: -6,
+                      duration: const Duration(milliseconds: 1200),
+                      curve: Curves.easeInOut,
+                    ),
+          ),
+          // Instrument pair, bottom-anchored onto the stumps
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                _InstrumentButton(
+                  key: ValueKey('left-${instrument.name}'),
+                  assetPath: instrument.leftAssetPath,
+                  size: charSize,
+                  glowing: _gameState.playingIndex == 0,
+                  feedback: _feedbackFor(0),
+                  enabled: _gameState.status == GameStatus.awaitingInput,
+                  onTap: () => _onCharacterTap(0),
+                ),
+                SizedBox(width: charSize * 0.5),
+                _InstrumentButton(
+                  key: ValueKey('right-${instrument.name}'),
+                  assetPath: instrument.rightAssetPath,
+                  size: charSize,
+                  glowing: _gameState.playingIndex == 1,
+                  feedback: _feedbackFor(1),
+                  enabled: _gameState.status == GameStatus.awaitingInput,
+                  onTap: () => _onCharacterTap(1),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -377,88 +402,9 @@ class _HighLowScreenState extends State<HighLowScreen> {
         .animate(key: ValueKey(_gameState.status))
         .fade(duration: AppAnimations.fast);
   }
-
-  Widget _buildTipStrip() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.lg,
-        vertical: AppSpacing.sm,
-      ),
-      decoration: BoxDecoration(
-        gradient: AppColors.cardGradient,
-        borderRadius: BorderRadius.circular(AppSpacing.radiusRound),
-        border: Border.all(color: AppColors.cardEdge, width: 1.5),
-        boxShadow: const [
-          BoxShadow(
-            color: AppColors.shadow,
-            blurRadius: 6,
-            offset: Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(
-            Icons.lightbulb_rounded,
-            size: 18,
-            color: AppColors.gold,
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          Flexible(
-            child: Text(
-              'Higher notes sound higher up. Lower notes sound lower down.',
-              style: AppTypography.label,
-              textAlign: TextAlign.center,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
 
 enum _CharacterFeedback { correct, incorrect }
-
-/// Small circular icon button used for the header's close/skip controls,
-/// styled to match the parchment-card look used elsewhere in the Lumi
-/// design system rather than a flat Material IconButton.
-class _HeaderIconButton extends StatelessWidget {
-  final IconData icon;
-  final String tooltip;
-  final VoidCallback? onTap;
-
-  const _HeaderIconButton({
-    required this.icon,
-    required this.tooltip,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Tooltip(
-      message: tooltip,
-      child: GestureDetector(
-        onTap: onTap,
-        child: AnimatedOpacity(
-          opacity: onTap == null ? 0.4 : 1,
-          duration: AppAnimations.fast,
-          child: Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              gradient: AppColors.cardGradient,
-              shape: BoxShape.circle,
-              border: Border.all(color: AppColors.cardEdge, width: 1.5),
-            ),
-            child: Icon(icon, color: AppColors.textSecondary, size: 22),
-          ),
-        ),
-      ),
-    );
-  }
-}
 
 /// An instrument character sitting on a stump — glows and wiggles (via the
 /// shared [GlowWiggleCharacter] treatment, same as the Sound Playground)

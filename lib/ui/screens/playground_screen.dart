@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../audio/audio_controller.dart';
 import '../../models/instrument.dart';
+import '../components/circle_icon_button.dart';
 import '../components/glow_wiggle_character.dart';
 import '../theme/theme.dart';
 
@@ -86,11 +87,15 @@ class _PlaygroundScreenState extends State<PlaygroundScreen> {
           child: Stack(
             children: [
               Positioned.fill(child: _buildMeadow()),
+              Positioned(top: 0, left: 0, right: 0, child: _buildTitlePlate()),
+              // Back to the SongStone landing screen. Deliberately a
+              // sibling of the title plate rather than nested inside it —
+              // the plate is wrapped in IgnorePointer so taps fall through
+              // to the meadow underneath, which would swallow this too.
               Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                child: _buildTitlePlate(),
+                top: AppSpacing.sm,
+                left: AppSpacing.lg,
+                child: const BackToLandingButton(),
               ),
             ],
           ),
@@ -120,18 +125,30 @@ class _PlaygroundScreenState extends State<PlaygroundScreen> {
             ],
           ),
         ),
-        child: Column(
+        child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              'Sound Playground',
-              style: AppTypography.heading2.copyWith(color: AppColors.forest),
-            ),
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-              'Tap an instrument to hear it!',
-              style: AppTypography.bodyMedium.copyWith(color: AppColors.ink),
+            // Reserves room for the (non-decorative, tappable) back button
+            // that sits on top of this plate as a sibling — see build().
+            const SizedBox(width: 44 + AppSpacing.sm),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Sound Playground',
+                  style: AppTypography.heading2.copyWith(
+                    color: AppColors.forest,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                Text(
+                  'Tap an instrument to hear it!',
+                  style: AppTypography.bodyMedium.copyWith(
+                    color: AppColors.ink,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -239,12 +256,10 @@ class _InstrumentCharacterState extends State<_InstrumentCharacter>
       vsync: this,
       duration: AppAnimations.buttonPressDown,
     );
-    _pressScale = Tween<double>(
-      begin: 1.0,
-      end: AppAnimations.buttonPressScale,
-    ).animate(
-      CurvedAnimation(parent: _pressController, curve: Curves.easeInOut),
-    );
+    _pressScale = Tween<double>(begin: 1.0, end: AppAnimations.buttonPressScale)
+        .animate(
+          CurvedAnimation(parent: _pressController, curve: Curves.easeInOut),
+        );
   }
 
   @override
@@ -317,9 +332,7 @@ class _InstrumentCharacterState extends State<_InstrumentCharacter>
             : AppColors.card.withValues(alpha: 0.82),
         borderRadius: BorderRadius.circular(AppSpacing.radiusRound),
         border: Border.all(
-          color: widget.isActive
-              ? widget.instrument.color
-              : AppColors.cardEdge,
+          color: widget.isActive ? widget.instrument.color : AppColors.cardEdge,
           width: widget.isActive ? 2 : 1,
         ),
         boxShadow: const [

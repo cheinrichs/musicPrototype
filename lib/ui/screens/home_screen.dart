@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import '../../app/router.dart';
+import '../components/circle_icon_button.dart';
 import '../components/game_card.dart';
 import '../theme/theme.dart';
 
@@ -42,21 +43,28 @@ class HomeScreen extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
+        // Back to the SongStone landing screen — replaces the bottom nav
+        // bar this screen used to share with Learning Path/Playground.
+        const BackToLandingButton(),
+        const SizedBox(width: AppSpacing.sm),
         // Mascot + app title
         Flexible(
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               Image.asset(
-                'assets/images/characters/Piper_1.png',
-                width: 44,
-                height: 44,
-              ).animate().fade(duration: AppAnimations.medium).scale(
-                begin: const Offset(0.6, 0.6),
-                end: const Offset(1, 1),
-                duration: AppAnimations.medium,
-                curve: AppAnimations.bounceCurve,
-              ),
+                    'assets/images/characters/Piper_1.png',
+                    width: 44,
+                    height: 44,
+                  )
+                  .animate()
+                  .fade(duration: AppAnimations.medium)
+                  .scale(
+                    begin: const Offset(0.6, 0.6),
+                    end: const Offset(1, 1),
+                    duration: AppAnimations.medium,
+                    curve: AppAnimations.bounceCurve,
+                  ),
               const SizedBox(width: AppSpacing.sm),
               Flexible(
                 child:
@@ -169,18 +177,20 @@ class HomeScreen extends StatelessWidget {
               // Fixed 2 columns assumed a tall, narrow portrait screen.
               // Now that the app is locked to landscape, pick the column
               // count from available width so cards stay a sensible size
-              // instead of stretching edge-to-edge.
-              const targetCardWidth = 170.0;
-              final crossAxisCount = (constraints.maxWidth /
-                      (targetCardWidth + AppSpacing.md))
-                  .floor()
-                  .clamp(2, 5);
+              // instead of stretching edge-to-edge. Cards are ~50% smaller
+              // than their original 170px target (Trello card 50) so more
+              // are visible at once — the grid still scrolls for the rest.
+              const targetCardWidth = 85.0;
+              final crossAxisCount =
+                  (constraints.maxWidth / (targetCardWidth + AppSpacing.sm))
+                      .floor()
+                      .clamp(3, 9);
 
               return GridView.builder(
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: crossAxisCount,
-                  crossAxisSpacing: AppSpacing.md,
-                  mainAxisSpacing: AppSpacing.md,
+                  crossAxisSpacing: AppSpacing.sm,
+                  mainAxisSpacing: AppSpacing.sm,
                   childAspectRatio: 1.1,
                 ),
                 itemCount: _games.length,
