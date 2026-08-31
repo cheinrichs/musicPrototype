@@ -19,17 +19,22 @@ enum Instrument {
       'assets/audio/playground/guitar2.mp3',
       'assets/audio/playground/guitar3.mp3',
     ],
-    artAssetPath: 'assets/images/characters/instruments/Guitar1.png',
+    // Electric guitar (Trello card 52) — the playground's guitar clips are
+    // already electric, so the character now matches. SongStone-UI-Kit's
+    // ElectricGuitar.png is a two-up sheet (red Strat-style / blue Les
+    // Paul-style); the red one is used here since it reads more clearly
+    // against the Meadow background's greens than the blue does.
+    artAssetPath: 'assets/images/characters/instruments/ElectricGuitar1.png',
   ),
-  // No trumpet character exists in SongStone-UI-Kit/Assets/Cast/Instruments
-  // yet (the kit has Bells, Cello, Drum, Flute, Guitar, Piano and Violin),
-  // so this one still falls back to its emoji in the playground. Give it an
-  // artAssetPath as soon as the art lands.
+  // Trumpet character art (Trello card 53) — SongStone-UI-Kit's
+  // Trumpet.png is a two-up sheet (silver / gold-brass); the gold one is
+  // used here as the traditional, most recognizable trumpet finish.
   trumpet(
     'Trumpet',
     '🎺',
     Color(0xFFE17055),
     ['assets/audio/playground/trumpet.mp3'],
+    artAssetPath: 'assets/images/characters/instruments/Trumpet1.png',
   ),
   violin(
     'Violin',
