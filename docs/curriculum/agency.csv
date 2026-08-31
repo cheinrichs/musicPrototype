@@ -1,0 +1,6 @@
+﻿Agency,Child Role,Response Required,Interaction Characteristics,Replay Behavior
+A0 — Observe,Passive listener / watcher,No response required,"Auto-play, auto-advance, expressive modeling, no failure state",Auto replay and/or unlimited replay
+A1 — Participate,Imitate or respond loosely,"Loose participation (tap, echo, gesture)","Wide tolerance, playful interaction, multiple attempts allowed",Unlimited manual replay
+A2 — Trigger,Initiate or choose response,Correct selection or action required,"Structured turn-taking, clear feedback, no strict timing window",Replay available
+A3 — Timed,Respond within musical time,Response must occur during timing window,"Beat-based interaction, limited delay tolerance, timing matters",Limited replay
+A4 — Precision,Execute accurately,Accurate timing and/or pitch required,"Tight timing window, measurable accuracy, clear success criteria",Minimal or no replay

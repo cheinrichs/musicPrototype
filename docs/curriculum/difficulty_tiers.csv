@@ -1,0 +1,42 @@
+﻿Node,Goal,Parameter,Tier1,Tier2,Tier3,Tier4
+🌱 1: Sound Awareness,Discriminate basic sound qualities,Loud vs Soft,Extreme contrast,Moderate contrast,Subtle dynamic shift,Embedded in phrase
+🌱 1: Sound Awareness,Discriminate basic sound qualities,Long vs Short,1 sec vs burst,2–3 sec sustain,Variable lengths,Within rhythmic pattern
+🌱 1: Sound Awareness,Discriminate basic sound qualities,Attack,Very sharp vs very smooth,Moderate contrast,Short accents in sequence,Within melody
+🌱 1: Sound Awareness,Discriminate basic sound qualities,Release,Sudden stop vs fade,Short fade,Variable fade,Phrase-based release
+🎵 2: Pitch Awareness,Compare pitch height and distance,Interval Size,Large (5th+),3rd–5th,Stepwise,Mixed intervals
+🎵 2: Pitch Awareness,Compare pitch height and distance,Number of Notes,2,2–3,3–4,4–5
+🎵 2: Pitch Awareness,Compare pitch height and distance,Tempo,Slow,Moderate,Faster,Variable
+🌈 3: Contour & Shape,Understand melodic movement,# of Notes,2,3,4–5,5–7
+🌈 3: Contour & Shape,Understand melodic movement,Interval Type,Large leaps,Mixed,Stepwise,Mixed tricky
+🌈 3: Contour & Shape,Understand melodic movement,Tempo,Slow,Moderate,Faster,Variable
+🌈 3: Contour & Shape,Understand melodic movement,Contour Complexity,Pure up/down,Stepwise,Minor variation,Direction changes (up then down)
+⏳ 4: Rhythm & Timing,Develop pulse and pattern sense,Pulse Clarity,Strong isolated drum,Clear metronomic beat,Beat embedded in music,Subtle or layered pulse
+⏳ 4: Rhythm & Timing,Develop pulse and pattern sense,Pattern Length,1 beat,2–3 beats,4 beats,6–8 beats
+⏳ 4: Rhythm & Timing,Develop pulse and pattern sense,Rhythmic Density,All quarter notes,Add rests,Add eighth notes,Mixed rhythms
+⏳ 4: Rhythm & Timing,Develop pulse and pattern sense,Tempo,Slow,Moderate,Faster,Variable / tempo shifts
+🎭 5: Anticipation & Punctuation,Recognize silence and musical endings,Pause Length,Predictable short,Longer,Variable,Unpredictable
+🎭 5: Anticipation & Punctuation,Recognize silence and musical endings,Accent Strength,Very strong,Moderate,Subtle,Embedded
+🎭 5: Anticipation & Punctuation,Recognize silence and musical endings,Phrase Length,1–2 beats,3–4 beats,1 short phrase,Full phrase
+🎭 5: Anticipation & Punctuation,Recognize silence and musical endings,Resolution Type,Sudden,Clear cadence,Subtle cadence,Deceptive feel
+🎶 6: Tonal Contrast & Resolution,Perceive emotional quality and stability,Contrast Type,Clear contrasting examples,Short melodic contrast,Embedded in phrase,Within progression
+🎶 6: Tonal Contrast & Resolution,Perceive emotional quality and stability,Resolution Strength,Strong tonic return,Delayed return,Weak cadence,Deceptive cadence
+🎶 6: Tonal Contrast & Resolution,Perceive emotional quality and stability,Phrase Structure,2–3 notes,3–5 note motif,Short phrase,Multi-phrase
+🎶 6: Tonal Contrast & Resolution,Perceive emotional quality and stability,Tonic Clarity,Ends clearly on tonic,Begins on tonic,Tonic mid-phrase,Tonic implied only
+🎤 7: Sound Making & Sound Shaping,Control vocal sound energy,Sustain Target Length,1 sec,2–3 sec,4–5 sec,Variable
+🎤 7: Sound Making & Sound Shaping,Control vocal sound energy,Dynamic Range,Big loud/soft contrast,Moderate contrast,Gradual swell,Controlled curve
+🎤 7: Sound Making & Sound Shaping,Control vocal sound energy,Attack Type,Exaggerated,Moderate,Controlled onset,Variable articulation
+🎤 7: Sound Making & Sound Shaping,Control vocal sound energy,Release Type,Sudden stop,Short fade,Gradual fade,Shaped release
+🎻 8: Timbre & Instrument Awareness,Differentiate sound color,Instrument Contrast,Very distinct families (piano vs drum),Distinct but related (piano vs guitar),Same family contrast (violin vs viola),Similar timbres (oboe vs clarinet)
+🎻 8: Timbre & Instrument Awareness,Differentiate sound color,Articulation Type,Sustained vs percussive,Legato vs staccato,Mixed articulation in phrase,Subtle articulation differences
+🎻 8: Timbre & Instrument Awareness,Differentiate sound color,Texture Context,Isolated sound,Short phrase,Melody with accompaniment,Multi-instrument texture
+🎻 8: Timbre & Instrument Awareness,Differentiate sound color,Register Range,Middle register only,Low vs high register,Wide range,Register shifts within phrase
+🎹 9: Guided Instrument Play,Execute patterns visually and aurally,Sequence Length,1 note,2–3 notes,4–6 notes,Full short phrase
+🎹 9: Guided Instrument Play,Execute patterns visually and aurally,Melodic Interval Size,Repeated note only,Stepwise motion,Small skips,Mixed intervals
+🎹 9: Guided Instrument Play,Execute patterns visually and aurally,Rhythmic Structure,Even beats only,Add rests,Add subdivisions,Mixed rhythmic patterns
+🎹 9: Guided Instrument Play,Execute patterns visually and aurally,Hand Use / Polyphony,Single note only,Single line melody,Melody + simple bass note,Two-note harmony
+🎼 10: Harmony & Chord Feel,Hear vertical relationships,Chord Contrast,Major vs minor (clear),Root vs non-root,I–V resolution,Short progression
+🎼 10: Harmony & Chord Feel,Hear vertical relationships,Voicing Complexity,Block triad,Broken chord,4-note chord,Moving bass
+🎼 10: Harmony & Chord Feel,Hear vertical relationships,Context,Isolated chord,Chord pair,Short progression,Melody over chords
+🎵 11: Pitch Naming & Functional Hearing,Attach labels to pitch relationships,Syllable Use,Do only,Do–Re–Mi,Full scale,Minor scale
+🎵 11: Pitch Naming & Functional Hearing,Attach labels to pitch relationships,Melody Length,2 notes,3–4 notes,Short phrase,Longer phrase
+🎵 11: Pitch Naming & Functional Hearing,Attach labels to pitch relationships,Tonal Stability,Clear tonic,Tonic + dominant,Passing tones,Modulation

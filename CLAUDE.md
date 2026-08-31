@@ -1,5 +1,15 @@
 # CLAUDE.md — Ear Training App for Kids
 
+## Product & Curriculum Handoff
+
+A separate design/curriculum handoff packet lives under `docs/`. It describes a broader long-term learning architecture (`Skill + Concept Tier + Agency + Age Presentation`), the full node/skill curriculum taxonomy, and a library of interaction ideas — a larger future scope than the MVP described below.
+
+- Start with `docs/product/LEARNING_ARCHITECTURE.md` for the compact guardrails, then `docs/product/EAR_TRAINING_APP_PRODUCT_SPEC.md` for full rationale.
+- Read `docs/product/IMPLEMENTATION_NOTES.md` before treating any of it as a rewrite mandate — it explicitly says to reconcile with, not replace, the app that already exists.
+- Curriculum data (nodes, skills, tiers, agency, age bands) lives as CSVs in `docs/curriculum/`. The Google Sheet named in `docs/product/HANDOFF_README.md` remains the live source of truth for curriculum data; the CSVs are a cleaned snapshot.
+
+This section and the MVP-focused guidance below it are both authoritative — the handoff packet is aspirational/architectural context, this file (and the rest of this document) is the current build's operating guardrails.
+
 ## WHAT (Project Goal)
 
 Build a playful, “squishy” 2D ear-training mobile app for kids using Flutter.
@@ -143,3 +153,17 @@ When making changes:
 - Add/adjust tests when logic is added
 - Avoid premature abstraction; optimize for clarity and iteration speed
 - If adding a dependency, explain why and ensure cross-platform support
+
+### Shell commands: keep them plain
+
+Run bare commands — `flutter test`, `make lint`, `git commit -m "..."` — rather than
+wrapping them in `export PATH=...; cd ... && ...` or chaining several commands together
+with `;`/`&&`. This isn't a style preference: Claude Code's permission allowlist matches
+against the *entire* command string, so a prefix like `export PATH=...` or `cd $DIR &&`
+makes an otherwise-approved command (e.g. `flutter analyze`) fail to match its allowlist
+entry (`Bash(flutter analyze *)`) and forces a manual approval prompt every time. PATH is
+already configured project-wide (`.claude/settings.local.json` → `env.PATH`), so `flutter`,
+`pod`, and homebrew-installed `ruby`/`gem` resolve without an `export` prefix. Run commands
+from the repo root (Claude Code's Bash tool already starts there) instead of `cd`-ing into
+it. If a task genuinely needs multiple steps, run them as separate Bash calls rather than
+one chained string — each one can then match the allowlist independently.

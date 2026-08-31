@@ -1,0 +1,237 @@
+﻿Node,Skill,Tier,MinAgency,MaxAgency,Prerequisite,Status
+Sound Awareness,Loud vs Soft,1,A0,A2,,Working scaffold — agency ranges/prerequisites still require curriculum review
+Sound Awareness,Loud vs Soft,2,A1,A3,Loud vs Soft_T1,Working scaffold — agency ranges/prerequisites still require curriculum review
+Sound Awareness,Loud vs Soft,3,A2,A4,Loud vs Soft_T2,Working scaffold — agency ranges/prerequisites still require curriculum review
+Sound Awareness,Loud vs Soft,4,A2,A4,Loud vs Soft_T3,Working scaffold — agency ranges/prerequisites still require curriculum review
+Sound Awareness,Long vs Short,1,A0,A2,,Working scaffold — agency ranges/prerequisites still require curriculum review
+Sound Awareness,Long vs Short,2,A1,A3,Long vs Short_T1,Working scaffold — agency ranges/prerequisites still require curriculum review
+Sound Awareness,Long vs Short,3,A2,A4,Long vs Short_T2,Working scaffold — agency ranges/prerequisites still require curriculum review
+Sound Awareness,Long vs Short,4,A2,A4,Long vs Short_T3,Working scaffold — agency ranges/prerequisites still require curriculum review
+Sound Awareness,Silence vs Sound,1,A0,A2,,Working scaffold — agency ranges/prerequisites still require curriculum review
+Sound Awareness,Silence vs Sound,2,A1,A3,Silence vs Sound_T1,Working scaffold — agency ranges/prerequisites still require curriculum review
+Sound Awareness,Silence vs Sound,3,A2,A4,Silence vs Sound_T2,Working scaffold — agency ranges/prerequisites still require curriculum review
+Sound Awareness,Silence vs Sound,4,A2,A4,Silence vs Sound_T3,Working scaffold — agency ranges/prerequisites still require curriculum review
+Sound Awareness,Same vs Different,1,A0,A2,,Working scaffold — agency ranges/prerequisites still require curriculum review
+Sound Awareness,Same vs Different,2,A1,A3,Same vs Different_T1,Working scaffold — agency ranges/prerequisites still require curriculum review
+Sound Awareness,Same vs Different,3,A2,A4,Same vs Different_T2,Working scaffold — agency ranges/prerequisites still require curriculum review
+Sound Awareness,Same vs Different,4,A2,A4,Same vs Different_T3,Working scaffold — agency ranges/prerequisites still require curriculum review
+Sound Awareness,Attack vs Smooth Beginning,1,A0,A2,,Working scaffold — agency ranges/prerequisites still require curriculum review
+Sound Awareness,Attack vs Smooth Beginning,2,A1,A3,Attack vs Smooth Beginning_T1,Working scaffold — agency ranges/prerequisites still require curriculum review
+Sound Awareness,Attack vs Smooth Beginning,3,A2,A4,Attack vs Smooth Beginning_T2,Working scaffold — agency ranges/prerequisites still require curriculum review
+Sound Awareness,Attack vs Smooth Beginning,4,A2,A4,Attack vs Smooth Beginning_T3,Working scaffold — agency ranges/prerequisites still require curriculum review
+Sound Awareness,Sustain vs Short Burst,1,A0,A2,,Working scaffold — agency ranges/prerequisites still require curriculum review
+Sound Awareness,Sustain vs Short Burst,2,A1,A3,Sustain vs Short Burst_T1,Working scaffold — agency ranges/prerequisites still require curriculum review
+Sound Awareness,Sustain vs Short Burst,3,A2,A4,Sustain vs Short Burst_T2,Working scaffold — agency ranges/prerequisites still require curriculum review
+Sound Awareness,Sustain vs Short Burst,4,A2,A4,Sustain vs Short Burst_T3,Working scaffold — agency ranges/prerequisites still require curriculum review
+Sound Awareness,Release Awareness,1,A0,A2,,Working scaffold — agency ranges/prerequisites still require curriculum review
+Sound Awareness,Release Awareness,2,A1,A3,Release Awareness_T1,Working scaffold — agency ranges/prerequisites still require curriculum review
+Sound Awareness,Release Awareness,3,A2,A4,Release Awareness_T2,Working scaffold — agency ranges/prerequisites still require curriculum review
+Sound Awareness,Release Awareness,4,A2,A4,Release Awareness_T3,Working scaffold — agency ranges/prerequisites still require curriculum review
+Pitch Awareness,Higher vs Lower,1,A0,A2,,Working scaffold — agency ranges/prerequisites still require curriculum review
+Pitch Awareness,Higher vs Lower,2,A1,A3,Higher vs Lower_T1,Working scaffold — agency ranges/prerequisites still require curriculum review
+Pitch Awareness,Higher vs Lower,3,A2,A4,Higher vs Lower_T2,Working scaffold — agency ranges/prerequisites still require curriculum review
+Pitch Awareness,Higher vs Lower,4,A2,A4,Higher vs Lower_T3,Working scaffold — agency ranges/prerequisites still require curriculum review
+Pitch Awareness,Same Note Match,1,A0,A2,,Working scaffold — agency ranges/prerequisites still require curriculum review
+Pitch Awareness,Same Note Match,2,A1,A3,Same Note Match_T1,Working scaffold — agency ranges/prerequisites still require curriculum review
+Pitch Awareness,Same Note Match,3,A2,A4,Same Note Match_T2,Working scaffold — agency ranges/prerequisites still require curriculum review
+Pitch Awareness,Same Note Match,4,A2,A4,Same Note Match_T3,Working scaffold — agency ranges/prerequisites still require curriculum review
+Pitch Awareness,Pitch Memory,1,A0,A2,,Working scaffold — agency ranges/prerequisites still require curriculum review
+Pitch Awareness,Pitch Memory,2,A1,A3,Pitch Memory_T1,Working scaffold — agency ranges/prerequisites still require curriculum review
+Pitch Awareness,Pitch Memory,3,A2,A4,Pitch Memory_T2,Working scaffold — agency ranges/prerequisites still require curriculum review
+Pitch Awareness,Pitch Memory,4,A2,A4,Pitch Memory_T3,Working scaffold — agency ranges/prerequisites still require curriculum review
+Pitch Awareness,Small vs Big Interval Feel,1,A0,A2,,Working scaffold — agency ranges/prerequisites still require curriculum review
+Pitch Awareness,Small vs Big Interval Feel,2,A1,A3,Small vs Big Interval Feel_T1,Working scaffold — agency ranges/prerequisites still require curriculum review
+Pitch Awareness,Small vs Big Interval Feel,3,A2,A4,Small vs Big Interval Feel_T2,Working scaffold — agency ranges/prerequisites still require curriculum review
+Pitch Awareness,Small vs Big Interval Feel,4,A2,A4,Small vs Big Interval Feel_T3,Working scaffold — agency ranges/prerequisites still require curriculum review
+Pitch Awareness,Near vs Far Pitch Comparison,1,A0,A2,,Working scaffold — agency ranges/prerequisites still require curriculum review
+Pitch Awareness,Near vs Far Pitch Comparison,2,A1,A3,Near vs Far Pitch Comparison_T1,Working scaffold — agency ranges/prerequisites still require curriculum review
+Pitch Awareness,Near vs Far Pitch Comparison,3,A2,A4,Near vs Far Pitch Comparison_T2,Working scaffold — agency ranges/prerequisites still require curriculum review
+Pitch Awareness,Near vs Far Pitch Comparison,4,A2,A4,Near vs Far Pitch Comparison_T3,Working scaffold — agency ranges/prerequisites still require curriculum review
+Contour & Shape,Ascending vs Descending,1,A0,A2,Higher vs Lower_T1,Working scaffold — agency ranges/prerequisites still require curriculum review
+Contour & Shape,Ascending vs Descending,2,A1,A3,Ascending vs Descending_T1,Working scaffold — agency ranges/prerequisites still require curriculum review
+Contour & Shape,Ascending vs Descending,3,A2,A4,Ascending vs Descending_T2,Working scaffold — agency ranges/prerequisites still require curriculum review
+Contour & Shape,Ascending vs Descending,4,A2,A4,Ascending vs Descending_T3,Working scaffold — agency ranges/prerequisites still require curriculum review
+Contour & Shape,Contour Shape Match,1,A0,A2,Higher vs Lower_T1,Working scaffold — agency ranges/prerequisites still require curriculum review
+Contour & Shape,Contour Shape Match,2,A1,A3,Contour Shape Match_T1,Working scaffold — agency ranges/prerequisites still require curriculum review
+Contour & Shape,Contour Shape Match,3,A2,A4,Contour Shape Match_T2,Working scaffold — agency ranges/prerequisites still require curriculum review
+Contour & Shape,Contour Shape Match,4,A2,A4,Contour Shape Match_T3,Working scaffold — agency ranges/prerequisites still require curriculum review
+Contour & Shape,Stepwise vs Leaping Motion,1,A0,A2,Higher vs Lower_T1,Working scaffold — agency ranges/prerequisites still require curriculum review
+Contour & Shape,Stepwise vs Leaping Motion,2,A1,A3,Stepwise vs Leaping Motion_T1,Working scaffold — agency ranges/prerequisites still require curriculum review
+Contour & Shape,Stepwise vs Leaping Motion,3,A2,A4,Stepwise vs Leaping Motion_T2,Working scaffold — agency ranges/prerequisites still require curriculum review
+Contour & Shape,Stepwise vs Leaping Motion,4,A2,A4,Stepwise vs Leaping Motion_T3,Working scaffold — agency ranges/prerequisites still require curriculum review
+Contour & Shape,Mixed Contour Recognition,1,A0,A2,Higher vs Lower_T1,Working scaffold — agency ranges/prerequisites still require curriculum review
+Contour & Shape,Mixed Contour Recognition,2,A1,A3,Mixed Contour Recognition_T1,Working scaffold — agency ranges/prerequisites still require curriculum review
+Contour & Shape,Mixed Contour Recognition,3,A2,A4,Mixed Contour Recognition_T2,Working scaffold — agency ranges/prerequisites still require curriculum review
+Contour & Shape,Mixed Contour Recognition,4,A2,A4,Mixed Contour Recognition_T3,Working scaffold — agency ranges/prerequisites still require curriculum review
+Contour & Shape,Contour Imitation,1,A0,A2,Higher vs Lower_T1,Working scaffold — agency ranges/prerequisites still require curriculum review
+Contour & Shape,Contour Imitation,2,A1,A3,Contour Imitation_T1,Working scaffold — agency ranges/prerequisites still require curriculum review
+Contour & Shape,Contour Imitation,3,A2,A4,Contour Imitation_T2,Working scaffold — agency ranges/prerequisites still require curriculum review
+Contour & Shape,Contour Imitation,4,A2,A4,Contour Imitation_T3,Working scaffold — agency ranges/prerequisites still require curriculum review
+Rhythm & Timing,Steady Beat Feel,1,A0,A2,,Working scaffold — agency ranges/prerequisites still require curriculum review
+Rhythm & Timing,Steady Beat Feel,2,A1,A3,Steady Beat Feel_T1,Working scaffold — agency ranges/prerequisites still require curriculum review
+Rhythm & Timing,Steady Beat Feel,3,A2,A4,Steady Beat Feel_T2,Working scaffold — agency ranges/prerequisites still require curriculum review
+Rhythm & Timing,Steady Beat Feel,4,A2,A4,Steady Beat Feel_T3,Working scaffold — agency ranges/prerequisites still require curriculum review
+Rhythm & Timing,Tap Along to Pulse,1,A0,A2,,Working scaffold — agency ranges/prerequisites still require curriculum review
+Rhythm & Timing,Tap Along to Pulse,2,A1,A3,Tap Along to Pulse_T1,Working scaffold — agency ranges/prerequisites still require curriculum review
+Rhythm & Timing,Tap Along to Pulse,3,A2,A4,Tap Along to Pulse_T2,Working scaffold — agency ranges/prerequisites still require curriculum review
+Rhythm & Timing,Tap Along to Pulse,4,A2,A4,Tap Along to Pulse_T3,Working scaffold — agency ranges/prerequisites still require curriculum review
+Rhythm & Timing,Accent on the Beat,1,A0,A2,,Working scaffold — agency ranges/prerequisites still require curriculum review
+Rhythm & Timing,Accent on the Beat,2,A1,A3,Accent on the Beat_T1,Working scaffold — agency ranges/prerequisites still require curriculum review
+Rhythm & Timing,Accent on the Beat,3,A2,A4,Accent on the Beat_T2,Working scaffold — agency ranges/prerequisites still require curriculum review
+Rhythm & Timing,Accent on the Beat,4,A2,A4,Accent on the Beat_T3,Working scaffold — agency ranges/prerequisites still require curriculum review
+Rhythm & Timing,Rhythm Echo,1,A0,A2,,Working scaffold — agency ranges/prerequisites still require curriculum review
+Rhythm & Timing,Rhythm Echo,2,A1,A3,Rhythm Echo_T1,Working scaffold — agency ranges/prerequisites still require curriculum review
+Rhythm & Timing,Rhythm Echo,3,A2,A4,Rhythm Echo_T2,Working scaffold — agency ranges/prerequisites still require curriculum review
+Rhythm & Timing,Rhythm Echo,4,A2,A4,Rhythm Echo_T3,Working scaffold — agency ranges/prerequisites still require curriculum review
+Rhythm & Timing,Tempo Awareness,1,A0,A2,,Working scaffold — agency ranges/prerequisites still require curriculum review
+Rhythm & Timing,Tempo Awareness,2,A1,A3,Tempo Awareness_T1,Working scaffold — agency ranges/prerequisites still require curriculum review
+Rhythm & Timing,Tempo Awareness,3,A2,A4,Tempo Awareness_T2,Working scaffold — agency ranges/prerequisites still require curriculum review
+Rhythm & Timing,Tempo Awareness,4,A2,A4,Tempo Awareness_T3,Working scaffold — agency ranges/prerequisites still require curriculum review
+Rhythm & Timing,Count-and-Accent,1,A0,A2,,Working scaffold — agency ranges/prerequisites still require curriculum review
+Rhythm & Timing,Count-and-Accent,2,A1,A3,Count-and-Accent_T1,Working scaffold — agency ranges/prerequisites still require curriculum review
+Rhythm & Timing,Count-and-Accent,3,A2,A4,Count-and-Accent_T2,Working scaffold — agency ranges/prerequisites still require curriculum review
+Rhythm & Timing,Count-and-Accent,4,A2,A4,Count-and-Accent_T3,Working scaffold — agency ranges/prerequisites still require curriculum review
+Anticipation & Musical Punctuation,Call & Response Echo,1,A0,A2,,Working scaffold — agency ranges/prerequisites still require curriculum review
+Anticipation & Musical Punctuation,Call & Response Echo,2,A1,A3,Call & Response Echo_T1,Working scaffold — agency ranges/prerequisites still require curriculum review
+Anticipation & Musical Punctuation,Call & Response Echo,3,A2,A4,Call & Response Echo_T2,Working scaffold — agency ranges/prerequisites still require curriculum review
+Anticipation & Musical Punctuation,Call & Response Echo,4,A2,A4,Call & Response Echo_T3,Working scaffold — agency ranges/prerequisites still require curriculum review
+Anticipation & Musical Punctuation,Wait... BOO!,1,A0,A2,,Working scaffold — agency ranges/prerequisites still require curriculum review
+Anticipation & Musical Punctuation,Wait... BOO!,2,A1,A3,Wait... BOO!_T1,Working scaffold — agency ranges/prerequisites still require curriculum review
+Anticipation & Musical Punctuation,Wait... BOO!,3,A2,A4,Wait... BOO!_T2,Working scaffold — agency ranges/prerequisites still require curriculum review
+Anticipation & Musical Punctuation,Wait... BOO!,4,A2,A4,Wait... BOO!_T3,Working scaffold — agency ranges/prerequisites still require curriculum review
+Anticipation & Musical Punctuation,Variable Pause Recognition,1,A0,A2,,Working scaffold — agency ranges/prerequisites still require curriculum review
+Anticipation & Musical Punctuation,Variable Pause Recognition,2,A1,A3,Variable Pause Recognition_T1,Working scaffold — agency ranges/prerequisites still require curriculum review
+Anticipation & Musical Punctuation,Variable Pause Recognition,3,A2,A4,Variable Pause Recognition_T2,Working scaffold — agency ranges/prerequisites still require curriculum review
+Anticipation & Musical Punctuation,Variable Pause Recognition,4,A2,A4,Variable Pause Recognition_T3,Working scaffold — agency ranges/prerequisites still require curriculum review
+Anticipation & Musical Punctuation,Phrase Ending Recognition,1,A0,A2,,Working scaffold — agency ranges/prerequisites still require curriculum review
+Anticipation & Musical Punctuation,Phrase Ending Recognition,2,A1,A3,Phrase Ending Recognition_T1,Working scaffold — agency ranges/prerequisites still require curriculum review
+Anticipation & Musical Punctuation,Phrase Ending Recognition,3,A2,A4,Phrase Ending Recognition_T2,Working scaffold — agency ranges/prerequisites still require curriculum review
+Anticipation & Musical Punctuation,Phrase Ending Recognition,4,A2,A4,Phrase Ending Recognition_T3,Working scaffold — agency ranges/prerequisites still require curriculum review
+Anticipation & Musical Punctuation,Surprise Accent Detection,1,A0,A2,,Working scaffold — agency ranges/prerequisites still require curriculum review
+Anticipation & Musical Punctuation,Surprise Accent Detection,2,A1,A3,Surprise Accent Detection_T1,Working scaffold — agency ranges/prerequisites still require curriculum review
+Anticipation & Musical Punctuation,Surprise Accent Detection,3,A2,A4,Surprise Accent Detection_T2,Working scaffold — agency ranges/prerequisites still require curriculum review
+Anticipation & Musical Punctuation,Surprise Accent Detection,4,A2,A4,Surprise Accent Detection_T3,Working scaffold — agency ranges/prerequisites still require curriculum review
+Tonal Contrast & Resolution,Mode Contrast,1,A0,A2,Ascending vs Descending_T1,Working scaffold — agency ranges/prerequisites still require curriculum review
+Tonal Contrast & Resolution,Mode Contrast,2,A1,A3,Mode Contrast_T1,Working scaffold — agency ranges/prerequisites still require curriculum review
+Tonal Contrast & Resolution,Mode Contrast,3,A2,A4,Mode Contrast_T2,Working scaffold — agency ranges/prerequisites still require curriculum review
+Tonal Contrast & Resolution,Mode Contrast,4,A2,A4,Mode Contrast_T3,Working scaffold — agency ranges/prerequisites still require curriculum review
+Tonal Contrast & Resolution,Resolution Awareness,1,A0,A2,Ascending vs Descending_T1,Working scaffold — agency ranges/prerequisites still require curriculum review
+Tonal Contrast & Resolution,Resolution Awareness,2,A1,A3,Resolution Awareness_T1,Working scaffold — agency ranges/prerequisites still require curriculum review
+Tonal Contrast & Resolution,Resolution Awareness,3,A2,A4,Resolution Awareness_T2,Working scaffold — agency ranges/prerequisites still require curriculum review
+Tonal Contrast & Resolution,Resolution Awareness,4,A2,A4,Resolution Awareness_T3,Working scaffold — agency ranges/prerequisites still require curriculum review
+Sound Making & Sound Shaping,Attack Control,1,A0,A2,,Working scaffold — agency ranges/prerequisites still require curriculum review
+Sound Making & Sound Shaping,Attack Control,2,A1,A3,Attack Control_T1,Working scaffold — agency ranges/prerequisites still require curriculum review
+Sound Making & Sound Shaping,Attack Control,3,A2,A4,Attack Control_T2,Working scaffold — agency ranges/prerequisites still require curriculum review
+Sound Making & Sound Shaping,Attack Control,4,A2,A4,Attack Control_T3,Working scaffold — agency ranges/prerequisites still require curriculum review
+Sound Making & Sound Shaping,Sustain Control,1,A0,A2,,Working scaffold — agency ranges/prerequisites still require curriculum review
+Sound Making & Sound Shaping,Sustain Control,2,A1,A3,Sustain Control_T1,Working scaffold — agency ranges/prerequisites still require curriculum review
+Sound Making & Sound Shaping,Sustain Control,3,A2,A4,Sustain Control_T2,Working scaffold — agency ranges/prerequisites still require curriculum review
+Sound Making & Sound Shaping,Sustain Control,4,A2,A4,Sustain Control_T3,Working scaffold — agency ranges/prerequisites still require curriculum review
+Sound Making & Sound Shaping,Release Control,1,A0,A2,,Working scaffold — agency ranges/prerequisites still require curriculum review
+Sound Making & Sound Shaping,Release Control,2,A1,A3,Release Control_T1,Working scaffold — agency ranges/prerequisites still require curriculum review
+Sound Making & Sound Shaping,Release Control,3,A2,A4,Release Control_T2,Working scaffold — agency ranges/prerequisites still require curriculum review
+Sound Making & Sound Shaping,Release Control,4,A2,A4,Release Control_T3,Working scaffold — agency ranges/prerequisites still require curriculum review
+Sound Making & Sound Shaping,Dynamic Control,1,A0,A2,,Working scaffold — agency ranges/prerequisites still require curriculum review
+Sound Making & Sound Shaping,Dynamic Control,2,A1,A3,Dynamic Control_T1,Working scaffold — agency ranges/prerequisites still require curriculum review
+Sound Making & Sound Shaping,Dynamic Control,3,A2,A4,Dynamic Control_T2,Working scaffold — agency ranges/prerequisites still require curriculum review
+Sound Making & Sound Shaping,Dynamic Control,4,A2,A4,Dynamic Control_T3,Working scaffold — agency ranges/prerequisites still require curriculum review
+Sound Making & Sound Shaping,Shake the Sound,1,A0,A2,,Working scaffold — agency ranges/prerequisites still require curriculum review
+Sound Making & Sound Shaping,Shake the Sound,2,A1,A3,Shake the Sound_T1,Working scaffold — agency ranges/prerequisites still require curriculum review
+Sound Making & Sound Shaping,Shake the Sound,3,A2,A4,Shake the Sound_T2,Working scaffold — agency ranges/prerequisites still require curriculum review
+Sound Making & Sound Shaping,Shake the Sound,4,A2,A4,Shake the Sound_T3,Working scaffold — agency ranges/prerequisites still require curriculum review
+Sound Making & Sound Shaping,Lip Trills / Vocal Warmups,1,A0,A2,,Working scaffold — agency ranges/prerequisites still require curriculum review
+Sound Making & Sound Shaping,Lip Trills / Vocal Warmups,2,A1,A3,Lip Trills / Vocal Warmups_T1,Working scaffold — agency ranges/prerequisites still require curriculum review
+Sound Making & Sound Shaping,Lip Trills / Vocal Warmups,3,A2,A4,Lip Trills / Vocal Warmups_T2,Working scaffold — agency ranges/prerequisites still require curriculum review
+Sound Making & Sound Shaping,Lip Trills / Vocal Warmups,4,A2,A4,Lip Trills / Vocal Warmups_T3,Working scaffold — agency ranges/prerequisites still require curriculum review
+Sound Making & Sound Shaping,Vowel Shape Awareness,1,A0,A2,,Working scaffold — agency ranges/prerequisites still require curriculum review
+Sound Making & Sound Shaping,Vowel Shape Awareness,2,A1,A3,Vowel Shape Awareness_T1,Working scaffold — agency ranges/prerequisites still require curriculum review
+Sound Making & Sound Shaping,Vowel Shape Awareness,3,A2,A4,Vowel Shape Awareness_T2,Working scaffold — agency ranges/prerequisites still require curriculum review
+Sound Making & Sound Shaping,Vowel Shape Awareness,4,A2,A4,Vowel Shape Awareness_T3,Working scaffold — agency ranges/prerequisites still require curriculum review
+Sound Making & Sound Shaping,Airflow Awareness,1,A0,A2,,Working scaffold — agency ranges/prerequisites still require curriculum review
+Sound Making & Sound Shaping,Airflow Awareness,2,A1,A3,Airflow Awareness_T1,Working scaffold — agency ranges/prerequisites still require curriculum review
+Sound Making & Sound Shaping,Airflow Awareness,3,A2,A4,Airflow Awareness_T2,Working scaffold — agency ranges/prerequisites still require curriculum review
+Sound Making & Sound Shaping,Airflow Awareness,4,A2,A4,Airflow Awareness_T3,Working scaffold — agency ranges/prerequisites still require curriculum review
+Timbre & Instrument Awareness,Instrument Identification,1,A0,A2,,Working scaffold — agency ranges/prerequisites still require curriculum review
+Timbre & Instrument Awareness,Instrument Identification,2,A1,A3,Instrument Identification_T1,Working scaffold — agency ranges/prerequisites still require curriculum review
+Timbre & Instrument Awareness,Instrument Identification,3,A2,A4,Instrument Identification_T2,Working scaffold — agency ranges/prerequisites still require curriculum review
+Timbre & Instrument Awareness,Instrument Identification,4,A2,A4,Instrument Identification_T3,Working scaffold — agency ranges/prerequisites still require curriculum review
+Timbre & Instrument Awareness,Same Note Different Instrument,1,A0,A2,,Working scaffold — agency ranges/prerequisites still require curriculum review
+Timbre & Instrument Awareness,Same Note Different Instrument,2,A1,A3,Same Note Different Instrument_T1,Working scaffold — agency ranges/prerequisites still require curriculum review
+Timbre & Instrument Awareness,Same Note Different Instrument,3,A2,A4,Same Note Different Instrument_T2,Working scaffold — agency ranges/prerequisites still require curriculum review
+Timbre & Instrument Awareness,Same Note Different Instrument,4,A2,A4,Same Note Different Instrument_T3,Working scaffold — agency ranges/prerequisites still require curriculum review
+Timbre & Instrument Awareness,Instrument Family Recognition,1,A0,A2,,Working scaffold — agency ranges/prerequisites still require curriculum review
+Timbre & Instrument Awareness,Instrument Family Recognition,2,A1,A3,Instrument Family Recognition_T1,Working scaffold — agency ranges/prerequisites still require curriculum review
+Timbre & Instrument Awareness,Instrument Family Recognition,3,A2,A4,Instrument Family Recognition_T2,Working scaffold — agency ranges/prerequisites still require curriculum review
+Timbre & Instrument Awareness,Instrument Family Recognition,4,A2,A4,Instrument Family Recognition_T3,Working scaffold — agency ranges/prerequisites still require curriculum review
+Timbre & Instrument Awareness,Timbre Matching,1,A0,A2,,Working scaffold — agency ranges/prerequisites still require curriculum review
+Timbre & Instrument Awareness,Timbre Matching,2,A1,A3,Timbre Matching_T1,Working scaffold — agency ranges/prerequisites still require curriculum review
+Timbre & Instrument Awareness,Timbre Matching,3,A2,A4,Timbre Matching_T2,Working scaffold — agency ranges/prerequisites still require curriculum review
+Timbre & Instrument Awareness,Timbre Matching,4,A2,A4,Timbre Matching_T3,Working scaffold — agency ranges/prerequisites still require curriculum review
+Timbre & Instrument Awareness,Instrument Free Play,1,A0,A2,,Working scaffold — agency ranges/prerequisites still require curriculum review
+Timbre & Instrument Awareness,Instrument Free Play,2,A1,A3,Instrument Free Play_T1,Working scaffold — agency ranges/prerequisites still require curriculum review
+Timbre & Instrument Awareness,Instrument Free Play,3,A2,A4,Instrument Free Play_T2,Working scaffold — agency ranges/prerequisites still require curriculum review
+Timbre & Instrument Awareness,Instrument Free Play,4,A2,A4,Instrument Free Play_T3,Working scaffold — agency ranges/prerequisites still require curriculum review
+Guided Instrument Play,Follow the Dots (Single Notes),1,A1,A3,Higher vs Lower_T2,Working scaffold — agency ranges/prerequisites still require curriculum review
+Guided Instrument Play,Follow the Dots (Single Notes),2,A2,A4,Follow the Dots (Single Notes)_T1,Working scaffold — agency ranges/prerequisites still require curriculum review
+Guided Instrument Play,Follow the Dots (Single Notes),3,A3,A4,Follow the Dots (Single Notes)_T2,Working scaffold — agency ranges/prerequisites still require curriculum review
+Guided Instrument Play,Follow the Dots (Single Notes),4,A4,A4,Follow the Dots (Single Notes)_T3,Working scaffold — agency ranges/prerequisites still require curriculum review
+Guided Instrument Play,Follow Short Pattern,1,A1,A3,Higher vs Lower_T2,Working scaffold — agency ranges/prerequisites still require curriculum review
+Guided Instrument Play,Follow Short Pattern,2,A2,A4,Follow Short Pattern_T1,Working scaffold — agency ranges/prerequisites still require curriculum review
+Guided Instrument Play,Follow Short Pattern,3,A3,A4,Follow Short Pattern_T2,Working scaffold — agency ranges/prerequisites still require curriculum review
+Guided Instrument Play,Follow Short Pattern,4,A4,A4,Follow Short Pattern_T3,Working scaffold — agency ranges/prerequisites still require curriculum review
+Guided Instrument Play,Follow Phrase,1,A1,A3,Higher vs Lower_T2,Working scaffold — agency ranges/prerequisites still require curriculum review
+Guided Instrument Play,Follow Phrase,2,A2,A4,Follow Phrase_T1,Working scaffold — agency ranges/prerequisites still require curriculum review
+Guided Instrument Play,Follow Phrase,3,A3,A4,Follow Phrase_T2,Working scaffold — agency ranges/prerequisites still require curriculum review
+Guided Instrument Play,Follow Phrase,4,A4,A4,Follow Phrase_T3,Working scaffold — agency ranges/prerequisites still require curriculum review
+Guided Instrument Play,Memory Replay,1,A1,A3,Higher vs Lower_T2,Working scaffold — agency ranges/prerequisites still require curriculum review
+Guided Instrument Play,Memory Replay,2,A2,A4,Memory Replay_T1,Working scaffold — agency ranges/prerequisites still require curriculum review
+Guided Instrument Play,Memory Replay,3,A3,A4,Memory Replay_T2,Working scaffold — agency ranges/prerequisites still require curriculum review
+Guided Instrument Play,Memory Replay,4,A4,A4,Memory Replay_T3,Working scaffold — agency ranges/prerequisites still require curriculum review
+Guided Instrument Play,Expression While Playing,1,A1,A3,Higher vs Lower_T2,Working scaffold — agency ranges/prerequisites still require curriculum review
+Guided Instrument Play,Expression While Playing,2,A2,A4,Expression While Playing_T1,Working scaffold — agency ranges/prerequisites still require curriculum review
+Guided Instrument Play,Expression While Playing,3,A3,A4,Expression While Playing_T2,Working scaffold — agency ranges/prerequisites still require curriculum review
+Guided Instrument Play,Expression While Playing,4,A4,A4,Expression While Playing_T3,Working scaffold — agency ranges/prerequisites still require curriculum review
+Guided Instrument Play,Remove Visual Scaffolds,1,A1,A3,Higher vs Lower_T2,Working scaffold — agency ranges/prerequisites still require curriculum review
+Guided Instrument Play,Remove Visual Scaffolds,2,A2,A4,Remove Visual Scaffolds_T1,Working scaffold — agency ranges/prerequisites still require curriculum review
+Guided Instrument Play,Remove Visual Scaffolds,3,A3,A4,Remove Visual Scaffolds_T2,Working scaffold — agency ranges/prerequisites still require curriculum review
+Guided Instrument Play,Remove Visual Scaffolds,4,A4,A4,Remove Visual Scaffolds_T3,Working scaffold — agency ranges/prerequisites still require curriculum review
+Harmony & Chord Feel,Major vs Minor Chord Recognition,1,A0,A2,Mode Contrast_T1,Working scaffold — agency ranges/prerequisites still require curriculum review
+Harmony & Chord Feel,Major vs Minor Chord Recognition,2,A1,A3,Major vs Minor Chord Recognition_T1,Working scaffold — agency ranges/prerequisites still require curriculum review
+Harmony & Chord Feel,Major vs Minor Chord Recognition,3,A2,A4,Major vs Minor Chord Recognition_T2,Working scaffold — agency ranges/prerequisites still require curriculum review
+Harmony & Chord Feel,Major vs Minor Chord Recognition,4,A2,A4,Major vs Minor Chord Recognition_T3,Working scaffold — agency ranges/prerequisites still require curriculum review
+Harmony & Chord Feel,Chord Color Feel,1,A0,A2,Mode Contrast_T1,Working scaffold — agency ranges/prerequisites still require curriculum review
+Harmony & Chord Feel,Chord Color Feel,2,A1,A3,Chord Color Feel_T1,Working scaffold — agency ranges/prerequisites still require curriculum review
+Harmony & Chord Feel,Chord Color Feel,3,A2,A4,Chord Color Feel_T2,Working scaffold — agency ranges/prerequisites still require curriculum review
+Harmony & Chord Feel,Chord Color Feel,4,A2,A4,Chord Color Feel_T3,Working scaffold — agency ranges/prerequisites still require curriculum review
+Harmony & Chord Feel,Sing Along With Chord,1,A0,A2,Mode Contrast_T1,Working scaffold — agency ranges/prerequisites still require curriculum review
+Harmony & Chord Feel,Sing Along With Chord,2,A1,A3,Sing Along With Chord_T1,Working scaffold — agency ranges/prerequisites still require curriculum review
+Harmony & Chord Feel,Sing Along With Chord,3,A2,A4,Sing Along With Chord_T2,Working scaffold — agency ranges/prerequisites still require curriculum review
+Harmony & Chord Feel,Sing Along With Chord,4,A2,A4,Sing Along With Chord_T3,Working scaffold — agency ranges/prerequisites still require curriculum review
+Harmony & Chord Feel,Root vs Non-Root Feel,1,A0,A2,Mode Contrast_T1,Working scaffold — agency ranges/prerequisites still require curriculum review
+Harmony & Chord Feel,Root vs Non-Root Feel,2,A1,A3,Root vs Non-Root Feel_T1,Working scaffold — agency ranges/prerequisites still require curriculum review
+Harmony & Chord Feel,Root vs Non-Root Feel,3,A2,A4,Root vs Non-Root Feel_T2,Working scaffold — agency ranges/prerequisites still require curriculum review
+Harmony & Chord Feel,Root vs Non-Root Feel,4,A2,A4,Root vs Non-Root Feel_T3,Working scaffold — agency ranges/prerequisites still require curriculum review
+Harmony & Chord Feel,Simple Resolution Feel,1,A0,A2,Mode Contrast_T1,Working scaffold — agency ranges/prerequisites still require curriculum review
+Harmony & Chord Feel,Simple Resolution Feel,2,A1,A3,Simple Resolution Feel_T1,Working scaffold — agency ranges/prerequisites still require curriculum review
+Harmony & Chord Feel,Simple Resolution Feel,3,A2,A4,Simple Resolution Feel_T2,Working scaffold — agency ranges/prerequisites still require curriculum review
+Harmony & Chord Feel,Simple Resolution Feel,4,A2,A4,Simple Resolution Feel_T3,Working scaffold — agency ranges/prerequisites still require curriculum review
+Pitch Naming & Functional Hearing,Do-Re-Mi Association,1,A1,A3,Higher vs Lower_T2,Working scaffold — agency ranges/prerequisites still require curriculum review
+Pitch Naming & Functional Hearing,Do-Re-Mi Association,2,A2,A4,Do-Re-Mi Association_T1,Working scaffold — agency ranges/prerequisites still require curriculum review
+Pitch Naming & Functional Hearing,Do-Re-Mi Association,3,A3,A4,Do-Re-Mi Association_T2,Working scaffold — agency ranges/prerequisites still require curriculum review
+Pitch Naming & Functional Hearing,Do-Re-Mi Association,4,A4,A4,Do-Re-Mi Association_T3,Working scaffold — agency ranges/prerequisites still require curriculum review
+Pitch Naming & Functional Hearing,Melody Echo Using Solfege,1,A1,A3,Higher vs Lower_T2,Working scaffold — agency ranges/prerequisites still require curriculum review
+Pitch Naming & Functional Hearing,Melody Echo Using Solfege,2,A2,A4,Melody Echo Using Solfege_T1,Working scaffold — agency ranges/prerequisites still require curriculum review
+Pitch Naming & Functional Hearing,Melody Echo Using Solfege,3,A3,A4,Melody Echo Using Solfege_T2,Working scaffold — agency ranges/prerequisites still require curriculum review
+Pitch Naming & Functional Hearing,Melody Echo Using Solfege,4,A4,A4,Melody Echo Using Solfege_T3,Working scaffold — agency ranges/prerequisites still require curriculum review
+Pitch Naming & Functional Hearing,Hear 'So' as Home,1,A1,A3,Higher vs Lower_T2,Working scaffold — agency ranges/prerequisites still require curriculum review
+Pitch Naming & Functional Hearing,Hear 'So' as Home,2,A2,A4,Hear 'So' as Home_T1,Working scaffold — agency ranges/prerequisites still require curriculum review
+Pitch Naming & Functional Hearing,Hear 'So' as Home,3,A3,A4,Hear 'So' as Home_T2,Working scaffold — agency ranges/prerequisites still require curriculum review
+Pitch Naming & Functional Hearing,Hear 'So' as Home,4,A4,A4,Hear 'So' as Home_T3,Working scaffold — agency ranges/prerequisites still require curriculum review
+Pitch Naming & Functional Hearing,Basic Interval Naming,1,A1,A3,Higher vs Lower_T2,Working scaffold — agency ranges/prerequisites still require curriculum review
+Pitch Naming & Functional Hearing,Basic Interval Naming,2,A2,A4,Basic Interval Naming_T1,Working scaffold — agency ranges/prerequisites still require curriculum review
+Pitch Naming & Functional Hearing,Basic Interval Naming,3,A3,A4,Basic Interval Naming_T2,Working scaffold — agency ranges/prerequisites still require curriculum review
+Pitch Naming & Functional Hearing,Basic Interval Naming,4,A4,A4,Basic Interval Naming_T3,Working scaffold — agency ranges/prerequisites still require curriculum review
+Pitch Naming & Functional Hearing,Moveable Do Awareness,1,A1,A3,Higher vs Lower_T2,Working scaffold — agency ranges/prerequisites still require curriculum review
+Pitch Naming & Functional Hearing,Moveable Do Awareness,2,A2,A4,Moveable Do Awareness_T1,Working scaffold — agency ranges/prerequisites still require curriculum review
+Pitch Naming & Functional Hearing,Moveable Do Awareness,3,A3,A4,Moveable Do Awareness_T2,Working scaffold — agency ranges/prerequisites still require curriculum review
+Pitch Naming & Functional Hearing,Moveable Do Awareness,4,A4,A4,Moveable Do Awareness_T3,Working scaffold — agency ranges/prerequisites still require curriculum review
