@@ -78,6 +78,15 @@ class AudioController {
       await _preloadNote(note);
     }
 
+    // Preload each instrument's own per-note sample library too, so the
+    // first High/Low round doesn't pay a decode cost inline the first time
+    // a given instrument is picked.
+    for (final instrument in NoteExtension.instrumentsWithSamples) {
+      for (final note in Note.values) {
+        await _preloadNote(note, instrument: instrument);
+      }
+    }
+
     // Preload all SFX
     for (final sfx in SfxType.values) {
       await _preloadSfx(sfx);
@@ -138,9 +147,11 @@ class AudioController {
   Future<void> playNoteForScale(Note note, {String? instrument}) async {
     if (!_isInitialized || _isMuted) return;
 
-    // Stop the previous note if still playing
+    // Stop the previous note if still playing. Awaited so the engine has
+    // actually freed the voice before we request a new one below, instead
+    // of racing the stop against the next play call.
     if (_currentNoteHandle != null) {
-      _soloud!.stop(_currentNoteHandle!);
+      await _soloud!.stop(_currentNoteHandle!);
       _currentNoteHandle = null;
     }
 

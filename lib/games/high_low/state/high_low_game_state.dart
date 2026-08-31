@@ -111,8 +111,12 @@ class HighLowGameState extends ChangeNotifier {
       instrument: _currentInstrument.sampleInstrument,
     );
 
-    // Wait between notes
-    await Future.delayed(const Duration(milliseconds: 800));
+    // Wait between notes. Each sample is ~1.65s long, so this needs to be
+    // long enough for the first note to decay to near-silence on its own
+    // before it's cut off — otherwise the splice into the second note reads
+    // to the ear as one continuous sound instead of two distinct notes
+    // (Trello card 57/58).
+    await Future.delayed(const Duration(milliseconds: 2300));
 
     // Play second note (right character)
     _playingIndex = 1;

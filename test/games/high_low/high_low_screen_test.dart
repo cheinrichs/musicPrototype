@@ -23,13 +23,23 @@ void main() {
     await tester.pumpWidget(const MaterialApp(home: HighLowScreen()));
 
     // Advance past the postFrameCallback that starts the game and the
-    // 800ms gap _playCurrentPrompt waits between the two notes. Not
+    // 2300ms gap _playCurrentPrompt waits between the two notes (Trello
+    // card 57/58 — was 800ms, too short for the ~1.65s note samples). Not
     // pumpAndSettle — Clef and the glow/wiggle treatment use repeating
     // animations that never settle (same reason test/widget_test.dart
     // avoids it).
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 900));
-    await tester.pump(const Duration(milliseconds: 900));
+    await tester.pump(const Duration(milliseconds: 1200));
+    await tester.pump(const Duration(milliseconds: 1200));
+    // The last pump's frame rebuilds the status text with a new
+    // ValueKey(status) (playing -> awaitingInput), which remounts its
+    // Animate wrapper and schedules a fresh zero-duration startup Timer
+    // (flutter_animate's `Animate._restart`) *during* that pump's own
+    // frame — too late for that same call's `elapse()` to fire it. A bare
+    // `pump()` (null duration) skips `elapse()` entirely and would never
+    // fire it either, so this needs one more pump with an explicit
+    // (if zero) duration to actually process it.
+    await tester.pump(Duration.zero);
 
     expect(tester.takeException(), isNull);
     expect(find.byType(HighLowScreen), findsOneWidget);

@@ -92,8 +92,12 @@ extension NoteExtension on Note {
     'flute',
     'guitar',
     'piano',
+    'trumpet',
     'violin',
   };
+
+  /// Public view of [_instrumentsWithSamples], for preloading.
+  static Set<String> get instrumentsWithSamples => _instrumentsWithSamples;
 
   /// Asset path for the note's audio file.
   ///

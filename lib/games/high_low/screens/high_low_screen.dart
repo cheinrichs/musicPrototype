@@ -285,9 +285,28 @@ class _HighLowScreenState extends State<HighLowScreen> {
   /// uses to place everything else. Giving the SizedBox below an explicit,
   /// finite width breaks that dependency on ambient constraints.
   Widget _buildScene(double width) {
-    final charSize = (width * 0.22).clamp(60.0, 110.0);
+    // Sizing and layout below are lifted from Cooper's Trello concept art
+    // (card 56), measured as fractions of *screen* height — the concept
+    // art is ~4:3 and this screen is much wider once landscape, so only
+    // the vertical proportions transfer; horizontal placement is instead
+    // measured directly off Forest.png as actually rendered (BoxFit.cover
+    // crops its top/bottom on this aspect ratio, so the stumps don't sit
+    // where a naive fraction of the *source* image would suggest).
+    // Nominal fractions are bumped above the concept art's raw numbers
+    // (0.51 / 0.36 / 0.22 / 0.12) to compensate for this Column being
+    // scaled down by the FittedBox in _buildBody to fit under the
+    // heading/subtitle/button above it — verified empirically on the
+    // simulator against Forest.png's actual rendered stump position, not
+    // derived analytically.
+    final screenHeight = MediaQuery.of(context).size.height;
+    final charSize = screenHeight * 0.66;
+    final piperHeight = screenHeight * 0.47;
+    final clefHeight = screenHeight * 0.29;
+    // How far above the ground line (Piper/Clef's feet) the stump tops
+    // sit, measured off a rendered screenshot of Forest.png.
+    final stumpLift = screenHeight * 0.16;
     final instrument = _gameState.currentInstrument;
-    final sceneHeight = charSize + 60;
+    final sceneHeight = charSize + stumpLift;
 
     return SizedBox(
       width: width,
@@ -295,29 +314,25 @@ class _HighLowScreenState extends State<HighLowScreen> {
       child: Stack(
         clipBehavior: Clip.none,
         children: [
-          // Piper (fox) — full-body "Encouraging" pose (SongStone-UI-Kit
-          // Assets/Cast/Piper.png, pose 7), left flank, bottom-anchored so
-          // it, Clef, and the instrument pair all share one ground line
-          // (matching where the stumps sit in the background art). Sized a
-          // little short of the full scene height so he doesn't crowd the
-          // question text sitting right above this box.
+          // Piper (fox) — full-body "Encouraging" pose, far left edge,
+          // feet on the ground line (bottom of this box).
           Positioned(
             left: 0,
             bottom: 0,
             child: Image.asset(
               'assets/images/characters/Piper_Encouraging.png',
-              height: sceneHeight * 0.85,
+              height: piperHeight,
               fit: BoxFit.contain,
             ).animate().fade(duration: AppAnimations.medium),
           ),
-          // Clef — right flank (replacement for the deprecated blob)
+          // Clef — far right edge, same ground line as Piper.
           Positioned(
             right: 0,
             bottom: 0,
             child:
                 Image.asset(
                       'assets/images/characters/Clef.png',
-                      width: charSize * 0.55,
+                      height: clefHeight,
                     )
                     .animate(onPlay: (c) => c.repeat(reverse: true))
                     .moveY(
@@ -327,35 +342,35 @@ class _HighLowScreenState extends State<HighLowScreen> {
                       curve: Curves.easeInOut,
                     ),
           ),
-          // Instrument pair, bottom-anchored onto the stumps
+          // Instrument pair, each centered on its stump — lifted above
+          // the Piper/Clef ground line by [stumpLift] so they sit *on
+          // top of* the stumps instead of in the gap between them.
+          // x-fractions measured off the rendered background, not evenly
+          // split, since the stumps aren't perfectly centered.
           Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                _InstrumentButton(
-                  key: ValueKey('left-${instrument.name}'),
-                  assetPath: instrument.leftAssetPath,
-                  size: charSize,
-                  glowing: _gameState.playingIndex == 0,
-                  feedback: _feedbackFor(0),
-                  enabled: _gameState.status == GameStatus.awaitingInput,
-                  onTap: () => _onCharacterTap(0),
-                ),
-                SizedBox(width: charSize * 0.5),
-                _InstrumentButton(
-                  key: ValueKey('right-${instrument.name}'),
-                  assetPath: instrument.rightAssetPath,
-                  size: charSize,
-                  glowing: _gameState.playingIndex == 1,
-                  feedback: _feedbackFor(1),
-                  enabled: _gameState.status == GameStatus.awaitingInput,
-                  onTap: () => _onCharacterTap(1),
-                ),
-              ],
+            left: width * 0.30 - charSize / 2,
+            bottom: stumpLift,
+            child: _InstrumentButton(
+              key: ValueKey('left-${instrument.name}'),
+              assetPath: instrument.leftAssetPath,
+              size: charSize,
+              glowing: _gameState.playingIndex == 0,
+              feedback: _feedbackFor(0),
+              enabled: _gameState.status == GameStatus.awaitingInput,
+              onTap: () => _onCharacterTap(0),
+            ),
+          ),
+          Positioned(
+            left: width * 0.735 - charSize / 2,
+            bottom: stumpLift,
+            child: _InstrumentButton(
+              key: ValueKey('right-${instrument.name}'),
+              assetPath: instrument.rightAssetPath,
+              size: charSize,
+              glowing: _gameState.playingIndex == 1,
+              feedback: _feedbackFor(1),
+              enabled: _gameState.status == GameStatus.awaitingInput,
+              onTap: () => _onCharacterTap(1),
             ),
           ),
         ],
@@ -382,15 +397,16 @@ class _HighLowScreenState extends State<HighLowScreen> {
   }
 
   Widget _buildStatusText() {
-    final name = _gameState.currentInstrument.displayName;
     String text;
     switch (_gameState.status) {
       case GameStatus.notStarted:
         text = 'Get ready...';
       case GameStatus.playing:
         text = 'Listen carefully...';
+      // No hint text once awaiting input (Trello card 56) — the question
+      // heading above already tells the child what to listen for.
       case GameStatus.awaitingInput:
-        text = 'Touch a $name!';
+        text = '';
       case GameStatus.showingFeedback:
         final isCorrect = _gameState.lastResult?.isCorrect ?? false;
         text = isCorrect ? 'Great job!' : 'Try the next one!';
@@ -442,12 +458,98 @@ class _InstrumentButton extends StatelessWidget {
 
     return GestureDetector(
       onTap: enabled ? onTap : null,
-      child: GlowWiggleCharacter(
-        size: size,
-        isActive: showGlow,
-        glowColor: glowColor,
-        child: Image.asset(assetPath, fit: BoxFit.contain),
+      child: SizedBox(
+        width: size,
+        height: size,
+        child: Stack(
+          clipBehavior: Clip.none,
+          alignment: Alignment.center,
+          children: [
+            GlowWiggleCharacter(
+              size: size,
+              isActive: showGlow,
+              glowColor: glowColor,
+              wiggleWhenIdle: false,
+              child: Image.asset(assetPath, fit: BoxFit.contain),
+            ),
+            // Always mounted (so its endless-loop animation isn't
+            // restarted — and re-timered — on every play/stop cycle) but
+            // only visible while this side's note is actually sounding —
+            // a light visual echo of the audio, not the answer feedback.
+            Positioned(
+              top: -size * 0.15,
+              child: IgnorePointer(
+                child: AnimatedOpacity(
+                  opacity: glowing ? 1 : 0,
+                  duration: AppAnimations.fast,
+                  child: _DriftingNotes(size: size),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
+    );
+  }
+}
+
+/// Two small music notes that drift up and fade while an instrument's note
+/// is sounding (Trello card 58). Deliberately understated — this is a
+/// listening game for young children, so the motion must read as a light
+/// echo of the sound, not compete with it for attention.
+class _DriftingNotes extends StatelessWidget {
+  final double size;
+
+  const _DriftingNotes({required this.size});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: size,
+      height: size * 0.6,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          _note(left: size * 0.12, delay: Duration.zero, dx: -size * 0.12),
+          _note(
+            left: size * 0.58,
+            delay: const Duration(milliseconds: 400),
+            dx: size * 0.12,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _note({required double left, required Duration delay, required double dx}) {
+    return Positioned(
+      left: left,
+      bottom: 0,
+      child:
+          Text(
+                '♪',
+                style: TextStyle(fontSize: size * 0.2, color: AppColors.gold),
+              )
+              .animate(onPlay: (c) => c.repeat())
+              .fadeIn(delay: delay, duration: const Duration(milliseconds: 250))
+              .moveY(
+                begin: 0,
+                end: -size * 0.5,
+                delay: delay,
+                duration: const Duration(milliseconds: 1100),
+                curve: Curves.easeOut,
+              )
+              .moveX(
+                begin: 0,
+                end: dx,
+                delay: delay,
+                duration: const Duration(milliseconds: 1100),
+                curve: Curves.easeOut,
+              )
+              .fadeOut(
+                delay: delay + const Duration(milliseconds: 700),
+                duration: const Duration(milliseconds: 400),
+              ),
     );
   }
 }

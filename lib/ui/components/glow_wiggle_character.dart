@@ -15,6 +15,13 @@ class GlowWiggleCharacter extends StatelessWidget {
   final Color glowColor;
   final Duration bobDelay;
 
+  /// Whether the gentle idle bob keeps running while [isActive] is false.
+  /// The Sound Playground wants this (ambient life in an idle scene with
+  /// several characters); High/Low wants the opposite — only the character
+  /// currently sounding should move, so the "who's playing" signal reads
+  /// clearly with just two characters on screen (Trello card 58).
+  final bool wiggleWhenIdle;
+
   const GlowWiggleCharacter({
     super.key,
     required this.child,
@@ -22,6 +29,7 @@ class GlowWiggleCharacter extends StatelessWidget {
     required this.isActive,
     required this.glowColor,
     this.bobDelay = Duration.zero,
+    this.wiggleWhenIdle = true,
   });
 
   @override
@@ -30,10 +38,26 @@ class GlowWiggleCharacter extends StatelessWidget {
       height: size,
       child: Stack(
         alignment: Alignment.center,
+        // The glow below is intentionally larger than the artwork and
+        // must be allowed to spill outside this Stack's own bounds
+        // without being clipped back down to size.
+        clipBehavior: Clip.none,
         children: [
-          // Positioned.fill so the halo takes its size *from* the artwork
-          // instead of dictating the character's footprint.
-          Positioned.fill(child: _buildGlow()),
+          // Sized *larger* than the artwork (not Positioned.fill, which
+          // matched the character's own silhouette almost exactly and left
+          // the radial gradient with no visible margin to bleed into — it
+          // was firing but invisible, hidden behind the opaque character
+          // art). The overhang doesn't affect this Stack's own reported
+          // size (only non-Positioned children do), so it doesn't disturb
+          // callers that position instrument buttons using [size] as their
+          // footprint.
+          Positioned(
+            left: -size * 0.25,
+            right: -size * 0.25,
+            top: -size * 0.25,
+            bottom: -size * 0.25,
+            child: _buildGlow(),
+          ),
           _buildBody(),
         ],
       ),
@@ -48,9 +72,9 @@ class GlowWiggleCharacter extends StatelessWidget {
       child: DecoratedBox(
         decoration: BoxDecoration(
           gradient: RadialGradient(
-            radius: 0.7,
+            radius: 0.85,
             colors: [
-              glowColor.withValues(alpha: 0.55),
+              glowColor.withValues(alpha: 0.75),
               glowColor.withValues(alpha: 0.0),
             ],
           ),
@@ -60,19 +84,26 @@ class GlowWiggleCharacter extends StatelessWidget {
   }
 
   Widget _buildBody() {
+    // Always animated — never swapped for a plain `child` — so the
+    // underlying AnimationController is mounted once for this button's
+    // lifetime instead of being torn down and recreated every time
+    // [isActive] flips. Recreating it on every flip left a zero-duration
+    // startup Timer (flutter_animate's `Animate._restart`) pending whenever
+    // a mount was immediately followed by a dispose in the same tick, which
+    // showed up as a "Timer still pending" failure in widget tests.
+    // Instead, idle just targets a flat (0) bob amplitude.
+    final shouldWiggle = isActive || wiggleWhenIdle;
     return AnimatedScale(
       scale: isActive ? 1.12 : 1.0,
       duration: AppAnimations.medium,
       curve: AppAnimations.bounceCurve,
-      child: child
-          .animate(onPlay: (c) => c.repeat(reverse: true))
-          .moveY(
-            begin: 0,
-            end: -5,
-            delay: bobDelay,
-            duration: const Duration(milliseconds: 1600),
-            curve: Curves.easeInOut,
-          ),
+      child: child.animate(onPlay: (c) => c.repeat(reverse: true)).moveY(
+        begin: 0,
+        end: shouldWiggle ? -5 : 0,
+        delay: bobDelay,
+        duration: const Duration(milliseconds: 1600),
+        curve: Curves.easeInOut,
+      ),
     );
   }
 }
