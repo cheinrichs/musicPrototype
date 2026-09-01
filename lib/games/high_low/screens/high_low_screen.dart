@@ -129,9 +129,24 @@ class _HighLowScreenState extends State<HighLowScreen> {
     }
 
     return GameScreenLayout(
-      background: Image.asset(
-        'assets/images/backgrounds/Forest.png',
-        fit: BoxFit.cover,
+      // The scene (stumps' instruments + flanking Piper/Clef) is composed
+      // into the *background* layer, not the body — see [_buildScene] for
+      // why: it needs to be sized and positioned straight off the real,
+      // unscaled screen so it lines up with where Forest.png's own stumps
+      // land under BoxFit.cover, immune to whatever the caption/controls
+      // above it need to shrink to (Trello card 56 — this rendered fine at
+      // roomy heights and drifted apart from the background at tight
+      // ones, which is exactly the "shrinks toward center while the
+      // background doesn't" signature of the old approach).
+      background: Stack(
+        fit: StackFit.expand,
+        children: [
+          Image.asset(
+            'assets/images/backgrounds/Forest.png',
+            fit: BoxFit.cover,
+          ),
+          _buildScene(context),
+        ],
       ),
       header: _buildHeader(),
       body: _buildBody(context),
@@ -142,9 +157,11 @@ class _HighLowScreenState extends State<HighLowScreen> {
   /// between the header and the footer is tight and varies a lot by
   /// device. [GameScreenLayout] falls back to scrolling if the body
   /// overflows that space, but a kid mid-round shouldn't have to scroll to
-  /// see the rest of the scene — so instead we measure the real budget and
-  /// scale the whole scene down to fit it, uniformly, rather than letting
-  /// any one piece get clipped or overlap its neighbors.
+  /// see the rest of it — so instead we measure the real budget and scale
+  /// the caption/listen-again/status group down to fit it, uniformly,
+  /// rather than letting any one piece get clipped or overlap its
+  /// neighbors. The scene itself isn't part of this Column any more — see
+  /// [_buildScene].
   Widget _buildBody(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -166,12 +183,6 @@ class _HighLowScreenState extends State<HighLowScreen> {
                 _buildPromptArea(),
                 const SizedBox(height: AppSpacing.sm),
                 _buildListenAgainButton(),
-                const SizedBox(height: AppSpacing.sm),
-                // FittedBox always lays its child out with unbounded (0..∞)
-                // constraints, so pass the outer LayoutBuilder's real,
-                // finite width down explicitly rather than re-measuring it
-                // with a nested LayoutBuilder (see _buildScene's doc).
-                _buildScene(constraints.maxWidth),
                 const SizedBox(height: AppSpacing.xs),
                 _buildStatusText(),
               ],
@@ -293,20 +304,37 @@ class _HighLowScreenState extends State<HighLowScreen> {
     );
   }
 
-  /// [width] is the *real* available width, measured by the outer
-  /// LayoutBuilder in [_buildBody] — see the original implementation note
-  /// this preserves: a LayoutBuilder nested inside the FittedBox subtree
-  /// below would see `maxWidth: infinity` regardless of the real layout,
-  /// silently corrupting the Stack's sizing (Trello card 46).
-  Widget _buildScene(double width) {
-    final screenHeight = MediaQuery.of(context).size.height;
-    final charSize = screenHeight * 0.66;
-    final piperHeight = screenHeight * 0.47;
-    final clefHeight = screenHeight * 0.29;
-    // How far above the ground line (Piper/Clef's feet) the stump tops
-    // sit, measured off a rendered screenshot of Forest.png.
-    final stumpLift = screenHeight * 0.16;
-    final sceneHeight = charSize + stumpLift;
+  /// The stumps' instruments, flanked by Piper and Clef further out —
+  /// composed straight into [GameScreenLayout]'s full-bleed `background`
+  /// layer (Trello card 56), sized and positioned directly off
+  /// `MediaQuery.size` rather than off whatever width/height the caption
+  /// and controls above happen to leave in the body's flex layout. That
+  /// distinction matters: this used to live inside the body's
+  /// budget-constrained `FittedBox`, which scales its child down evenly
+  /// around its *center* to make it fit — on a roomy screen that shrink
+  /// was mild and this looked fine, but on a short one it shrank hard
+  /// enough that the scene's own "ground" drifted noticeably up and away
+  /// from Forest.png's actual, un-shrunk stumps (which live in a sibling
+  /// layer the FittedBox never touches), leaving instruments visibly
+  /// floating above them and pulling Piper/Clef in over the stumps
+  /// instead of outside them. Sizing and positioning here directly off
+  /// the real screen makes the scene invariant to that shrink entirely.
+  Widget _buildScene(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    final screenHeight = size.height;
+    final screenWidth = size.width;
+    // Proportions of screen height, per the concept art (Trello card 56):
+    // instruments read at roughly half the screen height, Piper (the
+    // larger, nearer character) at roughly a third, Clef smaller still.
+    final charSize = screenHeight * 0.50;
+    final piperHeight = screenHeight * 0.36;
+    final clefHeight = screenHeight * 0.22;
+    // Distance from the screen's bottom edge up to the stumps' flat top
+    // surface, calibrated against an actual ~2.17:1 render of Forest.png
+    // under BoxFit.cover (Trello card 56 — analytical crop math from the
+    // source painting's own measurements kept landing off by a wide
+    // margin, so this is read directly off the rendered frame instead).
+    final stumpLift = screenHeight * 0.205;
     final isTrigger = _gameState.agencyStage == AgencyStage.trigger;
     final prompt = _gameState.currentPrompt;
     // Trigger-only: whichever character owns this round's target pole is
@@ -315,48 +343,44 @@ class _HighLowScreenState extends State<HighLowScreen> {
     final piperIsDragged = isTrigger && _gameState.draggedIsPiper;
     final clefIsDragged = isTrigger && !_gameState.draggedIsPiper;
 
-    return SizedBox(
-      width: width,
-      height: sceneHeight,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          _buildPiper(piperHeight, piperIsDragged),
-          _buildClef(clefHeight, clefIsDragged),
-          Positioned(
-            left: width * 0.30 - charSize / 2,
-            bottom: stumpLift,
-            child: _wrapDragTarget(
-              side: 0,
-              child: _InstrumentButton(
-                key: ValueKey('left-${_gameState.leftInstrument.name}'),
-                assetPath: _gameState.leftInstrument.leftAssetPath,
-                size: charSize,
-                glowing: _gameState.playingIndex == 0,
-                feedback: _feedbackFor(0),
-                showSparkle: _gameState.showHint && prompt?.targetSide == 0,
-                onTap: () => _onInstrumentTap(0),
-              ),
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        _buildPiper(piperHeight, piperIsDragged),
+        _buildClef(clefHeight, clefIsDragged),
+        Positioned(
+          left: screenWidth * 0.29 - charSize / 2,
+          bottom: stumpLift,
+          child: _wrapDragTarget(
+            side: 0,
+            child: _InstrumentButton(
+              key: ValueKey('left-${_gameState.leftInstrument.name}'),
+              assetPath: _gameState.leftInstrument.leftAssetPath,
+              size: charSize,
+              glowing: _gameState.playingIndex == 0,
+              feedback: _feedbackFor(0),
+              showSparkle: _gameState.showHint && prompt?.targetSide == 0,
+              onTap: () => _onInstrumentTap(0),
             ),
           ),
-          Positioned(
-            left: width * 0.735 - charSize / 2,
-            bottom: stumpLift,
-            child: _wrapDragTarget(
-              side: 1,
-              child: _InstrumentButton(
-                key: ValueKey('right-${_gameState.rightInstrument.name}'),
-                assetPath: _gameState.rightInstrument.rightAssetPath,
-                size: charSize,
-                glowing: _gameState.playingIndex == 1,
-                feedback: _feedbackFor(1),
-                showSparkle: _gameState.showHint && prompt?.targetSide == 1,
-                onTap: () => _onInstrumentTap(1),
-              ),
+        ),
+        Positioned(
+          left: screenWidth * 0.72 - charSize / 2,
+          bottom: stumpLift,
+          child: _wrapDragTarget(
+            side: 1,
+            child: _InstrumentButton(
+              key: ValueKey('right-${_gameState.rightInstrument.name}'),
+              assetPath: _gameState.rightInstrument.rightAssetPath,
+              size: charSize,
+              glowing: _gameState.playingIndex == 1,
+              feedback: _feedbackFor(1),
+              showSparkle: _gameState.showHint && prompt?.targetSide == 1,
+              onTap: () => _onInstrumentTap(1),
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
