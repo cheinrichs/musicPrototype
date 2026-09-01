@@ -154,6 +154,16 @@ class _HighLowScreenState extends State<HighLowScreen> {
           ),
           header: _buildHeader(),
           body: _buildBody(context),
+          // _buildBody already guarantees it never overflows its own budget
+          // (FittedBox(fit: scaleDown) inside a SizedBox sized off the real
+          // available height) — GameScreenLayout's scroll-fallback isn't
+          // needed here, and worse, actively broke the drag-to-answer
+          // interaction: a Scrollable hit-tests its whole viewport, not
+          // just where it paints, so it sat in front of `background` and
+          // silently ate every touch meant for the characters/instruments
+          // underneath before Trigger's drag gesture could ever start. See
+          // [GameScreenLayout.scrollableBody].
+          scrollableBody: false,
         ),
         // The move-on button lives above GameScreenLayout entirely, not
         // inside its background layer — the header/body column's

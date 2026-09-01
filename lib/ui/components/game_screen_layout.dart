@@ -16,12 +16,30 @@ class GameScreenLayout extends StatelessWidget {
   final Widget? footer;
   final Widget? background;
 
+  /// Whether [body] sits in a [SingleChildScrollView] between [header] and
+  /// [footer]. Defaults to true — most screens' bodies size to their own
+  /// content and this is a graceful fallback for the rare tight viewport
+  /// where that content would otherwise overflow.
+  ///
+  /// Set false when a screen both (a) already guarantees its body never
+  /// overflows (e.g. its own `FittedBox(fit: BoxFit.scaleDown)` budget) and
+  /// (b) stacks interactive content — drag targets, draggables — in
+  /// [background] beneath this shell: a `Scrollable`'s hit-testing claims
+  /// its *entire* viewport, not just the area its content actually paints,
+  /// so it silently absorbs every touch meant for that layer underneath
+  /// (High/Low, Trello card — drag-to-answer stopped landing because the
+  /// scroll view in front of it intercepted the gesture before it reached
+  /// the characters/instruments). With this false, [body] sits in a plain
+  /// `Center` instead, which only hit-tests where it actually paints.
+  final bool scrollableBody;
+
   const GameScreenLayout({
     super.key,
     required this.header,
     required this.body,
     this.footer,
     this.background,
+    this.scrollableBody = true,
   });
 
   @override
@@ -42,7 +60,9 @@ class GameScreenLayout extends StatelessWidget {
                   header,
                   Expanded(
                     child: Center(
-                      child: SingleChildScrollView(child: body),
+                      child: scrollableBody
+                          ? SingleChildScrollView(child: body)
+                          : body,
                     ),
                   ),
                   if (footer != null) ...[
