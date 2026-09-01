@@ -86,6 +86,18 @@ children simultaneously, which matters here because a parent is usually sitting 
 **Crash Bandicoot** (secondary, seasoning) — physical comedy, attitude, and genuinely
 difficult games as their own form of respect for the player.
 
+**Describe the answer, not the attempt.** When a child gets something wrong, wording should
+point at the answer rather than deliver a verdict on the child. Same information, no
+judgement attached to the player. Avoid "Nope." / "That's a no." / "Wrong one." / "Not quite
+right." — these evaluate the attempt; they're talent-show language. Prefer "That's not it." /
+"That's the low one." / "Listen again." / "Ooh, nearly!" — these describe the thing. This
+matters because A0/A1 forbid failure states and the project rule is no negative feedback in
+the early games — a verdict is negative feedback even when it's brief and cheerful.
+Describing the answer keeps the interaction warm without pretending the child was right. This
+is a wording rule for every game and every age band, not a copy decision for one screen. (A
+real example: "Ooh, that's a no" was drafted for the 8+ nudge and rejected for exactly this
+reason.)
+
 Current presentation bands — vocabulary and complexity only; tone is constant (see above):
 - **2–3:** concrete, symbolic, minimal language, strong visual metaphors
 - **4–5:** simple words, short instructions, icons + light labels
