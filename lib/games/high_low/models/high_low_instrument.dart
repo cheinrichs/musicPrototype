@@ -16,8 +16,17 @@ enum HighLowInstrument {
   cello('Cello', 'cello', 'cello'),
   flute('Flute', 'flute', 'flute'),
   guitar('Guitar', 'guitar', 'guitar'),
+  // Oboe character art (Trello card 55) — SongStone-UI-Kit's Oboe.png is a
+  // two-up sheet (black/silver-keys / rosewood/gold-keys); black-with-silver
+  // is used as Oboe1 since it's the traditional, most recognizable finish
+  // for a professional oboe (mirrors trumpet's gold-as-Trumpet1 reasoning).
+  oboe('Oboe', 'oboe', 'oboe'),
   piano('Piano', 'piano', 'piano'),
   trumpet('Trumpet', 'trumpet', 'trumpet'),
+  // Tuba character art (Trello card 55) — SongStone-UI-Kit's Tuba.png is a
+  // two-up sheet (silver / brass-gold); brass-gold is used as Tuba1 as the
+  // traditional, most recognizable finish (same reasoning as trumpet).
+  tuba('Tuba', 'tuba', 'tuba'),
   violin('Violin', 'violin', 'violin');
 
   const HighLowInstrument(
