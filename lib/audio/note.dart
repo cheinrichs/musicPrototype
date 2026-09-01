@@ -86,13 +86,28 @@ extension NoteExtension on Note {
   /// `assets/audio/notes/<instrument>/` (roughly two octaves each, one
   /// dynamic level, trimmed and loudness-matched — see Trello card 44).
   /// Anything else falls back to the shared instrument-agnostic set.
+  ///
+  /// The 24 files always fill the `Note` enum's logical C4-B5 slots
+  /// positionally (c4.mp3 .. b5.mp3), but for an instrument whose real
+  /// playable range doesn't cleanly cover two gap-free chromatic octaves
+  /// at true C4-B5, the samples are taken from wherever the source
+  /// library *is* gap-free and mapped in at the same positions — the
+  /// files sound like a real, correctly-ordered two-octave run on that
+  /// instrument, just not at the pitches their names would suggest on a
+  /// piano. Guitar and bells are transposed this way (their upper
+  /// register had gaps at true pitch). So is tuba (Trello card 55): its
+  /// practical range tops out around F4, so its 24 files are sourced
+  /// from real C2-B3 (two real octaves down) rather than C4-B5. Oboe
+  /// (also card 55) needed no transposition — its real C4-B5 is gap-free.
   static const Set<String> _instrumentsWithSamples = {
     'bells',
     'cello',
     'flute',
     'guitar',
+    'oboe',
     'piano',
     'trumpet',
+    'tuba',
     'violin',
   };
 

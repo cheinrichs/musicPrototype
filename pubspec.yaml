@@ -51,8 +51,10 @@ flutter:
     - assets/audio/notes/cello/
     - assets/audio/notes/flute/
     - assets/audio/notes/guitar/
+    - assets/audio/notes/oboe/
     - assets/audio/notes/piano/
     - assets/audio/notes/trumpet/
+    - assets/audio/notes/tuba/
     - assets/audio/notes/violin/
     - assets/audio/sfx/
     - assets/audio/playground/
