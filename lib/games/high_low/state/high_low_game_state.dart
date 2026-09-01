@@ -167,9 +167,16 @@ class HighLowGameState extends ChangeNotifier {
   String? get captionText => _activeCaption?.captionText;
 
   /// Whether the child can drop the dragged character onto an instrument
-  /// right now.
+  /// right now. Deliberately not gated on [_status] beyond "not finished" —
+  /// a child's drop must always override whatever's currently happening on
+  /// screen (a retry's replay, its voice line) rather than being locked
+  /// out behind an animation or a sound (Trello card jmuMDPcT). The one
+  /// exception is once this round has already been answered correctly
+  /// ([DragFeedback.correct]): that guard lives in [dropOnSide] itself, to
+  /// avoid double-recording a result while the advance-to-next-round delay
+  /// is still pending.
   bool get canDrop =>
-      agencyStage == AgencyStage.trigger && _status == GameStatus.awaitingInput;
+      agencyStage == AgencyStage.trigger && _status != GameStatus.completed;
 
   /// Trigger-only: which character is this round's centered, draggable
   /// answer — Piper owns the low pole, Clef owns the high pole (Trello
@@ -245,13 +252,25 @@ class HighLowGameState extends ChangeNotifier {
             ? VoiceLine.putMeOnHigh
             : VoiceLine.putMeOnLow,
     };
-    if (_activeCaption != null) {
-      unawaited(_audio.playVoiceLine(_activeCaption!));
-    }
-
     _status = GameStatus.playing;
     notifyListeners();
-    unawaited(_runIntro(token));
+    if (_activeCaption != null) {
+      unawaited(_playCaptionThenIntro(token, _activeCaption!));
+    } else {
+      unawaited(_runIntro(token));
+    }
+  }
+
+  /// Speak [caption] and only start the note pair once it's actually
+  /// finished — see [AudioController.playVoiceLineAndAwait]. Without this,
+  /// the notes started over the top of the still-speaking prompt (Trello
+  /// card KOuemvVs); [_runIntro]'s own per-note narration (Observe) doesn't
+  /// go through here, since [_startRound] never sets a top-level
+  /// [_activeCaption] for Observe.
+  Future<void> _playCaptionThenIntro(int token, VoiceLine caption) async {
+    await _audio.playVoiceLineAndAwait(caption);
+    if (token != _roundToken) return;
+    await _runIntro(token);
   }
 
   /// Randomly pick the instrument(s) for the round about to play. Tier
@@ -404,16 +423,29 @@ class HighLowGameState extends ChangeNotifier {
   /// Trigger-only: the child drops the dragged character (see
   /// [draggedIsPiper]) onto [side]. Never a failure state — a wrong drop
   /// just retries with a fresh listen.
+  ///
+  /// A drop is a child action, so it always overrides whatever's currently
+  /// happening — a pending retry replay, its "try again" voice line, or the
+  /// note pair mid-playback — rather than being swallowed while an
+  /// animation or sound finishes (Trello card jmuMDPcT). See [canDrop] for
+  /// the one exception (a round already answered correctly).
   void dropOnSide(int side) {
     if (!canDrop) return;
+    if (_dragFeedback == DragFeedback.correct) return;
     final prompt = currentPrompt;
     if (prompt == null) return;
+
+    _audio.stopCurrentNote();
+    _audio.stopCurrentClip();
+    _cancelPendingTimer();
+    final token = ++_roundToken;
+    _introPlaying = false;
+    _playingIndex = null;
 
     _lastDropSide = side;
     _firstResponseSide ??= side;
     _firstResponseCorrect ??= side == prompt.targetSide;
 
-    final token = _roundToken;
     if (side == prompt.targetSide) {
       _dragFeedback = DragFeedback.correct;
       _status = GameStatus.showingFeedback;
@@ -447,7 +479,7 @@ class HighLowGameState extends ChangeNotifier {
             : VoiceLine.putMeOnLow;
         _status = GameStatus.playing;
         notifyListeners();
-        unawaited(_runIntro(token));
+        unawaited(_playCaptionThenIntro(token, _activeCaption!));
       });
     }
   }
@@ -466,7 +498,12 @@ class HighLowGameState extends ChangeNotifier {
     );
   }
 
-  /// Replay the current round's pair. Always available except while a
+  /// Replay the current round: the note pair, then the round's own cue
+  /// (Participate's "listen for the ..." / Trigger's "put me on the ...")
+  /// — in that order (Trello card DC0QKLr3, which was replaying only the
+  /// notes and never the character's prompt). Observe has no separate
+  /// top-level cue to replay — the notes' own live per-note narration
+  /// (see [_runIntro]) already covers it. Always available except while a
   /// Trigger drop's feedback is showing or the game is over.
   Future<void> replay() async {
     if (_status == GameStatus.completed ||
@@ -479,6 +516,11 @@ class HighLowGameState extends ChangeNotifier {
     _status = GameStatus.playing;
     notifyListeners();
     await _runIntro(token);
+    if (token != _roundToken) return;
+    final cue = _activeCaption;
+    if (agencyStage != AgencyStage.observe && cue != null) {
+      await _audio.playVoiceLineAndAwait(cue);
+    }
   }
 
   /// Move on to the next round (or finish the session) right now,

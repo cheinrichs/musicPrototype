@@ -290,6 +290,41 @@ class AudioController {
   /// moment still reads without audio.
   Future<void> playVoiceLine(VoiceLine line) => playClip(line.assetPath);
 
+  /// Play a spoken line and await its natural completion, so the caller can
+  /// sequence something after it finishes speaking (Trello card KOuemvVs —
+  /// a round's intro line was getting cut off by the notes starting over
+  /// it). Deliberately doesn't share [playClipAndAwait]'s synthetic
+  /// 3-second fallback for the uninitialized/muted case: that stand-in
+  /// exists so a silent Sound Playground melody still "takes" roughly as
+  /// long as the real clip would, but here it would just be dead air
+  /// wedged in front of the notes (and would break tests that pump a
+  /// fixed, much shorter duration), so this returns immediately instead
+  /// when there's nothing to actually wait for.
+  Future<void> playVoiceLineAndAwait(VoiceLine line) async {
+    if (!_isInitialized || _isMuted) return;
+
+    if (_currentClipHandle != null) {
+      _soloud!.stop(_currentClipHandle!);
+      _currentClipHandle = null;
+    }
+
+    final assetPath = line.assetPath;
+    if (!_clipCache.containsKey(assetPath)) {
+      await _preloadClip(assetPath);
+    }
+
+    final source = _clipCache[assetPath];
+    if (source == null) return;
+
+    final handle = await _soloud!.play(source);
+    _currentClipHandle = handle;
+
+    while (_soloud!.getIsValidVoiceHandle(handle)) {
+      await Future.delayed(const Duration(milliseconds: 100));
+    }
+    if (_currentClipHandle == handle) _currentClipHandle = null;
+  }
+
   /// Stop the currently playing clip
   void stopCurrentClip() {
     if (_currentClipHandle != null && _isInitialized) {

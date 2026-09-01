@@ -73,21 +73,34 @@ class _RewardScreenState extends State<RewardScreen> {
     return Scaffold(
       body: Stack(
         children: [
-          // Main content
+          // Main content. The app is landscape-only, so the available
+          // height here is tight and varies a lot by device — a
+          // SingleChildScrollView let the Home button scroll off the
+          // bottom of the screen entirely on short viewports (Trello card
+          // yGTCNQKQ). Scaling the whole celebration block down to fit,
+          // uniformly, keeps everything on one screen instead — same
+          // approach as HighLowScreen's body.
           SafeArea(
             child: Padding(
               padding: AppSpacing.screenPadding,
-              child: Center(
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _buildCelebration(),
-                      const SizedBox(height: AppSpacing.xl),
-                      _buildButtons(),
-                    ],
-                  ),
-                ),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  return SizedBox(
+                    width: constraints.maxWidth,
+                    height: constraints.maxHeight,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _buildCelebration(),
+                          const SizedBox(height: AppSpacing.xl),
+                          _buildButtons(),
+                        ],
+                      ),
+                    ),
+                  );
+                },
               ),
             ),
           ),

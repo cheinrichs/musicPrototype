@@ -177,6 +177,13 @@ class _HighLowScreenState extends State<HighLowScreen> {
           height: budget.clamp(160.0, 900.0),
           child: FittedBox(
             fit: BoxFit.scaleDown,
+            // Top-aligned, not the default center (Trello card S1v6sbrK):
+            // this box claims the full body height, and centering the
+            // scaled-down content within it put the caption right across
+            // the play area, blocking the drag path to the instruments and
+            // covering the Listen Again label. Hugging the top keeps it
+            // tucked under the header, out of the stumps' space.
+            alignment: Alignment.topCenter,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -323,18 +330,28 @@ class _HighLowScreenState extends State<HighLowScreen> {
     final size = MediaQuery.of(context).size;
     final screenHeight = size.height;
     final screenWidth = size.width;
-    // Proportions of screen height, per the concept art (Trello card 56):
-    // instruments read at roughly half the screen height, Piper (the
-    // larger, nearer character) at roughly a third, Clef smaller still.
+    // Proportions of screen height, per the concept art (Trello card 56).
+    // Instruments stay put on the stumps (Trello card S1v6sbrK — "in the
+    // right place, don't move them"); Piper and Clef are doubled (Trello
+    // card OCv6kVmd) from their original roughly-a-third/roughly-a-fifth
+    // sizing.
     final charSize = screenHeight * 0.50;
-    final piperHeight = screenHeight * 0.36;
-    final clefHeight = screenHeight * 0.22;
+    final piperHeight = screenHeight * 0.72;
+    final clefHeight = screenHeight * 0.44;
     // Distance from the screen's bottom edge up to the stumps' flat top
     // surface, calibrated against an actual ~2.17:1 render of Forest.png
     // under BoxFit.cover (Trello card 56 — analytical crop math from the
     // source painting's own measurements kept landing off by a wide
     // margin, so this is read directly off the rendered frame instead).
     final stumpLift = screenHeight * 0.205;
+    // How far above the screen's bottom edge (and, for the fixed home
+    // spots, how far further outward past the screen's side edge) Piper
+    // and Clef sit — raised and pushed outward from their old flush-corner
+    // spots (Trello card S1v6sbrK: Piper's home was circled up-and-left of
+    // where she stood, Clef's up-and-right of hers; the drag round's
+    // centered character was sitting below the stump line entirely).
+    final homeLift = screenHeight * 0.08;
+    final homeShift = screenWidth * 0.04;
     final isTrigger = _gameState.agencyStage == AgencyStage.trigger;
     final prompt = _gameState.currentPrompt;
     // Trigger-only: whichever character owns this round's target pole is
@@ -346,8 +363,14 @@ class _HighLowScreenState extends State<HighLowScreen> {
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        _buildPiper(piperHeight, piperIsDragged),
-        _buildClef(clefHeight, clefIsDragged),
+        _buildPiper(
+          piperHeight,
+          piperIsDragged,
+          homeLift,
+          homeShift,
+          stumpLift,
+        ),
+        _buildClef(clefHeight, clefIsDragged, homeLift, homeShift, stumpLift),
         Positioned(
           left: screenWidth * 0.29 - charSize / 2,
           bottom: stumpLift,
@@ -390,7 +413,13 @@ class _HighLowScreenState extends State<HighLowScreen> {
   /// drag distance to both instruments equal, per the design brief. Bobs
   /// continuously either way — that idle motion is Clef's own character
   /// beat, not a "you can drag me" cue.
-  Widget _buildClef(double clefHeight, bool isDragged) {
+  Widget _buildClef(
+    double clefHeight,
+    bool isDragged,
+    double homeLift,
+    double homeShift,
+    double dragLift,
+  ) {
     final clefImage = Image.asset(
       'assets/images/characters/Clef.png',
       height: clefHeight,
@@ -405,9 +434,9 @@ class _HighLowScreenState extends State<HighLowScreen> {
         );
 
     if (!isDragged) {
-      return Positioned(right: 0, bottom: 0, child: bobbing);
+      return Positioned(right: -homeShift, bottom: homeLift, child: bobbing);
     }
-    return _buildDragHandle(image: clefImage, bobbing: bobbing);
+    return _buildDragHandle(image: clefImage, bobbing: bobbing, lift: dragLift);
   }
 
   /// Piper: fixed far-left, unless she's this round's dragged answer
@@ -415,7 +444,13 @@ class _HighLowScreenState extends State<HighLowScreen> {
   /// [_buildClef] for why the dragged character starts centered. Unlike
   /// Clef, Piper doesn't idle-bob while fixed; only picks up motion once
   /// she's the one being dragged.
-  Widget _buildPiper(double piperHeight, bool isDragged) {
+  Widget _buildPiper(
+    double piperHeight,
+    bool isDragged,
+    double homeLift,
+    double homeShift,
+    double dragLift,
+  ) {
     final piperImage = Image.asset(
       'assets/images/characters/Piper_Encouraging.png',
       height: piperHeight,
@@ -424,8 +459,8 @@ class _HighLowScreenState extends State<HighLowScreen> {
 
     if (!isDragged) {
       return Positioned(
-        left: 0,
-        bottom: 0,
+        left: -homeShift,
+        bottom: homeLift,
         child: piperImage.animate().fade(duration: AppAnimations.medium),
       );
     }
@@ -438,7 +473,11 @@ class _HighLowScreenState extends State<HighLowScreen> {
           duration: const Duration(milliseconds: 1200),
           curve: Curves.easeInOut,
         );
-    return _buildDragHandle(image: piperImage, bobbing: bobbing);
+    return _buildDragHandle(
+      image: piperImage,
+      bobbing: bobbing,
+      lift: dragLift,
+    );
   }
 
   /// Wraps a character as the centered, draggable answer — shared by
@@ -446,8 +485,18 @@ class _HighLowScreenState extends State<HighLowScreen> {
   /// round's dragged character, depending on the target pole). [image] is
   /// the plain (unanimated) art used for the drag feedback/left-behind
   /// ghost; [bobbing] is the same art with the idle bob, used at rest.
-  Widget _buildDragHandle({required Widget image, required Widget bobbing}) {
-    return Positioned.fill(
+  /// [lift] raises it off the very bottom edge to the same stump-top line
+  /// the instruments sit on (Trello card S1v6sbrK — it used to sit flush
+  /// against the bottom edge, below the stump line).
+  Widget _buildDragHandle({
+    required Widget image,
+    required Widget bobbing,
+    required double lift,
+  }) {
+    return Positioned(
+      left: 0,
+      right: 0,
+      bottom: lift,
       child: Align(
         alignment: Alignment.bottomCenter,
         child: Draggable<Object>(

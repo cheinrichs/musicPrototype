@@ -167,6 +167,56 @@ void main() {
       },
     );
 
+    testWidgets('a drop always overrides — a new drop cancels a pending retry '
+        'instead of being swallowed while its replay/voice line finishes '
+        '(Trello card jmuMDPcT)', (tester) async {
+      final state = HighLowGameState(
+        totalPrompts: 2,
+        agencyStage: AgencyStage.trigger,
+        conceptTier: ConceptTier.t1,
+      );
+      // Disposed explicitly at the end (the overriding correct drop below
+      // starts a fresh advance timer of its own) rather than via
+      // addTearDown — see the matching comment on "a correct drop..."
+      // above.
+      state.startGame();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 4700));
+
+      final prompt = state.currentPrompt!;
+      final wrongSide = 1 - prompt.targetSide;
+
+      state.dropOnSide(wrongSide);
+      await tester.pump();
+      expect(state.dragFeedback, DragFeedback.retry);
+
+      // Well before the retry's own 1400ms feedback pause (let alone its
+      // replay) would naturally let a drop through again — a child's
+      // drop right now must still be accepted immediately, not queued
+      // behind the animation/sound that's still playing.
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(
+        state.canDrop,
+        isTrue,
+        reason: 'a drop must always override, never be locked out',
+      );
+
+      state.dropOnSide(prompt.targetSide);
+      await tester.pump();
+
+      expect(
+        state.dragFeedback,
+        DragFeedback.correct,
+        reason: 'the overriding drop is processed immediately',
+      );
+      expect(state.correctCount, 1);
+
+      // Let the correct drop's own advance-to-next-round timer (and that
+      // next round's fresh intro) run so nothing's left pending.
+      await tester.pump(const Duration(milliseconds: 1300));
+      state.dispose();
+    });
+
     testWidgets('tapping an instrument explores but never commits an answer', (
       tester,
     ) async {
