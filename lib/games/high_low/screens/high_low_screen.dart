@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import '../../../app/build_info.dart';
 import '../../../app/config.dart';
 import '../../../app/router.dart';
 import '../../../app/state/dev_settings_state.dart';
@@ -18,6 +19,8 @@ import '../../../ui/components/game_screen_layout.dart';
 import '../../../ui/components/glow_wiggle_character.dart';
 import '../../../ui/components/progress_dots.dart';
 import '../../../ui/theme/theme.dart';
+import '../models/round_report.dart';
+import '../services/round_report_service.dart';
 import '../state/high_low_game_state.dart';
 
 /// Main game screen for High/Low ear training.
@@ -36,9 +39,9 @@ import '../state/high_low_game_state.dart';
 ///
 /// A debug-only setup gate (Trello card 92) lets a developer pick the
 /// stage/tier/round-order before the round starts; it only ever mounts
-/// under [kDevMode] (`--dart-define=DEV_MODE=true`, e.g. `make
-/// run-ios-dev`), so a shipping build always goes straight to the
-/// production defaults.
+/// when `devToolsEnabled` (see `app/config.dart` — true for TestFlight and
+/// local debug runs, false for a public App Store build) is true, so a
+/// public build always goes straight to the production defaults.
 class HighLowScreen extends StatefulWidget {
   const HighLowScreen({super.key});
 
@@ -48,7 +51,13 @@ class HighLowScreen extends StatefulWidget {
 
 class _HighLowScreenState extends State<HighLowScreen> {
   late HighLowGameState _gameState;
-  bool _showDevGate = kDevMode;
+  bool _showDevGate = devToolsEnabled;
+
+  /// Boundary for "Report this round"'s screenshot — see
+  /// [RoundReportService.shareReport]. Wraps the whole screen (below), not
+  /// just the scene, so the captured image matches what's actually on
+  /// screen when the button is tapped.
+  final GlobalKey _screenshotKey = GlobalKey();
 
   @override
   void initState() {
@@ -56,7 +65,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
     _gameState = HighLowGameState();
     _gameState.addListener(_onGameStateChanged);
 
-    if (!kDevMode) {
+    if (!devToolsEnabled) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _gameState.startGame();
       });
@@ -125,53 +134,57 @@ class _HighLowScreenState extends State<HighLowScreen> {
   Widget build(BuildContext context) {
     if (_showDevGate) {
       // Debug-only pre-game gate (Trello card 92) — never reachable
-      // outside kDevMode, so a shipping build never shows this.
+      // unless devToolsEnabled, so a public App Store build never shows
+      // this.
       return Scaffold(body: DevSetupOverlay(onStart: _startFromDevGate));
     }
 
-    return Stack(
-      children: [
-        GameScreenLayout(
-          // The scene (stumps' instruments + flanking Piper/Clef) is
-          // composed into the *background* layer, not the body — see
-          // [_buildScene] for why: it needs to be sized and positioned
-          // straight off the real, unscaled screen so it lines up with
-          // where Forest.png's own stumps land under BoxFit.cover, immune
-          // to whatever the caption/controls above it need to shrink to
-          // (Trello card 56 — this rendered fine at roomy heights and
-          // drifted apart from the background at tight ones, which is
-          // exactly the "shrinks toward center while the background
-          // doesn't" signature of the old approach).
-          background: Stack(
-            fit: StackFit.expand,
-            children: [
-              Image.asset(
-                'assets/images/backgrounds/Forest.png',
-                fit: BoxFit.cover,
-              ),
-              _buildScene(context),
-            ],
+    return RepaintBoundary(
+      key: _screenshotKey,
+      child: Stack(
+        children: [
+          GameScreenLayout(
+            // The scene (stumps' instruments + flanking Piper/Clef) is
+            // composed into the *background* layer, not the body — see
+            // [_buildScene] for why: it needs to be sized and positioned
+            // straight off the real, unscaled screen so it lines up with
+            // where Forest.png's own stumps land under BoxFit.cover, immune
+            // to whatever the caption/controls above it need to shrink to
+            // (Trello card 56 — this rendered fine at roomy heights and
+            // drifted apart from the background at tight ones, which is
+            // exactly the "shrinks toward center while the background
+            // doesn't" signature of the old approach).
+            background: Stack(
+              fit: StackFit.expand,
+              children: [
+                Image.asset(
+                  'assets/images/backgrounds/Forest.png',
+                  fit: BoxFit.cover,
+                ),
+                _buildScene(context),
+              ],
+            ),
+            header: _buildHeader(),
+            body: _buildBody(context),
+            // _buildBody already guarantees it never overflows its own budget
+            // (FittedBox(fit: scaleDown) inside a SizedBox sized off the real
+            // available height) — GameScreenLayout's scroll-fallback isn't
+            // needed here, and worse, actively broke the drag-to-answer
+            // interaction: a Scrollable hit-tests its whole viewport, not
+            // just where it paints, so it sat in front of `background` and
+            // silently ate every touch meant for the characters/instruments
+            // underneath before Trigger's drag gesture could ever start. See
+            // [GameScreenLayout.scrollableBody].
+            scrollableBody: false,
           ),
-          header: _buildHeader(),
-          body: _buildBody(context),
-          // _buildBody already guarantees it never overflows its own budget
-          // (FittedBox(fit: scaleDown) inside a SizedBox sized off the real
-          // available height) — GameScreenLayout's scroll-fallback isn't
-          // needed here, and worse, actively broke the drag-to-answer
-          // interaction: a Scrollable hit-tests its whole viewport, not
-          // just where it paints, so it sat in front of `background` and
-          // silently ate every touch meant for the characters/instruments
-          // underneath before Trigger's drag gesture could ever start. See
-          // [GameScreenLayout.scrollableBody].
-          scrollableBody: false,
-        ),
-        // The move-on button lives above GameScreenLayout entirely, not
-        // inside its background layer — the header/body column's
-        // Scrollable absorbs hit-tests across its whole (mostly empty)
-        // area even where nothing paints, so a tap here would silently
-        // never reach a button placed underneath it in `background`.
-        _buildMoveOnButton(context),
-      ],
+          // The move-on button lives above GameScreenLayout entirely, not
+          // inside its background layer — the header/body column's
+          // Scrollable absorbs hit-tests across its whole (mostly empty)
+          // area even where nothing paints, so a tap here would silently
+          // never reach a button placed underneath it in `background`.
+          _buildMoveOnButton(context),
+        ],
+      ),
     );
   }
 
@@ -245,9 +258,65 @@ class _HighLowScreenState extends State<HighLowScreen> {
         ),
         // Spacer for symmetry — the move-on control used to live here, but
         // it's the child's control now, not an adult-only header affordance
-        // (see [_buildMoveOnButton]), so it moved to the bottom right.
-        const SizedBox(width: 44),
+        // (see [_buildMoveOnButton]), so it moved to the bottom right. Only
+        // swapped for the report button under devToolsEnabled (Trello card
+        // on0EymSu) — gated the same way as the dev gate above, so a
+        // public App Store build never shows it either.
+        devToolsEnabled
+            ? CircleIconButton(
+                icon: Icons.ios_share_rounded,
+                tooltip: 'Report this round',
+                onTap: _gameState.currentPrompt == null ? null : _onReportRound,
+              )
+            : const SizedBox(width: 44),
       ],
+    );
+  }
+
+  /// Captures the current round's full state (Trello card on0EymSu) and
+  /// opens the share sheet — see [RoundReportService.shareReport]. Never
+  /// reachable outside devToolsEnabled (same guard as the dev gate), and
+  /// never touches the network: local JSON + PNG, handed off through
+  /// whatever the grown-up picks in the OS share sheet.
+  Future<void> _onReportRound() async {
+    final prompt = _gameState.currentPrompt;
+    if (prompt == null) return;
+
+    final buildInfo = await BuildInfo.current();
+    final respondsToDrops = _gameState.agencyStage == AgencyStage.trigger;
+    final report = RoundReport(
+      capturedAt: DateTime.now(),
+      build: buildInfo,
+      conceptTier: _gameState.conceptTier,
+      agencyStage: _gameState.agencyStage,
+      roundOrder: _gameState.roundOrder,
+      roundNumber: _gameState.currentPromptIndex + 1,
+      totalRounds: _gameState.totalPrompts,
+      targetDirection: prompt.targetDirection,
+      left: RoundReportSide(
+        instrument: _gameState.leftInstrument,
+        note: prompt.firstNote,
+      ),
+      right: RoundReportSide(
+        instrument: _gameState.rightInstrument,
+        note: prompt.secondNote,
+      ),
+      response: RoundReportResponse(
+        applicable: respondsToDrops,
+        side: respondsToDrops ? _gameState.lastDropSide : null,
+        markedCorrect: !respondsToDrops
+            ? null
+            : switch (_gameState.dragFeedback) {
+                DragFeedback.correct => true,
+                DragFeedback.retry => false,
+                DragFeedback.none => null,
+              },
+      ),
+    );
+
+    await RoundReportService.shareReport(
+      report: report,
+      boundaryKey: _screenshotKey,
     );
   }
 

@@ -29,14 +29,19 @@ lint:
 format:
 	dart format .
 
+# Embeds the checked-out commit into "Report this round" (Trello card
+# on0EymSu) via BuildInfo — see lib/app/build_info.dart and the matching
+# --dart-define in .github/workflows/deploy.yml's CI build.
+COMMIT_SHA := $(shell git rev-parse HEAD)
+
 run-ios:
-	flutter run -d "iPhone"
+	flutter run -d "iPhone" --dart-define=COMMIT_SHA=$(COMMIT_SHA)
 
 run-ios-dev:
-	flutter run -d "iPhone" --dart-define=DEV_MODE=true
+	flutter run -d "iPhone" --dart-define=DEV_MODE=true --dart-define=COMMIT_SHA=$(COMMIT_SHA)
 
 build-ios:
-	flutter build ios --debug
+	flutter build ios --debug --dart-define=COMMIT_SHA=$(COMMIT_SHA)
 
 clean:
 	flutter clean

@@ -34,6 +34,12 @@ dependencies:
   # Lumi design system fonts (Fraunces display / Nunito UI)
   google_fonts: ^8.2.1
 
+  # "Report this round" (Trello card on0EymSu) — a local JSON + screenshot
+  # bundle handed off through the OS share sheet, no network involved.
+  path_provider: ^2.1.5 # writable temp dir to stage the report files in
+  package_info_plus: ^8.1.2 # real installed version/build number
+  share_plus: ^10.1.4 # opens the iOS share sheet
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -66,3 +72,4 @@ flutter:
     - assets/images/ui/
     - assets/images/backgrounds/
     - assets/images/backgrounds/learning_paths/
+    - assets/images/logos/

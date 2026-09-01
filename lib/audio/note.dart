@@ -94,11 +94,29 @@ extension NoteExtension on Note {
   /// library *is* gap-free and mapped in at the same positions — the
   /// files sound like a real, correctly-ordered two-octave run on that
   /// instrument, just not at the pitches their names would suggest on a
-  /// piano. Guitar and bells are transposed this way (their upper
-  /// register had gaps at true pitch). So is tuba (Trello card 55): its
-  /// practical range tops out around F4, so its 24 files are sourced
-  /// from real C2-B3 (two real octaves down) rather than C4-B5. Oboe
-  /// (also card 55) needed no transposition — its real C4-B5 is gap-free.
+  /// piano. Guitar is transposed this way: its 24 files are sourced from
+  /// real C2-B3 (two real octaves down), same as tuba below. So is tuba
+  /// (Trello card 55): its practical range tops out around F4, so its 24
+  /// files are also sourced from real C2-B3 rather than C4-B5. Oboe (also
+  /// card 55) needed no transposition — its real C4-B5 is gap-free. Bells
+  /// likewise sounds at true written pitch (C4-B5, no transposition) —
+  /// confirmed by measuring every note file's fundamental frequency
+  /// against its label (2026-09 pitch-mapping audit). That same audit
+  /// found two bells files (c4, c#5) whose *content* — not the mapping —
+  /// measured off-pitch/inharmonic and need re-recording, not a code fix.
+  ///
+  /// IMPORTANT: [HighLowPrompt.correctAnswer] and the rest of the
+  /// High/Low game compare notes purely by [midiNumber] (the logical
+  /// slot) — they have no idea an instrument might be transposed. This is
+  /// harmless when both sides share an instrument, or when neither side
+  /// is guitar/tuba, but a round that pairs guitar or tuba (real pitch
+  /// two octaves below the label) against any non-transposed instrument
+  /// can have its logical "higher" answer be the real-audio opposite.
+  /// `ConceptTier.sameInstrument` only forces matching instruments at
+  /// t1/t2; t3+ can hit this. Flagged, not fixed, by the pitch-mapping
+  /// audit above — fixing it means either comparing real sounding pitch
+  /// instead of [midiNumber], or keeping guitar/tuba from ever being
+  /// paired against an untransposed instrument.
   static const Set<String> _instrumentsWithSamples = {
     'bells',
     'cello',

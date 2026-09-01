@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
+import 'package:ear_trainer/app/config.dart';
+import 'package:ear_trainer/app/state/dev_settings_state.dart';
 import 'package:ear_trainer/games/high_low/screens/high_low_screen.dart';
 import 'package:ear_trainer/ui/components/progress_dots.dart';
 
@@ -134,28 +137,27 @@ void main() {
     'tight landscape (iPhone SE)': tightViewport,
     'roomier landscape (iPhone 14)': roomyViewport,
   }.entries) {
-    testWidgets(
-      'the draggable narrator and both instrument drop targets are '
-      'hit-testable on a ${entry.key} viewport — regression test for the '
-      "body's SingleChildScrollView sitting in front of the scene in "
-      "GameScreenLayout's background layer and silently absorbing every "
-      'touch before it reached the drag interaction (a Scrollable '
-      'hit-tests its whole viewport, not just where it paints)',
-      (tester) async {
-        await pumpAndFinishIntro(tester, viewport: entry.value);
+    testWidgets('the draggable narrator and both instrument drop targets are '
+        'hit-testable on a ${entry.key} viewport — regression test for the '
+        "body's SingleChildScrollView sitting in front of the scene in "
+        "GameScreenLayout's background layer and silently absorbing every "
+        'touch before it reached the drag interaction (a Scrollable '
+        'hit-tests its whole viewport, not just where it paints)', (
+      tester,
+    ) async {
+      await pumpAndFinishIntro(tester, viewport: entry.value);
 
-        expect(
-          find.byType(Draggable<Object>).hitTestable(),
-          findsOneWidget,
-          reason: 'the dragged narrator must be reachable by touch',
-        );
-        expect(
-          find.byType(DragTarget<Object>).hitTestable(),
-          findsNWidgets(2),
-          reason: 'both instrument drop targets must be reachable by touch',
-        );
-      },
-    );
+      expect(
+        find.byType(Draggable<Object>).hitTestable(),
+        findsOneWidget,
+        reason: 'the dragged narrator must be reachable by touch',
+      );
+      expect(
+        find.byType(DragTarget<Object>).hitTestable(),
+        findsNWidgets(2),
+        reason: 'both instrument drop targets must be reachable by touch',
+      );
+    });
   }
 
   testWidgets(
@@ -217,4 +219,57 @@ void main() {
       );
     },
   );
+
+  group('"Report this round" button (Trello card on0EymSu)', () {
+    tearDown(() {
+      // devToolsEnabled is a mutable, session-wide flag (see
+      // app/config.dart) — reset it so one test's override never leaks
+      // into the next.
+      devToolsEnabled = false;
+    });
+
+    testWidgets('is absent for a public build (devToolsEnabled false)', (
+      tester,
+    ) async {
+      devToolsEnabled = false;
+
+      await tester.pumpWidget(const MaterialApp(home: HighLowScreen()));
+      await tester.pump();
+      // Flushes flutter_animate's zero-duration startup timer — see the
+      // matching comment on pumpAndFinishIntro above.
+      await tester.pump(Duration.zero);
+
+      expect(find.byIcon(Icons.ios_share_rounded), findsNothing);
+    });
+
+    testWidgets(
+      'appears in the header once the dev gate is dismissed, gated the '
+      'same way as the rest of the dev tools',
+      (tester) async {
+        devToolsEnabled = true;
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: ChangeNotifierProvider(
+              create: (_) => DevSettingsState(),
+              child: const HighLowScreen(),
+            ),
+          ),
+        );
+        await tester.pump();
+
+        // devToolsEnabled true means the debug-only setup gate (Trello
+        // card 92) shows first — same guard as the report button.
+        expect(find.byIcon(Icons.ios_share_rounded), findsNothing);
+
+        await tester.tap(find.text('Start'));
+        await tester.pump();
+        // Flushes flutter_animate's zero-duration startup timer — see the
+        // matching comment on pumpAndFinishIntro above.
+        await tester.pump(Duration.zero);
+
+        expect(find.byIcon(Icons.ios_share_rounded), findsOneWidget);
+      },
+    );
+  });
 }

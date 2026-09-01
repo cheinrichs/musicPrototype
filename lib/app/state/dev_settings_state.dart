@@ -10,8 +10,9 @@ import '../../models/round_order.dart';
 ///
 /// This is registered in the app's provider tree unconditionally (it's a
 /// cheap, inert ChangeNotifier), but nothing ever *shows* the UI to change
-/// it outside `kDevMode` (`--dart-define=DEV_MODE=true`) — see
-/// `DevSetupOverlay` — so a shipping build has no path to reach anything
+/// it outside `devToolsEnabled` (see `app/config.dart` — true for
+/// TestFlight/debug, false for a public App Store build) — see
+/// `DevSetupOverlay` — so a public build has no path to reach anything
 /// other than these defaults, which are chosen to match the production
 /// experience.
 class DevSettingsState extends ChangeNotifier {

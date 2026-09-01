@@ -45,142 +45,37 @@ class SongStoneHomeScreen extends StatelessWidget {
     );
   }
 
+  /// The real lockup (Cooper's call — stop waiting on it): rainbow stone
+  /// plus the painted "SongStone" wordmark, together in one image. This
+  /// used to be a coded placeholder here — a plain radial-gradient circle
+  /// standing in for the stone, floating Material note icons around it,
+  /// and a separately hand-styled "SongStone" text wordmark underneath.
+  /// Since the real asset already paints its own wordmark (and its own
+  /// notes/flowers/treble clef), all of that placeholder scaffolding is
+  /// gone with it rather than layered on top — showing "SongStone" twice,
+  /// once as pixels and once as a second Flutter Text, would read as a
+  /// mistake, not a flourish.
   Widget _buildWordmark() {
     return SizedBox(
-      width: 320,
-      height: 220,
-      child: Stack(
-        alignment: Alignment.center,
-        clipBehavior: Clip.none,
-        children: [
-          // Iridescent "geode" glow standing in for the concept art's
-          // rainbow egg — no matching art in the kit yet, so this is a
-          // painted gradient rather than a placeholder image.
-          Container(
-                width: 200,
-                height: 200,
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    colors: [
-                      Color(0xFFF3E9CE),
-                      AppColors.lavender,
-                      AppColors.sky,
-                      AppColors.gold,
-                    ],
-                    stops: [0.0, 0.45, 0.75, 1.0],
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.shadow,
-                      blurRadius: 24,
-                      spreadRadius: 4,
-                    ),
-                  ],
-                ),
-              )
-              .animate(onPlay: (c) => c.repeat(reverse: true))
-              .scaleXY(begin: 1, end: 1.04, duration: const Duration(seconds: 3), curve: Curves.easeInOut),
-          _floatingNote(
-            icon: Icons.music_note_rounded,
-            color: AppColors.rose,
-            left: 24,
-            top: 18,
-            delay: const Duration(milliseconds: 0),
+          width: 320,
+          // The source PNG's own aspect ratio (1536x1024) — AspectRatio
+          // keeps it undistorted rather than stretching to a fixed height
+          // the way the old placeholder box did.
+          child: const AspectRatio(
+            aspectRatio: 1536 / 1024,
+            child: Image(
+              image: AssetImage('assets/images/logos/SongStoneLogo.png'),
+              fit: BoxFit.contain,
+            ),
           ),
-          _floatingNote(
-            icon: Icons.music_note_rounded,
-            color: AppColors.sky,
-            right: 20,
-            top: 34,
-            delay: const Duration(milliseconds: 400),
-          ),
-          _floatingNote(
-            icon: Icons.audiotrack_rounded,
-            color: AppColors.gold,
-            right: 44,
-            bottom: 46,
-            delay: const Duration(milliseconds: 800),
-          ),
-          _buildWordmarkText(),
-        ],
-      ),
-    );
-  }
-
-  Widget _floatingNote({
-    required IconData icon,
-    required Color color,
-    double? left,
-    double? right,
-    double? top,
-    double? bottom,
-    required Duration delay,
-  }) {
-    return Positioned(
-      left: left,
-      right: right,
-      top: top,
-      bottom: bottom,
-      child:
-          Icon(icon, color: color, size: 22)
-              .animate(onPlay: (c) => c.repeat(reverse: true))
-              .moveY(
-                begin: 0,
-                end: -8,
-                delay: delay,
-                duration: const Duration(milliseconds: 1400),
-                curve: Curves.easeInOut,
-              ),
-    );
-  }
-
-  /// Chunky outlined display wordmark: a stroked layer behind a filled
-  /// layer gives the painted-outline look from the concept art without
-  /// needing a custom font weight/stroke asset.
-  Widget _buildWordmarkText() {
-    final style = AppTypography.heading1.copyWith(fontSize: 44, height: 1.0);
-    return Stack(
-      alignment: Alignment.center,
-      children: [
-        // Stroke pass (outline)
-        Text.rich(
-          TextSpan(
-            children: [
-              TextSpan(
-                text: 'Song',
-                style: style.copyWith(
-                  foreground: Paint()
-                    ..style = PaintingStyle.stroke
-                    ..strokeWidth = 5
-                    ..color = AppColors.goldDeep,
-                ),
-              ),
-              TextSpan(
-                text: 'Stone',
-                style: style.copyWith(
-                  foreground: Paint()
-                    ..style = PaintingStyle.stroke
-                    ..strokeWidth = 5
-                    ..color = AppColors.skyDeep,
-                ),
-              ),
-            ],
-          ),
-          textAlign: TextAlign.center,
-        ),
-        // Fill pass
-        Text.rich(
-          TextSpan(
-            children: [
-              TextSpan(text: 'Song', style: style.copyWith(color: AppColors.gold)),
-              TextSpan(text: 'Stone', style: style.copyWith(color: AppColors.sky)),
-            ],
-          ),
-          textAlign: TextAlign.center,
-        ),
-      ],
-    );
+        )
+        .animate(onPlay: (c) => c.repeat(reverse: true))
+        .scaleXY(
+          begin: 1,
+          end: 1.03,
+          duration: const Duration(seconds: 3),
+          curve: Curves.easeInOut,
+        );
   }
 
   Widget _buildMenu(BuildContext context) {
@@ -226,40 +121,41 @@ class _MenuPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              AppColors.sky.withValues(alpha: 0.55),
-              AppColors.sage.withValues(alpha: 0.55),
-            ],
-          ),
-          borderRadius: BorderRadius.circular(AppSpacing.radiusRound),
-          border: Border.all(
-            color: AppColors.ivory.withValues(alpha: 0.7),
-            width: 1.5,
-          ),
-          boxShadow: const [
-            BoxShadow(
-              color: AppColors.shadow,
-              blurRadius: 10,
-              offset: Offset(0, 4),
+          onTap: onTap,
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  AppColors.sky.withValues(alpha: 0.55),
+                  AppColors.sage.withValues(alpha: 0.55),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(AppSpacing.radiusRound),
+              border: Border.all(
+                color: AppColors.ivory.withValues(alpha: 0.7),
+                width: 1.5,
+              ),
+              boxShadow: const [
+                BoxShadow(
+                  color: AppColors.shadow,
+                  blurRadius: 10,
+                  offset: Offset(0, 4),
+                ),
+              ],
             ),
-          ],
-        ),
-        child: Text(
-          label,
-          textAlign: TextAlign.center,
-          style: AppTypography.buttonMedium.copyWith(color: AppColors.ivory),
-        ),
-      ),
-    ).animate(delay: delay).fade(duration: AppAnimations.medium).slideX(
-      begin: 0.15,
-      end: 0,
-      duration: AppAnimations.medium,
-    );
+            child: Text(
+              label,
+              textAlign: TextAlign.center,
+              style: AppTypography.buttonMedium.copyWith(
+                color: AppColors.ivory,
+              ),
+            ),
+          ),
+        )
+        .animate(delay: delay)
+        .fade(duration: AppAnimations.medium)
+        .slideX(begin: 0.15, end: 0, duration: AppAnimations.medium);
   }
 }

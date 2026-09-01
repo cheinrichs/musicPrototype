@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../app/config.dart';
 import '../../app/state/dev_settings_state.dart';
 import '../../models/agency_stage.dart';
 import '../../models/concept_tier.dart';
@@ -14,10 +13,11 @@ import '../theme/theme.dart';
 /// specific game's own state — so any game screen can drop this in ahead
 /// of its normal auto-start the same way [HighLowScreen] does.
 ///
-/// The caller is responsible for only mounting this in [kDevMode] (it
-/// renders real, tappable UI regardless of build mode if given the
-/// chance) — that's the actual guarantee that a shipping build can never
-/// present it. Calls [onStart] once the developer confirms.
+/// The caller is responsible for only mounting this when `devToolsEnabled`
+/// (see app/config.dart) is true — it renders real, tappable UI regardless
+/// of build mode if given the chance — that's the actual guarantee that a
+/// public App Store build can never present it. Calls [onStart] once the
+/// developer confirms.
 class DevSetupOverlay extends StatelessWidget {
   final VoidCallback onStart;
 
@@ -45,7 +45,7 @@ class DevSetupOverlay extends StatelessWidget {
                   ),
                   const SizedBox(height: AppSpacing.xs),
                   Text(
-                    'Debug-only — never shown in a release build.',
+                    'Internal build only — never shown on the App Store.',
                     style: AppTypography.label,
                     textAlign: TextAlign.center,
                   ),

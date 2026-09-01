@@ -63,7 +63,7 @@ class SkillProfileScreen extends StatelessWidget {
               style: AppTypography.heading2.copyWith(color: AppColors.primary),
             ),
           ),
-          if (kDevMode) ...[
+          if (devToolsEnabled) ...[
             IconButton(
               onPressed: () => context.read<SkillState>().seedRandom(),
               icon: const Icon(Icons.casino_rounded),

@@ -50,4 +50,18 @@ enum HighLowInstrument {
 
   String get rightAssetPath =>
       'assets/images/characters/instruments/${_assetBaseName}2.png';
+
+  /// Semitones to add to a [Note.midiNumber] to get the *real* sounding
+  /// pitch this instrument's sample actually plays at — see the
+  /// transposition table on [NoteExtension.instrumentsWithSamples] for how
+  /// this was measured (2026-09 pitch-mapping audit) and why it matters:
+  /// [HighLowPrompt.correctAnswer] does NOT apply this, comparing
+  /// [Note.midiNumber] directly instead, which is the known gap this
+  /// exists to make visible (e.g. in "Report this round") rather than
+  /// paper over.
+  int get realPitchOffsetSemitones => switch (this) {
+    HighLowInstrument.guitar => -24,
+    HighLowInstrument.tuba => -24,
+    _ => 0,
+  };
 }

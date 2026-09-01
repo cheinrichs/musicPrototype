@@ -43,7 +43,15 @@ jobs:
         # upload is unique and strictly increasing, as TestFlight requires.
         # pubspec.yaml's version+build number is otherwise static and would
         # cause every deploy after the first to be rejected.
-        run: flutter build ios --release --no-codesign --build-number=${{ github.run_number }}
+        #
+        # --dart-define=COMMIT_SHA embeds the exact commit this binary was
+        # built from into "Report this round" (see lib/app/build_info.dart)
+        # — deliberately NOT DEV_MODE=true: TestFlight and a later App
+        # Store submission share this exact archive, so dev tools have to
+        # stay off at build time and get switched on at runtime instead,
+        # only for non-App-Store installs — see lib/app/config.dart and
+        # ios/Runner/AppDelegate.swift's isInternalDistribution().
+        run: flutter build ios --release --no-codesign --build-number=${{ github.run_number }} --dart-define=COMMIT_SHA=${{ github.sha }}
 
       - name: Decode certificate and profile
         run: |
