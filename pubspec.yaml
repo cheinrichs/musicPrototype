@@ -56,6 +56,7 @@ flutter:
     - assets/audio/notes/violin/
     - assets/audio/sfx/
     - assets/audio/playground/
+    - assets/audio/voice/
     - assets/images/characters/
     - assets/images/characters/instruments/
     - assets/images/icons/

@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../ui/theme/theme.dart';
 import 'router.dart';
+import 'state/dev_settings_state.dart';
 import 'state/progress_state.dart';
 import 'state/skill_state.dart';
 
@@ -16,6 +17,7 @@ class EarTrainerApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => ProgressState()..load()),
         ChangeNotifierProvider(create: (_) => SkillState()..load()),
+        ChangeNotifierProvider(create: (_) => DevSettingsState()),
       ],
       child: MaterialApp.router(
         title: 'Ear Trainer',

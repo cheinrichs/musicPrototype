@@ -5,6 +5,7 @@ import 'package:flutter_soloud/flutter_soloud.dart';
 import 'audio_session.dart';
 import 'note.dart';
 import 'sfx_type.dart';
+import 'voice_line.dart';
 
 /// Audio controller singleton for managing game audio
 /// Wraps flutter_soloud for low-latency playback
@@ -281,6 +282,13 @@ class AudioController {
     }
     if (_currentClipHandle == handle) _currentClipHandle = null;
   }
+
+  /// Play a spoken line (Trello card 91/93). The recordings don't exist
+  /// yet, so this shares the clip cache/loader used for playground
+  /// melodies, which already no-ops silently when an asset is missing —
+  /// callers pair this with an on-screen caption (see [VoiceLine]) so the
+  /// moment still reads without audio.
+  Future<void> playVoiceLine(VoiceLine line) => playClip(line.assetPath);
 
   /// Stop the currently playing clip
   void stopCurrentClip() {

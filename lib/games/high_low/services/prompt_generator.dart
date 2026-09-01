@@ -1,42 +1,44 @@
 import 'dart:math';
 import '../../../audio/note.dart';
+import '../../../models/concept_tier.dart';
+import '../../../models/pitch_direction.dart';
 import '../models/high_low_prompt.dart';
 
-/// Generates prompts for the High/Low game with difficulty scaling
+/// Generates prompts (note pairs) for the High/Low game, sized by
+/// [ConceptTier] (Trello card 95) rather than a raw difficulty number —
+/// see [ConceptTier] for what each tier controls.
 class PromptGenerator {
   final Random _random;
 
-  /// Minimum semitone distance between notes (easiest to distinguish)
-  static const int minSemitoneDistance = 2;
-
-  /// Maximum semitone distance (a full octave)
-  static const int maxSemitoneDistance = 12;
-
   PromptGenerator({Random? random}) : _random = random ?? Random();
 
-  /// Generate a list of prompts for a game session
-  List<HighLowPrompt> generatePrompts({int count = 10, int difficulty = 1}) {
+  /// Generate a full session's worth of prompts. [targetDirections] must
+  /// have length [count] — one target direction per round, typically from
+  /// [RoundSequencer].
+  List<HighLowPrompt> generatePrompts({
+    required int count,
+    required ConceptTier tier,
+    required List<PitchDirection> targetDirections,
+  }) {
+    assert(targetDirections.length == count);
     return List.generate(
       count,
-      (index) =>
-          generatePrompt(promptNumber: index + 1, difficulty: difficulty),
+      (index) => generatePrompt(
+        promptNumber: index + 1,
+        tier: tier,
+        targetDirection: targetDirections[index],
+      ),
     );
   }
 
-  /// Generate a single prompt with the given difficulty
-  /// Difficulty 1-5: 1 = easy (large intervals), 5 = hard (small intervals)
+  /// Generate a single prompt for the given [tier].
   HighLowPrompt generatePrompt({
     required int promptNumber,
-    int difficulty = 1,
+    required ConceptTier tier,
+    required PitchDirection targetDirection,
   }) {
-    // Clamp difficulty to valid range
-    final clampedDifficulty = difficulty.clamp(1, 5);
-
-    // Calculate interval range based on difficulty
-    // Level 1: 7-12 semitones (perfect 5th to octave)
-    // Level 5: 2-4 semitones (major 2nd to major 3rd)
-    final minInterval = _getMinInterval(clampedDifficulty);
-    final maxInterval = _getMaxInterval(clampedDifficulty);
+    final minInterval = tier.minSemitones;
+    final maxInterval = tier.maxSemitones;
 
     // Pick a random first note (avoiding extremes to allow room for interval)
     final availableNotes = Note.values;
@@ -52,7 +54,9 @@ class PromptGenerator {
     final interval =
         _random.nextInt(maxInterval - minInterval + 1) + minInterval;
 
-    // Randomly decide if going up or down
+    // Randomly decide if going up or down — this is what randomizes which
+    // side ends up with the higher note (must stay a coin flip, or the
+    // child learns position instead of pitch).
     final goingUp = _random.nextBool();
 
     // Calculate second note index
@@ -88,40 +92,7 @@ class PromptGenerator {
       firstNote: firstNote,
       secondNote: secondNote,
       promptNumber: promptNumber,
+      targetDirection: targetDirection,
     );
-  }
-
-  int _getMinInterval(int difficulty) {
-    switch (difficulty) {
-      case 1:
-        return 7; // Perfect 5th
-      case 2:
-        return 5; // Perfect 4th
-      case 3:
-        return 4; // Major 3rd
-      case 4:
-        return 3; // Minor 3rd
-      case 5:
-        return 2; // Major 2nd
-      default:
-        return 5;
-    }
-  }
-
-  int _getMaxInterval(int difficulty) {
-    switch (difficulty) {
-      case 1:
-        return 12; // Octave
-      case 2:
-        return 10; // Minor 7th
-      case 3:
-        return 7; // Perfect 5th
-      case 4:
-        return 5; // Perfect 4th
-      case 5:
-        return 4; // Major 3rd
-      default:
-        return 8;
-    }
   }
 }
