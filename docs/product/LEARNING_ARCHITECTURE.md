@@ -62,27 +62,35 @@ Replay behavior belongs primarily to Agency/scaffolding:
 
 Age changes how the same learning concept is communicated.
 
-Current presentation bands:
+**Tone doesn't ladder — only vocabulary does.** Word choice and sentence length vary by
+band. Personality, warmth, and willingness to be silly do not: they're constant across every
+band, project-wide, not a property of any one age. Piper and Clef keep talking at every band,
+same personality throughout — the way Bandit talks to Bluey at six completely differently
+than he talks to Bingo at four, while being unmistakably the same person, and never talking
+down to either.
+
+What reads as babyish isn't having talking animated characters around — it's being
+over-explained to and over-praised. That's worth avoiding at *every* age, not just the
+oldest, and it's why no band (including 8+) should read as "less gamified": doing so would
+contradict this app's own north star (see above: "a playful journey game, not adult
+ear-training exercises with simpler questions").
+
+Humour doesn't arrive at 8+, it grows up. The app is already funny at 2–3 (Wait... BOO! is
+built on comic timing and a character falling over) — slapstick and surprise at the youngest
+band, cheek and wordplay at the oldest, same sense of humour throughout, just different
+vocabulary for expressing it.
+
+Two reference points, held across every band, not just the older ones: **Bluey's Bandit**
+(primary) — verbal, warm, genuinely funny, never condescending, and lands on adults and
+children simultaneously, which matters here because a parent is usually sitting alongside.
+**Crash Bandicoot** (secondary, seasoning) — physical comedy, attitude, and genuinely
+difficult games as their own form of respect for the player.
+
+Current presentation bands — vocabulary and complexity only; tone is constant (see above):
 - **2–3:** concrete, symbolic, minimal language, strong visual metaphors
 - **4–5:** simple words, short instructions, icons + light labels
 - **6–7:** introduce musical terminology, reduce visual crutches
-- **8+:** formal terminology; wittier, less hand-holding — still fully a game
-
-**Why 8+ isn't "less gamified":** the variable that changes across bands is tone, not
-gamification or characters. Piper and Clef keep speaking at every age — dialogue doesn't
-recede at 8+, it gets sharper. What reads as babyish to an eight-year-old is being
-over-explained to and over-praised, not having talking animated characters around. Humour
-doesn't switch on at 8+ either — the app is already funny at 2–3 (Wait... BOO! is built on
-comic timing and a character falling over). What changes is the *kind* of humour: slapstick
-and surprise at the youngest band, verbal wit and wordplay at the oldest. Two reference
-points: **Bluey's Bandit** (primary) — playful, genuinely funny, verbally warm and witty,
-never condescending to the child he's playing with; Bluey's defining trick is landing on
-adults and children simultaneously, which matters here because a parent is often sitting
-alongside. **Crash Bandicoot** (secondary, seasoning) — physical comedy and attitude, and
-genuinely difficult games as their own form of respect for the player. Treating "8+" as
-license to drop the game framing and drill instead directly contradicts this app's own north
-star (see above: "a playful journey game, not adult ear-training exercises with simpler
-questions").
+- **8+:** formal terminology, less hand-holding
 
 Age does **not** determine concept tier.
 
