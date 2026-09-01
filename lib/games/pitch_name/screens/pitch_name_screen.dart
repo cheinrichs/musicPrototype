@@ -62,13 +62,16 @@ class _PitchNameScreenState extends State<PitchNameScreen> {
       }
       final routeExtra =
           GoRouterState.of(context).extra as Map<String, dynamic>?;
-      context.go(AppRoutes.reward, extra: {
-        'correctCount': _gameState.correctCount,
-        'totalCount': _gameState.totalPrompts,
-        'gameType': 'pitch_name',
-        'fromPath': routeExtra?['fromPath'] ?? false,
-        'nodeId': routeExtra?['nodeId'],
-      });
+      context.go(
+        AppRoutes.reward,
+        extra: {
+          'correctCount': _gameState.correctCount,
+          'totalCount': _gameState.totalPrompts,
+          'gameType': 'pitch_name',
+          'fromPath': routeExtra?['fromPath'] ?? false,
+          'nodeId': routeExtra?['nodeId'],
+        },
+      );
     }
     setState(() {});
   }
@@ -110,7 +113,7 @@ class _PitchNameScreenState extends State<PitchNameScreen> {
         ProgressDots(
           totalDots: _gameState.totalPrompts,
           currentIndex: _gameState.currentPromptIndex,
-          results: _gameState.results.map((r) => r.isCorrect).toList(),
+          completedCount: _gameState.results.length,
         ),
         const SizedBox(width: 48),
       ],
@@ -128,24 +131,24 @@ class _PitchNameScreenState extends State<PitchNameScreen> {
       children: [
         if (showFeedback)
           Container(
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-              color: lastResult.isCorrect
-                  ? AppColors.correctLight
-                  : AppColors.incorrectLight,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              lastResult.isCorrect
-                  ? Icons.check_rounded
-                  : Icons.close_rounded,
-              size: 48,
-              color: lastResult.isCorrect
-                  ? AppColors.correct
-                  : AppColors.incorrect,
-            ),
-          )
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  color: lastResult.isCorrect
+                      ? AppColors.correctLight
+                      : AppColors.incorrectLight,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  lastResult.isCorrect
+                      ? Icons.check_rounded
+                      : Icons.close_rounded,
+                  size: 48,
+                  color: lastResult.isCorrect
+                      ? AppColors.correct
+                      : AppColors.incorrect,
+                ),
+              )
               .animate()
               .scale(
                 begin: const Offset(0.5, 0.5),
@@ -163,10 +166,10 @@ class _PitchNameScreenState extends State<PitchNameScreen> {
           ),
         const SizedBox(height: AppSpacing.md),
         Text(
-          _statusText(),
-          style: AppTypography.heading3,
-          textAlign: TextAlign.center,
-        )
+              _statusText(),
+              style: AppTypography.heading3,
+              textAlign: TextAlign.center,
+            )
             .animate(key: ValueKey(_gameState.status))
             .fade(duration: AppAnimations.fast),
       ],
@@ -226,8 +229,9 @@ class _PitchNameScreenState extends State<PitchNameScreen> {
           ),
           child: Text(
             choice.solfege,
-            style: AppTypography.heading3
-                .copyWith(color: AppColors.textOnPrimary),
+            style: AppTypography.heading3.copyWith(
+              color: AppColors.textOnPrimary,
+            ),
           ),
         );
       }),

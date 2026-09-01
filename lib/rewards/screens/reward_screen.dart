@@ -157,23 +157,18 @@ class _RewardScreenState extends State<RewardScreen> {
             .fade(duration: AppAnimations.medium)
             .slideY(begin: 0.2, end: 0, duration: AppAnimations.medium),
         const SizedBox(height: AppSpacing.md),
-        // Score
-        Text(
-              '${widget.correctCount}/${widget.totalCount} correct',
-              style: AppTypography.heading3,
-            )
-            .animate(delay: const Duration(milliseconds: 200))
-            .fade(duration: AppAnimations.medium)
-            .slideY(begin: 0.2, end: 0, duration: AppAnimations.medium),
-        const SizedBox(height: AppSpacing.sm),
-        // Encouragement
+        // Encouragement. No visible score here (Trello card yGTCNQKQ
+        // follow-up) — whether the app shows scoring at all is still an
+        // open product question, and it shouldn't get answered by this
+        // screen just because a number happened to be sitting right here.
         Text(
               encouragementMessage,
               style: AppTypography.bodyMedium,
               textAlign: TextAlign.center,
             )
-            .animate(delay: const Duration(milliseconds: 400))
-            .fade(duration: AppAnimations.medium),
+            .animate(delay: const Duration(milliseconds: 200))
+            .fade(duration: AppAnimations.medium)
+            .slideY(begin: 0.2, end: 0, duration: AppAnimations.medium),
       ],
     );
   }

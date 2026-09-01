@@ -55,13 +55,16 @@ class _RhythmScreenState extends State<RhythmScreen> {
       }
       final routeExtra =
           GoRouterState.of(context).extra as Map<String, dynamic>?;
-      context.go(AppRoutes.reward, extra: {
-        'correctCount': _gameState.correctCount,
-        'totalCount': _gameState.totalPrompts,
-        'gameType': 'rhythm_id',
-        'fromPath': routeExtra?['fromPath'] ?? false,
-        'nodeId': routeExtra?['nodeId'],
-      });
+      context.go(
+        AppRoutes.reward,
+        extra: {
+          'correctCount': _gameState.correctCount,
+          'totalCount': _gameState.totalPrompts,
+          'gameType': 'rhythm_id',
+          'fromPath': routeExtra?['fromPath'] ?? false,
+          'nodeId': routeExtra?['nodeId'],
+        },
+      );
     }
     setState(() {});
   }
@@ -101,7 +104,7 @@ class _RhythmScreenState extends State<RhythmScreen> {
         ProgressDots(
           totalDots: _gameState.totalPrompts,
           currentIndex: _gameState.currentPromptIndex,
-          results: _gameState.results.map((r) => r.isCorrect).toList(),
+          completedCount: _gameState.results.length,
         ),
         const SizedBox(width: 48),
       ],
@@ -119,24 +122,24 @@ class _RhythmScreenState extends State<RhythmScreen> {
       children: [
         if (showFeedback)
           Container(
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-              color: lastResult.isCorrect
-                  ? AppColors.correctLight
-                  : AppColors.incorrectLight,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              lastResult.isCorrect
-                  ? Icons.check_rounded
-                  : Icons.close_rounded,
-              size: 48,
-              color: lastResult.isCorrect
-                  ? AppColors.correct
-                  : AppColors.incorrect,
-            ),
-          )
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  color: lastResult.isCorrect
+                      ? AppColors.correctLight
+                      : AppColors.incorrectLight,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  lastResult.isCorrect
+                      ? Icons.check_rounded
+                      : Icons.close_rounded,
+                  size: 48,
+                  color: lastResult.isCorrect
+                      ? AppColors.correct
+                      : AppColors.incorrect,
+                ),
+              )
               .animate()
               .scale(
                 begin: const Offset(0.5, 0.5),
@@ -153,27 +156,23 @@ class _RhythmScreenState extends State<RhythmScreen> {
             child: const SizedBox(
               width: 80,
               height: 80,
-              child: Center(
-                child: Text('🥁', style: TextStyle(fontSize: 56)),
-              ),
+              child: Center(child: Text('🥁', style: TextStyle(fontSize: 56))),
             ),
           ),
         const SizedBox(height: AppSpacing.xl),
         Text(
-          _promptLabel(),
-          style: AppTypography.heading3,
-          textAlign: TextAlign.center,
-        )
-            .animate(
-              key: ValueKey('${_gameState.status}_${_gameState.phase}'),
+              _promptLabel(),
+              style: AppTypography.heading3,
+              textAlign: TextAlign.center,
             )
+            .animate(key: ValueKey('${_gameState.status}_${_gameState.phase}'))
             .fade(duration: AppAnimations.fast),
         const SizedBox(height: AppSpacing.sm),
         Text(
-          _statusText(),
-          style: AppTypography.bodyMedium,
-          textAlign: TextAlign.center,
-        )
+              _statusText(),
+              style: AppTypography.bodyMedium,
+              textAlign: TextAlign.center,
+            )
             .animate(key: ValueKey(_gameState.status))
             .fade(duration: AppAnimations.fast),
       ],
@@ -206,9 +205,7 @@ class _RhythmScreenState extends State<RhythmScreen> {
       case GameStatus.showingFeedback:
         final result = _gameState.lastResult;
         if (result == null) return '';
-        return result.areSame
-            ? 'They were the same!'
-            : 'They were different!';
+        return result.areSame ? 'They were the same!' : 'They were different!';
       default:
         return '';
     }

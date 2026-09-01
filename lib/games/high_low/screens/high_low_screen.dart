@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
@@ -128,28 +129,39 @@ class _HighLowScreenState extends State<HighLowScreen> {
       return Scaffold(body: DevSetupOverlay(onStart: _startFromDevGate));
     }
 
-    return GameScreenLayout(
-      // The scene (stumps' instruments + flanking Piper/Clef) is composed
-      // into the *background* layer, not the body — see [_buildScene] for
-      // why: it needs to be sized and positioned straight off the real,
-      // unscaled screen so it lines up with where Forest.png's own stumps
-      // land under BoxFit.cover, immune to whatever the caption/controls
-      // above it need to shrink to (Trello card 56 — this rendered fine at
-      // roomy heights and drifted apart from the background at tight
-      // ones, which is exactly the "shrinks toward center while the
-      // background doesn't" signature of the old approach).
-      background: Stack(
-        fit: StackFit.expand,
-        children: [
-          Image.asset(
-            'assets/images/backgrounds/Forest.png',
-            fit: BoxFit.cover,
+    return Stack(
+      children: [
+        GameScreenLayout(
+          // The scene (stumps' instruments + flanking Piper/Clef) is
+          // composed into the *background* layer, not the body — see
+          // [_buildScene] for why: it needs to be sized and positioned
+          // straight off the real, unscaled screen so it lines up with
+          // where Forest.png's own stumps land under BoxFit.cover, immune
+          // to whatever the caption/controls above it need to shrink to
+          // (Trello card 56 — this rendered fine at roomy heights and
+          // drifted apart from the background at tight ones, which is
+          // exactly the "shrinks toward center while the background
+          // doesn't" signature of the old approach).
+          background: Stack(
+            fit: StackFit.expand,
+            children: [
+              Image.asset(
+                'assets/images/backgrounds/Forest.png',
+                fit: BoxFit.cover,
+              ),
+              _buildScene(context),
+            ],
           ),
-          _buildScene(context),
-        ],
-      ),
-      header: _buildHeader(),
-      body: _buildBody(context),
+          header: _buildHeader(),
+          body: _buildBody(context),
+        ),
+        // The move-on button lives above GameScreenLayout entirely, not
+        // inside its background layer — the header/body column's
+        // Scrollable absorbs hit-tests across its whole (mostly empty)
+        // area even where nothing paints, so a tap here would silently
+        // never reach a button placed underneath it in `background`.
+        _buildMoveOnButton(context),
+      ],
     );
   }
 
@@ -219,21 +231,83 @@ class _HighLowScreenState extends State<HighLowScreen> {
         ProgressDots(
           totalDots: _gameState.totalPrompts,
           currentIndex: _gameState.currentPromptIndex,
-          results: _gameState.results.map((r) => r.isCorrect).toList(),
+          completedCount: _gameState.results.length,
         ),
-        // Move-on arrow: available from the very start of every round, at
-        // every stage — it exists so an adult can advance a tiring child
-        // past a round that (in Observe/Participate) never auto-advances
-        // on its own. Never gated on game phase (Trello card 91).
-        CircleIconButton(
-          icon: Icons.arrow_forward_rounded,
-          tooltip: 'Move on',
-          onTap: _gameState.status == GameStatus.completed
-              ? null
-              : _gameState.moveOn,
-        ),
+        // Spacer for symmetry — the move-on control used to live here, but
+        // it's the child's control now, not an adult-only header affordance
+        // (see [_buildMoveOnButton]), so it moved to the bottom right.
+        const SizedBox(width: 44),
       ],
     );
+  }
+
+  /// The child's move-on/skip control (Trello card: "the move-on arrow is
+  /// no longer adult-only"). Available from the very start of every round,
+  /// at every stage, and never gated on game phase — a child who wants to
+  /// move on should be able to, same as before (Trello card 91), just from
+  /// a spot they can actually find and reach themselves: bottom right, not
+  /// the header's adult-reach top corner. Sized a notch above the header's
+  /// quiet 44px controls and lifted with a shadow so it reads as tappable,
+  /// but deliberately no bigger and no more animated than that — big
+  /// enough to find, not so big it out-competes the instruments and
+  /// becomes the more interesting thing to tap.
+  ///
+  /// Not pinned to the literal screen corner: Clef's doubled, fixed-right
+  /// home spot (Trello card OCv6kVmd) now reaches close enough to that
+  /// corner that a corner-pinned button sat stamped across her face, and
+  /// the right instrument's stump (never moved — Trello card S1v6sbrK,
+  /// "in the right place, don't move them") sits close behind it too —
+  /// see [_moveOnSafeLeftBoundary]. This keeps the button inboard of both,
+  /// still unambiguously on the right/bottom of the screen, clear of every
+  /// round's geometry. Positioned outside [GameScreenLayout]'s own
+  /// SafeArea so it isn't shrunk by the body's fit-to-budget scaling the
+  /// way the header/caption group is.
+  Widget _buildMoveOnButton(BuildContext context) {
+    final media = MediaQuery.of(context);
+    const buttonSize = 56.0;
+    final rightInset =
+        (media.size.width - _moveOnSafeLeftBoundary(media.size)) +
+        AppSpacing.md;
+
+    return Positioned(
+      right: rightInset + media.padding.right,
+      bottom: AppSpacing.lg + media.padding.bottom,
+      child: CircleIconButton(
+        icon: Icons.arrow_forward_rounded,
+        tooltip: 'Move on',
+        size: buttonSize,
+        iconSize: 28,
+        elevated: true,
+        onTap: _gameState.status == GameStatus.completed
+            ? null
+            : _gameState.moveOn,
+      ),
+    );
+  }
+
+  /// The x-coordinate the move-on button must stay left of — whichever is
+  /// more restrictive of Clef's fixed-right home spot and the right
+  /// instrument's stump, both on [_buildScene]'s own math (kept in sync by
+  /// hand since these are small, self-contained calculations; if her
+  /// sizing/position or the instruments' there changes, this needs the
+  /// same update):
+  /// - Clef: `homeShift`/`clefHeight` formulas, plus her asset's own
+  ///   aspect ratio (Clef.png is 276×354) to get her actual on-screen
+  ///   width.
+  /// - Right instrument: `charSize`/`0.72` center formula — this turned
+  ///   out to be the tighter of the two in practice, since the stump sits
+  ///   closer to that corner than Clef's fixed spot does.
+  double _moveOnSafeLeftBoundary(Size screenSize) {
+    const clefAssetAspect = 276 / 354;
+    final clefHeight = screenSize.height * 0.44;
+    final homeShift = screenSize.width * 0.04;
+    final clefFixedLeftEdge =
+        screenSize.width + homeShift - clefHeight * clefAssetAspect;
+
+    final charSize = screenSize.height * 0.50;
+    final rightInstrumentRightEdge = screenSize.width * 0.72 + charSize / 2;
+
+    return math.min(clefFixedLeftEdge, rightInstrumentRightEdge);
   }
 
   /// The current round's spoken-line placeholder (Observe's live

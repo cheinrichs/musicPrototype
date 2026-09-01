@@ -6,19 +6,28 @@ import '../theme/theme.dart';
 ///
 /// Restyled as the Lumi "pill stepper" (`.c-stepper` in
 /// SongStone-UI-Kit/UI/kit.css): a parchment pill housing a row of dots
-/// that are muted sage when upcoming, gold and enlarged when current,
-/// and filled gold (or a soft rose if the prompt was missed) once done.
+/// that are muted sage when upcoming, gold and enlarged when current, and
+/// filled gold once done. Deliberately doesn't distinguish a missed round
+/// from a correct one — it used to turn a completed dot rose/red for a
+/// wrong answer, which is a per-round failure state the design forbids at
+/// low agency levels, and in practice let one child point out to another
+/// that they'd gotten one wrong. This is a progress indicator, not a
+/// scoreboard: it shows how far through the stage the child is, nothing
+/// about how they did.
 class ProgressDots extends StatelessWidget {
   final int totalDots;
   final int currentIndex;
-  final List<bool?>
-  results; // true = correct, false = incorrect, null = not answered
+
+  /// How many rounds have been completed so far — drives which dots show
+  /// as "done" (gold) versus upcoming (sage). Not what the round's answer
+  /// was; see the class doc for why.
+  final int completedCount;
 
   const ProgressDots({
     super.key,
     required this.totalDots,
     required this.currentIndex,
-    this.results = const [],
+    this.completedCount = 0,
   });
 
   @override
@@ -52,17 +61,16 @@ class ProgressDots extends StatelessWidget {
   }
 
   Widget _buildDot(int index) {
-    final isCompleted = index < results.length;
+    final isCompleted = index < completedCount;
     final isCurrent = index == currentIndex;
-    final result = isCompleted ? results[index] : null;
 
     Color fill;
     Color border;
     double size = 15;
 
     if (isCompleted) {
-      fill = result == true ? AppColors.gold : AppColors.rose;
-      border = result == true ? AppColors.goldDeep : AppColors.incorrect;
+      fill = AppColors.gold;
+      border = AppColors.goldDeep;
     } else if (isCurrent) {
       fill = AppColors.gold;
       border = AppColors.goldDeep;
@@ -81,13 +89,14 @@ class ProgressDots extends StatelessWidget {
         shape: BoxShape.circle,
         border: Border.all(color: border, width: isCurrent ? 2 : 1.5),
         boxShadow: isCurrent
-            ? [BoxShadow(color: AppColors.gold.withValues(alpha: 0.3), blurRadius: 0, spreadRadius: 3)]
-            : const [
+            ? [
                 BoxShadow(
-                  color: Colors.white24,
-                  offset: Offset(0, 1),
+                  color: AppColors.gold.withValues(alpha: 0.3),
+                  blurRadius: 0,
+                  spreadRadius: 3,
                 ),
-              ],
+              ]
+            : const [BoxShadow(color: Colors.white24, offset: Offset(0, 1))],
       ),
     );
 
@@ -109,7 +118,7 @@ class ProgressDots extends StatelessWidget {
     }
 
     // Animate newly completed dots
-    if (isCompleted && index == results.length - 1) {
+    if (isCompleted && index == completedCount - 1) {
       dot = dot
           .animate()
           .scale(

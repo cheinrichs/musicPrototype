@@ -114,7 +114,7 @@ class _ScaleDirectionScreenState extends State<ScaleDirectionScreen> {
         ProgressDots(
           totalDots: _gameState.totalPrompts,
           currentIndex: _gameState.currentPromptIndex,
-          results: _gameState.results.map((r) => r.isCorrect).toList(),
+          completedCount: _gameState.results.length,
         ),
         // Spacer for symmetry
         const SizedBox(width: 48),

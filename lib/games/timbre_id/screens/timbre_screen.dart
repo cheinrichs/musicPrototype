@@ -59,13 +59,16 @@ class _TimbreScreenState extends State<TimbreScreen> {
       }
       final routeExtra =
           GoRouterState.of(context).extra as Map<String, dynamic>?;
-      context.go(AppRoutes.reward, extra: {
-        'correctCount': _gameState.correctCount,
-        'totalCount': _gameState.totalPrompts,
-        'gameType': 'timbre_id',
-        'fromPath': routeExtra?['fromPath'] ?? false,
-        'nodeId': routeExtra?['nodeId'],
-      });
+      context.go(
+        AppRoutes.reward,
+        extra: {
+          'correctCount': _gameState.correctCount,
+          'totalCount': _gameState.totalPrompts,
+          'gameType': 'timbre_id',
+          'fromPath': routeExtra?['fromPath'] ?? false,
+          'nodeId': routeExtra?['nodeId'],
+        },
+      );
     }
     setState(() {});
   }
@@ -107,7 +110,7 @@ class _TimbreScreenState extends State<TimbreScreen> {
         ProgressDots(
           totalDots: _gameState.totalPrompts,
           currentIndex: _gameState.currentPromptIndex,
-          results: _gameState.results.map((r) => r.isCorrect).toList(),
+          completedCount: _gameState.results.length,
         ),
         const SizedBox(width: 48),
       ],
@@ -124,24 +127,24 @@ class _TimbreScreenState extends State<TimbreScreen> {
       children: [
         if (showFeedback)
           Container(
-            width: 72,
-            height: 72,
-            decoration: BoxDecoration(
-              color: lastResult.isCorrect
-                  ? AppColors.correctLight
-                  : AppColors.incorrectLight,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(
-              lastResult.isCorrect
-                  ? Icons.check_rounded
-                  : Icons.close_rounded,
-              size: 40,
-              color: lastResult.isCorrect
-                  ? AppColors.correct
-                  : AppColors.incorrect,
-            ),
-          )
+                width: 72,
+                height: 72,
+                decoration: BoxDecoration(
+                  color: lastResult.isCorrect
+                      ? AppColors.correctLight
+                      : AppColors.incorrectLight,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  lastResult.isCorrect
+                      ? Icons.check_rounded
+                      : Icons.close_rounded,
+                  size: 40,
+                  color: lastResult.isCorrect
+                      ? AppColors.correct
+                      : AppColors.incorrect,
+                ),
+              )
               .animate()
               .scale(
                 begin: const Offset(0.5, 0.5),
@@ -159,10 +162,10 @@ class _TimbreScreenState extends State<TimbreScreen> {
           ),
         const SizedBox(height: AppSpacing.md),
         Text(
-          _statusText(),
-          style: AppTypography.heading3,
-          textAlign: TextAlign.center,
-        )
+              _statusText(),
+              style: AppTypography.heading3,
+              textAlign: TextAlign.center,
+            )
             .animate(key: ValueKey(_gameState.status))
             .fade(duration: AppAnimations.fast),
       ],
@@ -202,13 +205,19 @@ class _TimbreScreenState extends State<TimbreScreen> {
         if (showFeedback && lastResult != null) {
           if (instrument == lastResult.correct) {
             overlayColor = AppColors.correct.withValues(alpha: 0.2);
-            badge = const Icon(Icons.check_rounded,
-                color: AppColors.correct, size: 20);
+            badge = const Icon(
+              Icons.check_rounded,
+              color: AppColors.correct,
+              size: 20,
+            );
           } else if (instrument == lastResult.selected &&
               !lastResult.isCorrect) {
             overlayColor = AppColors.incorrect.withValues(alpha: 0.2);
-            badge = const Icon(Icons.close_rounded,
-                color: AppColors.incorrect, size: 20);
+            badge = const Icon(
+              Icons.close_rounded,
+              color: AppColors.incorrect,
+              size: 20,
+            );
           }
         }
 
