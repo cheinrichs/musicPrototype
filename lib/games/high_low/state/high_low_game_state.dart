@@ -24,7 +24,7 @@ class PromptResult {
   const PromptResult({required this.prompt, required this.isCorrect});
 }
 
-/// Visual feedback for a Trigger-stage (A2) Clef drop.
+/// Visual feedback for a Trigger-stage (A2) drop.
 enum DragFeedback { none, correct, retry }
 
 /// State machine for the High/Low game, parametrized by [AgencyStage]
@@ -32,9 +32,9 @@ enum DragFeedback { none, correct, retry }
 ///
 /// Every stage shares one rule: tapping an instrument is *exploration* —
 /// it plays that instrument's note and never commits an answer, at any
-/// stage. Only Trigger's Clef-drag commits. This is the whole point of the
-/// card-91 rework: a toddler's instinct to tap a sound-making thing can no
-/// longer silently submit a graded answer.
+/// stage. Only Trigger's drag-and-drop commits. This is the whole point of
+/// the card-91 rework: a toddler's instinct to tap a sound-making thing can
+/// no longer silently submit a graded answer.
 ///
 /// - Observe (A0): the pair auto-plays; Piper/Clef narrate low/high as
 ///   each note sounds; free tapping is always available and never
@@ -45,10 +45,18 @@ enum DragFeedback { none, correct, retry }
 ///   with Clef sparkling on the target. No question, no wrong answers, no
 ///   auto-advance.
 /// - Trigger (A2): same auto-play/cut-short/free-tap as Participate, plus
-///   a draggable Clef the child drops onto the target instrument. A wrong
-///   drop gets a gentle retry (fresh listen, no failure state); a correct
-///   drop is recorded and auto-advances.
+///   a centered, draggable narrator the child drops onto the target
+///   instrument — whichever of Piper/Clef owns that round's target pole
+///   (Piper is low, Clef is high; see [draggedIsPiper] and Trello card
+///   101), so the character speaking the prompt is always the one being
+///   dragged. A wrong drop gets a gentle retry (fresh listen, no failure
+///   state); a correct drop is recorded and auto-advances.
 class HighLowGameState extends ChangeNotifier {
+  /// How long each note of the intro pair rings (and its instrument
+  /// wiggles/glows) before the sequence moves on — see the two call sites
+  /// in [_runIntro].
+  static const Duration _noteRingDuration = Duration(milliseconds: 2300);
+
   final AudioController _audio;
   final PromptGenerator _generator;
   final RoundSequencer _sequencer;
@@ -149,17 +157,26 @@ class HighLowGameState extends ChangeNotifier {
 
   DragFeedback get dragFeedback => _dragFeedback;
 
-  /// Which side Clef was last dropped on (correct or not) — the UI uses
-  /// this to know which instrument to animate for [dragFeedback].
+  /// Which side the dragged character was last dropped on (correct or
+  /// not) — the UI uses this to know which instrument to animate for
+  /// [dragFeedback].
   int? get lastDropSide => _lastDropSide;
 
   /// Caption text to show right now (placeholder for the not-yet-recorded
   /// voice lines — see [VoiceLine]), or null between captions.
   String? get captionText => _activeCaption?.captionText;
 
-  /// Whether the child can drop Clef onto an instrument right now.
-  bool get canDropClef =>
+  /// Whether the child can drop the dragged character onto an instrument
+  /// right now.
+  bool get canDrop =>
       agencyStage == AgencyStage.trigger && _status == GameStatus.awaitingInput;
+
+  /// Trigger-only: which character is this round's centered, draggable
+  /// answer — Piper owns the low pole, Clef owns the high pole (Trello
+  /// card 101), so this always agrees with [captionText]'s first-person
+  /// line ("put me on the ..."). Meaningless (and unused) outside Trigger.
+  bool get draggedIsPiper =>
+      currentPrompt?.targetDirection == PitchDirection.lower;
 
   /// Start a new game.
   void startGame() {
@@ -225,8 +242,8 @@ class HighLowGameState extends ChangeNotifier {
             : VoiceLine.listenForLow,
       AgencyStage.trigger =>
         prompt?.targetDirection == PitchDirection.higher
-            ? VoiceLine.putClefOnHigh
-            : VoiceLine.putClefOnLow,
+            ? VoiceLine.putMeOnHigh
+            : VoiceLine.putMeOnLow,
     };
     if (_activeCaption != null) {
       unawaited(_audio.playVoiceLine(_activeCaption!));
@@ -282,7 +299,7 @@ class HighLowGameState extends ChangeNotifier {
     // Long enough for the first sample to decay before the splice into the
     // second note — see the original High/Low implementation notes
     // (Trello card 57/58); unchanged here.
-    await _delay(const Duration(milliseconds: 2300));
+    await _delay(_noteRingDuration);
     if (token != _roundToken) return;
 
     _playingIndex = 1;
@@ -298,6 +315,14 @@ class HighLowGameState extends ChangeNotifier {
       prompt.secondNote,
       instrument: _rightInstrument.sampleInstrument,
     );
+    if (token != _roundToken) return;
+
+    // Mirrors the first note's wait above (Trello card 97): `playNoteForScale`
+    // only awaits the sample *starting*, not finishing, so without this the
+    // second note's wiggle/glow was cleared by `_finishIntro` on the very
+    // next microtask — before a single frame had painted it. The right-hand
+    // instrument's "I'm sounding" indicator never had a chance to render.
+    await _delay(_noteRingDuration);
     if (token != _roundToken) return;
 
     _finishIntro(token);
@@ -376,10 +401,11 @@ class HighLowGameState extends ChangeNotifier {
     );
   }
 
-  /// Trigger-only: the child drops Clef onto [side]. Never a failure
-  /// state — a wrong drop just retries with a fresh listen.
-  void dropClef(int side) {
-    if (!canDropClef) return;
+  /// Trigger-only: the child drops the dragged character (see
+  /// [draggedIsPiper]) onto [side]. Never a failure state — a wrong drop
+  /// just retries with a fresh listen.
+  void dropOnSide(int side) {
+    if (!canDrop) return;
     final prompt = currentPrompt;
     if (prompt == null) return;
 
@@ -415,8 +441,8 @@ class HighLowGameState extends ChangeNotifier {
         if (token != _roundToken) return;
         _dragFeedback = DragFeedback.none;
         _activeCaption = prompt.targetDirection == PitchDirection.higher
-            ? VoiceLine.putClefOnHigh
-            : VoiceLine.putClefOnLow;
+            ? VoiceLine.putMeOnHigh
+            : VoiceLine.putMeOnLow;
         _status = GameStatus.playing;
         notifyListeners();
         unawaited(_runIntro(token));

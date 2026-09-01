@@ -2,8 +2,8 @@
 
 Recordings for `VoiceLine` (see `lib/audio/voice_line.dart`) go here, one
 `.mp3` per enum value, named after it: `piperSaysLow.mp3`, `clefSaysHigh.mp3`,
-`listenForHigh.mp3`, `listenForLow.mp3`, `putClefOnHigh.mp3`,
-`putClefOnLow.mp3`, `tryAgainListen.mp3`.
+`listenForHigh.mp3`, `listenForLow.mp3`, `putMeOnHigh.mp3`,
+`putMeOnLow.mp3`, `tryAgainListen.mp3`.
 
 Until these exist, `AudioController.playVoiceLine` silently no-ops and the
 game falls back to the on-screen caption text (`VoiceLine.captionText`).

@@ -20,11 +20,15 @@ enum VoiceLine {
   /// Participate (A1) round prompt when the target is the lower one.
   listenForLow,
 
-  /// Trigger (A2) round prompt when the target is the higher one.
-  putClefOnHigh,
+  /// Trigger (A2) round prompt when the target is the higher one. Clef
+  /// owns the high pole (Trello card 101), so this is Clef speaking in the
+  /// first person — Clef is also the one centered and dragged.
+  putMeOnHigh,
 
-  /// Trigger (A2) round prompt when the target is the lower one.
-  putClefOnLow,
+  /// Trigger (A2) round prompt when the target is the lower one. Piper
+  /// owns the low pole (Trello card 101), so this is Piper speaking in the
+  /// first person — Piper is also the one centered and dragged.
+  putMeOnLow,
 
   /// Trigger (A2) gentle retry after a wrong drop.
   tryAgainListen;
@@ -38,8 +42,8 @@ enum VoiceLine {
     VoiceLine.clefSaysHigh => 'Clef: this sounds high!',
     VoiceLine.listenForHigh => 'Listen for the high one.',
     VoiceLine.listenForLow => 'Listen for the low one.',
-    VoiceLine.putClefOnHigh => 'Put Clef on the high one.',
-    VoiceLine.putClefOnLow => 'Put Clef on the low one.',
+    VoiceLine.putMeOnHigh => 'Clef: put me on the high one.',
+    VoiceLine.putMeOnLow => 'Piper: put me on the low one.',
     VoiceLine.tryAgainListen => "Hmm, let's listen again!",
   };
 }

@@ -18,13 +18,18 @@ void main() {
 
     await tester.pumpWidget(const MaterialApp(home: HighLowScreen()));
 
-    // Advance past the postFrameCallback that starts the game and the
-    // 2300ms gap the intro waits between the two notes (Trello card
-    // 57/58 — was 800ms, too short for the ~1.65s note samples). Not
-    // pumpAndSettle — Clef and the glow/wiggle treatment use repeating
-    // animations that never settle (same reason test/widget_test.dart
-    // avoids it).
+    // Advance past the postFrameCallback that starts the game and both
+    // 2300ms note-ring waits the intro holds — one between the two notes,
+    // one after the second so its wiggle/glow is actually visible for a
+    // frame before the round hands off to awaitingInput (Trello card
+    // 57/58/97 — was 800ms/single-wait, too short for the ~1.65s note
+    // samples and too fast to paint the second instrument as playing at
+    // all). Not pumpAndSettle — Clef and the glow/wiggle treatment use
+    // repeating animations that never settle (same reason
+    // test/widget_test.dart avoids it).
     await tester.pump();
+    await tester.pump(const Duration(milliseconds: 1200));
+    await tester.pump(const Duration(milliseconds: 1200));
     await tester.pump(const Duration(milliseconds: 1200));
     await tester.pump(const Duration(milliseconds: 1200));
     // The last pump's frame rebuilds a status/caption widget with a new
@@ -51,14 +56,16 @@ void main() {
   });
 
   testWidgets(
-    'defaults to Trigger: a draggable Clef and a "Put Clef on..." prompt '
-    'are shown once the intro finishes',
+    'defaults to Trigger: round 1 is always a "higher" target (blocked '
+    'order), so a draggable Clef and a first-person "put me on the high '
+    'one" prompt are shown once the intro finishes (Trello card 101 — '
+    'Clef owns the high pole, so she is the one speaking and dragged)',
     (tester) async {
       await pumpAndFinishIntro(tester);
 
       expect(tester.takeException(), isNull);
       expect(find.byType(Draggable<Object>), findsOneWidget);
-      expect(find.textContaining('Put Clef on the'), findsOneWidget);
+      expect(find.textContaining('put me on the high'), findsOneWidget);
     },
   );
 

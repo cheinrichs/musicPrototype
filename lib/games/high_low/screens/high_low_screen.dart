@@ -12,6 +12,7 @@ import '../../../models/musical_skill.dart';
 import '../../../models/game_status.dart';
 import '../../../ui/components/circle_icon_button.dart';
 import '../../../ui/components/dev_setup_overlay.dart';
+import '../../../ui/components/drifting_notes.dart';
 import '../../../ui/components/game_screen_layout.dart';
 import '../../../ui/components/glow_wiggle_character.dart';
 import '../../../ui/components/progress_dots.dart';
@@ -25,7 +26,9 @@ import '../state/high_low_game_state.dart';
 /// flanking a randomized pair of instrument characters. The screen's
 /// behavior is entirely driven by [HighLowGameState.agencyStage] (Trello
 /// card 91): Observe narrates and never scores, Participate hints with a
-/// sparkle, Trigger asks the child to drag Clef onto the answer. See
+/// sparkle, Trigger asks the child to drag the target's narrator (Piper or
+/// Clef, whichever owns that round's pole — Trello card 101) onto the
+/// answer. See
 /// [HighLowGameState]'s class doc for the full stage breakdown — this
 /// screen only renders what that state exposes, it doesn't duplicate the
 /// stage logic.
@@ -306,6 +309,11 @@ class _HighLowScreenState extends State<HighLowScreen> {
     final sceneHeight = charSize + stumpLift;
     final isTrigger = _gameState.agencyStage == AgencyStage.trigger;
     final prompt = _gameState.currentPrompt;
+    // Trigger-only: whichever character owns this round's target pole is
+    // the one centered and dragged (Trello card 101) — the other stays put
+    // at its normal fixed spot, same as Observe/Participate.
+    final piperIsDragged = isTrigger && _gameState.draggedIsPiper;
+    final clefIsDragged = isTrigger && !_gameState.draggedIsPiper;
 
     return SizedBox(
       width: width,
@@ -313,20 +321,8 @@ class _HighLowScreenState extends State<HighLowScreen> {
       child: Stack(
         clipBehavior: Clip.none,
         children: [
-          // Piper (fox) — fixed far-left, always. Which instrument she
-          // "belongs to" (the low one) is a matter of the instrument's own
-          // wiggle/glow and the caption, not her screen position — see
-          // the class doc.
-          Positioned(
-            left: 0,
-            bottom: 0,
-            child: Image.asset(
-              'assets/images/characters/Piper_Encouraging.png',
-              height: piperHeight,
-              fit: BoxFit.contain,
-            ).animate().fade(duration: AppAnimations.medium),
-          ),
-          _buildClef(clefHeight, isTrigger),
+          _buildPiper(piperHeight, piperIsDragged),
+          _buildClef(clefHeight, clefIsDragged),
           Positioned(
             left: width * 0.30 - charSize / 2,
             bottom: stumpLift,
@@ -364,10 +360,13 @@ class _HighLowScreenState extends State<HighLowScreen> {
     );
   }
 
-  /// Clef: fixed far-right (Observe/Participate) or a centered, draggable
-  /// answer (Trigger — starting centered rather than on either side keeps
-  /// the drag distance to both instruments equal, per the design brief).
-  Widget _buildClef(double clefHeight, bool isTrigger) {
+  /// Clef: fixed far-right, unless she's this round's dragged answer
+  /// ([isDragged] — Clef owns the high pole, Trello card 101), in which
+  /// case she starts centered rather than on either side, which keeps the
+  /// drag distance to both instruments equal, per the design brief. Bobs
+  /// continuously either way — that idle motion is Clef's own character
+  /// beat, not a "you can drag me" cue.
+  Widget _buildClef(double clefHeight, bool isDragged) {
     final clefImage = Image.asset(
       'assets/images/characters/Clef.png',
       height: clefHeight,
@@ -381,17 +380,56 @@ class _HighLowScreenState extends State<HighLowScreen> {
           curve: Curves.easeInOut,
         );
 
-    if (!isTrigger) {
+    if (!isDragged) {
       return Positioned(right: 0, bottom: 0, child: bobbing);
     }
+    return _buildDragHandle(image: clefImage, bobbing: bobbing);
+  }
 
+  /// Piper: fixed far-left, unless she's this round's dragged answer
+  /// ([isDragged] — Piper owns the low pole, Trello card 101) — see
+  /// [_buildClef] for why the dragged character starts centered. Unlike
+  /// Clef, Piper doesn't idle-bob while fixed; only picks up motion once
+  /// she's the one being dragged.
+  Widget _buildPiper(double piperHeight, bool isDragged) {
+    final piperImage = Image.asset(
+      'assets/images/characters/Piper_Encouraging.png',
+      height: piperHeight,
+      fit: BoxFit.contain,
+    );
+
+    if (!isDragged) {
+      return Positioned(
+        left: 0,
+        bottom: 0,
+        child: piperImage.animate().fade(duration: AppAnimations.medium),
+      );
+    }
+
+    final bobbing = piperImage
+        .animate(onPlay: (c) => c.repeat(reverse: true))
+        .moveY(
+          begin: 0,
+          end: -6,
+          duration: const Duration(milliseconds: 1200),
+          curve: Curves.easeInOut,
+        );
+    return _buildDragHandle(image: piperImage, bobbing: bobbing);
+  }
+
+  /// Wraps a character as the centered, draggable answer — shared by
+  /// [_buildClef] and [_buildPiper] (Trello card 101: either can be this
+  /// round's dragged character, depending on the target pole). [image] is
+  /// the plain (unanimated) art used for the drag feedback/left-behind
+  /// ghost; [bobbing] is the same art with the idle bob, used at rest.
+  Widget _buildDragHandle({required Widget image, required Widget bobbing}) {
     return Positioned.fill(
       child: Align(
         alignment: Alignment.bottomCenter,
         child: Draggable<Object>(
-          data: 'clef',
-          feedback: Opacity(opacity: 0.85, child: clefImage),
-          childWhenDragging: Opacity(opacity: 0.3, child: clefImage),
+          data: 'narrator',
+          feedback: Opacity(opacity: 0.85, child: image),
+          childWhenDragging: Opacity(opacity: 0.3, child: image),
           child: bobbing,
         ),
       ),
@@ -401,8 +439,8 @@ class _HighLowScreenState extends State<HighLowScreen> {
   Widget _wrapDragTarget({required int side, required Widget child}) {
     if (_gameState.agencyStage != AgencyStage.trigger) return child;
     return DragTarget<Object>(
-      onWillAcceptWithDetails: (_) => _gameState.canDropClef,
-      onAcceptWithDetails: (_) => _gameState.dropClef(side),
+      onWillAcceptWithDetails: (_) => _gameState.canDrop,
+      onAcceptWithDetails: (_) => _gameState.dropOnSide(side),
       builder: (context, candidateData, rejectedData) {
         return AnimatedScale(
           scale: candidateData.isNotEmpty ? 1.06 : 1.0,
@@ -450,11 +488,11 @@ class _HighLowScreenState extends State<HighLowScreen> {
 
 enum _CharacterFeedback { correct, retry }
 
-/// An instrument character sitting on a stump — glows and wiggles (via the
-/// shared [GlowWiggleCharacter] treatment, same as the Sound Playground)
-/// while its note plays, always tappable (tapping is pure exploration —
-/// see [HighLowGameState]), and optionally sparkling as a Participate-stage
-/// hint.
+/// An instrument character sitting on a stump — grows and releases drifting
+/// notes (via the shared [GlowWiggleCharacter]/[DriftingNotes] treatment,
+/// same as the Sound Playground — Trello card 96) while its note plays,
+/// always tappable (tapping is pure exploration — see [HighLowGameState]),
+/// and optionally sparkling as a Participate-stage hint.
 class _InstrumentButton extends StatelessWidget {
   final String assetPath;
   final double size;
@@ -475,17 +513,7 @@ class _InstrumentButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Color glowColor;
-    if (feedback == _CharacterFeedback.correct) {
-      glowColor = AppColors.correct;
-    } else if (feedback == _CharacterFeedback.retry) {
-      // Gentle amber, not the harsh "incorrect" rose — a wrong drop is
-      // never a failure state (Trello card 91).
-      glowColor = AppColors.gold;
-    } else {
-      glowColor = AppColors.gold;
-    }
-    final showGlow = glowing || feedback != null;
+    final isActive = glowing || feedback != null;
 
     return GestureDetector(
       onTap: onTap,
@@ -498,8 +526,7 @@ class _InstrumentButton extends StatelessWidget {
           children: [
             GlowWiggleCharacter(
               size: size,
-              isActive: showGlow,
-              glowColor: glowColor,
+              isActive: isActive,
               wiggleWhenIdle: false,
               child: feedback == _CharacterFeedback.retry
                   ? Image.asset(assetPath, fit: BoxFit.contain)
@@ -509,13 +536,7 @@ class _InstrumentButton extends StatelessWidget {
             ),
             Positioned(
               top: -size * 0.15,
-              child: IgnorePointer(
-                child: AnimatedOpacity(
-                  opacity: glowing ? 1 : 0,
-                  duration: AppAnimations.fast,
-                  child: _DriftingNotes(size: size),
-                ),
-              ),
+              child: DriftingNotes(size: size, active: glowing),
             ),
             if (showSparkle)
               Positioned(
@@ -535,71 +556,6 @@ class _InstrumentButton extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-}
-
-/// Two small music notes that drift up and fade while an instrument's note
-/// is sounding. Deliberately understated — this is a listening game for
-/// young children, so the motion must read as a light echo of the sound,
-/// not compete with it for attention.
-class _DriftingNotes extends StatelessWidget {
-  final double size;
-
-  const _DriftingNotes({required this.size});
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: size,
-      height: size * 0.6,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          _note(left: size * 0.12, delay: Duration.zero, dx: -size * 0.12),
-          _note(
-            left: size * 0.58,
-            delay: const Duration(milliseconds: 400),
-            dx: size * 0.12,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _note({
-    required double left,
-    required Duration delay,
-    required double dx,
-  }) {
-    return Positioned(
-      left: left,
-      bottom: 0,
-      child:
-          Text(
-                '♪',
-                style: TextStyle(fontSize: size * 0.2, color: AppColors.gold),
-              )
-              .animate(onPlay: (c) => c.repeat())
-              .fadeIn(delay: delay, duration: const Duration(milliseconds: 250))
-              .moveY(
-                begin: 0,
-                end: -size * 0.5,
-                delay: delay,
-                duration: const Duration(milliseconds: 1100),
-                curve: Curves.easeOut,
-              )
-              .moveX(
-                begin: 0,
-                end: dx,
-                delay: delay,
-                duration: const Duration(milliseconds: 1100),
-                curve: Curves.easeOut,
-              )
-              .fadeOut(
-                delay: delay + const Duration(milliseconds: 700),
-                duration: const Duration(milliseconds: 400),
-              ),
     );
   }
 }

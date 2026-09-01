@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:ear_trainer/models/agency_stage.dart';
 import 'package:ear_trainer/models/concept_tier.dart';
 import 'package:ear_trainer/models/game_status.dart';
+import 'package:ear_trainer/models/pitch_direction.dart';
 import 'package:ear_trainer/games/high_low/state/high_low_game_state.dart';
 
 // Uses `testWidgets` (not plain `test`) purely to get Flutter's fake-async
@@ -33,7 +34,7 @@ void main() {
         reason: 'Observe never lets a tap interrupt the auto-play',
       );
 
-      await tester.pump(const Duration(milliseconds: 2400));
+      await tester.pump(const Duration(milliseconds: 4700));
       expect(state.status, GameStatus.awaitingInput);
       expect(state.correctCount, 0);
       expect(
@@ -80,7 +81,7 @@ void main() {
       addTearDown(state.dispose);
       state.startGame();
       await tester.pump();
-      await tester.pump(const Duration(milliseconds: 2400));
+      await tester.pump(const Duration(milliseconds: 4700));
 
       expect(state.status, GameStatus.awaitingInput);
       state.moveOn();
@@ -104,12 +105,12 @@ void main() {
         // the comment there.
         state.startGame();
         await tester.pump();
-        await tester.pump(const Duration(milliseconds: 2400));
+        await tester.pump(const Duration(milliseconds: 4700));
 
         final prompt = state.currentPrompt!;
-        expect(state.canDropClef, isTrue);
+        expect(state.canDrop, isTrue);
 
-        state.dropClef(prompt.targetSide);
+        state.dropOnSide(prompt.targetSide);
         await tester.pump();
 
         expect(state.dragFeedback, DragFeedback.correct);
@@ -142,12 +143,12 @@ void main() {
         addTearDown(state.dispose);
         state.startGame();
         await tester.pump();
-        await tester.pump(const Duration(milliseconds: 2400));
+        await tester.pump(const Duration(milliseconds: 4700));
 
         final prompt = state.currentPrompt!;
         final wrongSide = 1 - prompt.targetSide;
 
-        state.dropClef(wrongSide);
+        state.dropOnSide(wrongSide);
         await tester.pump();
 
         expect(state.dragFeedback, DragFeedback.retry);
@@ -158,11 +159,11 @@ void main() {
         // Retry delay, then a fresh listen replays automatically.
         await tester.pump(const Duration(milliseconds: 1500));
         expect(state.status, GameStatus.playing);
-        await tester.pump(const Duration(milliseconds: 2400));
+        await tester.pump(const Duration(milliseconds: 4700));
 
         expect(state.status, GameStatus.awaitingInput);
         expect(state.dragFeedback, DragFeedback.none);
-        expect(state.canDropClef, isTrue, reason: 'a real retry, not stuck');
+        expect(state.canDrop, isTrue, reason: 'a real retry, not stuck');
       },
     );
 
@@ -176,7 +177,7 @@ void main() {
       addTearDown(state.dispose);
       state.startGame();
       await tester.pump();
-      await tester.pump(const Duration(milliseconds: 2400));
+      await tester.pump(const Duration(milliseconds: 4700));
 
       final prompt = state.currentPrompt!;
       state.tapInstrument(prompt.targetSide);
@@ -189,6 +190,47 @@ void main() {
       );
       expect(state.correctCount, 0);
     });
+
+    testWidgets(
+      'the dragged character follows the target pole — Clef for high, '
+      'Piper for low (Trello card 101)',
+      (tester) async {
+        final state = HighLowGameState(
+          totalPrompts: 5,
+          agencyStage: AgencyStage.trigger,
+        );
+        // Disposed explicitly at the end (moveOn below starts a new
+        // round's intro along the way) rather than via addTearDown — see
+        // the matching comment on the "moveOn always advances" test.
+        state.startGame();
+        await tester.pump();
+
+        // Blocked round order (the default) always puts a "higher" target
+        // first — see RoundSequencer.sequence.
+        expect(state.currentPrompt!.targetDirection, PitchDirection.higher);
+        expect(
+          state.draggedIsPiper,
+          isFalse,
+          reason: 'Clef owns the high pole, so she is the one dragged',
+        );
+        expect(state.captionText, contains('Clef: put me on the high'));
+
+        // ...then a "lower" target — this is the branch the reported bug
+        // (Trello card 101) was actually in: Piper spoke while Clef stayed
+        // centered and draggable.
+        state.moveOn();
+        await tester.pump();
+
+        expect(state.currentPrompt!.targetDirection, PitchDirection.lower);
+        expect(
+          state.draggedIsPiper,
+          isTrue,
+          reason: 'Piper owns the low pole, so she is the one dragged',
+        );
+        expect(state.captionText, contains('Piper: put me on the low'));
+        state.dispose();
+      },
+    );
   });
 
   group('HighLowGameState — shared controls', () {

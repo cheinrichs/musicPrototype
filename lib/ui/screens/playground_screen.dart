@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../audio/audio_controller.dart';
 import '../../models/instrument.dart';
 import '../components/circle_icon_button.dart';
+import '../components/drifting_notes.dart';
 import '../components/glow_wiggle_character.dart';
 import '../theme/theme.dart';
 
@@ -66,9 +67,17 @@ class _PlaygroundScreenState extends State<PlaygroundScreen> {
     super.dispose();
   }
 
+  /// Plays [instrument] and holds the grow + drifting-notes treatment
+  /// (Trello card 96) up for exactly as long as its note actually rings,
+  /// mirroring how High/Low's tap-to-explore ties the same treatment to
+  /// [AudioController.playNoteForScale]'s own future.
   Future<void> _play(Instrument instrument) async {
     setState(() => _activeInstrument = instrument);
-    await AudioController.instance.playClip(instrument.randomAssetPath);
+    await AudioController.instance.playClipAndAwait(instrument.randomAssetPath);
+    // Only clear if nothing newer (another tap) has already taken over.
+    if (mounted && _activeInstrument == instrument) {
+      setState(() => _activeInstrument = null);
+    }
   }
 
   @override
@@ -283,12 +292,29 @@ class _InstrumentCharacterState extends State<_InstrumentCharacter>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            GlowWiggleCharacter(
-              size: widget.size,
-              isActive: widget.isActive,
-              glowColor: widget.instrument.color,
-              bobDelay: widget.bobDelay,
-              child: _buildArt(),
+            // Deliberately no fixed-width box here — [_buildArt] is sized
+            // by height alone so each instrument's own aspect ratio comes
+            // through (see the class doc); a Stack (unlike a SizedBox)
+            // reports its non-positioned child's natural size, so the
+            // drifting-notes overlay doesn't force a square footprint.
+            Stack(
+              clipBehavior: Clip.none,
+              alignment: Alignment.center,
+              children: [
+                GlowWiggleCharacter(
+                  size: widget.size,
+                  isActive: widget.isActive,
+                  bobDelay: widget.bobDelay,
+                  child: _buildArt(),
+                ),
+                Positioned(
+                  top: -widget.size * 0.15,
+                  child: DriftingNotes(
+                    size: widget.size,
+                    active: widget.isActive,
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: AppSpacing.xs),
             _buildNamePlate(),

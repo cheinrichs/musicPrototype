@@ -2,17 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../theme/theme.dart';
 
-/// Warm radial glow + scale "pop" + gentle idle bob used to show that a
-/// character is currently sounding.
+/// Scale "pop" + gentle idle bob used to show that a character is currently
+/// sounding.
 ///
 /// Originally built inline for the Sound Playground's instrument
 /// characters; extracted here so other screens (the High/Low game) get the
 /// identical treatment instead of a second, slightly different animation.
+/// Used to also draw a warm glow halo behind the character, dropped per
+/// Trello card 96 — the grow + drifting notes (see [DriftingNotes], added
+/// alongside this) read clearly enough on their own.
 class GlowWiggleCharacter extends StatelessWidget {
   final Widget child;
   final double size;
   final bool isActive;
-  final Color glowColor;
   final Duration bobDelay;
 
   /// Whether the gentle idle bob keeps running while [isActive] is false.
@@ -27,60 +29,13 @@ class GlowWiggleCharacter extends StatelessWidget {
     required this.child,
     required this.size,
     required this.isActive,
-    required this.glowColor,
     this.bobDelay = Duration.zero,
     this.wiggleWhenIdle = true,
   });
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      height: size,
-      child: Stack(
-        alignment: Alignment.center,
-        // The glow below is intentionally larger than the artwork and
-        // must be allowed to spill outside this Stack's own bounds
-        // without being clipped back down to size.
-        clipBehavior: Clip.none,
-        children: [
-          // Sized *larger* than the artwork (not Positioned.fill, which
-          // matched the character's own silhouette almost exactly and left
-          // the radial gradient with no visible margin to bleed into — it
-          // was firing but invisible, hidden behind the opaque character
-          // art). The overhang doesn't affect this Stack's own reported
-          // size (only non-Positioned children do), so it doesn't disturb
-          // callers that position instrument buttons using [size] as their
-          // footprint.
-          Positioned(
-            left: -size * 0.25,
-            right: -size * 0.25,
-            top: -size * 0.25,
-            bottom: -size * 0.25,
-            child: _buildGlow(),
-          ),
-          _buildBody(),
-        ],
-      ),
-    );
-  }
-
-  /// Warm halo behind the character while it's sounding.
-  Widget _buildGlow() {
-    return AnimatedOpacity(
-      opacity: isActive ? 1 : 0,
-      duration: AppAnimations.medium,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          gradient: RadialGradient(
-            radius: 0.85,
-            colors: [
-              glowColor.withValues(alpha: 0.75),
-              glowColor.withValues(alpha: 0.0),
-            ],
-          ),
-        ),
-      ),
-    );
+    return SizedBox(height: size, child: _buildBody());
   }
 
   Widget _buildBody() {
@@ -97,13 +52,15 @@ class GlowWiggleCharacter extends StatelessWidget {
       scale: isActive ? 1.12 : 1.0,
       duration: AppAnimations.medium,
       curve: AppAnimations.bounceCurve,
-      child: child.animate(onPlay: (c) => c.repeat(reverse: true)).moveY(
-        begin: 0,
-        end: shouldWiggle ? -5 : 0,
-        delay: bobDelay,
-        duration: const Duration(milliseconds: 1600),
-        curve: Curves.easeInOut,
-      ),
+      child: child
+          .animate(onPlay: (c) => c.repeat(reverse: true))
+          .moveY(
+            begin: 0,
+            end: shouldWiggle ? -5 : 0,
+            delay: bobDelay,
+            duration: const Duration(milliseconds: 1600),
+            curve: Curves.easeInOut,
+          ),
     );
   }
 }
