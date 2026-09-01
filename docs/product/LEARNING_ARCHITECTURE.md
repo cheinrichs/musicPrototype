@@ -51,6 +51,9 @@ Agency describes what the child is required to do.
 
 A learner does **not** restart at A0 for every new concept tier.
 
+For how a child actually moves between agency levels and concept tiers, and what
+evidence justifies that movement, see `ADVANCEMENT_SIGNALS.md`.
+
 Replay behavior belongs primarily to Agency/scaffolding:
 - A0: auto/unlimited
 - A1: unlimited manual
@@ -394,3 +397,8 @@ Ask:
 For rationale, detailed examples, and learning philosophy, see:
 
 `EAR_TRAINING_APP_PRODUCT_SPEC.md`
+
+For how a child moves between agency levels and concept tiers, and what evidence is
+used, see:
+
+`ADVANCEMENT_SIGNALS.md`
