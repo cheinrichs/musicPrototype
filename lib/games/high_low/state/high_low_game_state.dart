@@ -229,8 +229,7 @@ class HighLowGameState extends ChangeNotifier {
             : VoiceLine.putClefOnLow,
     };
     if (_activeCaption != null) {
-      // DIAGNOSTIC: temporarily disabled
-      // unawaited(_audio.playVoiceLine(_activeCaption!));
+      unawaited(_audio.playVoiceLine(_activeCaption!));
     }
 
     _status = GameStatus.playing;
@@ -357,8 +356,7 @@ class HighLowGameState extends ChangeNotifier {
       _activeCaption = side == prompt.higherSide
           ? VoiceLine.clefSaysHigh
           : VoiceLine.piperSaysLow;
-      // DIAGNOSTIC: temporarily disabled
-      // unawaited(_audio.playVoiceLine(_activeCaption!));
+      unawaited(_audio.playVoiceLine(_activeCaption!));
     }
     notifyListeners();
 
@@ -409,8 +407,7 @@ class HighLowGameState extends ChangeNotifier {
     } else {
       _dragFeedback = DragFeedback.retry;
       _activeCaption = VoiceLine.tryAgainListen;
-      // DIAGNOSTIC: temporarily disabled
-      // unawaited(_audio.playVoiceLine(_activeCaption!));
+      unawaited(_audio.playVoiceLine(_activeCaption!));
       _status = GameStatus.showingFeedback;
       notifyListeners();
 
