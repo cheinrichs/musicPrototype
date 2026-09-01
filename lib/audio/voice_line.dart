@@ -1,12 +1,11 @@
-/// Spoken lines used by the agency-staged games (Trello card 91). The
-/// actual recordings don't exist yet (Trello card 93 — Cooper is
-/// producing them); until they land, [AudioController.playVoiceLine]
-/// silently no-ops on the missing asset (same fallback the Sound
-/// Playground already uses for missing instrument clips), and callers
-/// pair every voice line with an on-screen caption via [captionText] so
-/// the stage stays legible with audio alone missing. Dropping in real
-/// files later is just adding them under assets/audio/voice/ and
-/// declaring that directory in pubspec.yaml — no code changes required.
+/// Spoken lines used by the agency-staged games (Trello card 91). All
+/// eight recordings now exist under assets/audio/voice/ (Trello card 93).
+/// [AudioController.playVoiceLine] still silently no-ops on a missing
+/// asset (same fallback the Sound Playground uses for missing instrument
+/// clips), and callers still pair every voice line with an on-screen
+/// caption via [captionText] so the stage stays legible if audio is ever
+/// missing — but in normal play the caption fallback is unreachable now
+/// that the recordings are all in place.
 enum VoiceLine {
   /// Piper, narrating the lower instrument in Observe (A0).
   piperSaysLow,
@@ -30,8 +29,13 @@ enum VoiceLine {
   /// first person — Piper is also the one centered and dragged.
   putMeOnLow,
 
-  /// Trigger (A2) gentle retry after a wrong drop.
-  tryAgainListen;
+  /// Trigger (A2) gentle retry after a wrong drop, when Clef is the
+  /// dragged character (i.e. the target was the high pole).
+  tryAgainClef,
+
+  /// Trigger (A2) gentle retry after a wrong drop, when Piper is the
+  /// dragged character (i.e. the target was the low pole).
+  tryAgainPiper;
 
   String get assetPath => 'assets/audio/voice/$name.mp3';
 
@@ -44,6 +48,7 @@ enum VoiceLine {
     VoiceLine.listenForLow => 'Listen for the low one.',
     VoiceLine.putMeOnHigh => 'Clef: put me on the high one.',
     VoiceLine.putMeOnLow => 'Piper: put me on the low one.',
-    VoiceLine.tryAgainListen => "Hmm, let's listen again!",
+    VoiceLine.tryAgainClef => "Clef: hmm, let's listen again!",
+    VoiceLine.tryAgainPiper => "Piper: hmm, let's listen again!",
   };
 }

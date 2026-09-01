@@ -432,7 +432,9 @@ class HighLowGameState extends ChangeNotifier {
       });
     } else {
       _dragFeedback = DragFeedback.retry;
-      _activeCaption = VoiceLine.tryAgainListen;
+      _activeCaption = draggedIsPiper
+          ? VoiceLine.tryAgainPiper
+          : VoiceLine.tryAgainClef;
       unawaited(_audio.playVoiceLine(_activeCaption!));
       _status = GameStatus.showingFeedback;
       notifyListeners();
