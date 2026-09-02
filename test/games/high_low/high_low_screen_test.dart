@@ -95,7 +95,7 @@ void main() {
     },
   );
 
-  testWidgets('the move-on arrow is always enabled, even mid-intro', (
+  testWidgets('the skip pill is always enabled, even mid-intro', (
     tester,
   ) async {
     final originalSize = tester.view.physicalSize;
@@ -110,13 +110,13 @@ void main() {
     await tester.pumpWidget(const MaterialApp(home: HighLowScreen()));
     await tester.pump(); // still mid-intro here — no time has advanced
 
-    final moveOnButton = find.byTooltip('Move on');
-    expect(moveOnButton, findsOneWidget);
+    final skipPill = find.byTooltip('Skip');
+    expect(skipPill, findsOneWidget);
     // The close (X) button should also always be present per the shared
     // game-screen control layout.
     expect(find.byTooltip('Close'), findsOneWidget);
 
-    await tester.tap(moveOnButton);
+    await tester.tap(skipPill);
     await tester.pump();
     // Advancing rebuilds caption/status widgets with new ValueKeys, which
     // remounts their Animate wrappers and schedules a fresh zero-duration

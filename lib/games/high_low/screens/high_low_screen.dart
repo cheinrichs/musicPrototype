@@ -1,4 +1,3 @@
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
@@ -135,54 +134,44 @@ class _HighLowScreenState extends State<HighLowScreen> {
 
     return RepaintBoundary(
       key: _screenshotKey,
-      child: Stack(
-        children: [
-          GameScreenLayout(
-            // The scene (stumps' instruments + flanking Piper/Clef) is
-            // composed into the *background* layer, not the body — see
-            // [_buildScene] for why: it needs to be sized and positioned
-            // straight off the real, unscaled screen so it lines up with
-            // where Forest.png's own stumps land under BoxFit.cover, immune
-            // to whatever the caption/controls above it need to shrink to
-            // (Trello card 56 — this rendered fine at roomy heights and
-            // drifted apart from the background at tight ones, which is
-            // exactly the "shrinks toward center while the background
-            // doesn't" signature of the old approach).
-            background: Stack(
-              fit: StackFit.expand,
-              children: [
-                Image.asset(
-                  'assets/images/backgrounds/MeadowWidescreen.png',
-                  fit: BoxFit.cover,
-                ),
-                _buildScene(context),
-              ],
+      child: GameScreenLayout(
+        // The scene (stumps' instruments + flanking Piper/Clef) is
+        // composed into the *background* layer, not the body — see
+        // [_buildScene] for why: it needs to be sized and positioned
+        // straight off the real, unscaled screen so it lines up with
+        // where Forest.png's own stumps land under BoxFit.cover, immune
+        // to whatever the caption/controls above it need to shrink to
+        // (Trello card 56 — this rendered fine at roomy heights and
+        // drifted apart from the background at tight ones, which is
+        // exactly the "shrinks toward center while the background
+        // doesn't" signature of the old approach).
+        background: Stack(
+          fit: StackFit.expand,
+          children: [
+            Image.asset(
+              'assets/images/backgrounds/MeadowWidescreen.png',
+              fit: BoxFit.cover,
             ),
-            header: _buildHeader(),
-            body: _buildBody(context),
-            footer: ProgressDots(
-              totalDots: _gameState.totalPrompts,
-              currentIndex: _gameState.currentPromptIndex,
-              completedCount: _gameState.results.length,
-            ),
-            // _buildBody already guarantees it never overflows its own budget
-            // (FittedBox(fit: scaleDown) inside a SizedBox sized off the real
-            // available height) — GameScreenLayout's scroll-fallback isn't
-            // needed here, and worse, actively broke the drag-to-answer
-            // interaction: a Scrollable hit-tests its whole viewport, not
-            // just where it paints, so it sat in front of `background` and
-            // silently ate every touch meant for the characters/instruments
-            // underneath before Trigger's drag gesture could ever start. See
-            // [GameScreenLayout.scrollableBody].
-            scrollableBody: false,
-          ),
-          // The move-on button lives above GameScreenLayout entirely, not
-          // inside its background layer — the header/body column's
-          // Scrollable absorbs hit-tests across its whole (mostly empty)
-          // area even where nothing paints, so a tap here would silently
-          // never reach a button placed underneath it in `background`.
-          _buildMoveOnButton(context),
-        ],
+            _buildScene(context),
+          ],
+        ),
+        header: _buildHeader(),
+        body: _buildBody(context),
+        footer: ProgressDots(
+          totalDots: _gameState.totalPrompts,
+          currentIndex: _gameState.currentPromptIndex,
+          completedCount: _gameState.results.length,
+        ),
+        // _buildBody already guarantees it never overflows its own budget
+        // (FittedBox(fit: scaleDown) inside a SizedBox sized off the real
+        // available height) — GameScreenLayout's scroll-fallback isn't
+        // needed here, and worse, actively broke the drag-to-answer
+        // interaction: a Scrollable hit-tests its whole viewport, not
+        // just where it paints, so it sat in front of `background` and
+        // silently ate every touch meant for the characters/instruments
+        // underneath before Trigger's drag gesture could ever start. See
+        // [GameScreenLayout.scrollableBody].
+        scrollableBody: false,
       ),
     );
   }
@@ -236,11 +225,12 @@ class _HighLowScreenState extends State<HighLowScreen> {
   }
 
   /// Close (left), the round's caption (center, see [_buildPromptArea]),
-  /// and the dev-only report button (right) — [ProgressDots] used to sit
-  /// in this row's center slot, but moved down to [GameScreenLayout]'s
-  /// `footer` (see `build`) to make room for the caption, matching the
-  /// mockup layout (Trello card "Separate the stumps from the background
-  /// art"): question at the top, progress dots along the bottom.
+  /// and the child's move-on/skip pill plus (dev builds only) the report
+  /// button (right) — [ProgressDots] used to sit in this row's center slot,
+  /// but moved down to [GameScreenLayout]'s `footer` (see `build`) to make
+  /// room for the caption, matching the mockup layout (Trello card
+  /// "Separate the stumps from the background art"): question at the top,
+  /// progress dots along the bottom.
   Widget _buildHeader() {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -258,19 +248,25 @@ class _HighLowScreenState extends State<HighLowScreen> {
           },
         ),
         Expanded(child: _buildPromptArea()),
-        // Spacer for symmetry — the move-on control used to live here, but
-        // it's the child's control now, not an adult-only header affordance
-        // (see [_buildMoveOnButton]), so it moved to the bottom right. Only
-        // swapped for the report button under devToolsEnabled (Trello card
-        // on0EymSu) — gated the same way as the dev gate above, so a
-        // public App Store build never shows it either.
-        devToolsEnabled
-            ? CircleIconButton(
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Dev-only report button (Trello card on0EymSu) — gated the
+            // same way as the dev gate above, so a public App Store build
+            // never shows it.
+            if (devToolsEnabled) ...[
+              CircleIconButton(
                 icon: Icons.ios_share_rounded,
                 tooltip: 'Report this round',
-                onTap: _gameState.currentPrompt == null ? null : _onReportRound,
-              )
-            : const SizedBox(width: 44),
+                onTap: _gameState.currentPrompt == null
+                    ? null
+                    : _onReportRound,
+              ),
+              const SizedBox(width: AppSpacing.sm),
+            ],
+            _buildSkipPill(),
+          ],
+        ),
       ],
     );
   }
@@ -322,73 +318,80 @@ class _HighLowScreenState extends State<HighLowScreen> {
     );
   }
 
-  /// The child's move-on/skip control (Trello card: "the move-on arrow is
-  /// no longer adult-only"). Available from the very start of every round,
-  /// at every stage, and never gated on game phase — a child who wants to
-  /// move on should be able to, same as before (Trello card 91), just from
-  /// a spot they can actually find and reach themselves: bottom right, not
-  /// the header's adult-reach top corner. Sized a notch above the header's
-  /// quiet 44px controls and lifted with a shadow so it reads as tappable,
-  /// but deliberately no bigger and no more animated than that — big
-  /// enough to find, not so big it out-competes the instruments and
-  /// becomes the more interesting thing to tap.
+  /// The child's move-on/skip control — a parchment pill in the header's
+  /// top-right corner, opposite the close X (Trello card "Move Skip back to
+  /// the top right as an icon-plus-text pill"). This reverses an earlier
+  /// decision (Trello card: "the move-on arrow is no longer adult-only"),
+  /// which had moved this control to a bottom-right arrow specifically so
+  /// skipping wasn't an adult-only, header-only affordance. Cooper reviewed
+  /// a mockup and preferred the top-right pill instead — it's still sized
+  /// generously (see [AppSpacing.largeTapTarget] below) so a child can
+  /// still find and hit it even though it reads visually quieter than the
+  /// old arrow did.
   ///
-  /// Not pinned to the literal screen corner: Clef's doubled, fixed-right
-  /// home spot (Trello card OCv6kVmd) now reaches close enough to that
-  /// corner that a corner-pinned button sat stamped across her face, and
-  /// the right instrument's stump (never moved — Trello card S1v6sbrK,
-  /// "in the right place, don't move them") sits close behind it too —
-  /// see [_moveOnSafeLeftBoundary]. This keeps the button inboard of both,
-  /// still unambiguously on the right/bottom of the screen, clear of every
-  /// round's geometry. Positioned outside [GameScreenLayout]'s own
-  /// SafeArea so it isn't shrunk by the body's fit-to-budget scaling the
-  /// way the header/caption group is.
-  Widget _buildMoveOnButton(BuildContext context) {
-    final media = MediaQuery.of(context);
-    const buttonSize = 56.0;
-    final rightInset =
-        (media.size.width - _moveOnSafeLeftBoundary(media.size)) +
-        AppSpacing.md;
-
-    return Positioned(
-      right: rightInset + media.padding.right,
-      bottom: AppSpacing.lg + media.padding.bottom,
-      child: CircleIconButton(
-        icon: Icons.arrow_forward_rounded,
-        tooltip: 'Move on',
-        size: buttonSize,
-        iconSize: 28,
-        elevated: true,
-        onTap: _gameState.status == GameStatus.completed
-            ? null
-            : _gameState.moveOn,
+  /// Available from the very start of every round, at every stage, and
+  /// never gated on game phase — a child who wants to move on should be
+  /// able to, same as before (Trello card 91).
+  Widget _buildSkipPill() {
+    final enabled = _gameState.status != GameStatus.completed;
+    return Tooltip(
+      message: 'Skip',
+      child: GestureDetector(
+        onTap: enabled ? _gameState.moveOn : null,
+        child: AnimatedOpacity(
+          opacity: enabled ? 1 : 0.4,
+          duration: AppAnimations.fast,
+          child: Container(
+            constraints: const BoxConstraints(
+              minHeight: AppSpacing.largeTapTarget,
+            ),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.md,
+              vertical: AppSpacing.sm,
+            ),
+            decoration: BoxDecoration(
+              gradient: AppColors.cardGradient,
+              borderRadius: BorderRadius.circular(AppSpacing.radiusRound),
+              border: Border.all(color: AppColors.cardEdge, width: 1.5),
+              boxShadow: const [
+                BoxShadow(
+                  color: AppColors.shadow,
+                  blurRadius: 8,
+                  offset: Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.fast_forward_rounded,
+                  color: AppColors.textSecondary,
+                  size: 26,
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Skip',
+                      style: AppTypography.bodyLarge.copyWith(fontSize: 18),
+                    ),
+                    Text(
+                      "I'm ready to move on",
+                      style: AppTypography.label.copyWith(
+                        letterSpacing: 0,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
-  }
-
-  /// The x-coordinate the move-on button must stay left of — whichever is
-  /// more restrictive of Clef's fixed-right home spot and the right
-  /// instrument's stump, both on [_buildScene]'s own math (kept in sync by
-  /// hand since these are small, self-contained calculations; if her
-  /// sizing/position or the instruments' there changes, this needs the
-  /// same update):
-  /// - Clef: `homeShift`/`clefHeight` formulas, plus her asset's own
-  ///   aspect ratio (Clef.png is 276×354) to get her actual on-screen
-  ///   width.
-  /// - Right instrument: `charSize`/`0.72` center formula — this turned
-  ///   out to be the tighter of the two in practice, since the stump sits
-  ///   closer to that corner than Clef's fixed spot does.
-  double _moveOnSafeLeftBoundary(Size screenSize) {
-    const clefAssetAspect = 276 / 354;
-    final clefHeight = screenSize.height * 0.44;
-    final homeShift = screenSize.width * 0.04;
-    final clefFixedLeftEdge =
-        screenSize.width + homeShift - clefHeight * clefAssetAspect;
-
-    final charSize = screenSize.height * 0.50;
-    final rightInstrumentRightEdge = screenSize.width * 0.72 + charSize / 2;
-
-    return math.min(clefFixedLeftEdge, rightInstrumentRightEdge);
   }
 
   /// The current round's spoken-line placeholder (Observe's live
