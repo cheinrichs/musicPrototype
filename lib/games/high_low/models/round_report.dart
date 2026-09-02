@@ -120,15 +120,18 @@ class RoundReport {
     this.ageBand = kCurrentAgeBand,
   });
 
-  /// Which side is higher by [Note.midiNumber] alone — what
-  /// [HighLowPrompt.correctAnswer] actually scores against today.
+  /// Which side is higher by [Note.midiNumber] alone, ignoring instrument
+  /// transposition — a diagnostic baseline, not what
+  /// [HighLowPrompt.correctAnswer] scores against (that's
+  /// [higherSideRealPitch]).
   int get higherSideLogical => right.note.isHigherThan(left.note) ? 1 : 0;
 
   /// Which side is higher by *real* sounding pitch, accounting for
-  /// instrument transposition. Diverges from [higherSideLogical] exactly
-  /// when one side is guitar/tuba and the other isn't (see
-  /// [HighLowInstrument.realPitchOffsetSemitones]) — the known
-  /// comparison-logic gap this report exists to make visible.
+  /// instrument transposition — what [HighLowPrompt.correctAnswer]
+  /// actually scores against. Always agrees with [higherSideLogical] now
+  /// that a round is always two notes on the same instrument (any
+  /// transposition cancels out); would only diverge if that invariant
+  /// were ever broken (see [HighLowInstrument.realPitchOffsetSemitones]).
   int get higherSideRealPitch =>
       right.realMidiNumber > left.realMidiNumber ? 1 : 0;
 

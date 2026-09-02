@@ -105,18 +105,15 @@ extension NoteExtension on Note {
   /// found two bells files (c4, c#5) whose *content* — not the mapping —
   /// measured off-pitch/inharmonic and need re-recording, not a code fix.
   ///
-  /// IMPORTANT: [HighLowPrompt.correctAnswer] and the rest of the
-  /// High/Low game compare notes purely by [midiNumber] (the logical
-  /// slot) — they have no idea an instrument might be transposed. This is
-  /// harmless when both sides share an instrument, or when neither side
-  /// is guitar/tuba, but a round that pairs guitar or tuba (real pitch
-  /// two octaves below the label) against any non-transposed instrument
-  /// can have its logical "higher" answer be the real-audio opposite.
-  /// `ConceptTier.sameInstrument` only forces matching instruments at
-  /// t1/t2; t3+ can hit this. Flagged, not fixed, by the pitch-mapping
-  /// audit above — fixing it means either comparing real sounding pitch
-  /// instead of [midiNumber], or keeping guitar/tuba from ever being
-  /// paired against an untransposed instrument.
+  /// Decided (Cooper: "i don't think we'll be pitting different
+  /// instruments against each other ever and comparing pitch"): a
+  /// High/Low round is always two notes on the *same* instrument, enforced
+  /// by an assertion in [HighLowPrompt]'s constructor. Guitar/tuba's
+  /// transposition therefore always cancels out between the two sides —
+  /// but [HighLowPrompt.correctAnswer] compares real sounding pitch
+  /// ([midiNumber] plus the instrument's transposition) rather than
+  /// [midiNumber] alone regardless, so it stays correct even if that rule
+  /// ever changes.
   static const Set<String> _instrumentsWithSamples = {
     'bells',
     'cello',

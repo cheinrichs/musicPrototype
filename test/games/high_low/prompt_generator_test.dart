@@ -94,6 +94,28 @@ void main() {
       }
     });
 
+    test('never mixes instruments within a pair, at any tier '
+        '(a High/Low round is always two notes on one instrument)', () {
+      final generator = PromptGenerator(random: Random(1234));
+
+      for (final tier in ConceptTier.values) {
+        for (var i = 0; i < 200; i++) {
+          final prompt = generator.generatePrompt(
+            promptNumber: i,
+            tier: tier,
+            targetDirection: PitchDirection.higher,
+          );
+          expect(
+            prompt.firstInstrument,
+            equals(prompt.secondInstrument),
+            reason:
+                '$tier prompt $i mixed ${prompt.firstInstrument} with '
+                '${prompt.secondInstrument}',
+          );
+        }
+      }
+    });
+
     test('targetSide follows targetDirection, not correctAnswer directly', () {
       final generator = PromptGenerator(random: Random(7));
       for (var i = 0; i < 50; i++) {

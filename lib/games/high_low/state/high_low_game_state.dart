@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math';
 import 'package:flutter/foundation.dart';
 import '../../../audio/audio_controller.dart';
 import '../../../audio/sfx_type.dart';
@@ -60,7 +59,6 @@ class HighLowGameState extends ChangeNotifier {
   final AudioController _audio;
   final PromptGenerator _generator;
   final RoundSequencer _sequencer;
-  final Random _instrumentRandom;
   final int totalPrompts;
 
   /// Mutable so a debug-only pre-game gate can override these (Trello card
@@ -75,9 +73,6 @@ class HighLowGameState extends ChangeNotifier {
   int _currentPromptIndex = 0;
   final List<PromptResult> _results = [];
   final List<RoundInstrumentation> _instrumentation = [];
-
-  HighLowInstrument _leftInstrument = HighLowInstrument.guitar;
-  HighLowInstrument _rightInstrument = HighLowInstrument.guitar;
 
   /// Which side is audibly sounding right now, for the UI's wiggle/glow.
   int? _playingIndex;
@@ -116,15 +111,13 @@ class HighLowGameState extends ChangeNotifier {
     AudioController? audio,
     PromptGenerator? generator,
     RoundSequencer? sequencer,
-    Random? instrumentRandom,
     this.totalPrompts = 5,
     this.agencyStage = AgencyStage.trigger,
     this.conceptTier = ConceptTier.t1,
     this.roundOrder = RoundOrder.blocked,
   }) : _audio = audio ?? AudioController.instance,
        _generator = generator ?? PromptGenerator(),
-       _sequencer = sequencer ?? RoundSequencer(),
-       _instrumentRandom = instrumentRandom ?? Random();
+       _sequencer = sequencer ?? RoundSequencer();
 
   // ---- Session-level getters ----
   GameStatus get status => _status;
@@ -136,8 +129,13 @@ class HighLowGameState extends ChangeNotifier {
   List<RoundInstrumentation> get instrumentation =>
       List.unmodifiable(_instrumentation);
 
-  HighLowInstrument get leftInstrument => _leftInstrument;
-  HighLowInstrument get rightInstrument => _rightInstrument;
+  /// The round's shared instrument (see [HighLowPrompt] — both sides
+  /// always match), or [HighLowInstrument.guitar] as a placeholder before
+  /// [startGame] has produced a first prompt.
+  HighLowInstrument get leftInstrument =>
+      currentPrompt?.firstInstrument ?? HighLowInstrument.guitar;
+  HighLowInstrument get rightInstrument =>
+      currentPrompt?.secondInstrument ?? HighLowInstrument.guitar;
 
   HighLowPrompt? get currentPrompt =>
       _prompts.isNotEmpty && _currentPromptIndex < _prompts.length
@@ -238,7 +236,6 @@ class HighLowGameState extends ChangeNotifier {
     _firstResponseSide = null;
     _firstResponseCorrect = null;
     _listenAgainCount = 0;
-    _pickInstruments();
 
     final prompt = currentPrompt;
     _activeCaption = switch (agencyStage) {
@@ -273,25 +270,6 @@ class HighLowGameState extends ChangeNotifier {
     await _runIntro(token);
   }
 
-  /// Randomly pick the instrument(s) for the round about to play. Tier
-  /// controls whether both sides share one instrument or use two
-  /// different ones (see [ConceptTier.sameInstrument]) — each instrument
-  /// has its own "1"/"2" character art, used here for whichever side
-  /// (left/right) it lands on regardless of whether the pair matches.
-  void _pickInstruments() {
-    final values = HighLowInstrument.values;
-    _leftInstrument = values[_instrumentRandom.nextInt(values.length)];
-    if (conceptTier.sameInstrument) {
-      _rightInstrument = _leftInstrument;
-    } else {
-      HighLowInstrument other;
-      do {
-        other = values[_instrumentRandom.nextInt(values.length)];
-      } while (other == _leftInstrument);
-      _rightInstrument = other;
-    }
-  }
-
   /// Play the pair through, cancellable via [_roundToken]. In Observe,
   /// this always runs to completion (taps never cut it short); in
   /// Participate/Trigger, [tapInstrument] cancels it early.
@@ -311,7 +289,7 @@ class HighLowGameState extends ChangeNotifier {
 
     await _audio.playNoteForScale(
       prompt.firstNote,
-      instrument: _leftInstrument.sampleInstrument,
+      instrument: leftInstrument.sampleInstrument,
     );
     if (token != _roundToken) return;
 
@@ -332,7 +310,7 @@ class HighLowGameState extends ChangeNotifier {
 
     await _audio.playNoteForScale(
       prompt.secondNote,
-      instrument: _rightInstrument.sampleInstrument,
+      instrument: rightInstrument.sampleInstrument,
     );
     if (token != _roundToken) return;
 
@@ -404,7 +382,7 @@ class HighLowGameState extends ChangeNotifier {
     }
     notifyListeners();
 
-    final instrument = side == 0 ? _leftInstrument : _rightInstrument;
+    final instrument = side == 0 ? leftInstrument : rightInstrument;
     final note = side == 0 ? prompt.firstNote : prompt.secondNote;
     unawaited(
       _audio

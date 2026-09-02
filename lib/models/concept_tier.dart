@@ -1,9 +1,16 @@
 /// How musically demanding a round's *stimulus* is, independent of how
 /// much the child is asked to do with it (that's [AgencyStage]). Per the
 /// curriculum handoff (docs/product/LEARNING_ARCHITECTURE.md), a concept
-/// tier is built from interval size, register, and timbre — T1 is a wide
-/// interval on one instrument, T4 is a small interval across two different
-/// instruments (Trello card 95).
+/// tier is built from interval size and register — T1 is a wide interval,
+/// T4 a small one (Trello card 95).
+///
+/// The curriculum handoff also lists timbre as a dimension here, but a
+/// High/Low round is always two notes on the *same* instrument (Cooper:
+/// "i don't think we'll be pitting different instruments against each
+/// other ever and comparing pitch") — read timbre as varying *between*
+/// rounds (cellos this round, trumpets the next; see
+/// PromptGenerator.generatePrompt), not as a within-round axis any tier
+/// controls.
 ///
 /// Register isn't modeled as a fourth, independently-locked axis here: the
 /// note pool already spans two octaves and is picked at random regardless
@@ -31,12 +38,6 @@ enum ConceptTier {
     ConceptTier.t3 => 7,
     ConceptTier.t4 => 4,
   };
-
-  /// Whether both notes this round should sound on the *same* instrument
-  /// (timbre held constant) or on two different instruments (an added
-  /// axis of difficulty: the child has to track pitch through a timbre
-  /// change instead of comparing two notes of the same color).
-  bool get sameInstrument => this == ConceptTier.t1 || this == ConceptTier.t2;
 
   /// Short label for the dev toggle.
   String get label => switch (this) {

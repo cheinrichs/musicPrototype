@@ -2,6 +2,7 @@ import 'dart:math';
 import '../../../audio/note.dart';
 import '../../../models/concept_tier.dart';
 import '../../../models/pitch_direction.dart';
+import '../models/high_low_instrument.dart';
 import '../models/high_low_prompt.dart';
 
 /// Generates prompts (note pairs) for the High/Low game, sized by
@@ -88,9 +89,19 @@ class PromptGenerator {
 
     final secondNote = availableNotes[secondNoteIndex];
 
+    // Both sides of a round always share one instrument (Cooper: "i don't
+    // think we'll be pitting different instruments against each other ever
+    // and comparing pitch") — timbre varies *between* rounds instead, by
+    // this pick happening fresh per prompt.
+    final instrumentValues = HighLowInstrument.values;
+    final instrument =
+        instrumentValues[_random.nextInt(instrumentValues.length)];
+
     return HighLowPrompt(
       firstNote: firstNote,
       secondNote: secondNote,
+      firstInstrument: instrument,
+      secondInstrument: instrument,
       promptNumber: promptNumber,
       targetDirection: targetDirection,
     );
