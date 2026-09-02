@@ -124,12 +124,6 @@ class _HighLowScreenState extends State<HighLowScreen> {
   /// [HighLowGameState.tapInstrument].
   void _onInstrumentTap(int side) => _gameState.tapInstrument(side);
 
-  /// Estimated fixed height of [_buildHeader]. Used to budget how much
-  /// vertical space is actually left for the scrollable [GameScreenLayout]
-  /// body so it can be scaled to fit instead of scrolling — see
-  /// [_buildBody].
-  static const double _headerHeight = 56;
-
   @override
   Widget build(BuildContext context) {
     if (_showDevGate) {
@@ -158,7 +152,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
               fit: StackFit.expand,
               children: [
                 Image.asset(
-                  'assets/images/backgrounds/Forest.png',
+                  'assets/images/backgrounds/MeadowWidescreen.png',
                   fit: BoxFit.cover,
                 ),
                 _buildScene(context),
@@ -166,6 +160,11 @@ class _HighLowScreenState extends State<HighLowScreen> {
             ),
             header: _buildHeader(),
             body: _buildBody(context),
+            footer: ProgressDots(
+              totalDots: _gameState.totalPrompts,
+              currentIndex: _gameState.currentPromptIndex,
+              completedCount: _gameState.results.length,
+            ),
             // _buildBody already guarantees it never overflows its own budget
             // (FittedBox(fit: scaleDown) inside a SizedBox sized off the real
             // available height) — GameScreenLayout's scroll-fallback isn't
@@ -190,40 +189,41 @@ class _HighLowScreenState extends State<HighLowScreen> {
 
   /// The app is landscape-only, so the available height for everything
   /// between the header and the footer is tight and varies a lot by
-  /// device. [GameScreenLayout] falls back to scrolling if the body
-  /// overflows that space, but a kid mid-round shouldn't have to scroll to
-  /// see the rest of it — so instead we measure the real budget and scale
-  /// the caption/listen-again/status group down to fit it, uniformly,
-  /// rather than letting any one piece get clipped or overlap its
-  /// neighbors. The scene itself isn't part of this Column any more — see
-  /// [_buildScene].
+  /// device. Now that the caption lives in [_buildHeader] instead of here
+  /// (Trello card "Separate the stumps from the background art" — it used
+  /// to sit stacked directly on top of the Listen Again button and the
+  /// "Listen carefully..." status line), this body is just Listen
+  /// Again + status, and [constraints.maxHeight] from the enclosing
+  /// `Expanded` is already the accurate leftover space between the
+  /// header and the [ProgressDots] footer — no need to re-derive it from
+  /// `MediaQuery` and a guessed header height. Still scaled down to fit
+  /// via [FittedBox] rather than scrolling, for the same reason as before:
+  /// a kid mid-round shouldn't have to scroll to see Listen Again.
+  ///
+  /// Top-aligned, not the default center: [GameScreenLayout] centers this
+  /// whole body vertically in the space between the header and the
+  /// footer, and Trigger's centered, dragged narrator (Clef or Piper,
+  /// [_buildDragHandle]) stands tall enough — up to 72% of the screen
+  /// height — to reach exactly that vertical middle too. Centering here
+  /// sat Listen Again right behind the dragged character's head; hugging
+  /// the top instead keeps it tucked under the header, above where either
+  /// character's head reaches.
   Widget _buildBody(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final media = MediaQuery.of(context);
-        final budget =
-            media.size.height -
-            media.padding.vertical -
-            AppSpacing.sm * 2 -
-            _headerHeight;
+        final budget = constraints.hasBoundedHeight
+            ? constraints.maxHeight
+            : MediaQuery.of(context).size.height * 0.3;
 
         return SizedBox(
           width: constraints.maxWidth,
-          height: budget.clamp(160.0, 900.0),
+          height: budget.clamp(80.0, 900.0),
           child: FittedBox(
             fit: BoxFit.scaleDown,
-            // Top-aligned, not the default center (Trello card S1v6sbrK):
-            // this box claims the full body height, and centering the
-            // scaled-down content within it put the caption right across
-            // the play area, blocking the drag path to the instruments and
-            // covering the Listen Again label. Hugging the top keeps it
-            // tucked under the header, out of the stumps' space.
             alignment: Alignment.topCenter,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _buildPromptArea(),
-                const SizedBox(height: AppSpacing.sm),
                 _buildListenAgainButton(),
                 const SizedBox(height: AppSpacing.xs),
                 _buildStatusText(),
@@ -235,9 +235,15 @@ class _HighLowScreenState extends State<HighLowScreen> {
     );
   }
 
+  /// Close (left), the round's caption (center, see [_buildPromptArea]),
+  /// and the dev-only report button (right) — [ProgressDots] used to sit
+  /// in this row's center slot, but moved down to [GameScreenLayout]'s
+  /// `footer` (see `build`) to make room for the caption, matching the
+  /// mockup layout (Trello card "Separate the stumps from the background
+  /// art"): question at the top, progress dots along the bottom.
   Widget _buildHeader() {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         CircleIconButton(
           icon: Icons.close_rounded,
@@ -251,11 +257,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
             context.go(AppRoutes.home);
           },
         ),
-        ProgressDots(
-          totalDots: _gameState.totalPrompts,
-          currentIndex: _gameState.currentPromptIndex,
-          completedCount: _gameState.results.length,
-        ),
+        Expanded(child: _buildPromptArea()),
         // Spacer for symmetry — the move-on control used to live here, but
         // it's the child's control now, not an adult-only header affordance
         // (see [_buildMoveOnButton]), so it moved to the bottom right. Only
@@ -391,32 +393,29 @@ class _HighLowScreenState extends State<HighLowScreen> {
 
   /// The current round's spoken-line placeholder (Observe's live
   /// narration, or the constant Participate/Trigger prompt, or a brief
-  /// retry line) — see [VoiceLine] for why this is text today.
+  /// retry line) — see [VoiceLine] for why this is text today. Lives at
+  /// the top of the screen now, in [_buildHeader]'s center slot, per the
+  /// mockup (Trello card "Separate the stumps from the background art") —
+  /// it used to sit mid-screen, directly on top of Listen Again and the
+  /// "Listen carefully..." status line. Reserves two lines' worth of
+  /// height even when empty so the header doesn't jump as [text] toggles
+  /// on and off between rounds.
   Widget _buildPromptArea() {
     final text = _gameState.captionText;
     return SizedBox(
-      height: 64,
+      height: AppTypography.heading3.fontSize! * AppTypography.heading3.height! * 2,
       child: Center(
         child: AnimatedSwitcher(
           duration: AppAnimations.medium,
           child: text == null
               ? const SizedBox.shrink(key: ValueKey('caption-empty'))
-              : Container(
+              : Text(
+                  text,
                   key: ValueKey('caption-$text'),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.md,
-                    vertical: AppSpacing.sm,
-                  ),
-                  decoration: BoxDecoration(
-                    gradient: AppColors.cardGradient,
-                    borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
-                    border: Border.all(color: AppColors.cardEdge, width: 2),
-                  ),
-                  child: Text(
-                    text,
-                    style: AppTypography.heading3,
-                    textAlign: TextAlign.center,
-                  ),
+                  style: AppTypography.heading3,
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
         ),
       ),
@@ -474,11 +473,22 @@ class _HighLowScreenState extends State<HighLowScreen> {
   /// around its *center* to make it fit — on a roomy screen that shrink
   /// was mild and this looked fine, but on a short one it shrank hard
   /// enough that the scene's own "ground" drifted noticeably up and away
-  /// from Forest.png's actual, un-shrunk stumps (which live in a sibling
-  /// layer the FittedBox never touches), leaving instruments visibly
-  /// floating above them and pulling Piper/Clef in over the stumps
-  /// instead of outside them. Sizing and positioning here directly off
-  /// the real screen makes the scene invariant to that shrink entirely.
+  /// from the background's own art, leaving instruments visibly floating
+  /// above it and pulling Piper/Clef in over the stumps instead of
+  /// outside them. Sizing and positioning here directly off the real
+  /// screen makes the scene invariant to that shrink entirely.
+  ///
+  /// The stumps themselves ([_buildStump]) are painted here too, not in
+  /// the background art (Trello card "Separate the stumps from the
+  /// background art"): `MeadowWidescreen.png` is stump-free scenery, and
+  /// each stump prop shares [groundY] — the exact same anchor coordinate
+  /// used to place the instrument standing on it. Every past "instrument
+  /// floating off its stump" bug (the FittedBox drift above, the original
+  /// scene anchoring, the floating cellos) came from the stump living in
+  /// painted artwork while the instrument was placed by a number measured
+  /// off that art — a number that goes stale the moment the viewport
+  /// changes. Sharing one coordinate instead of matching two independent
+  /// measurements makes that whole bug class impossible by construction.
   Widget _buildScene(BuildContext context) {
     final size = MediaQuery.of(context).size;
     final screenHeight = size.height;
@@ -491,12 +501,14 @@ class _HighLowScreenState extends State<HighLowScreen> {
     final charSize = screenHeight * 0.50;
     final piperHeight = screenHeight * 0.72;
     final clefHeight = screenHeight * 0.44;
-    // Distance from the screen's bottom edge up to the stumps' flat top
-    // surface, calibrated against an actual ~2.17:1 render of Forest.png
-    // under BoxFit.cover (Trello card 56 — analytical crop math from the
-    // source painting's own measurements kept landing off by a wide
-    // margin, so this is read directly off the rendered frame instead).
-    final stumpLift = screenHeight * 0.205;
+    // The shared ground line: where each instrument's feet and its
+    // stump's flat top surface meet — see the class doc above. Unlike the
+    // old `stumpLift` this replaces, this is no longer calibrated against
+    // a painted stump in the background art (there isn't one any more);
+    // it's just a comfortable resting line near the bottom of the scene.
+    final groundY = screenHeight * 0.16;
+    final leftAnchorX = screenWidth * 0.29;
+    final rightAnchorX = screenWidth * 0.72;
     // How far above the screen's bottom edge (and, for the fixed home
     // spots, how far further outward past the screen's side edge) Piper
     // and Clef sit — raised and pushed outward from their old flush-corner
@@ -516,17 +528,27 @@ class _HighLowScreenState extends State<HighLowScreen> {
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        _buildPiper(
-          piperHeight,
-          piperIsDragged,
-          homeLift,
-          homeShift,
-          stumpLift,
+        _buildStump(
+          assetPath: 'assets/images/backgrounds/props/StumpA.png',
+          naturalWidth: 1512,
+          naturalHeight: 794,
+          centerX: leftAnchorX,
+          charSize: charSize,
+          groundY: groundY,
         ),
-        _buildClef(clefHeight, clefIsDragged, homeLift, homeShift, stumpLift),
+        _buildStump(
+          assetPath: 'assets/images/backgrounds/props/StumpB.png',
+          naturalWidth: 1506,
+          naturalHeight: 781,
+          centerX: rightAnchorX,
+          charSize: charSize,
+          groundY: groundY,
+        ),
+        _buildPiper(piperHeight, piperIsDragged, homeLift, groundY),
+        _buildClef(clefHeight, clefIsDragged, homeLift, homeShift, groundY),
         Positioned(
-          left: screenWidth * 0.29 - charSize / 2,
-          bottom: stumpLift,
+          left: leftAnchorX - charSize / 2,
+          bottom: groundY,
           child: _wrapDragTarget(
             side: 0,
             child: _InstrumentButton(
@@ -541,8 +563,8 @@ class _HighLowScreenState extends State<HighLowScreen> {
           ),
         ),
         Positioned(
-          left: screenWidth * 0.72 - charSize / 2,
-          bottom: stumpLift,
+          left: rightAnchorX - charSize / 2,
+          bottom: groundY,
           child: _wrapDragTarget(
             side: 1,
             child: _InstrumentButton(
@@ -559,6 +581,49 @@ class _HighLowScreenState extends State<HighLowScreen> {
       ],
     );
   }
+
+  /// One stump prop, centered under an instrument at [centerX] and
+  /// aligned to it at [groundY] — see [_buildScene]'s class doc for why
+  /// sharing that exact coordinate (rather than a separate measurement)
+  /// is the point. Sized off [charSize] (the instrument's own bounding
+  /// box) rather than the stump art's native pixel size, so it scales
+  /// down with the instrument on small screens instead of independently
+  /// drifting out of proportion with it.
+  ///
+  /// [_stumpSurfaceFraction] accounts for the art itself: StumpA/B ([naturalWidth]x[naturalHeight])
+  /// are photographed/rendered at an angle, so the flat top surface an
+  /// instrument stands on isn't the very top pixel of the image — it's
+  /// roughly a third of the way down, with the trunk's bark and the grass
+  /// around its base filling the rest below. [groundY] anchors that
+  /// surface line, not the image's bounding box.
+  Widget _buildStump({
+    required String assetPath,
+    required int naturalWidth,
+    required int naturalHeight,
+    required double centerX,
+    required double charSize,
+    required double groundY,
+  }) {
+    // A "low, wide disc" per the mockup (Trello card "Separate the stumps
+    // from the background art": "the stumps are too big ... match the
+    // mockup's proportions"), scaled to the instrument standing on it
+    // rather than the source art's own resolution.
+    final width = charSize * 0.95;
+    final height = width * naturalHeight / naturalWidth;
+    final belowSurface = height * (1 - _stumpSurfaceFraction);
+
+    return Positioned(
+      left: centerX - width / 2,
+      bottom: groundY - belowSurface,
+      child: Image.asset(assetPath, width: width, height: height),
+    );
+  }
+
+  /// Fraction of the stump art's height, from the top, down to the front
+  /// rim of its flat top surface — read directly off StumpA.png/StumpB.png
+  /// (both are cropped/composed the same way). Below this line is bark and
+  /// grass; above it is the disc an instrument stands on.
+  static const double _stumpSurfaceFraction = 0.37;
 
   /// Clef: fixed far-right, unless she's this round's dragged answer
   /// ([isDragged] — Clef owns the high pole, Trello card 101), in which
@@ -597,11 +662,17 @@ class _HighLowScreenState extends State<HighLowScreen> {
   /// [_buildClef] for why the dragged character starts centered. Unlike
   /// Clef, Piper doesn't idle-bob while fixed; only picks up motion once
   /// she's the one being dragged.
+  ///
+  /// Sits flush with the screen's left edge, not pushed past it like
+  /// Clef's `-homeShift` on the right — that negative offset cropped
+  /// Piper in half against the left edge (Trello card "Separate the
+  /// stumps from the background art"). Clef's art apparently has enough
+  /// transparent margin on that side to absorb the same shift without
+  /// visibly cropping; Piper's doesn't.
   Widget _buildPiper(
     double piperHeight,
     bool isDragged,
     double homeLift,
-    double homeShift,
     double dragLift,
   ) {
     final piperImage = Image.asset(
@@ -612,7 +683,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
 
     if (!isDragged) {
       return Positioned(
-        left: -homeShift,
+        left: 0,
         bottom: homeLift,
         child: piperImage.animate().fade(duration: AppAnimations.medium),
       );

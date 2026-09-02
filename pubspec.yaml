@@ -72,4 +72,5 @@ flutter:
     - assets/images/ui/
     - assets/images/backgrounds/
     - assets/images/backgrounds/learning_paths/
+    - assets/images/backgrounds/props/
     - assets/images/logos/
