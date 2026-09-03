@@ -52,6 +52,12 @@ class _HighLowScreenState extends State<HighLowScreen> {
   late HighLowGameState _gameState;
   bool _showDevGate = devToolsEnabled;
 
+  /// Which side (0/1) a drag is currently hovering over, for the
+  /// instrument's little "you're about to drop here" scale-up — purely a
+  /// transient UI cue, not game state, so it lives here rather than on
+  /// [HighLowGameState]. See [_buildDropZone].
+  int? _hoveredDropSide;
+
   /// Boundary for "Report this round"'s screenshot — see
   /// [RoundReportService.shareReport]. Wraps the whole screen (below), not
   /// just the scene, so the captured image matches what's actually on
@@ -527,6 +533,16 @@ class _HighLowScreenState extends State<HighLowScreen> {
     // at its normal fixed spot, same as Observe/Participate.
     final piperIsDragged = isTrigger && _gameState.draggedIsPiper;
     final clefIsDragged = isTrigger && !_gameState.draggedIsPiper;
+    // A correct drop sticks the dragged character onto the instrument it
+    // landed on instead of springing back to center (Trello — "celebrate a
+    // correct drop"); see [_buildDragHandle]. [_dropAlignX] converts the
+    // target instrument's screen-space X into the -1..1 fraction
+    // [AnimatedAlign] wants.
+    final celebrating = _gameState.dragFeedback == DragFeedback.correct;
+    final dropAnchorX = _gameState.lastDropSide == 1
+        ? rightAnchorX
+        : leftAnchorX;
+    final dropAlignX = ((dropAnchorX / screenWidth) * 2 - 1).clamp(-1.0, 1.0);
 
     return Stack(
       clipBehavior: Clip.none,
@@ -547,13 +563,29 @@ class _HighLowScreenState extends State<HighLowScreen> {
           charSize: charSize,
           groundY: groundY,
         ),
-        _buildPiper(piperHeight, piperIsDragged, homeLift, groundY),
-        _buildClef(clefHeight, clefIsDragged, homeLift, homeShift, groundY),
+        _buildPiper(
+          piperHeight,
+          piperIsDragged,
+          homeLift,
+          groundY,
+          celebrating: celebrating && piperIsDragged,
+          dropAlignX: dropAlignX,
+        ),
+        _buildClef(
+          clefHeight,
+          clefIsDragged,
+          homeLift,
+          homeShift,
+          groundY,
+          celebrating: celebrating && clefIsDragged,
+          dropAlignX: dropAlignX,
+        ),
         Positioned(
           left: leftAnchorX - charSize / 2,
           bottom: groundY,
-          child: _wrapDragTarget(
-            side: 0,
+          child: AnimatedScale(
+            scale: _hoveredDropSide == 0 ? 1.06 : 1.0,
+            duration: AppAnimations.fast,
             child: _InstrumentButton(
               key: ValueKey('left-${_gameState.leftInstrument.name}'),
               assetPath: _gameState.leftInstrument.leftAssetPath,
@@ -568,8 +600,9 @@ class _HighLowScreenState extends State<HighLowScreen> {
         Positioned(
           left: rightAnchorX - charSize / 2,
           bottom: groundY,
-          child: _wrapDragTarget(
-            side: 1,
+          child: AnimatedScale(
+            scale: _hoveredDropSide == 1 ? 1.06 : 1.0,
+            duration: AppAnimations.fast,
             child: _InstrumentButton(
               key: ValueKey('right-${_gameState.rightInstrument.name}'),
               assetPath: _gameState.rightInstrument.rightAssetPath,
@@ -581,7 +614,56 @@ class _HighLowScreenState extends State<HighLowScreen> {
             ),
           ),
         ),
+        // Two big, non-overlapping halves of the whole play area, not two
+        // small boxes hugging each instrument (Trello — "forgiving drop
+        // targets"): a four-year-old's aim is imprecise, and with only two
+        // possible answers, "which half did you drop in" already *is*
+        // "which one did you mean," so there's no accuracy lost by being
+        // this generous. Painted last (on top of the stumps/Piper/Clef/
+        // instruments) so they aren't occluded by those images' full
+        // rectangular bounds — DragTarget defaults to
+        // HitTestBehavior.translucent, so sitting on top like this doesn't
+        // block the instruments' own tap-to-explore underneath.
+        if (isTrigger) ...[
+          _buildDropZone(side: 0, left: 0, width: screenWidth / 2),
+          _buildDropZone(side: 1, left: screenWidth / 2, width: screenWidth / 2),
+        ],
       ],
+    );
+  }
+
+  /// One half of the whole play area as a drop target — see [_buildScene]'s
+  /// class doc for why generous, non-overlapping halves replace two small
+  /// boxes hugging each instrument. Invisible (a plain [SizedBox.expand]):
+  /// the instrument's own [AnimatedScale] hover cue, driven by
+  /// [_hoveredDropSide], is the only visual feedback a drag is over this
+  /// zone.
+  Widget _buildDropZone({
+    required int side,
+    required double left,
+    required double width,
+  }) {
+    return Positioned(
+      left: left,
+      top: 0,
+      bottom: 0,
+      width: width,
+      child: DragTarget<Object>(
+        onWillAcceptWithDetails: (_) => _gameState.canDrop,
+        onAcceptWithDetails: (_) => _gameState.dropOnSide(side),
+        onMove: (_) {
+          if (_hoveredDropSide != side) {
+            setState(() => _hoveredDropSide = side);
+          }
+        },
+        onLeave: (_) {
+          if (_hoveredDropSide == side) {
+            setState(() => _hoveredDropSide = null);
+          }
+        },
+        builder: (context, candidateData, rejectedData) =>
+            const SizedBox.expand(),
+      ),
     );
   }
 
@@ -639,8 +721,10 @@ class _HighLowScreenState extends State<HighLowScreen> {
     bool isDragged,
     double homeLift,
     double homeShift,
-    double dragLift,
-  ) {
+    double dragLift, {
+    required bool celebrating,
+    required double dropAlignX,
+  }) {
     final clefImage = Image.asset(
       'assets/images/characters/Clef.png',
       height: clefHeight,
@@ -657,7 +741,14 @@ class _HighLowScreenState extends State<HighLowScreen> {
     if (!isDragged) {
       return Positioned(right: -homeShift, bottom: homeLift, child: bobbing);
     }
-    return _buildDragHandle(image: clefImage, bobbing: bobbing, lift: dragLift);
+    return _buildDragHandle(
+      image: clefImage,
+      bobbing: bobbing,
+      lift: dragLift,
+      size: clefHeight,
+      celebrating: celebrating,
+      dropAlignX: dropAlignX,
+    );
   }
 
   /// Piper: fixed far-left, unless she's this round's dragged answer
@@ -676,8 +767,10 @@ class _HighLowScreenState extends State<HighLowScreen> {
     double piperHeight,
     bool isDragged,
     double homeLift,
-    double dragLift,
-  ) {
+    double dragLift, {
+    required bool celebrating,
+    required double dropAlignX,
+  }) {
     final piperImage = Image.asset(
       'assets/images/characters/Piper_Encouraging.png',
       height: piperHeight,
@@ -704,6 +797,9 @@ class _HighLowScreenState extends State<HighLowScreen> {
       image: piperImage,
       bobbing: bobbing,
       lift: dragLift,
+      size: piperHeight,
+      celebrating: celebrating,
+      dropAlignX: dropAlignX,
     );
   }
 
@@ -715,39 +811,64 @@ class _HighLowScreenState extends State<HighLowScreen> {
   /// [lift] raises it off the very bottom edge to the same stump-top line
   /// the instruments sit on (Trello card S1v6sbrK — it used to sit flush
   /// against the bottom edge, below the stump line).
+  ///
+  /// [celebrating] is the fix for "right and wrong currently look
+  /// identical" (Trello): previously nothing here ever moved, so a correct
+  /// drop and a wrong one looked exactly the same — the character just
+  /// reappeared centered either way, because the Draggable's real child was
+  /// never removed from its slot. On a correct drop this now slides the
+  /// character sideways to sit on the instrument it landed on
+  /// ([dropAlignX]) instead of snapping back to center, and adds a little
+  /// pulse plus a burst from the shared [DriftingNotes] component (already
+  /// used elsewhere for "this instrument is sounding," reused here rather
+  /// than inventing a second celebration effect). There's no alternate
+  /// "excited" sprite for either character in SongStone-UI-Kit yet (only
+  /// concept art) — this deliberately ships with the existing art rather
+  /// than faking one.
   Widget _buildDragHandle({
     required Widget image,
     required Widget bobbing,
     required double lift,
+    required double size,
+    required bool celebrating,
+    required double dropAlignX,
   }) {
     return Positioned(
       left: 0,
       right: 0,
       bottom: lift,
-      child: Align(
-        alignment: Alignment.bottomCenter,
-        child: Draggable<Object>(
-          data: 'narrator',
-          feedback: Opacity(opacity: 0.85, child: image),
-          childWhenDragging: Opacity(opacity: 0.3, child: image),
-          child: bobbing,
-        ),
+      child: AnimatedAlign(
+        alignment: celebrating
+            ? Alignment(dropAlignX, 1.0)
+            : Alignment.bottomCenter,
+        duration: const Duration(milliseconds: 500),
+        curve: Curves.easeOutBack,
+        child: celebrating
+            ? Stack(
+                clipBehavior: Clip.none,
+                alignment: Alignment.center,
+                children: [
+                  image
+                      .animate(onPlay: (c) => c.repeat(reverse: true))
+                      .scale(
+                        begin: const Offset(1, 1),
+                        end: const Offset(1.1, 1.1),
+                        duration: const Duration(milliseconds: 450),
+                        curve: Curves.easeInOut,
+                      ),
+                  Positioned(
+                    top: -size * 0.15,
+                    child: DriftingNotes(size: size, active: true),
+                  ),
+                ],
+              )
+            : Draggable<Object>(
+                data: 'narrator',
+                feedback: Opacity(opacity: 0.85, child: image),
+                childWhenDragging: Opacity(opacity: 0.3, child: image),
+                child: bobbing,
+              ),
       ),
-    );
-  }
-
-  Widget _wrapDragTarget({required int side, required Widget child}) {
-    if (_gameState.agencyStage != AgencyStage.trigger) return child;
-    return DragTarget<Object>(
-      onWillAcceptWithDetails: (_) => _gameState.canDrop,
-      onAcceptWithDetails: (_) => _gameState.dropOnSide(side),
-      builder: (context, candidateData, rejectedData) {
-        return AnimatedScale(
-          scale: candidateData.isNotEmpty ? 1.06 : 1.0,
-          duration: AppAnimations.fast,
-          child: child,
-        );
-      },
     );
   }
 

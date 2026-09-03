@@ -445,21 +445,47 @@ class HighLowGameState extends ChangeNotifier {
       _activeCaption = draggedIsPiper
           ? VoiceLine.tryAgainPiper
           : VoiceLine.tryAgainClef;
-      unawaited(_audio.playVoiceLine(_activeCaption!));
       _status = GameStatus.showingFeedback;
       notifyListeners();
 
-      _schedule(const Duration(milliseconds: 1400), () {
-        if (token != _roundToken) return;
-        _dragFeedback = DragFeedback.none;
-        _activeCaption = prompt.targetDirection == PitchDirection.higher
-            ? VoiceLine.putMeOnHigh
-            : VoiceLine.putMeOnLow;
-        _status = GameStatus.playing;
-        notifyListeners();
-        unawaited(_playCaptionThenIntro(token, _activeCaption!));
-      });
+      unawaited(_playRetryThenIntro(token, prompt, _activeCaption!));
     }
+  }
+
+  /// How long a wrong drop's feedback (the shake, the retry line) stays on
+  /// screen at minimum, even if the retry line itself is shorter or
+  /// missing — see [_playRetryThenIntro].
+  static const Duration _retryFeedbackMinimum = Duration(milliseconds: 1400);
+
+  /// Speak [retryLine] to full completion (or [_retryFeedbackMinimum],
+  /// whichever is longer) before moving on to the round's own cue and
+  /// replaying the notes. This used to fire the retry line and move on
+  /// after a flat, guessed 1400ms regardless of the line's real length —
+  /// exactly the trap [_playCaptionThenIntro] already avoids for the
+  /// round-start cue — so a longer retry recording got cut off by
+  /// `putMeOnHigh`/`putMeOnLow` starting over the top of it (Trello —
+  /// "Clef's audio file keeps getting cut off"). Waiting for the longer of
+  /// the two keeps the existing minimum dwell time for the shake/feedback
+  /// when the line is short (or the asset's missing, in which case
+  /// [AudioController.playVoiceLineAndAwait] resolves immediately) while
+  /// letting a longer line actually finish.
+  Future<void> _playRetryThenIntro(
+    int token,
+    HighLowPrompt prompt,
+    VoiceLine retryLine,
+  ) async {
+    await Future.wait([
+      _audio.playVoiceLineAndAwait(retryLine),
+      _delay(_retryFeedbackMinimum),
+    ]);
+    if (token != _roundToken) return;
+    _dragFeedback = DragFeedback.none;
+    _activeCaption = prompt.targetDirection == PitchDirection.higher
+        ? VoiceLine.putMeOnHigh
+        : VoiceLine.putMeOnLow;
+    _status = GameStatus.playing;
+    notifyListeners();
+    await _playCaptionThenIntro(token, _activeCaption!);
   }
 
   void _recordRoundResult() {

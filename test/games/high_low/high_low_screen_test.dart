@@ -220,6 +220,111 @@ void main() {
     },
   );
 
+  testWidgets(
+    'each drop target spans its whole half of the play area, not a small '
+    "box hugging the instrument — a four-year-old's aim is imprecise, so "
+    'the hitbox needs to be substantially bigger than what it visually sits '
+    'on top of (Trello — "forgiving drop targets")',
+    (tester) async {
+      await pumpAndFinishIntro(tester, viewport: roomyViewport);
+
+      final targets = find.byType(DragTarget<Object>);
+      expect(targets, findsNWidgets(2));
+
+      final leftSize = tester.getSize(targets.at(0));
+      final rightSize = tester.getSize(targets.at(1));
+
+      // Each instrument button is a square sized off screen height (see
+      // _buildScene's `charSize`, 50% of screen height) — a drop target
+      // that's merely as big as the instrument would match that; this
+      // asserts it's dramatically bigger in both dimensions.
+      final instrumentSize = roomyViewport.height * 0.5;
+      expect(
+        leftSize.width,
+        greaterThan(instrumentSize * 1.5),
+        reason: 'a drop target should span most of its half of the screen '
+            'width, not a box the size of the instrument',
+      );
+      expect(
+        leftSize.height,
+        greaterThan(instrumentSize * 1.5),
+        reason: 'a drop target should span the full play-area height, not '
+            'just the instrument\'s own height',
+      );
+      expect(
+        rightSize,
+        leftSize,
+        reason: 'both halves of the play area should be equally generous',
+      );
+
+      // The two halves should tile the full width between them (allowing
+      // for floating-point rounding) rather than leaving a gap only the
+      // small old per-instrument boxes would have covered.
+      expect(
+        leftSize.width + rightSize.width,
+        closeTo(roomyViewport.width, 1.0),
+      );
+    },
+  );
+
+  testWidgets(
+    'a drop anywhere in an instrument\'s half completes the round, even far '
+    "from the instrument's own small silhouette — proves the enlarged "
+    'target actually accepts a forgiving drop end-to-end, not just that it '
+    'measures big (Trello — "forgiving drop targets")',
+    (tester) async {
+      await pumpAndFinishIntro(tester, viewport: roomyViewport);
+
+      final narrator = find.byType(Draggable<Object>);
+      final targets = find.byType(DragTarget<Object>);
+      expect(targets, findsNWidgets(2));
+
+      // Drop near the very top corner of each half — as far from the small,
+      // ground-level instrument silhouette as this half of the screen gets.
+      Future<void> dragToCorner(int side) async {
+        final targetRect = tester.getRect(targets.at(side));
+        final end = Offset(
+          side == 0 ? targetRect.left + 4 : targetRect.right - 4,
+          targetRect.top + 4,
+        );
+        final start = tester.getCenter(narrator);
+        final gesture = await tester.startGesture(start);
+        await tester.pump(const Duration(milliseconds: 20));
+        const steps = 10;
+        for (var i = 1; i <= steps; i++) {
+          await gesture.moveTo(Offset.lerp(start, end, i / steps)!);
+          await tester.pump(const Duration(milliseconds: 20));
+        }
+        await gesture.up();
+        await tester.pump();
+        await tester.pump(Duration.zero);
+      }
+
+      await dragToCorner(0);
+      var completedCount = tester
+          .widget<ProgressDots>(find.byType(ProgressDots))
+          .completedCount;
+
+      if (completedCount == 0) {
+        // Same "wrong side retries immediately" reasoning as the drag test
+        // above — one of the two corners is guaranteed correct.
+        await dragToCorner(1);
+        completedCount = tester
+            .widget<ProgressDots>(find.byType(ProgressDots))
+            .completedCount;
+      }
+
+      expect(tester.takeException(), isNull);
+      expect(
+        completedCount,
+        1,
+        reason:
+            'a drop far from the instrument\'s own silhouette, but still '
+            'within its half, must still register',
+      );
+    },
+  );
+
   group('"Report this round" button (Trello card on0EymSu)', () {
     tearDown(() {
       // devToolsEnabled is a mutable, session-wide flag (see
