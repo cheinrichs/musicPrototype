@@ -64,6 +64,16 @@ class _HighLowScreenState extends State<HighLowScreen> {
   /// screen when the button is tapped.
   final GlobalKey _screenshotKey = GlobalKey();
 
+  /// The report button's own render box — its on-screen rect is where the
+  /// iOS share sheet pops over from on iPad/Mac Catalyst. See
+  /// [_onReportRound].
+  final GlobalKey _reportButtonKey = GlobalKey();
+
+  /// True while [_onReportRound] is capturing/writing/opening the share
+  /// sheet — drives the button's spinner (Cooper: "a tap with no immediate
+  /// visual acknowledgement feels broken").
+  bool _sharingReport = false;
+
   @override
   void initState() {
     super.initState();
@@ -261,12 +271,27 @@ class _HighLowScreenState extends State<HighLowScreen> {
             // same way as the dev gate above, so a public App Store build
             // never shows it.
             if (devToolsEnabled) ...[
-              CircleIconButton(
-                icon: Icons.ios_share_rounded,
-                tooltip: 'Report this round',
-                onTap: _gameState.currentPrompt == null
-                    ? null
-                    : _onReportRound,
+              Stack(
+                alignment: Alignment.center,
+                children: [
+                  CircleIconButton(
+                    key: _reportButtonKey,
+                    icon: Icons.ios_share_rounded,
+                    tooltip: 'Report this round',
+                    onTap: _gameState.currentPrompt == null || _sharingReport
+                        ? null
+                        : _onReportRound,
+                  ),
+                  // Immediate acknowledgement that the tap landed — a slow
+                  // capture-and-share otherwise gives no feedback at all
+                  // until (or unless) the share sheet finally appears.
+                  if (_sharingReport)
+                    const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                ],
               ),
               const SizedBox(width: AppSpacing.sm),
             ],
@@ -282,46 +307,81 @@ class _HighLowScreenState extends State<HighLowScreen> {
   /// reachable outside devToolsEnabled (same guard as the dev gate), and
   /// never touches the network: local JSON + PNG, handed off through
   /// whatever the grown-up picks in the OS share sheet.
+  ///
+  /// Wrapped in try/catch/finally (Cooper: "when I click the send button,
+  /// nothing appears to happen") — before this, any failure anywhere in the
+  /// chain propagated out of a fire-and-forget `onTap` and was silently
+  /// dropped by Flutter's default unhandled-Future-error handling: no
+  /// crash, no dialog, nothing on screen. The actual failure turned out to
+  /// be `Share.shareXFiles` never getting a `sharePositionOrigin` — on
+  /// iPad/Mac Catalyst, `share_plus`'s iOS side presents the share sheet as
+  /// a popover and returns a hard error instead of showing anything when
+  /// it has no source rect to anchor to. This now always passes the report
+  /// button's own on-screen rect (harmless on iPhone, where the parameter
+  /// has no effect either way), and surfaces any *other* failure as a
+  /// SnackBar instead of failing silently — plus the spinner above gives
+  /// the tap itself an immediate, visible response regardless of how long
+  /// the capture/share takes.
   Future<void> _onReportRound() async {
+    if (_sharingReport) return;
     final prompt = _gameState.currentPrompt;
     if (prompt == null) return;
 
-    final buildInfo = await BuildInfo.current();
-    final respondsToDrops = _gameState.agencyStage == AgencyStage.trigger;
-    final report = RoundReport(
-      capturedAt: DateTime.now(),
-      build: buildInfo,
-      conceptTier: _gameState.conceptTier,
-      agencyStage: _gameState.agencyStage,
-      roundOrder: _gameState.roundOrder,
-      roundNumber: _gameState.currentPromptIndex + 1,
-      totalRounds: _gameState.totalPrompts,
-      targetDirection: prompt.targetDirection,
-      left: RoundReportSide(
-        instrument: _gameState.leftInstrument,
-        note: prompt.firstNote,
-      ),
-      right: RoundReportSide(
-        instrument: _gameState.rightInstrument,
-        note: prompt.secondNote,
-      ),
-      response: RoundReportResponse(
-        applicable: respondsToDrops,
-        side: respondsToDrops ? _gameState.lastDropSide : null,
-        markedCorrect: !respondsToDrops
-            ? null
-            : switch (_gameState.dragFeedback) {
-                DragFeedback.correct => true,
-                DragFeedback.retry => false,
-                DragFeedback.none => null,
-              },
-      ),
-    );
+    setState(() => _sharingReport = true);
+    try {
+      final buildInfo = await BuildInfo.current();
+      final respondsToDrops = _gameState.agencyStage == AgencyStage.trigger;
+      final report = RoundReport(
+        capturedAt: DateTime.now(),
+        build: buildInfo,
+        conceptTier: _gameState.conceptTier,
+        agencyStage: _gameState.agencyStage,
+        roundOrder: _gameState.roundOrder,
+        roundNumber: _gameState.currentPromptIndex + 1,
+        totalRounds: _gameState.totalPrompts,
+        targetDirection: prompt.targetDirection,
+        left: RoundReportSide(
+          instrument: _gameState.leftInstrument,
+          note: prompt.firstNote,
+        ),
+        right: RoundReportSide(
+          instrument: _gameState.rightInstrument,
+          note: prompt.secondNote,
+        ),
+        response: RoundReportResponse(
+          applicable: respondsToDrops,
+          side: respondsToDrops ? _gameState.lastDropSide : null,
+          markedCorrect: !respondsToDrops
+              ? null
+              : switch (_gameState.dragFeedback) {
+                  DragFeedback.correct => true,
+                  DragFeedback.retry => false,
+                  DragFeedback.none => null,
+                },
+        ),
+      );
 
-    await RoundReportService.shareReport(
-      report: report,
-      boundaryKey: _screenshotKey,
-    );
+      final buttonBox =
+          _reportButtonKey.currentContext?.findRenderObject() as RenderBox?;
+      final sharePositionOrigin = buttonBox != null && buttonBox.attached
+          ? buttonBox.localToGlobal(Offset.zero) & buttonBox.size
+          : null;
+
+      await RoundReportService.shareReport(
+        report: report,
+        boundaryKey: _screenshotKey,
+        sharePositionOrigin: sharePositionOrigin,
+      );
+    } catch (e, stackTrace) {
+      debugPrint('Report this round failed: $e\n$stackTrace');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Couldn't share this round's report.")),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _sharingReport = false);
+    }
   }
 
   /// The child's move-on/skip control — a parchment pill in the header's

@@ -376,5 +376,77 @@ void main() {
         expect(find.byIcon(Icons.ios_share_rounded), findsOneWidget);
       },
     );
+
+    testWidgets(
+      'tapping it gives an immediate spinner and, when sharing fails (as it '
+      "always will in a widget test — there's no real platform to hand the "
+      'share sheet to), surfaces that failure instead of silently doing '
+      'nothing (Cooper: "when I click the send button, nothing appears to '
+      'happen")',
+      (tester) async {
+        devToolsEnabled = true;
+
+        await tester.pumpWidget(
+          MaterialApp(
+            home: ChangeNotifierProvider(
+              create: (_) => DevSettingsState(),
+              child: const HighLowScreen(),
+            ),
+          ),
+        );
+        await tester.pump();
+        await tester.tap(find.text('Start'));
+        await tester.pump();
+        await tester.pump(Duration.zero);
+
+        // Advance past the intro so there's a current prompt to report.
+        await tester.pump(const Duration(milliseconds: 1200));
+        await tester.pump(const Duration(milliseconds: 1200));
+        await tester.pump(const Duration(milliseconds: 1200));
+        await tester.pump(const Duration(milliseconds: 1200));
+        await tester.pump(Duration.zero);
+
+        final shareButton = find.byIcon(Icons.ios_share_rounded);
+        expect(shareButton, findsOneWidget);
+
+        await tester.tap(shareButton);
+        // One frame, no time elapsed — proves the spinner is *immediate*,
+        // not something that only shows up once the capture/share work
+        // (which hasn't had a chance to run at all yet) finishes.
+        await tester.pump();
+        expect(
+          find.byType(CircularProgressIndicator),
+          findsOneWidget,
+          reason: 'a tap needs a visible response before the slow work even '
+              'starts, not just once it finishes',
+        );
+
+        // Let the actual capture/share run. There's no platform channel
+        // implementation in a widget test, so this fails for real — a
+        // genuine (if incidental) exercise of the error path, not a stub.
+        // Not pumpAndSettle: this screen's idle-bob animations repeat
+        // forever and never settle (same reason pumpAndFinishIntro above
+        // avoids it) — and BuildInfo/file-I/O/Share are real async work,
+        // not fake-clock timers, so runAsync is what actually lets them
+        // run and fail rather than just pumping fake frames.
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(seconds: 6)),
+        );
+        await tester.pump();
+
+        expect(
+          find.byType(CircularProgressIndicator),
+          findsNothing,
+          reason: 'the spinner must clear once the attempt finishes, '
+              'success or failure',
+        );
+        expect(
+          find.text("Couldn't share this round's report."),
+          findsOneWidget,
+          reason: 'a failure must be visible, not swallowed the way it was '
+              'before (Cooper\'s report)',
+        );
+      },
+    );
   });
 }
