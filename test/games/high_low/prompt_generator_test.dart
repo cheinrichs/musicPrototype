@@ -1,6 +1,5 @@
 import 'dart:math';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ear_trainer/audio/note.dart';
 import 'package:ear_trainer/models/concept_tier.dart';
 import 'package:ear_trainer/models/pitch_direction.dart';
 import 'package:ear_trainer/games/high_low/services/prompt_generator.dart';
@@ -15,9 +14,68 @@ void main() {
         targetDirection: PitchDirection.higher,
       );
 
-      expect(prompt.firstNote, isNot(equals(prompt.secondNote)));
+      expect(prompt.firstMidi, isNot(equals(prompt.secondMidi)));
       expect(prompt.promptNumber, equals(1));
       expect(prompt.targetDirection, equals(PitchDirection.higher));
+    });
+
+    test('both notes always fall within the chosen instrument\'s own '
+        'declared sample range, for every tier — this matters now that '
+        'not every instrument has the same two-octave range (guitar and '
+        'tuba are narrower; see HighLowInstrument\'s class doc)', () {
+      final generator = PromptGenerator(random: Random(99));
+      for (final tier in ConceptTier.values) {
+        for (var i = 0; i < 200; i++) {
+          final prompt = generator.generatePrompt(
+            promptNumber: i,
+            tier: tier,
+            targetDirection: PitchDirection.higher,
+          );
+          final instrument = prompt.firstInstrument;
+          expect(
+            prompt.firstMidi,
+            inInclusiveRange(
+              instrument.lowestSampleMidi,
+              instrument.highestSampleMidi,
+            ),
+          );
+          expect(
+            prompt.secondMidi,
+            inInclusiveRange(
+              instrument.lowestSampleMidi,
+              instrument.highestSampleMidi,
+            ),
+          );
+        }
+      }
+    });
+
+    test('difficulty never falls outside the tier\'s bounds, even for an '
+        'instrument whose range is narrower than the tier\'s max interval '
+        '(guitar\'s 11-semitone span is smaller than T1\'s 12-semitone '
+        'max)', () {
+      final generator = PromptGenerator(random: Random(123));
+      for (final tier in ConceptTier.values) {
+        for (var i = 0; i < 200; i++) {
+          final prompt = generator.generatePrompt(
+            promptNumber: i,
+            tier: tier,
+            targetDirection: PitchDirection.higher,
+          );
+          final instrument = prompt.firstInstrument;
+          final span =
+              instrument.highestSampleMidi - instrument.lowestSampleMidi;
+          final expectedMin = min(tier.minSemitones, span);
+          final expectedMax = min(tier.maxSemitones, span);
+          expect(
+            prompt.difficulty,
+            inInclusiveRange(expectedMin, expectedMax),
+            reason:
+                '$tier on $instrument (span $span) prompt $i had '
+                'difficulty ${prompt.difficulty}',
+          );
+        }
+      }
     });
 
     test('T4 never produces less than a 2-semitone gap', () {
@@ -86,7 +144,7 @@ void main() {
       );
 
       for (final prompt in prompts) {
-        if (prompt.secondNote.midiNumber > prompt.firstNote.midiNumber) {
+        if (prompt.secondMidi > prompt.firstMidi) {
           expect(prompt.correctAnswer.name, equals('higher'));
         } else {
           expect(prompt.correctAnswer.name, equals('lower'));

@@ -16,9 +16,9 @@ class AudioController {
   factory AudioController() => instance;
 
   SoLoud? _soloud;
-  // Keyed by resolved asset path (Note.assetPath) rather than by Note alone,
-  // since the same note can now resolve to a different sample depending on
-  // which instrument (if any) is playing it.
+  // Keyed by asset path rather than by Note, since High/Low plays notes by
+  // real MIDI pitch through its own per-instrument asset paths (see
+  // HighLowInstrument.assetPathForMidi) rather than through Note.assetPath.
   final Map<String, AudioSource> _noteCache = {};
   final Map<SfxType, AudioSource> _sfxCache = {};
   final Map<String, AudioSource> _clipCache = {};
@@ -71,7 +71,16 @@ class AudioController {
 
   /// Preload all audio assets for smooth playback
   /// Call this during splash screen or initial load
-  Future<void> preloadAll() async {
+  ///
+  /// [highLowAssetPaths] lets callers hand in every High/Low instrument's
+  /// note asset paths (`HighLowInstrument.values.expand((i) =>
+  /// i.allAssetPaths)`) so the first round doesn't pay a decode cost inline
+  /// the first time a given instrument is picked. Optional and defaults to
+  /// none, so callers that don't touch High/Low (and tests) don't need to
+  /// know about it — kept as a parameter here rather than an import of
+  /// `HighLowInstrument`, since this file is generic audio infrastructure
+  /// and High/Low is one feature among the games that use it.
+  Future<void> preloadAll({List<String> highLowAssetPaths = const []}) async {
     if (!_isInitialized) return;
 
     // Preload all notes
@@ -79,13 +88,8 @@ class AudioController {
       await _preloadNote(note);
     }
 
-    // Preload each instrument's own per-note sample library too, so the
-    // first High/Low round doesn't pay a decode cost inline the first time
-    // a given instrument is picked.
-    for (final instrument in NoteExtension.instrumentsWithSamples) {
-      for (final note in Note.values) {
-        await _preloadNote(note, instrument: instrument);
-      }
+    for (final path in highLowAssetPaths) {
+      await _preloadAssetPath(path);
     }
 
     // Preload all SFX
@@ -94,8 +98,9 @@ class AudioController {
     }
   }
 
-  Future<void> _preloadNote(Note note, {String? instrument}) async {
-    final path = note.assetPath(instrument: instrument);
+  Future<void> _preloadNote(Note note) => _preloadAssetPath(note.assetPath());
+
+  Future<void> _preloadAssetPath(String path) async {
     if (_noteCache.containsKey(path)) return;
 
     try {
@@ -122,16 +127,13 @@ class AudioController {
     }
   }
 
-  /// Play a musical note. Pass [instrument] (e.g. 'cello') to use that
-  /// instrument's own sample library when one exists; otherwise this plays
-  /// the shared instrument-agnostic tone.
-  Future<void> playNote(Note note, {String? instrument}) async {
+  /// Play a musical note (the shared, instrument-agnostic tone).
+  Future<void> playNote(Note note) async {
     if (!_isInitialized || _isMuted) return;
 
-    final path = note.assetPath(instrument: instrument);
-    // Try to load if not cached
+    final path = note.assetPath();
     if (!_noteCache.containsKey(path)) {
-      await _preloadNote(note, instrument: instrument);
+      await _preloadNote(note);
     }
 
     final source = _noteCache[path];
@@ -140,12 +142,17 @@ class AudioController {
     }
   }
 
-  /// Play a note for scale playback, stopping the previous note first
-  /// Use this for sequential scale notes to prevent overlap. Pass
-  /// [instrument] (e.g. 'cello') to use that instrument's own sample
-  /// library when one exists; otherwise this plays the shared
-  /// instrument-agnostic tone.
-  Future<void> playNoteForScale(Note note, {String? instrument}) async {
+  /// Play a note for scale playback, stopping the previous note first.
+  /// Use this for sequential scale notes to prevent overlap.
+  Future<void> playNoteForScale(Note note) =>
+      playAssetForScale(note.assetPath());
+
+  /// Same as [playNoteForScale] but for a raw asset path rather than a
+  /// [Note] — High/Low plays its own instruments' notes by real MIDI pitch
+  /// through `HighLowInstrument.assetPathForMidi` instead of through
+  /// [Note], since an instrument's real range isn't always this enum's
+  /// fixed C4-B5 (see [Note.assetPath]'s doc comment).
+  Future<void> playAssetForScale(String path) async {
     if (!_isInitialized || _isMuted) return;
 
     // Stop the previous note if still playing. Awaited so the engine has
@@ -156,10 +163,8 @@ class AudioController {
       _currentNoteHandle = null;
     }
 
-    final path = note.assetPath(instrument: instrument);
-    // Try to load if not cached
     if (!_noteCache.containsKey(path)) {
-      await _preloadNote(note, instrument: instrument);
+      await _preloadAssetPath(path);
     }
 
     final source = _noteCache[path];

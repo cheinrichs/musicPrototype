@@ -1,5 +1,4 @@
 import 'dart:math';
-import '../../../audio/note.dart';
 import '../../../models/concept_tier.dart';
 import '../../../models/pitch_direction.dart';
 import '../models/high_low_instrument.dart';
@@ -38,57 +37,6 @@ class PromptGenerator {
     required ConceptTier tier,
     required PitchDirection targetDirection,
   }) {
-    final minInterval = tier.minSemitones;
-    final maxInterval = tier.maxSemitones;
-
-    // Pick a random first note (avoiding extremes to allow room for interval)
-    final availableNotes = Note.values;
-    final maxFirstNoteIndex = availableNotes.length - minInterval - 1;
-    final minFirstNoteIndex = minInterval;
-
-    final firstNoteIndex =
-        _random.nextInt(maxFirstNoteIndex - minFirstNoteIndex + 1) +
-        minFirstNoteIndex;
-    final firstNote = availableNotes[firstNoteIndex];
-
-    // Calculate the interval
-    final interval =
-        _random.nextInt(maxInterval - minInterval + 1) + minInterval;
-
-    // Randomly decide if going up or down — this is what randomizes which
-    // side ends up with the higher note (must stay a coin flip, or the
-    // child learns position instead of pitch).
-    final goingUp = _random.nextBool();
-
-    // Calculate second note index
-    int secondNoteIndex;
-    if (goingUp) {
-      secondNoteIndex = firstNoteIndex + interval;
-      // Clamp to valid range
-      if (secondNoteIndex >= availableNotes.length) {
-        secondNoteIndex = firstNoteIndex - interval;
-      }
-    } else {
-      secondNoteIndex = firstNoteIndex - interval;
-      // Clamp to valid range
-      if (secondNoteIndex < 0) {
-        secondNoteIndex = firstNoteIndex + interval;
-      }
-    }
-
-    // Ensure second note index is valid
-    secondNoteIndex = secondNoteIndex.clamp(0, availableNotes.length - 1);
-
-    // Make sure the notes are different
-    if (secondNoteIndex == firstNoteIndex) {
-      secondNoteIndex = (firstNoteIndex + minInterval).clamp(
-        0,
-        availableNotes.length - 1,
-      );
-    }
-
-    final secondNote = availableNotes[secondNoteIndex];
-
     // Both sides of a round always share one instrument (Cooper: "i don't
     // think we'll be pitting different instruments against each other ever
     // and comparing pitch") — timbre varies *between* rounds instead, by
@@ -97,9 +45,36 @@ class PromptGenerator {
     final instrument =
         instrumentValues[_random.nextInt(instrumentValues.length)];
 
+    // Notes are picked as real MIDI pitches directly within *this*
+    // instrument's own declared range (HighLowInstrument.lowestSampleMidi
+    // .. highestSampleMidi) — that range isn't always two full octaves any
+    // more (see the class doc: guitar and tuba currently have gaps that
+    // shrink it well below that). Picking the interval *before* either
+    // note, rather than picking a first note and then reaching outward
+    // from it, guarantees the requested interval always fits regardless
+    // of how narrow the range is: cap the interval at the range's full
+    // span, then there's always at least one valid placement for it.
+    final lowestMidi = instrument.lowestSampleMidi;
+    final span = instrument.highestSampleMidi - lowestMidi;
+
+    final minInterval = min(tier.minSemitones, span);
+    final maxInterval = min(tier.maxSemitones, span);
+    final interval =
+        _random.nextInt(maxInterval - minInterval + 1) + minInterval;
+
+    final maxLowOffset = span - interval;
+    final lowOffset = _random.nextInt(maxLowOffset + 1);
+    final highOffset = lowOffset + interval;
+
+    // Randomly decide which side gets the higher pitch — must stay a coin
+    // flip, or the child learns position instead of pitch.
+    final firstIsHigher = _random.nextBool();
+    final firstOffset = firstIsHigher ? highOffset : lowOffset;
+    final secondOffset = firstIsHigher ? lowOffset : highOffset;
+
     return HighLowPrompt(
-      firstNote: firstNote,
-      secondNote: secondNote,
+      firstMidi: lowestMidi + firstOffset,
+      secondMidi: lowestMidi + secondOffset,
       firstInstrument: instrument,
       secondInstrument: instrument,
       promptNumber: promptNumber,

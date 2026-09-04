@@ -5,12 +5,17 @@
 /// T4 a small one (Trello card 95).
 ///
 /// The curriculum handoff also lists timbre as a dimension here, but a
-/// High/Low round is always two notes on the *same* instrument (Cooper:
-/// "i don't think we'll be pitting different instruments against each
-/// other ever and comparing pitch") — read timbre as varying *between*
-/// rounds (cellos this round, trumpets the next; see
+/// High/Low round is always two notes on the *same* instrument today
+/// (Cooper: "i don't think we'll be pitting different instruments against
+/// each other ever and comparing pitch") — read timbre as varying
+/// *between* rounds (cellos this round, trumpets the next; see
 /// PromptGenerator.generatePrompt), not as a within-round axis any tier
-/// controls.
+/// controls. That decision is being revisited for a future
+/// cross-instrument round (Trello, tier T3): `minSemitones`/`maxSemitones`
+/// below are exactly what that round's pairing rule would need
+/// (`HighLowInstrument.canPairWith`), so nothing here changes to support
+/// it — it's not wired into any round yet, just built and tested ahead of
+/// time.
 ///
 /// Register isn't modeled as a fourth, independently-locked axis here: the
 /// note pool already spans two octaves and is picked at random regardless

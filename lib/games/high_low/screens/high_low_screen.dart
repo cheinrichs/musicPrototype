@@ -342,11 +342,11 @@ class _HighLowScreenState extends State<HighLowScreen> {
         targetDirection: prompt.targetDirection,
         left: RoundReportSide(
           instrument: _gameState.leftInstrument,
-          note: prompt.firstNote,
+          midi: prompt.firstMidi,
         ),
         right: RoundReportSide(
           instrument: _gameState.rightInstrument,
-          note: prompt.secondNote,
+          midi: prompt.secondMidi,
         ),
         response: RoundReportResponse(
           applicable: respondsToDrops,
@@ -446,9 +446,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
                     ),
                     Text(
                       "I'm ready to move on",
-                      style: AppTypography.label.copyWith(
-                        letterSpacing: 0,
-                      ),
+                      style: AppTypography.label.copyWith(letterSpacing: 0),
                     ),
                   ],
                 ),
@@ -472,7 +470,8 @@ class _HighLowScreenState extends State<HighLowScreen> {
   Widget _buildPromptArea() {
     final text = _gameState.captionText;
     return SizedBox(
-      height: AppTypography.heading3.fontSize! * AppTypography.heading3.height! * 2,
+      height:
+          AppTypography.heading3.fontSize! * AppTypography.heading3.height! * 2,
       child: Center(
         child: AnimatedSwitcher(
           duration: AppAnimations.medium,
@@ -686,7 +685,11 @@ class _HighLowScreenState extends State<HighLowScreen> {
         // block the instruments' own tap-to-explore underneath.
         if (isTrigger) ...[
           _buildDropZone(side: 0, left: 0, width: screenWidth / 2),
-          _buildDropZone(side: 1, left: screenWidth / 2, width: screenWidth / 2),
+          _buildDropZone(
+            side: 1,
+            left: screenWidth / 2,
+            width: screenWidth / 2,
+          ),
         ],
       ],
     );

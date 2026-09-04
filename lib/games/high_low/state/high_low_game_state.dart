@@ -287,9 +287,8 @@ class HighLowGameState extends ChangeNotifier {
     }
     notifyListeners();
 
-    await _audio.playNoteForScale(
-      prompt.firstNote,
-      instrument: leftInstrument.sampleInstrument,
+    await _audio.playAssetForScale(
+      leftInstrument.assetPathForMidi(prompt.firstMidi),
     );
     if (token != _roundToken) return;
 
@@ -308,9 +307,8 @@ class HighLowGameState extends ChangeNotifier {
     }
     notifyListeners();
 
-    await _audio.playNoteForScale(
-      prompt.secondNote,
-      instrument: rightInstrument.sampleInstrument,
+    await _audio.playAssetForScale(
+      rightInstrument.assetPathForMidi(prompt.secondMidi),
     );
     if (token != _roundToken) return;
 
@@ -383,18 +381,16 @@ class HighLowGameState extends ChangeNotifier {
     notifyListeners();
 
     final instrument = side == 0 ? leftInstrument : rightInstrument;
-    final note = side == 0 ? prompt.firstNote : prompt.secondNote;
+    final midi = side == 0 ? prompt.firstMidi : prompt.secondMidi;
     unawaited(
-      _audio
-          .playNoteForScale(note, instrument: instrument.sampleInstrument)
-          .then((_) {
-            // Only clear the wiggle if nothing newer (another tap, the
-            // next round) has already taken over `_playingIndex`.
-            if (_playingIndex == side) {
-              _playingIndex = null;
-              notifyListeners();
-            }
-          }),
+      _audio.playAssetForScale(instrument.assetPathForMidi(midi)).then((_) {
+        // Only clear the wiggle if nothing newer (another tap, the
+        // next round) has already taken over `_playingIndex`.
+        if (_playingIndex == side) {
+          _playingIndex = null;
+          notifyListeners();
+        }
+      }),
     );
   }
 

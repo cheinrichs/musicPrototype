@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ear_trainer/app/build_info.dart';
-import 'package:ear_trainer/audio/note.dart';
 import 'package:ear_trainer/games/high_low/models/high_low_instrument.dart';
 import 'package:ear_trainer/games/high_low/models/round_report.dart';
 import 'package:ear_trainer/models/agency_stage.dart';
@@ -17,9 +16,9 @@ void main() {
 
   RoundReport buildReport({
     required HighLowInstrument leftInstrument,
-    required Note leftNote,
+    required int leftMidi,
     required HighLowInstrument rightInstrument,
-    required Note rightNote,
+    required int rightMidi,
     AgencyStage agencyStage = AgencyStage.trigger,
   }) {
     return RoundReport(
@@ -31,8 +30,8 @@ void main() {
       roundNumber: 3,
       totalRounds: 5,
       targetDirection: PitchDirection.higher,
-      left: RoundReportSide(instrument: leftInstrument, note: leftNote),
-      right: RoundReportSide(instrument: rightInstrument, note: rightNote),
+      left: RoundReportSide(instrument: leftInstrument, midi: leftMidi),
+      right: RoundReportSide(instrument: rightInstrument, midi: rightMidi),
       response: const RoundReportResponse(
         applicable: true,
         side: 1,
@@ -41,65 +40,43 @@ void main() {
     );
   }
 
-  test('logical and real-pitch agree when neither side is transposed', () {
+  test('higherSide reflects real sounding pitch directly — no separate '
+      'logical-vs-real duality any more', () {
     final report = buildReport(
       leftInstrument: HighLowInstrument.piano,
-      leftNote: Note.c4,
+      leftMidi: 60, // C4
       rightInstrument: HighLowInstrument.violin,
-      rightNote: Note.g4,
+      rightMidi: 67, // G4
     );
 
-    expect(report.higherSideLogical, 1); // right (G4) > left (C4)
-    expect(report.higherSideRealPitch, 1);
-    expect(report.logicalAndRealPitchAgree, isTrue);
+    expect(report.higherSide, 1); // right (G4) > left (C4)
   });
 
-  test(
-    'logical and real-pitch DISAGREE when pairing a transposed instrument '
-    '(tuba, real pitch 2 octaves below its label) against a non-transposed '
-    'one — this is the exact mismatch Report This Round exists to surface',
-    () {
-      // Logical slots: tuba G4 (midi 67) is logically higher than piano C4
-      // (midi 60). But tuba's *real* sounding pitch is G2 (67-24=43),
-      // which is well below piano's real C4 (60) — so a listener hears
-      // the opposite of what HighLowPrompt.correctAnswer would score.
-      final report = buildReport(
-        leftInstrument: HighLowInstrument.piano,
-        leftNote: Note.c4,
-        rightInstrument: HighLowInstrument.tuba,
-        rightNote: Note.g4,
-      );
-
-      expect(report.higherSideLogical, 1); // right (tuba G4) logically higher
-      expect(report.higherSideRealPitch, 0); // but left (piano) really higher
-      expect(report.logicalAndRealPitchAgree, isFalse);
-    },
-  );
-
-  test('RoundReportSide computes real pitch via instrument transposition', () {
+  test('RoundReportSide resolves the asset path directly by real MIDI '
+      'pitch — no per-instrument offset to apply any more', () {
     final tubaSide = RoundReportSide(
       instrument: HighLowInstrument.tuba,
-      note: Note.c4,
+      midi: 36, // real C2, tuba's lowest sample
     );
-    expect(tubaSide.realMidiNumber, Note.c4.midiNumber - 24);
-    expect(tubaSide.realNoteName, 'C2');
-    expect(tubaSide.realFrequencyHz, closeTo(65.41, 0.1));
+    expect(tubaSide.assetPath, 'assets/audio/notes/tuba/c2.mp3');
+    expect(tubaSide.noteName, 'C2');
+    expect(tubaSide.frequencyHz, closeTo(65.41, 0.1));
 
     final pianoSide = RoundReportSide(
       instrument: HighLowInstrument.piano,
-      note: Note.c4,
+      midi: 60, // C4
     );
-    expect(pianoSide.realMidiNumber, Note.c4.midiNumber);
-    expect(pianoSide.realNoteName, 'C4');
-    expect(pianoSide.realFrequencyHz, closeTo(261.63, 0.1));
+    expect(pianoSide.assetPath, 'assets/audio/notes/piano/c4.mp3');
+    expect(pianoSide.noteName, 'C4');
+    expect(pianoSide.frequencyHz, closeTo(261.63, 0.1));
   });
 
   test('toJson round-trips every field the audit/report needs', () {
     final report = buildReport(
       leftInstrument: HighLowInstrument.tuba,
-      leftNote: Note.g4,
+      leftMidi: 43, // real G2
       rightInstrument: HighLowInstrument.piano,
-      rightNote: Note.c4,
+      rightMidi: 60, // real C4
     );
     final json = report.toJson();
 
@@ -109,11 +86,15 @@ void main() {
     expect(json['session']['ageBand'], kCurrentAgeBand);
     expect(json['round']['roundNumber'], 3);
     expect(json['round']['left']['instrument'], 'tuba');
-    expect(json['round']['left']['assetPath'], 'assets/audio/notes/tuba/g4.mp3');
-    expect(json['round']['left']['realNoteName'], 'G2');
-    expect(json['round']['higherSideLogical'], 'left');
-    expect(json['round']['higherSideRealPitch'], 'right');
-    expect(json['round']['logicalAndRealPitchAgree'], false);
+    expect(
+      json['round']['left']['assetPath'],
+      'assets/audio/notes/tuba/g2.mp3',
+    );
+    expect(json['round']['left']['noteName'], 'G2');
+    expect(
+      json['round']['higherSide'],
+      'right',
+    ); // piano C4 (60) > tuba G2 (43)
     expect(json['round']['response'], {
       'applicable': true,
       'side': 'right',
@@ -133,11 +114,11 @@ void main() {
       targetDirection: PitchDirection.lower,
       left: const RoundReportSide(
         instrument: HighLowInstrument.piano,
-        note: Note.c4,
+        midi: 60,
       ),
       right: const RoundReportSide(
         instrument: HighLowInstrument.piano,
-        note: Note.g4,
+        midi: 67,
       ),
       response: const RoundReportResponse(
         applicable: false,

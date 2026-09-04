@@ -41,29 +41,6 @@ void main() {
       );
     });
 
-    test('assetPath uses the instrument sample library when covered', () {
-      expect(
-        Note.c4.assetPath(instrument: 'cello'),
-        equals('assets/audio/notes/cello/c4.mp3'),
-      );
-      expect(
-        Note.cSharp4.assetPath(instrument: 'piano'),
-        equals('assets/audio/notes/piano/c_sharp_4.mp3'),
-      );
-    });
-
-    test('assetPath falls back to the generic tone for uncovered '
-        'instruments', () {
-      expect(
-        Note.c4.assetPath(instrument: 'drum'),
-        equals('assets/audio/notes/c4.mp3'),
-      );
-      expect(
-        Note.c4.assetPath(instrument: null),
-        equals('assets/audio/notes/c4.mp3'),
-      );
-    });
-
     test('displayName formats correctly', () {
       expect(Note.c4.displayName, equals('C4'));
       expect(Note.cSharp4.displayName, equals('C#4'));

@@ -1,7 +1,6 @@
 import 'dart:math' as math;
 
 import '../../../app/build_info.dart';
-import '../../../audio/note.dart';
 import '../../../models/agency_stage.dart';
 import '../../../models/concept_tier.dart';
 import '../../../models/pitch_direction.dart';
@@ -19,37 +18,29 @@ const String kCurrentAgeBand = '2-3';
 
 const int _reportSchemaVersion = 1;
 
-/// A note as played on one side of the round: its logical slot alongside
-/// the *real* sounding pitch the instrument's sample actually plays at
-/// (see [HighLowInstrument.realPitchOffsetSemitones]) — captured
-/// separately because they can disagree (guitar/tuba), which is exactly
-/// the kind of mismatch this report exists to surface.
+/// A note as played on one side of the round: which instrument, and the
+/// real sounding MIDI pitch its sample plays at — there's no separate
+/// "logical" number any more (see [HighLowInstrument]'s class doc for why
+/// that duality existed once and was retired: it let a wrong transposition
+/// hide in plain sight for a year because nothing compared the two).
 class RoundReportSide {
   final HighLowInstrument instrument;
-  final Note note;
+  final int midi;
 
-  const RoundReportSide({required this.instrument, required this.note});
+  const RoundReportSide({required this.instrument, required this.midi});
 
-  String get assetPath =>
-      note.assetPath(instrument: instrument.sampleInstrument);
+  String get assetPath => instrument.assetPathForMidi(midi);
 
-  int get realMidiNumber =>
-      note.midiNumber + instrument.realPitchOffsetSemitones;
+  double get frequencyHz => 440.0 * math.pow(2, (midi - 69) / 12.0);
 
-  double get realFrequencyHz =>
-      440.0 * math.pow(2, (realMidiNumber - 69) / 12.0);
-
-  String get realNoteName => _midiToNoteName(realMidiNumber);
+  String get noteName => _midiToNoteName(midi);
 
   Map<String, dynamic> toJson() => {
     'instrument': instrument.name,
-    'logicalNote': note.name,
-    'logicalNoteDisplay': note.displayName,
     'assetPath': assetPath,
-    'realPitchOffsetSemitones': instrument.realPitchOffsetSemitones,
-    'realMidiNumber': realMidiNumber,
-    'realNoteName': realNoteName,
-    'realFrequencyHz': double.parse(realFrequencyHz.toStringAsFixed(2)),
+    'midi': midi,
+    'noteName': noteName,
+    'frequencyHz': double.parse(frequencyHz.toStringAsFixed(2)),
   };
 }
 
@@ -120,22 +111,9 @@ class RoundReport {
     this.ageBand = kCurrentAgeBand,
   });
 
-  /// Which side is higher by [Note.midiNumber] alone, ignoring instrument
-  /// transposition — a diagnostic baseline, not what
-  /// [HighLowPrompt.correctAnswer] scores against (that's
-  /// [higherSideRealPitch]).
-  int get higherSideLogical => right.note.isHigherThan(left.note) ? 1 : 0;
-
-  /// Which side is higher by *real* sounding pitch, accounting for
-  /// instrument transposition — what [HighLowPrompt.correctAnswer]
-  /// actually scores against. Always agrees with [higherSideLogical] now
-  /// that a round is always two notes on the same instrument (any
-  /// transposition cancels out); would only diverge if that invariant
-  /// were ever broken (see [HighLowInstrument.realPitchOffsetSemitones]).
-  int get higherSideRealPitch =>
-      right.realMidiNumber > left.realMidiNumber ? 1 : 0;
-
-  bool get logicalAndRealPitchAgree => higherSideLogical == higherSideRealPitch;
+  /// Which side is the higher real sounding pitch — what
+  /// [HighLowPrompt.correctAnswer] scores against.
+  int get higherSide => right.midi > left.midi ? 1 : 0;
 
   Map<String, dynamic> toJson() => {
     'reportSchemaVersion': _reportSchemaVersion,
@@ -153,9 +131,7 @@ class RoundReport {
       'targetDirection': targetDirection.name,
       'left': left.toJson(),
       'right': right.toJson(),
-      'higherSideLogical': higherSideLogical == 0 ? 'left' : 'right',
-      'higherSideRealPitch': higherSideRealPitch == 0 ? 'left' : 'right',
-      'logicalAndRealPitchAgree': logicalAndRealPitchAgree,
+      'higherSide': higherSide == 0 ? 'left' : 'right',
       'response': response.toJson(),
     },
   };

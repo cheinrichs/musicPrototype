@@ -1,5 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ear_trainer/audio/note.dart';
 import 'package:ear_trainer/games/high_low/models/high_low_instrument.dart';
 import 'package:ear_trainer/games/high_low/models/high_low_prompt.dart';
 import 'package:ear_trainer/models/pitch_direction.dart';
@@ -9,8 +8,8 @@ void main() {
     test('constructor asserts both sides share an instrument', () {
       expect(
         () => HighLowPrompt(
-          firstNote: Note.c4,
-          secondNote: Note.d4,
+          firstMidi: 60,
+          secondMidi: 62,
           firstInstrument: HighLowInstrument.piano,
           secondInstrument: HighLowInstrument.violin,
           promptNumber: 1,
@@ -20,22 +19,19 @@ void main() {
       );
     });
 
-    test('correctAnswer compares real sounding pitch, not logical slot', () {
-      // Tuba's real pitch is two octaves below its logical slot (see
-      // HighLowInstrument.realPitchOffsetSemitones). With both sides on
-      // tuba the offset cancels, so this must still land on the note
-      // that's really higher, exactly as a piano pair would.
+    test('correctAnswer compares real sounding pitch directly — no '
+        'per-instrument offset any more', () {
       final tubaPrompt = HighLowPrompt(
-        firstNote: Note.c4,
-        secondNote: Note.g4,
+        firstMidi: 36, // real C2
+        secondMidi: 43, // real G2
         firstInstrument: HighLowInstrument.tuba,
         secondInstrument: HighLowInstrument.tuba,
         promptNumber: 1,
         targetDirection: PitchDirection.higher,
       );
       final pianoPrompt = HighLowPrompt(
-        firstNote: Note.c4,
-        secondNote: Note.g4,
+        firstMidi: 60, // real C4
+        secondMidi: 67, // real G4
         firstInstrument: HighLowInstrument.piano,
         secondInstrument: HighLowInstrument.piano,
         promptNumber: 1,
@@ -44,6 +40,19 @@ void main() {
 
       expect(tubaPrompt.correctAnswer, PitchDirection.higher);
       expect(tubaPrompt.correctAnswer, pianoPrompt.correctAnswer);
+    });
+
+    test('difficulty is the raw semitone distance between the two real '
+        'pitches', () {
+      final prompt = HighLowPrompt(
+        firstMidi: 60,
+        secondMidi: 67,
+        firstInstrument: HighLowInstrument.piano,
+        secondInstrument: HighLowInstrument.piano,
+        promptNumber: 1,
+        targetDirection: PitchDirection.higher,
+      );
+      expect(prompt.difficulty, 7);
     });
   });
 }

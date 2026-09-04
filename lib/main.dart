@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'app/app.dart';
 import 'app/config.dart';
 import 'audio/audio_controller.dart';
+import 'games/high_low/models/high_low_instrument.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -22,7 +23,12 @@ void main() async {
   try {
     await AudioController.instance.init();
     // Preload audio assets in background
-    AudioController.instance.preloadAll();
+    AudioController.instance.preloadAll(
+      highLowAssetPaths: [
+        for (final instrument in HighLowInstrument.values)
+          ...instrument.allAssetPaths,
+      ],
+    );
   } catch (e) {
     // Audio failed to initialize - app can still work without audio
     debugPrint('Audio initialization failed: $e');

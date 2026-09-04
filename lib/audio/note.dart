@@ -82,65 +82,29 @@ extension NoteExtension on Note {
     }
   }
 
-  /// Instruments with their own recorded, per-note sample library under
-  /// `assets/audio/notes/<instrument>/` (roughly two octaves each, one
-  /// dynamic level, trimmed and loudness-matched — see Trello card 44).
-  /// Anything else falls back to the shared instrument-agnostic set.
+  /// Asset path for the note's audio file — the shared, instrument-agnostic
+  /// tone under assets/audio/notes/.
   ///
-  /// The 24 files always fill the `Note` enum's logical C4-B5 slots
-  /// positionally (c4.mp3 .. b5.mp3), but for an instrument whose real
-  /// playable range doesn't cleanly cover two gap-free chromatic octaves
-  /// at true C4-B5, the samples are taken from wherever the source
-  /// library *is* gap-free and mapped in at the same positions — the
-  /// files sound like a real, correctly-ordered two-octave run on that
-  /// instrument, just not at the pitches their names would suggest on a
-  /// piano. Guitar is transposed this way: its 24 files are sourced from
-  /// real C2-B3 (two real octaves down), same as tuba below. So is tuba
-  /// (Trello card 55): its practical range tops out around F4, so its 24
-  /// files are also sourced from real C2-B3 rather than C4-B5. Oboe (also
-  /// card 55) needed no transposition — its real C4-B5 is gap-free. Bells
-  /// likewise sounds at true written pitch (C4-B5, no transposition) —
-  /// confirmed by measuring every note file's fundamental frequency
-  /// against its label (2026-09 pitch-mapping audit). That same audit
-  /// found two bells files (c4, c#5) whose *content* — not the mapping —
-  /// measured off-pitch/inharmonic and need re-recording, not a code fix.
-  ///
-  /// Decided (Cooper: "i don't think we'll be pitting different
-  /// instruments against each other ever and comparing pitch"): a
-  /// High/Low round is always two notes on the *same* instrument, enforced
-  /// by an assertion in [HighLowPrompt]'s constructor. Guitar/tuba's
-  /// transposition therefore always cancels out between the two sides —
-  /// but [HighLowPrompt.correctAnswer] compares real sounding pitch
-  /// ([midiNumber] plus the instrument's transposition) rather than
-  /// [midiNumber] alone regardless, so it stays correct even if that rule
-  /// ever changes.
-  static const Set<String> _instrumentsWithSamples = {
-    'bells',
-    'cello',
-    'flute',
-    'guitar',
-    'oboe',
-    'piano',
-    'trumpet',
-    'tuba',
-    'violin',
-  };
-
-  /// Public view of [_instrumentsWithSamples], for preloading.
-  static Set<String> get instrumentsWithSamples => _instrumentsWithSamples;
-
-  /// Asset path for the note's audio file.
-  ///
-  /// Pass [instrument] (e.g. 'cello') to use that instrument's own sample
-  /// library when one exists; otherwise (or when omitted) this falls back
-  /// to the shared instrument-agnostic tone under assets/audio/notes/.
-  String assetPath({String? instrument}) {
+  /// This enum is a fixed 24-slot C4-B5 register, and used to have an
+  /// `instrument` parameter here that routed to per-instrument sample
+  /// directories under this same fixed C4-B5 naming (Trello card 44). That
+  /// design forced every High/Low instrument's files into this enum's
+  /// shape whether or not the instrument actually plays there, which
+  /// created a label-versus-sounding-pitch duality: code had to carry a
+  /// per-instrument "real pitch offset" to undo the fiction, and that
+  /// offset for guitar sat wrong (copied from tuba's by analogy, never
+  /// independently measured) for a year before a 2026-09 audit caught it
+  /// — see `tool/measure_note_pitch.py` and the git history around Trello
+  /// card 57 for the full account. High/Low instruments now declare the
+  /// real MIDI range their own samples cover and look their files up
+  /// directly by real pitch (`HighLowInstrument.assetPathForMidi` in
+  /// `games/high_low/models/high_low_instrument.dart`) instead of routing
+  /// through this enum — a file's name is always the pitch it sounds, with
+  /// no separate "instrument" indirection to go wrong.
+  String assetPath() {
     final filename = name
         .replaceAll('Sharp', '_sharp_')
         .replaceAllMapped(RegExp(r'(\d)'), (m) => '${m[1]}');
-    if (instrument != null && _instrumentsWithSamples.contains(instrument)) {
-      return 'assets/audio/notes/$instrument/$filename.mp3';
-    }
     return 'assets/audio/notes/$filename.mp3';
   }
 

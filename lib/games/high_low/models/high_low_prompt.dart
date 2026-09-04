@@ -1,9 +1,15 @@
-import '../../../audio/note.dart';
 import '../../../models/pitch_direction.dart';
 import 'high_low_instrument.dart';
 
 /// A single round of the High/Low game: two notes, plus which direction
 /// (high or low) the round is actually asking about.
+///
+/// [firstMidi]/[secondMidi] are real sounding MIDI pitches — whatever
+/// [firstInstrument]/[secondInstrument]'s own sample actually plays at, no
+/// separate "logical" number to translate through (see
+/// [HighLowInstrument]'s class doc for why that translation used to exist
+/// and was retired). [correctAnswer] is therefore a direct, un-adjusted
+/// comparison of the two.
 ///
 /// [correctAnswer] and [targetDirection] both use [PitchDirection] but mean
 /// different things: [correctAnswer] is a fact about the *stimulus* (which
@@ -13,32 +19,34 @@ import 'high_low_instrument.dart';
 /// Observe (A0) rounds don't ask anything, so they generate a prompt too
 /// but simply ignore [targetDirection].
 ///
-/// A round is always two notes on the *same* instrument (Cooper: "i don't
-/// think we'll be pitting different instruments against each other ever
-/// and comparing pitch") — [firstInstrument] and [secondInstrument] are
-/// asserted equal below rather than collapsed into one field, so
-/// [correctAnswer] can stay written in terms of each side's own real
-/// sounding pitch instead of assuming they match.
+/// A round is always two notes on the *same* instrument today (Cooper: "i
+/// don't think we'll be pitting different instruments against each other
+/// ever and comparing pitch") — [firstInstrument] and [secondInstrument]
+/// are asserted equal below rather than collapsed into one field, so nothing
+/// else here has to assume they match. That decision is being revisited for
+/// a future cross-instrument round (tier T3): see
+/// [HighLowInstrument.canPairWith] for the pairing rule it would use, built
+/// but not yet wired in here — this assertion still holds until it is.
 class HighLowPrompt {
-  /// Plays on the left instrument.
-  final Note firstNote;
+  /// Real sounding MIDI pitch played on the left ([firstInstrument]).
+  final int firstMidi;
 
-  /// Plays on the right instrument.
-  final Note secondNote;
+  /// Real sounding MIDI pitch played on the right ([secondInstrument]).
+  final int secondMidi;
 
-  /// Instrument the left side ([firstNote]) sounds on.
+  /// Instrument the left side ([firstMidi]) sounds on.
   final HighLowInstrument firstInstrument;
 
-  /// Instrument the right side ([secondNote]) sounds on. Always equal to
-  /// [firstInstrument] — see the class doc.
+  /// Instrument the right side ([secondMidi]) sounds on. Always equal to
+  /// [firstInstrument] today — see the class doc.
   final HighLowInstrument secondInstrument;
 
   final int promptNumber;
   final PitchDirection targetDirection;
 
   const HighLowPrompt({
-    required this.firstNote,
-    required this.secondNote,
+    required this.firstMidi,
+    required this.secondMidi,
     required this.firstInstrument,
     required this.secondInstrument,
     required this.promptNumber,
@@ -49,30 +57,16 @@ class HighLowPrompt {
          'got $firstInstrument vs $secondInstrument.',
        );
 
-  /// Real sounding MIDI number of [firstNote], accounting for
-  /// [firstInstrument]'s transposition (see
-  /// [HighLowInstrument.realPitchOffsetSemitones]).
-  int get _firstRealMidiNumber =>
-      firstNote.midiNumber + firstInstrument.realPitchOffsetSemitones;
-
-  /// Real sounding MIDI number of [secondNote] — see [_firstRealMidiNumber].
-  int get _secondRealMidiNumber =>
-      secondNote.midiNumber + secondInstrument.realPitchOffsetSemitones;
-
   /// Whether the second note (right instrument) is the higher of the two,
-  /// by real sounding pitch rather than logical note slot — equivalent
-  /// today since both sides always share an instrument (so any
-  /// transposition cancels out), but correct even if that ever changes.
+  /// by real sounding pitch.
   PitchDirection get correctAnswer =>
-      _secondRealMidiNumber > _firstRealMidiNumber
-      ? PitchDirection.higher
-      : PitchDirection.lower;
+      secondMidi > firstMidi ? PitchDirection.higher : PitchDirection.lower;
 
   /// Semitone distance between the two notes.
-  int get difficulty => firstNote.intervalTo(secondNote);
+  int get difficulty => (secondMidi - firstMidi).abs();
 
   /// True when the left (first-played) instrument is the higher one.
-  bool get leftIsHigher => firstNote.isHigherThan(secondNote);
+  bool get leftIsHigher => firstMidi > secondMidi;
 
   /// 0 (left) or 1 (right) — whichever side is actually higher.
   int get higherSide => leftIsHigher ? 0 : 1;
