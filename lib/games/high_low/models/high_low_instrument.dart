@@ -38,24 +38,31 @@ import 'dart:math' as math;
 /// assets/images/characters/instruments/ for the full SongStone-UI-Kit
 /// set, which still includes Drum1/Drum2.
 enum HighLowInstrument {
-  // Bells (2026-09 audit): kept at its original real C4-B5, matching its
-  // label — but unlike every other instrument here, that's *not* a
-  // confirmed-correct range, it's "not confidently wrong enough to
-  // change." Most of bells' 24 files individually read a clean octave
-  // *above* label under autocorrelation, which usually means the false
-  // positive its own docs warn about (struck idiophones have strong
-  // inharmonic overtones that can dominate a naive pitch read). But the
-  // audit's structural safeguard — chromatic-scale consistency, checked
-  // file-to-file rather than file-to-label, so a uniform octave error
-  // can't hide behind it — actually *fails* for bells, in a way it
-  // doesn't for any other instrument here: five files (c#5, g#5, a5, a#5,
-  // b5) break the chromatic run relative to their neighbors, and three of
-  // those (a5, a#5, b5) measure at essentially the *same* pitch as their
-  // octave-4 counterparts rather than an octave above. That's real
-  // internal inconsistency, not just an ambiguous single reading — bells
-  // needs a human listen before its range or any individual file here
-  // should be trusted further.
-  bells('Bell', 'bell', 'bells', 60, 83),
+  // Bells (2026-09 audit, resolved as a follow-up after bells was found
+  // live in rotation with an unresolved flag): real bell acoustics, not a
+  // mislabeling. Most of bells' files individually read a clean octave
+  // *above* label under "what's the single strongest periodicity"
+  // autocorrelation — real physics, not a detector bug: a struck bell's
+  // loudest partial ("nominal") genuinely sits an octave above the
+  // partial it's conventionally *named* by ("prime"/strike note), so any
+  // such detector will systematically prefer nominal. Confirmed by
+  // checking every one of bells' 24 files individually (not a sample) for
+  // genuine periodicity specifically *at* the labelled pitch, regardless
+  // of dominance (tool/measure_note_pitch.py --verify-labels): 23 read
+  // cleanly correct (normalized correlation 0.98+, well within normal
+  // tuning variance). Only C#5 didn't resolve to any real note (closest
+  // periodicity sits ~80 cents sharp of C#5, ambiguous with D5) and was
+  // removed rather than guessed at, leaving a gap — [60, 72] (C4-C5) is
+  // the largest gap-free run left, matching guitar/tuba's treatment.
+  //
+  // The audit's chromatic-structure check (verify_chromatic_structure)
+  // isn't the right tool for bells specifically: it assumes one dominant
+  // pitch per file, which breaks down whenever one file's dominant
+  // reading happens to be its nominal and a neighbor's happens to be its
+  // prime — both correctly labelled, but reading as inconsistent with
+  // each other. Don't reach for it to re-litigate bells; --verify-labels
+  // is the check that actually answered this.
+  bells('Bell', 'bell', 'bells', 60, 72),
   cello('Cello', 'cello', 'cello', 60, 83),
   flute('Flute', 'flute', 'flute', 60, 83),
   // Guitar (2026-09 audit): real pitch is one octave below its file names

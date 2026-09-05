@@ -14,33 +14,57 @@ as a number instead of a plausible-sounding guess.
 Usage:
     python3 tool/measure_note_pitch.py                  # measure everything
     python3 tool/measure_note_pitch.py assets/audio/notes/guitar
-    python3 tool/measure_note_pitch.py --json out.json  # also write JSON
+    python3 tool/measure_note_pitch.py --json out.json   # also write JSON
+    python3 tool/measure_note_pitch.py --verify-chromatic [dirs...]
+    python3 tool/measure_note_pitch.py --verify-labels [dirs...]
 
 Requires macOS's built-in `afconvert` (Xcode Command Line Tools) to decode
 mp3 -> PCM WAV. Everything else is Python standard library — no pip
 packages, so this runs on any dev machine that can already build this
 project's iOS target, without extra setup.
 
-Two known failure modes this script cannot fully solve on its own — see
-the "SUSPECT" flags in its output:
+Two known failure modes, both hit for real during this tool's two audits
+so far (guitar/tuba transposition, then bells/oboe/violin) — see the
+"SUSPECT" flags this script's default mode prints, and use
+--verify-chromatic / --verify-labels rather than trusting a single
+autocorrelation number for anything that looks octave-off:
 
-1. Struck idiophones (bells) have inharmonic overtones — the partials
-   aren't clean integer multiples of a fundamental, so autocorrelation can
-   report a "fundamental" that doesn't correspond to the pitch a person
-   would actually name. Treat bells' readings as lower-confidence and
-   sanity-check them by ear.
-2. Naive autocorrelation can lock onto a strong harmonic and report double
-   (or half) the true frequency. This script guards against that by
-   preferring the *shortest* lag whose correlation is close to the best
-   one found (the fundamental's peak is normally almost as strong as any
-   harmonic's), but a result landing exactly an octave away from its
-   filename's implied pitch is still worth a manual listen before you
-   trust it.
+1. Naive "what's the single strongest periodicity in this file"
+   autocorrelation can report a real but non-fundamental partial instead
+   of the one a person would name the note by. This isn't always a bug in
+   the *measurement* — for bells specifically, it's genuine physics: a
+   struck bell's loudest partial ("nominal") sits a real octave above the
+   partial it's conventionally *named* by ("prime"/strike note), so a
+   "find the strongest periodicity" detector will systematically prefer
+   nominal over prime. --verify-labels is the check that resolves this:
+   it looks for genuine periodicity *at the labelled pitch specifically*,
+   regardless of whether it's the file's single strongest component — see
+   [verify_label_periodicity]. This is how bells' widespread "+12
+   semitones" flag (2026-09) turned out to be a false positive for 23 of
+   its 24 files, not a mislabeling.
+2. A short analysis window can occasionally make a real fundamental and a
+   comparably-strong harmonic swap places in strength by noise alone —
+   this genuinely happened during the 2026-09 audit (oboe/d5.mp3,
+   violin/c4.mp3 both flagged wrongly under a ~2/3-second window; both
+   read cleanly correct once measured over the note's full duration).
+   [normalized_autocorrelation_peak] now uses (almost) the whole note for
+   exactly this reason — see its docstring — but a borderline case is
+   still worth double-checking with --verify-labels before trusting the
+   default mode's single number.
 
 A handful of files are also just bad recordings (clipped, silent, wrong
-content) rather than mislabeled — those should read as low-confidence
-noise here, not as a clean octave-off reading. Report them; don't rename
-them by algorithm.
+content, or genuinely ambiguous between two adjacent real notes) rather
+than mislabeled — those read as low confidence or fail --verify-labels
+outright, and should be reported for manual removal rather than
+relabelled by algorithm. --verify-chromatic (checks that an instrument's
+own files form a consistent chromatic scale, independent of any label —
+see [verify_chromatic_structure]) is the primary safeguard against a
+*systematic* measurement error slipping through a label comparison
+undetected, but note it assumes one dominant pitch per file and so isn't
+the right check for bells specifically (see [verify_label_periodicity]
+above) — it will report a bells file as inconsistent with its neighbors
+whenever one of the pair happens to measure by its nominal partial and
+the other by its prime, even when both are correctly labelled.
 """
 
 from __future__ import annotations
@@ -111,16 +135,28 @@ def normalized_autocorrelation_peak(samples: array.array, sr: int) -> tuple[floa
     correlation is within 15% of the best one found, the *shortest* lag
     wins — this is the guard against reporting a subharmonic (half the
     true frequency) just because it accumulated slightly more raw energy.
+
+    Uses (almost) the whole note, not a fixed sub-second window: an
+    earlier version here used ~2/3s starting after the attack, which was
+    short enough that a real fundamental and a comparably-strong harmonic
+    could land within noise of each other, occasionally flipping which
+    one "won" — this cost real files a false octave-error flag during
+    the 2026-09 audit (oboe/d5.mp3, violin/c4.mp3: both measured cleanly
+    correct once checked over the note's full duration; see that audit's
+    report). More data straightforwardly means a better-conditioned
+    correlation estimate, and normalized correlation is scale-invariant,
+    so a quieter but genuine periodicity in the decaying tail doesn't get
+    penalized for being quiet the way a raw-magnitude spectral peak would.
     """
     n = len(samples)
     if n < 200:
         return None, 0.0
 
-    # Analysis window: skip the attack transient and the tail decay/silence
-    # by using the middle third of the clip.
-    start = n // 4
-    end = min(n, start + sr * 2 // 3)
-    chunk = samples[start:end]
+    # Analysis window: skip just the attack transient, keep everything
+    # after it (including the decay tail — see the "uses almost the whole
+    # note" note above).
+    start = n // 8
+    chunk = samples[start:]
     m = len(chunk)
     if m < 200:
         return None, 0.0
@@ -323,6 +359,102 @@ def general_filename_midi(filename_stem: str) -> int | None:
 # neighbor-note mixup would produce.
 CHROMATIC_TOLERANCE_CENTS = 50
 
+# How far off a note's label the closest genuine periodicity may sit
+# before --verify-labels calls it SUSPECT rather than OK. Wider than
+# CHROMATIC_TOLERANCE_CENTS (50c) because this checks a *narrowband*
+# search around one specific frequency rather than a ratio between two
+# measured values, and real single-note tuning drift on this library has
+# run up to ~35 cents in isolated readings elsewhere in this audit.
+LABEL_PERIODICITY_TOLERANCE_CENTS = 50
+LABEL_PERIODICITY_MIN_CORRELATION = 0.9
+
+
+def midi_to_freq(midi: int) -> float:
+    return 440.0 * 2 ** ((midi - 69) / 12.0)
+
+
+@dataclass
+class LabelCheckResult:
+    filename: str
+    label_note: str
+    label_freq: float
+    found_freq: float
+    correlation: float
+    cents_off: float
+    ok: bool
+
+
+def verify_label_periodicity(dir_path: Path, work_dir: Path) -> list[LabelCheckResult]:
+    """Does the labelled pitch show genuine periodicity, regardless of
+    whether it's the file's single strongest one? This is the check that
+    resolved bells (2026-09): a struck bell's loudest partial (nominal)
+    sits a real octave above the partial it's conventionally *named* by
+    (prime/strike note), so [verify_chromatic_structure] and this
+    script's default "strongest periodicity wins" mode both
+    systematically favor nominal — but the labelled (prime) pitch is
+    still genuinely, cleanly present in a good file. Normalized
+    correlation is scale-invariant, so a real but quiet partial doesn't
+    get penalized here the way a raw spectral-magnitude comparison would
+    penalize it (an earlier pass at this used peak spectral magnitude and
+    it was *not* discriminating enough — every bells file looked like the
+    label was "basically absent" by that measure, even the 23 that turned
+    out fine).
+
+    Only usable on files this script's fixed-octave FILE_ORDER recognizes
+    (i.e. not yet renamed to an arbitrary real octave) — pass a still-
+    untouched instrument's directory, not e.g. guitar/tuba's post-rename
+    state.
+    """
+    results = []
+    for stem in FILE_ORDER:
+        mp3_path = dir_path / f"{stem}.mp3"
+        if not mp3_path.exists():
+            continue
+        label_midi = filename_implied_midi(stem)
+        label_freq = midi_to_freq(label_midi)
+
+        wav_path = work_dir / (mp3_path.stem + ".wav")
+        decode_to_wav(mp3_path, wav_path)
+        samples, sr = read_pcm16_mono(wav_path)
+        wav_path.unlink(missing_ok=True)
+
+        n = len(samples)
+        start = n // 8
+        window = samples[start:]
+        m = len(window)
+        if m < 200:
+            results.append(LabelCheckResult(f"{stem}.mp3", midi_to_name(label_midi),
+                                             label_freq, 0.0, 0.0, float('nan'), False))
+            continue
+        mean = sum(window) / m
+        x = [s - mean for s in window]
+
+        tol = LABEL_PERIODICITY_TOLERANCE_CENTS
+        lo_lag = max(1, int(sr / (label_freq * 2 ** (tol / 1200))))
+        hi_lag = int(sr / (label_freq * 2 ** (-tol / 1200)))
+        best_lag, best_corr = None, -1.0
+        for lag in range(lo_lag, hi_lag + 1):
+            span = m - lag
+            if span <= 0:
+                break
+            num = e0 = e1 = 0.0
+            for i in range(0, span, 2):
+                a, b = x[i], x[i + lag]
+                num += a * b
+                e0 += a * a
+                e1 += b * b
+            denom = math.sqrt(e0 * e1)
+            corr = num / denom if denom > 0 else 0.0
+            if corr > best_corr:
+                best_lag, best_corr = lag, corr
+
+        found_freq = sr / best_lag if best_lag else 0.0
+        cents_off = 1200 * math.log2(found_freq / label_freq) if found_freq > 0 else float('nan')
+        ok = best_corr > LABEL_PERIODICITY_MIN_CORRELATION and abs(cents_off) < tol
+        results.append(LabelCheckResult(f"{stem}.mp3", midi_to_name(label_midi),
+                                         label_freq, found_freq, best_corr, cents_off, ok))
+    return results
+
 
 @dataclass
 class ChromaticCheckFailure:
@@ -431,7 +563,17 @@ def main():
              "systematic measurement error (e.g. autocorrelation locking onto a harmonic "
              "across a whole instrument) would break even though a label-vs-measurement "
              "comparison could not catch it (see this module's docstring). Works on any "
-             "filename octave, so it's the right check to run after a rename.",
+             "filename octave, so it's the right check to run after a rename. Not the right "
+             "check for bells specifically — see --verify-labels and this module's docstring.",
+    )
+    parser.add_argument(
+        "--verify-labels", action="store_true",
+        help="Check whether each file's *labelled* pitch shows genuine periodicity, "
+             "regardless of whether it's the file's single strongest one (see "
+             "verify_label_periodicity's docstring — this is what resolved bells: its "
+             "loudest partial is real but sits an octave above the one it's named by). "
+             "Only works on files still using the fixed-octave c4/c5-style naming "
+             "(pre-rename) — not guitar/tuba's current real-pitch filenames.",
     )
     args = parser.parse_args()
 
@@ -464,6 +606,23 @@ def main():
                     for f in failures:
                         cents_str = "n/a" if math.isnan(f.cents_error) else f"{f.cents_error:+.0f}c"
                         print(f"  FAIL ({cents_str}): {f.description}")
+        sys.exit(0 if overall_ok else 1)
+
+    if args.verify_labels:
+        overall_ok = True
+        with tempfile.TemporaryDirectory(prefix="measure_note_pitch_") as tmp:
+            work_dir = Path(tmp)
+            for d in dirs:
+                print(f"\n=== {d.name} (label periodicity check) ===")
+                results = verify_label_periodicity(d, work_dir)
+                for r in results:
+                    status = "OK" if r.ok else "SUSPECT"
+                    if not r.ok:
+                        overall_ok = False
+                    cents_str = "n/a" if math.isnan(r.cents_off) else f"{r.cents_off:+.0f}c"
+                    print(f"  {r.filename:16s} label={r.label_note:4s} ({r.label_freq:7.2f}Hz)  "
+                          f"found={r.found_freq:7.2f}Hz  corr={r.correlation:.4f}  "
+                          f"cents_off={cents_str:>6s}  {status}")
         sys.exit(0 if overall_ok else 1)
 
     all_results: dict[str, list[Measurement]] = {}
