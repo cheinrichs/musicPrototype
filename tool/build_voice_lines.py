@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Convert Cooper's re-recorded VoiceLine WAVs into the repo's voice
-assets, gain-normalized to their own (louder-than-notes) target.
+assets, gain-normalized to their own target, separate from the notes.
 
 Why voice gets its own script rather than reusing normalize_loudness.py
 directly on assets/audio/voice/: these are freshly delivered WAVs from
@@ -16,8 +16,16 @@ speech risks truncating a real pause between words.
 
 Two constraints specific to voice, from Cooper directly:
   - Normalize to voice's own target, separate from the note library's
-    -18 LUFS — voice should sit comfortably above the notes so a line is
-    never buried under an instrument (see VOICE_TARGET_LUFS below).
+    -18 LUFS. The target itself is derived from the data (see
+    VOICE_TARGET_LUFS below) rather than picked to sit above the notes
+    upfront — an earlier attempt at picking a hot target for exactly that
+    reason left most files headroom-limited and made the *inconsistency*
+    between lines worse, not better. Resolution (also Cooper, once the
+    tension showed up in the numbers): consistency between the voice
+    lines matters more than the voice-vs-notes offset — get the lines
+    even first, restore the offset later with a uniform playback-time
+    gain across the whole voice set if it's still wanted, rather than
+    sacrificing evenness to chase it here.
   - Gain only, never anything that could shift pitch — Clef speaks about
     a fifth above Piper and that separation is deliberate character
     design. A flat scalar gain (what this script and
@@ -46,7 +54,21 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from normalize_loudness import find_ffmpeg, process_file
 
-VOICE_TARGET_LUFS = -14.0  # ~4 LU hotter than the note library's -18 LUFS
+VOICE_TARGET_LUFS = -18.6
+# Derived from the data, not picked upfront — a first attempt at -14.0
+# (chosen only to sit above the note library's -18.0) left 8 of the 9
+# lines headroom-limited and widened their spread instead of closing it.
+# The right way to derive this: force every file to its true post-encode
+# true-peak ceiling (run with an unreachably hot --target, e.g. +10, and
+# read off each file's resulting "after" LUFS), then target the lowest of
+# those ceilings *among files with no recording artifact* — one line
+# (clefSaysHighSecond) has an isolated transient spike (a plosive pop/
+# click, not its real vocal level) that drags its own ceiling far below
+# the rest; excluding it, the lowest legitimate ceiling was ~-18.6,
+# which then lets 8 of 9 files land within ~0.1 LU of each other. See
+# assets/audio/voice/README.md for the full account, including that
+# outlier. Re-derive (don't reuse this number unchanged) if the line-up
+# changes — a new recording could easily have a lower or higher ceiling.
 
 # Cooper's upload filename -> VoiceLine enum member it replaces/creates.
 # "Second"-suffixed members are new: Clef/Piper each have a first-note
