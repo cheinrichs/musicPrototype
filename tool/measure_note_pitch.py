@@ -21,13 +21,18 @@ Usage:
 Requires macOS's built-in `afconvert` (Xcode Command Line Tools) to decode
 mp3 -> PCM WAV. Everything else is Python standard library — no pip
 packages, so this runs on any dev machine that can already build this
-project's iOS target, without extra setup.
+project's iOS target, without extra setup — with one narrow exception:
+measuring a SPECTRAL_PEAK_INSTRUMENT_DIRS directory (currently just
+bells) needs numpy for its FFT, imported lazily so nothing else in this
+file takes on the dependency. Every other instrument stays exactly as
+dependency-free as before.
 
-Two known failure modes, both hit for real during this tool's two audits
-so far (guitar/tuba transposition, then bells/oboe/violin) — see the
-"SUSPECT" flags this script's default mode prints, and use
---verify-chromatic / --verify-labels rather than trusting a single
-autocorrelation number for anything that looks octave-off:
+Four known failure modes, all hit for real across this tool's audits so
+far (guitar/tuba transposition, then bells/oboe/violin, then the 2026-09
+handbell import) — see the "SUSPECT" flags this script's default mode
+prints, and use --verify-chromatic / --verify-labels rather than
+trusting a single autocorrelation number for anything that looks
+octave-off:
 
 1. Naive "what's the single strongest periodicity in this file"
    autocorrelation can report a real but non-fundamental partial instead
@@ -52,17 +57,53 @@ autocorrelation number for anything that looks octave-off:
    still worth double-checking with --verify-labels before trusting the
    default mode's single number.
 
+3. A stereo (or any multi-channel) source silently corrupts every
+   measurement if it isn't downmixed to mono first — [decode_to_wav] only
+   pins sample rate/bit depth, not channel count, and reading interleaved
+   L/R frames as a flat mono stream (a bug present until the 2026-09
+   handbell import) doesn't error, it just measures garbage. The
+   giveaway that caught it: *every* file in a stereo batch reading the
+   same implausible frequency near this script's MAX_FREQ_HZ boundary
+   regardless of the files' actual different pitches — real audio content
+   doesn't do that; a format bug reading the same interleaving artifact
+   in every file does. If a fresh source's numbers look suspiciously
+   uniform, identical across files, or pinned near MIN_FREQ_HZ/
+   MAX_FREQ_HZ, check `afinfo <file>`'s channel count before doubting the
+   acoustics — see [read_pcm16_mono]'s docstring for the fix (a real
+   channel average, not `afconvert -c 1`, which was tried and found to
+   just drop every channel but the first).
+
+4. A fixed search ceiling (MAX_FREQ_HZ) doesn't just miss a note pitched
+   above it — it actively *mismeasures* it, since autocorrelation can
+   only report a periodicity whose lag corresponds to a frequency within
+   that ceiling. The 2026-09 handbell import needed MAX_FREQ_HZ raised
+   from 1600 to 2150 (bells reach real B6, ~1976Hz) for exactly this
+   reason: several files below the old ceiling kept reading a real
+   octave low, structurally unable to ever report their true pitch until
+   the ceiling was raised past it, not just prone to drift there. If a
+   fresh source's readings cluster suspiciously near MIN_FREQ_HZ or
+   MAX_FREQ_HZ, check whether the true pitch might simply be outside the
+   search range before suspecting the acoustics.
+
 A handful of files are also just bad recordings (clipped, silent, wrong
 content, or genuinely ambiguous between two adjacent real notes) rather
 than mislabeled — those read as low confidence or fail --verify-labels
 outright, and should be reported for manual removal rather than
-relabelled by algorithm. --verify-chromatic (checks that an instrument's
-own files form a consistent chromatic scale, independent of any label —
-see [verify_chromatic_structure]) is the primary safeguard against a
+relabelled by algorithm. One 2026-09 handbell file looked like exactly
+this at first (a hard-clipped attack, ~0.5ms at the exact int16 rail)
+but turned out fine once measured past the clip — worth a second,
+narrower look before writing off a file the clipping alone would
+suggest excluding.
+
+--verify-chromatic (checks that an instrument's own files form a
+consistent chromatic scale, independent of any label — see
+[verify_chromatic_structure]) is the primary safeguard against a
 *systematic* measurement error slipping through a label comparison
 undetected, but note it assumes one dominant pitch per file and so isn't
-the right check for bells specifically (see [verify_label_periodicity]
-above) — it will report a bells file as inconsistent with its neighbors
+the right check for the *old* bells set specifically (see
+[verify_label_periodicity] above, and SPECTRAL_PEAK_INSTRUMENT_DIRS for
+why the *current*, 2026-09 hand-bell set needs a different fix again) —
+it will report a bells file as inconsistent with its neighbors
 whenever one of the pair happens to measure by its nominal partial and
 the other by its prime, even when both are correctly labelled.
 """
@@ -97,7 +138,21 @@ for octave in (4, 5):
         FILE_ORDER.append(f"{name}{octave}" if '_' not in name else f"{name}_{octave}")
 
 MIN_FREQ_HZ = 45     # a bit below tuba's lowest real note (~65Hz)
-MAX_FREQ_HZ = 1600   # a bit above the highest expected fundamental
+# A bit above the highest expected fundamental — raised from 1600 to 2150
+# for the 2026-09 handbell import: bells reach up to real B6 (~1976Hz),
+# and a search ceiling below a file's true pitch doesn't just miss it, it
+# actively mismeasures it. autocorrelation can only ever report a
+# periodicity whose lag is >= sr/MAX_FREQ_HZ, so at the old 1600Hz ceiling
+# the several bells tuned above that point were structurally incapable of
+# ever reading their own real strike note — the search would find
+# whatever real periodicity *was* in range instead, which for a bell is
+# often its hum tone one octave down. That's not a coincidence with why
+# the whole-note reading kept landing an octave low on exactly the
+# higher-pitched bells (see OCTAVE_AMBIGUOUS_INSTRUMENT_DIRS): a bit of
+# it was genuine partial-dominance drift, but a bit of it was this
+# ceiling silently ruling out the correct answer before the algorithm
+# ever got a chance to consider it.
+MAX_FREQ_HZ = 2150
 MIN_CONFIDENCE = 0.35  # normalized-correlation floor before we call a reading "unusable"
 
 
@@ -119,12 +174,38 @@ def decode_to_wav(mp3_path: Path, wav_path: Path) -> None:
 
 
 def read_pcm16_mono(wav_path: Path) -> tuple[array.array, int]:
+    """Read 16-bit PCM samples as mono, downmixing if the source has more
+    than one channel.
+
+    [decode_to_wav] only pins sample rate/bit depth (`-d LEI16@...`), not
+    channel count, so a genuinely multi-channel source passes through
+    unchanged. Every asset this tool measured before 2026-09 (the
+    Philharmonia-derived note library) happened to already be mono, so
+    reading the decoded frames as a flat stream — the previous
+    implementation — never surfaced this. It broke on the first
+    non-orchestral source: InspectorJ's handbell field recordings on
+    Freesound are stereo, and treating their interleaved L/R frames as one
+    mono stream corrupted every measurement, producing an identical,
+    spurious ~1575Hz reading across many *different* files regardless of
+    their real pitch — a dead giveaway of a format bug, not an acoustic
+    one, since real bells don't all ring the same note.
+
+    Averages channels rather than dropping any: `afconvert -c 1` was
+    tried first and rejected after direct sample comparison showed it
+    just keeps channel 0 and discards the rest, not a real mix — silently
+    picking one mic over another rather than combining them.
+    """
     with wave.open(str(wav_path), 'rb') as w:
         sr = w.getframerate()
+        nchannels = w.getnchannels()
         frames = w.readframes(w.getnframes())
-    arr = array.array('h')
-    arr.frombytes(frames)
-    return arr, sr
+    raw = array.array('h')
+    raw.frombytes(frames)
+    if nchannels <= 1:
+        return raw, sr
+    channels = [raw[ch::nchannels] for ch in range(nchannels)]
+    mono = array.array('h', (sum(s) // nchannels for s in zip(*channels)))
+    return mono, sr
 
 
 def normalized_autocorrelation_peak(
@@ -158,7 +239,7 @@ def normalized_autocorrelation_peak(
     In practice that window landed on pluck/finger noise for most guitar
     files and returned pure garbage (e.g. d_sharp_3.mp3 measuring
     ~1520Hz) — worse than the problem it targeted, which affected only
-    one or two files. See PLUCKED_INSTRUMENT_DIRS below for the actual
+    one or two files. See OCTAVE_AMBIGUOUS_INSTRUMENT_DIRS below for the actual
     fix: an octave-tolerant *comparison* in the chromatic check, which
     doesn't touch detection at all.
     """
@@ -234,6 +315,102 @@ def normalized_autocorrelation_peak(
     return freq, best_lag_corr
 
 
+# Directories measured by [spectral_peak] instead of the default
+# [normalized_autocorrelation_peak] — currently just hand bells (2026-09
+# InspectorJ import). Not a general replacement; see spectral_peak's
+# docstring for why bells specifically need a different *method*, not
+# just a different window on the same one.
+SPECTRAL_PEAK_INSTRUMENT_DIRS = {"bells"}
+
+
+def spectral_peak(
+    samples: array.array, sr: int, start_s: float = 0.05, window_s: float = 1.0
+) -> tuple[float | None, float]:
+    """Return (frequency_hz, confidence) for the dominant FFT peak in a
+    window starting [start_s] seconds in and [window_s] seconds long.
+    Used only for [SPECTRAL_PEAK_INSTRUMENT_DIRS] (hand bells) — every
+    other instrument still uses [normalized_autocorrelation_peak].
+
+    Why bells need an entirely different method, not just a different
+    window on the same one (which is all guitar needed —
+    OCTAVE_AMBIGUOUS_INSTRUMENT_DIRS's comparison-side tolerance covers
+    guitar's plucked-string decay drift because that drift is *clean*:
+    late in the note, a harmonic outweighs the fundamental by exactly an
+    octave, consistently). A struck hand bell has several inharmonic
+    partials decaying at their own different rates, and which one
+    dominates keeps shifting throughout the note — verified directly on
+    the 2026-09 InspectorJ import: --verify-chromatic's whole-note
+    autocorrelation reading disagreed with a careful by-hand FFT check on
+    most of the 13 files, by amounts that don't fit a clean octave
+    relationship (108c, 749c, 96c, 1405c, ... — not ~0c or ~1200c), so
+    the octave-tolerant comparison can't paper over it the way it does
+    for guitar. A fixed early window sidesteps this because the strike's
+    initial ring is dominated by one clear partial (the "note you hear")
+    before the others have had time to compete — confirmed empirically:
+    every one of the 12 well-tuned files read a single, overwhelmingly
+    dominant peak (usually >90% stronger than the next-loudest) in this
+    window, forming an internally consistent chromatic scale within a
+    few cents per step.
+
+    Also avoids normalized_autocorrelation_peak's own failure mode at
+    short windows: its "shortest lag among near-ties wins" rule (the
+    guard against reporting a subharmonic) can pick a spurious
+    short-lag artifact when several partials are comparably strong —
+    exactly bells' situation, and exactly what made a short-window
+    *autocorrelation* attempt fail for guitar too (see
+    normalized_autocorrelation_peak's docstring). A spectral peak just
+    picks the tallest bin; it has no such tie-break to go wrong.
+
+    Requires numpy, imported lazily so nothing else in this file takes on
+    the dependency — every other measurement in this tool is pure
+    standard library.
+    """
+    try:
+        import numpy as np
+    except ImportError as e:
+        raise RuntimeError(
+            "Measuring a SPECTRAL_PEAK_INSTRUMENT_DIRS directory (bells) "
+            "needs numpy for its FFT-based pitch measurement — install it "
+            "(`pip install numpy`) and try again. No other instrument in "
+            "this tool needs it."
+        ) from e
+
+    arr = np.asarray(samples, dtype=np.float64)
+    start = int(sr * start_s)
+    end = min(len(arr), start + int(sr * window_s))
+    chunk = arr[start:end]
+    if len(chunk) < sr * 0.05:
+        return None, 0.0
+
+    spectrum = np.abs(np.fft.rfft(chunk * np.hanning(len(chunk))))
+    freqs = np.fft.rfftfreq(len(chunk), d=1 / sr)
+    mask = (freqs >= MIN_FREQ_HZ) & (freqs <= MAX_FREQ_HZ)
+    f = freqs[mask]
+    m = spectrum[mask]
+    if len(m) < 3:
+        return None, 0.0
+
+    # Local maxima only — same reasoning as normalized_autocorrelation_peak:
+    # pick among genuine peaks, not every point on a rising slope.
+    peak_indices = [
+        i for i in range(1, len(m) - 1) if m[i] > m[i - 1] and m[i] >= m[i + 1]
+    ]
+    if not peak_indices:
+        return None, 0.0
+    best_i = max(peak_indices, key=lambda i: m[i])
+    best_freq = float(f[best_i])
+    best_mag = float(m[best_i])
+
+    # Confidence proxy: how dominant the best peak is over the next-
+    # strongest one. Not the same math as normalized_autocorrelation_peak's
+    # normalized-correlation confidence, but the same 0..1 scale and
+    # meaning (1.0 = totally dominant, no real competition).
+    others = sorted((float(m[i]) for i in peak_indices if i != best_i), reverse=True)
+    second = others[0] if others else 0.0
+    confidence = 1.0 - (second / best_mag if best_mag > 0 else 0.0)
+    return best_freq, max(0.0, min(1.0, confidence))
+
+
 @dataclass
 class Measurement:
     filename: str
@@ -246,24 +423,46 @@ class Measurement:
     error: str | None = None
 
 
-# Instruments where the fundamental decays measurably faster than the
-# upper harmonics — the acoustic reason a whole-note or late-note pitch
-# read can drift a real octave high as a note dies. Keyed by the
-# instrument directory name under assets/audio/notes/. Used only to gate
-# the octave-tolerant comparison in verify_chromatic_structure (see
-# ratio_matches_with_octave_tolerance) — not a detection-side change;
-# see normalized_autocorrelation_peak's docstring for why a detection-
-# side fix (a short post-attack window) was tried and reverted.
-PLUCKED_INSTRUMENT_DIRS = {"guitar"}
+# Instruments with a real, physically-explained reason a whole-note pitch
+# read can land a genuine octave away from the note a person would name —
+# not a measurement bug, an acoustic property of the instrument. Keyed by
+# the instrument directory name under assets/audio/notes/. Used only to
+# gate the octave-tolerant comparison in verify_chromatic_structure (see
+# ratio_matches_with_octave_tolerance) — not a detection-side change; see
+# normalized_autocorrelation_peak's docstring for why a detection-side
+# fix (a short post-attack window) was tried for guitar and reverted.
+#
+# Two different causes land here, both producing the same octave-off
+# symptom:
+#   - guitar (plucked string): the fundamental decays measurably faster
+#     than its harmonics, so a whole-note or late-note read can drift a
+#     real octave *high* as the note dies.
+#   - bells (struck handbell, 2026-09 InspectorJ import): tuned so the
+#     hum tone — a real, audible partial — sits a genuine octave *below*
+#     the strike note a listener actually identifies as "the note," and
+#     which partial dominates a given analysis window shifts continuously
+#     as the strike's other partials decay at their own different rates
+#     (confirmed directly: an FFT comparison of an early ~1s window
+#     against the later decay showed roughly half of the 12 real bells
+#     landing on a clean octave-below reading once the strike's brighter
+#     partials had faded — not a uniform, predictable shift, so no fixed
+#     analysis window reliably avoids it the way it does for guitar).
+OCTAVE_AMBIGUOUS_INSTRUMENT_DIRS = {"guitar", "bells"}
 
 
-def measure_file(mp3_path: Path, work_dir: Path) -> Measurement:
+def measure_file(
+    mp3_path: Path, work_dir: Path, use_spectral_peak: bool = False
+) -> Measurement:
     m = Measurement(filename=mp3_path.name)
     wav_path = work_dir / (mp3_path.stem + ".wav")
     try:
         decode_to_wav(mp3_path, wav_path)
         samples, sr = read_pcm16_mono(wav_path)
-        freq, confidence = normalized_autocorrelation_peak(samples, sr)
+        freq, confidence = (
+            spectral_peak(samples, sr)
+            if use_spectral_peak
+            else normalized_autocorrelation_peak(samples, sr)
+        )
         m.confidence = confidence
         if freq is None:
             m.error = "no usable periodicity found (silent, noise, or too quiet)"
@@ -485,7 +684,7 @@ def verify_label_periodicity(dir_path: Path, work_dir: Path) -> list[LabelCheckR
 # fail the chromatic check without it meaning anything is wrong. This is
 # for a documented, judged-acceptable pitch ambiguity in a *specific*
 # file — not a general tolerance widening (that's what
-# PLUCKED_INSTRUMENT_DIRS is for, a real acoustic correction rather than
+# OCTAVE_AMBIGUOUS_INSTRUMENT_DIRS is for, a real acoustic correction rather than
 # an exception). Add an entry only when a human has actually listened
 # and made this call; a failure not listed here is a real failure.
 KNOWN_ACCEPTABLE_DEVIATIONS: dict[tuple[str, str], str] = {
@@ -505,7 +704,7 @@ KNOWN_ACCEPTABLE_DEVIATIONS: dict[tuple[str, str], str] = {
 def ratio_matches_with_octave_tolerance(
     actual_ratio: float, expected_ratio: float, tol_cents: float
 ) -> tuple[bool, str | None]:
-    """For [PLUCKED_INSTRUMENT_DIRS] only: checks [actual_ratio] against
+    """For [OCTAVE_AMBIGUOUS_INSTRUMENT_DIRS] only: checks [actual_ratio] against
     [expected_ratio] both directly and scaled by a real octave in either
     direction, returning (matched, note) — [note] says which side read
     the octave, or None if it matched directly with no drift at all.
@@ -568,25 +767,28 @@ def verify_chromatic_structure(
     conspicuously. Nothing here is auto-corrected — failures are
     returned for the caller to report.
 
-    For [PLUCKED_INSTRUMENT_DIRS] (currently just guitar), a ratio that
+    For [OCTAVE_AMBIGUOUS_INSTRUMENT_DIRS] (currently just guitar), a ratio that
     misses the expected value is also checked against 2x and 0.5x that
     value before being called a real failure (see
     ratio_matches_with_octave_tolerance) — a plucked string's fundamental
     decays faster than its harmonics, so a whole-note read can lock onto
     a harmonic and measure one side of a pair a real octave off. This is
-    a comparison-side tolerance, not a detection-side change — every
-    instrument is still measured the same way; only guitar's pass/fail
-    judgment accounts for a real, confirmed acoustic ambiguity.
+    a comparison-side tolerance, not a detection-side change for guitar.
+    Bells (also in OCTAVE_AMBIGUOUS_INSTRUMENT_DIRS) get a real
+    detection-side change on top of that — see SPECTRAL_PEAK_INSTRUMENT_DIRS
+    and [spectral_peak]'s docstring for why guitar's comparison-only fix
+    isn't enough for bells' messier, non-octave partial-dominance drift.
     """
     freqs: list[tuple[str, int, float]] = []  # (filename, midi, freq_hz)
     unparseable: list[str] = []
+    use_spectral_peak = dir_path.name in SPECTRAL_PEAK_INSTRUMENT_DIRS
     for mp3_path in sorted(dir_path.glob("*.mp3")):
         stem = mp3_path.stem
         midi = general_filename_midi(stem)
         if midi is None:
             unparseable.append(mp3_path.name)
             continue
-        m = measure_file(mp3_path, work_dir)
+        m = measure_file(mp3_path, work_dir, use_spectral_peak=use_spectral_peak)
         if m.freq_hz is None:
             unparseable.append(f"{mp3_path.name} (unreadable: {m.error})")
             continue
@@ -612,7 +814,7 @@ def verify_chromatic_structure(
         cents_error = 1200 * math.log2(actual_ratio / expected_ratio)
         if abs(cents_error) > CHROMATIC_TOLERANCE_CENTS:
             reason = known_reason(name1, name2)
-            if reason is None and dir_path.name in PLUCKED_INSTRUMENT_DIRS:
+            if reason is None and dir_path.name in OCTAVE_AMBIGUOUS_INSTRUMENT_DIRS:
                 matched, note = ratio_matches_with_octave_tolerance(
                     actual_ratio, expected_ratio, CHROMATIC_TOLERANCE_CENTS
                 )
@@ -622,7 +824,7 @@ def verify_chromatic_structure(
                         "string's fundamental decays faster than its "
                         "harmonics, so a whole-note read can lock onto a "
                         "harmonic and measure one side a real octave off — "
-                        "see PLUCKED_INSTRUMENT_DIRS. The pitch relationship "
+                        "see OCTAVE_AMBIGUOUS_INSTRUMENT_DIRS. The pitch relationship "
                         "checks out once that octave is accounted for."
                     )
             failures.append(ChromaticCheckFailure(
@@ -647,7 +849,7 @@ def verify_chromatic_structure(
         cents_error = 1200 * math.log2(actual_ratio / 2.0)
         if abs(cents_error) > CHROMATIC_TOLERANCE_CENTS:
             reason = known_reason(name1, name2)
-            if reason is None and dir_path.name in PLUCKED_INSTRUMENT_DIRS:
+            if reason is None and dir_path.name in OCTAVE_AMBIGUOUS_INSTRUMENT_DIRS:
                 matched, note = ratio_matches_with_octave_tolerance(
                     actual_ratio, 2.0, CHROMATIC_TOLERANCE_CENTS
                 )
@@ -657,7 +859,7 @@ def verify_chromatic_structure(
                         "string's fundamental decays faster than its "
                         "harmonics, so a whole-note read can lock onto a "
                         "harmonic and measure one side a real octave off — "
-                        "see PLUCKED_INSTRUMENT_DIRS. The pitch relationship "
+                        "see OCTAVE_AMBIGUOUS_INSTRUMENT_DIRS. The pitch relationship "
                         "checks out once that octave is accounted for."
                     )
             failures.append(ChromaticCheckFailure(
@@ -688,17 +890,20 @@ def main():
              "systematic measurement error (e.g. autocorrelation locking onto a harmonic "
              "across a whole instrument) would break even though a label-vs-measurement "
              "comparison could not catch it (see this module's docstring). Works on any "
-             "filename octave, so it's the right check to run after a rename. Not the right "
-             "check for bells specifically — see --verify-labels and this module's docstring.",
+             "filename octave, so it's the right check to run after a rename. This is the "
+             "current bells set's own check too (SPECTRAL_PEAK_INSTRUMENT_DIRS handles its "
+             "measurement automatically) — --verify-labels below is for the *old*, "
+             "fixed-octave-naming bells set specifically, not this one.",
     )
     parser.add_argument(
         "--verify-labels", action="store_true",
         help="Check whether each file's *labelled* pitch shows genuine periodicity, "
              "regardless of whether it's the file's single strongest one (see "
-             "verify_label_periodicity's docstring — this is what resolved bells: its "
-             "loudest partial is real but sits an octave above the one it's named by). "
-             "Only works on files still using the fixed-octave c4/c5-style naming "
-             "(pre-rename) — not guitar/tuba's current real-pitch filenames.",
+             "verify_label_periodicity's docstring — this is what resolved the *original* "
+             "bells set's nominal-vs-prime question: its loudest partial was real but sat "
+             "an octave above the one it was named by). Only works on files still using the "
+             "fixed-octave c4/c5-style naming (pre-rename) — not guitar/tuba/the current "
+             "bells set's real-pitch filenames.",
     )
     args = parser.parse_args()
 

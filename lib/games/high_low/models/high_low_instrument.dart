@@ -38,31 +38,50 @@ import 'dart:math' as math;
 /// assets/images/characters/instruments/ for the full SongStone-UI-Kit
 /// set, which still includes Drum1/Drum2.
 enum HighLowInstrument {
-  // Bells (2026-09 audit, resolved as a follow-up after bells was found
-  // live in rotation with an unresolved flag): real bell acoustics, not a
-  // mislabeling. Most of bells' files individually read a clean octave
-  // *above* label under "what's the single strongest periodicity"
-  // autocorrelation — real physics, not a detector bug: a struck bell's
-  // loudest partial ("nominal") genuinely sits an octave above the
-  // partial it's conventionally *named* by ("prime"/strike note), so any
-  // such detector will systematically prefer nominal. Confirmed by
-  // checking every one of bells' 24 files individually (not a sample) for
-  // genuine periodicity specifically *at* the labelled pitch, regardless
-  // of dominance (tool/measure_note_pitch.py --verify-labels): 23 read
-  // cleanly correct (normalized correlation 0.98+, well within normal
-  // tuning variance). Only C#5 didn't resolve to any real note (closest
-  // periodicity sits ~80 cents sharp of C#5, ambiguous with D5) and was
-  // removed rather than guessed at, leaving a gap — [60, 72] (C4-C5) is
-  // the largest gap-free run left, matching guitar/tuba's treatment.
+  // Bells (2026-09, Trello card TY1KDwiB): wholesale replacement, not a
+  // pitch fix. The original 24-file set that lived here through the
+  // audit above was real bell acoustics on the *nominal-vs-prime*
+  // question, but Cooper's own ear caught a different, more basic
+  // problem the pitch-only audit couldn't see: "the tone of them has
+  // sounded gross... more similar to the tones we were using before we
+  // had instrument sound files than a true bell." Measurement backed
+  // this up — six of those files carried almost no energy above 200Hz,
+  // a sub-200Hz component dominating instead (one dropped 93% after a
+  // high-pass filter, against ~1% for a healthy file) — the acoustic
+  // signature of tubular bells / orchestral chimes (heavy, clangy,
+  // strong hum partial well below the note), not hand bells. That old
+  // set is gone; recoverable from git history if ever needed
+  // (`git log -- assets/audio/notes/bells` from this commit).
   //
-  // The audit's chromatic-structure check (verify_chromatic_structure)
-  // isn't the right tool for bells specifically: it assumes one dominant
-  // pitch per file, which breaks down whenever one file's dominant
-  // reading happens to be its nominal and a neighbor's happens to be its
-  // prime — both correctly labelled, but reading as inconsistent with
-  // each other. Don't reach for it to re-litigate bells; --verify-labels
-  // is the check that actually answered this.
-  bells('Bell', 'bell', 'bells', 60, 72),
+  // Replaced with InspectorJ's "Hand Bells, Singles" pack (Freesound,
+  // CC BY 4.0 — see assets/audio/notes/bells/ATTRIBUTION.md for the
+  // required per-sound credit) — a real, small hand-bell set, field-
+  // recorded rather than studio-sampled. Measured fresh rather than
+  // trusting the pack's own filenames (`low-c`, `cdb`, `d`, ...): those
+  // implied a scale two octaves below where the bells actually ring.
+  // All 13 of the pack's sounds form a genuinely clean, well-tuned
+  // chromatic run from real C6 to C7 (every consecutive step within a
+  // few cents of an exact semitone), confirmed by an FFT peak in the
+  // ~50ms-1050ms window after each strike — see the ATTRIBUTION file and
+  // this commit for the full methodology. The top file ("high C") reads
+  // a hard-clipped sample at its exact strike instant (~0.5ms at the
+  // int16 rail) — investigated rather than dropped on sight, since a
+  // clip that brief turned out to leave the sustained tone completely
+  // clean and correctly tuned once measured past it. [84, 96] (C6-C7) is
+  // a full, gap-free octave — no sparse-range model needed here.
+  //
+  // Expect a real hum tone about an octave below the strike note on some
+  // files — that's the instrument (a handbell's hum tone sits a genuine
+  // octave below the note a listener names it by), not a defect. Unlike
+  // guitar's decay drift, though, plain whole-note autocorrelation
+  // doesn't measure bells reliably enough for even a documented octave
+  // tolerance to fix: a struck bell's many inharmonic partials trade
+  // dominance throughout the note in ways that don't land a clean octave
+  // off, they land at arbitrary, non-octave amounts. This library is
+  // measured (and --verify-chromatic checks it) with a real detection-
+  // side fix instead — an FFT peak in that same early window — see
+  // tool/measure_note_pitch.py's SPECTRAL_PEAK_INSTRUMENT_DIRS.
+  bells('Bell', 'bell', 'bells', 84, 96),
   cello('Cello', 'cello', 'cello', 60, 83),
   flute('Flute', 'flute', 'flute', 60, 83),
   // Guitar (2026-09 audit): real pitch is one octave below its file names
@@ -98,14 +117,39 @@ enum HighLowInstrument {
   // file (real C#3) originally measured ambiguously between C#3 and D3
   // and was deleted rather than guessed at — then restored the same
   // month once Cooper judged the ambiguity harmless by ear ("wiggles
-  // between C#3 and D3"; the game never names a note out loud, and the
-  // tier ladder's narrowest interval is 4 semitones, so a 1-semitone
-  // wobble can't flip which side of a pair reads higher — see
-  // tool/measure_note_pitch.py's KNOWN_ACCEPTABLE_DEVIATIONS). Fully
-  // contiguous again: [36, 59] is C2-B3, no gaps. That upper end (B3)
-  // now reaches into guitar's own range [48, 71] above, so tuba can
-  // finally be paired with something for a cross-instrument round.
-  tuba('Tuba', 'tuba', 'tuba', 36, 59),
+  // between C#3 and D3"; the game never names a note out loud, and
+  // ConceptTier's narrowest interval, T4's, is 2 semitones — a 1-semitone
+  // wobble shrinks that worst case but doesn't reverse which side of a
+  // pair reads higher — see tool/measure_note_pitch.py's
+  // KNOWN_ACCEPTABLE_DEVIATIONS). That gave tuba a real, fully contiguous
+  // C2-B3 for about a day.
+  //
+  // Restricted again immediately after, for a different reason (Cooper,
+  // live on build 45): a T1 round paired real tuba D#2 (78Hz) against
+  // A#2 (117Hz) and he couldn't hear them well enough to compare —
+  // "it's too low to hear ... previous instruments guitar and something
+  // else [were fine]." tool/measure_speaker_audibility.py confirmed it's
+  // not a one-off: every tuba note from C2 through G3 carries well under
+  // 50% of its energy above a phone speaker's ~200Hz rolloff (mean 23%,
+  // several files under 15%), while G#3 through B3 clear 59-68%. The cut
+  // sits exactly at that jump, not at a round number — [56, 59] (G#3-B3)
+  // keeps only the notes the previous cut hadn't already excluded from
+  // "clean" territory.
+  //
+  // That leaves a 3-semitone span — narrower than every tier's
+  // [ConceptTier.minSemitones] except T4's (2), so tuba can't satisfy
+  // T1/T2/T3's own same-instrument interval floor within its remaining
+  // range. [PromptGenerator] enforces this as a general rule (any
+  // instrument whose own span can't reach a tier's minimum is excluded
+  // from that tier, not just tuba) rather than special-casing tuba by
+  // name — see its own doc comment and
+  // prompt_generator_test.dart's invariant test, added specifically so
+  // this class of bug (a real device audibly failing a round the code
+  // still happily generated) can't reach a live build silently again.
+  // Tuba remains legal wherever a *cross-instrument* round (T3+, not
+  // implemented yet) finds a partner via [canPairWith] — guitar's
+  // [48, 71] still reaches down to cover it.
+  tuba('Tuba', 'tuba', 'tuba', 56, 59),
   violin('Violin', 'violin', 'violin', 60, 83);
 
   const HighLowInstrument(
