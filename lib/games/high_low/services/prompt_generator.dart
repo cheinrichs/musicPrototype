@@ -45,36 +45,39 @@ class PromptGenerator {
     final instrument =
         instrumentValues[_random.nextInt(instrumentValues.length)];
 
-    // Notes are picked as real MIDI pitches directly within *this*
-    // instrument's own declared range (HighLowInstrument.lowestSampleMidi
-    // .. highestSampleMidi) — that range isn't always two full octaves any
-    // more (see the class doc: guitar and tuba currently have gaps that
-    // shrink it well below that). Picking the interval *before* either
-    // note, rather than picking a first note and then reaching outward
-    // from it, guarantees the requested interval always fits regardless
-    // of how narrow the range is: cap the interval at the range's full
-    // span, then there's always at least one valid placement for it.
-    final lowestMidi = instrument.lowestSampleMidi;
-    final span = instrument.highestSampleMidi - lowestMidi;
+    // Notes are picked as real MIDI pitches directly from *this*
+    // instrument's own available notes (HighLowInstrument.availableMidis)
+    // — not every instrument's range is a full two octaves, and guitar's
+    // isn't even gap-free within its declared range (see the class doc).
+    // Enumerating every pair of available notes and filtering by interval,
+    // rather than picking an interval first and reaching outward by a raw
+    // offset, is what makes gaps safe: a raw-offset approach can land
+    // exactly on a missing note (guitar has two) and request a sample
+    // that doesn't exist. The instrument list is short enough (at most
+    // two octaves) that enumerating every pair is cheap.
+    final available = instrument.availableMidis;
+    final span = available.last - available.first;
 
     final minInterval = min(tier.minSemitones, span);
     final maxInterval = min(tier.maxSemitones, span);
-    final interval =
-        _random.nextInt(maxInterval - minInterval + 1) + minInterval;
 
-    final maxLowOffset = span - interval;
-    final lowOffset = _random.nextInt(maxLowOffset + 1);
-    final highOffset = lowOffset + interval;
+    final validPairs = <({int low, int high})>[
+      for (final low in available)
+        for (final high in available)
+          if (high - low >= minInterval && high - low <= maxInterval)
+            (low: low, high: high),
+    ];
+    final pair = validPairs[_random.nextInt(validPairs.length)];
 
     // Randomly decide which side gets the higher pitch — must stay a coin
     // flip, or the child learns position instead of pitch.
     final firstIsHigher = _random.nextBool();
-    final firstOffset = firstIsHigher ? highOffset : lowOffset;
-    final secondOffset = firstIsHigher ? lowOffset : highOffset;
+    final firstMidi = firstIsHigher ? pair.high : pair.low;
+    final secondMidi = firstIsHigher ? pair.low : pair.high;
 
     return HighLowPrompt(
-      firstMidi: lowestMidi + firstOffset,
-      secondMidi: lowestMidi + secondOffset,
+      firstMidi: firstMidi,
+      secondMidi: secondMidi,
       firstInstrument: instrument,
       secondInstrument: instrument,
       promptNumber: promptNumber,

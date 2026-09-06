@@ -73,27 +73,39 @@ enum HighLowInstrument {
   // 20 files whose content cleanly matched that one-octave shift; deleted
   // four whose content didn't (two had no clear tonal signal at all, two
   // had real but wrong-octave content each duplicating a note guitar
-  // already has elsewhere in its 24). That leaves real gaps at F#3, G#3,
-  // A3, and A#4. [58, 69] (A#3-A4) is the largest gap-free run left —
-  // smaller than every other instrument's two octaves, honestly, until
-  // those four notes get re-recorded.
-  guitar('Guitar', 'guitar', 'guitar', 58, 69),
+  // already has elsewhere in its 24).
+  //
+  // Two of those four (F#3, G#3) were restored later the same month:
+  // Cooper listened to the removed files against a pitch app and found
+  // both were pulled in error — genuinely in the lower octave, just
+  // measuring an octave high on first pass because a plucked string's
+  // fundamental decays faster than its harmonics and a whole-note read
+  // can lock onto the wrong one as the note dies (see
+  // tool/measure_note_pitch.py's PLUCKED_INSTRUMENT_DIRS handling, added
+  // for exactly this). A3 and A#4 stay gone — A3's take is just mic
+  // clicking on and off, A#4's is a pluck that sounds incongruous next to
+  // the rest of the library — so guitar's usable range still isn't fully
+  // contiguous. [missingMidis] documents those two remaining holes rather
+  // than shrinking the declared range down to whatever contiguous run is
+  // left, so the restored notes are actually reachable.
+  guitar('Guitar', 'guitar', 'guitar', 48, 71, missingMidis: {57, 70}),
   oboe('Oboe', 'oboe', 'oboe', 60, 83),
   piano('Piano', 'piano', 'piano', 60, 83),
   trumpet('Trumpet', 'trumpet', 'trumpet', 60, 83),
   // Tuba (Trello card 55, confirmed by the 2026-09 audit): real pitch is
   // two octaves below its file names, exactly as originally sourced — the
-  // one instrument the uncorrected guess above happened to get right.
-  // One file (real C#3) measured ambiguously between C#3 and D3 rather
-  // than cleanly matching either and was deleted rather than guessed at,
-  // leaving a gap. [36, 48] (C2-C3) is the largest gap-free run left —
-  // and notably sits entirely below every other instrument's range,
-  // including guitar's [58, 69] just above: closing that C#3 gap would
-  // restore tuba's full C2-B3 (up to 59), which *does* reach guitar's
-  // bottom end, but until then tuba can't be paired with anything for a
-  // cross-instrument round (canPairWith is false against every other
-  // value here).
-  tuba('Tuba', 'tuba', 'tuba', 36, 48),
+  // one instrument the uncorrected guess above happened to get right. One
+  // file (real C#3) originally measured ambiguously between C#3 and D3
+  // and was deleted rather than guessed at — then restored the same
+  // month once Cooper judged the ambiguity harmless by ear ("wiggles
+  // between C#3 and D3"; the game never names a note out loud, and the
+  // tier ladder's narrowest interval is 4 semitones, so a 1-semitone
+  // wobble can't flip which side of a pair reads higher — see
+  // tool/measure_note_pitch.py's KNOWN_ACCEPTABLE_DEVIATIONS). Fully
+  // contiguous again: [36, 59] is C2-B3, no gaps. That upper end (B3)
+  // now reaches into guitar's own range [48, 71] above, so tuba can
+  // finally be paired with something for a cross-instrument round.
+  tuba('Tuba', 'tuba', 'tuba', 36, 59),
   violin('Violin', 'violin', 'violin', 60, 83);
 
   const HighLowInstrument(
@@ -101,8 +113,9 @@ enum HighLowInstrument {
     this.displayName,
     this.sampleInstrument,
     this.lowestSampleMidi,
-    this.highestSampleMidi,
-  );
+    this.highestSampleMidi, {
+    this.missingMidis = const {},
+  });
 
   final String _assetBaseName;
 
@@ -114,13 +127,34 @@ enum HighLowInstrument {
   /// sample library.
   final String sampleInstrument;
 
-  /// Lowest real MIDI note this instrument's sample library covers,
-  /// gap-free, up to [highestSampleMidi] — see the class doc for how this
-  /// was measured and why it isn't always a full two octaves.
+  /// Lowest real MIDI note this instrument's sample library covers, up to
+  /// [highestSampleMidi] — see the class doc for how this was measured and
+  /// why it isn't always a full two octaves. Usually gap-free across that
+  /// whole span; [missingMidis] documents the (currently guitar-only)
+  /// exceptions.
   final int lowestSampleMidi;
 
   /// Highest real MIDI note this instrument's sample library covers.
   final int highestSampleMidi;
+
+  /// Real MIDI notes within [lowestSampleMidi]..[highestSampleMidi] that
+  /// have no sample despite sitting inside that span — a hole, not a
+  /// boundary. Every other instrument declares its range gap-free and
+  /// leaves this empty; guitar has two (see its constructor call's
+  /// comment) that would otherwise force shrinking the declared range down
+  /// to whatever contiguous run excludes them, making its two restored
+  /// 2026-09 notes undeclared and unreachable.
+  final Set<int> missingMidis;
+
+  /// Every real MIDI note this instrument actually has a sample for,
+  /// ascending — [lowestSampleMidi]..[highestSampleMidi] with
+  /// [missingMidis] filtered out. Use this instead of iterating the raw
+  /// range whenever "which notes can this instrument actually play"
+  /// matters (see [PromptGenerator]).
+  List<int> get availableMidis => [
+    for (var midi = lowestSampleMidi; midi <= highestSampleMidi; midi++)
+      if (!missingMidis.contains(midi)) midi,
+  ];
 
   String get leftAssetPath =>
       'assets/images/characters/instruments/${_assetBaseName}1.png';
@@ -130,26 +164,30 @@ enum HighLowInstrument {
 
   /// Asset path for the sample that sounds at real MIDI [midi]. The file's
   /// name is that real pitch directly — no separate logical slot to
-  /// translate through. [midi] must fall within [lowestSampleMidi]..
-  /// [highestSampleMidi].
+  /// translate through. [midi] must be one of [availableMidis].
   String assetPathForMidi(int midi) {
     assert(
-      midi >= lowestSampleMidi && midi <= highestSampleMidi,
+      midi >= lowestSampleMidi &&
+          midi <= highestSampleMidi &&
+          !missingMidis.contains(midi),
       '$name has no sample at MIDI $midi '
-      '(range is $lowestSampleMidi-$highestSampleMidi)',
+      '(range is $lowestSampleMidi-$highestSampleMidi, '
+      'missing: $missingMidis)',
     );
     return 'assets/audio/notes/$sampleInstrument/${_sampleFilenameForMidi(midi)}.mp3';
   }
 
-  /// Every asset path in this instrument's declared range, for preloading.
-  List<String> get allAssetPaths => [
-    for (var midi = lowestSampleMidi; midi <= highestSampleMidi; midi++)
-      assetPathForMidi(midi),
-  ];
+  /// Every asset path this instrument actually has, for preloading.
+  List<String> get allAssetPaths =>
+      [for (final midi in availableMidis) assetPathForMidi(midi)];
 
   /// Semitones [lowestSampleMidi]..[highestSampleMidi] overlaps with
   /// [other]'s own range. Zero or negative means no usable overlap at
-  /// all — e.g. tuba (C2-C3) and flute (C4-B5) don't share any range.
+  /// all — e.g. tuba (C2-B3) and flute (C4-B5) don't share any range. This
+  /// checks the coarse [lowestSampleMidi]/[highestSampleMidi] span, not
+  /// [availableMidis] — fine for now since it's unused in production and
+  /// guitar's two holes are single semitones, not enough to matter for a
+  /// range-overlap estimate.
   int semitoneOverlapWith(HighLowInstrument other) {
     final overlapLow = math.max(lowestSampleMidi, other.lowestSampleMidi);
     final overlapHigh = math.min(highestSampleMidi, other.highestSampleMidi);

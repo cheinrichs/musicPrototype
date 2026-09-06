@@ -127,7 +127,9 @@ def read_pcm16_mono(wav_path: Path) -> tuple[array.array, int]:
     return arr, sr
 
 
-def normalized_autocorrelation_peak(samples: array.array, sr: int) -> tuple[float | None, float]:
+def normalized_autocorrelation_peak(
+    samples: array.array, sr: int
+) -> tuple[float | None, float]:
     """Return (frequency_hz, confidence) for the dominant periodicity in
     `samples`, or (None, 0.0) if nothing usable is found.
 
@@ -138,23 +140,35 @@ def normalized_autocorrelation_peak(samples: array.array, sr: int) -> tuple[floa
 
     Uses (almost) the whole note, not a fixed sub-second window: an
     earlier version here used ~2/3s starting after the attack, which was
-    short enough that a real fundamental and a comparably-strong harmonic
-    could land within noise of each other, occasionally flipping which
-    one "won" — this cost real files a false octave-error flag during
-    the 2026-09 audit (oboe/d5.mp3, violin/c4.mp3: both measured cleanly
-    correct once checked over the note's full duration; see that audit's
-    report). More data straightforwardly means a better-conditioned
-    correlation estimate, and normalized correlation is scale-invariant,
-    so a quieter but genuine periodicity in the decaying tail doesn't get
-    penalized for being quiet the way a raw-magnitude spectral peak would.
+    short enough that a real fundamental and a comparably-strong
+    harmonic could land within noise of each other, occasionally
+    flipping which one "won" — this cost real files a false octave-error
+    flag during the 2026-09 audit (oboe/d5.mp3, violin/c4.mp3: both
+    measured cleanly correct once checked over the note's full duration;
+    see that audit's report). More data straightforwardly means a
+    better-conditioned correlation estimate, and normalized correlation
+    is scale-invariant, so a quieter but genuine periodicity in the
+    decaying tail doesn't get penalized for being quiet the way a
+    raw-magnitude spectral peak would.
+
+    A tempting-looking fix for plucked strings (whose fundamental decays
+    faster than its harmonics) was tried and reverted: analyzing only a
+    short window right after the attack, on the theory that catching the
+    fundamental before it fades would stop a harmonic from winning late.
+    In practice that window landed on pluck/finger noise for most guitar
+    files and returned pure garbage (e.g. d_sharp_3.mp3 measuring
+    ~1520Hz) — worse than the problem it targeted, which affected only
+    one or two files. See PLUCKED_INSTRUMENT_DIRS below for the actual
+    fix: an octave-tolerant *comparison* in the chromatic check, which
+    doesn't touch detection at all.
     """
     n = len(samples)
     if n < 200:
         return None, 0.0
 
-    # Analysis window: skip just the attack transient, keep everything
-    # after it (including the decay tail — see the "uses almost the whole
-    # note" note above).
+    # Skip just the attack transient, keep everything after it
+    # (including the decay tail — see the "uses almost the whole note"
+    # note above).
     start = n // 8
     chunk = samples[start:]
     m = len(chunk)
@@ -230,6 +244,17 @@ class Measurement:
     measured_note: str | None = None
     cents_off: float | None = None
     error: str | None = None
+
+
+# Instruments where the fundamental decays measurably faster than the
+# upper harmonics — the acoustic reason a whole-note or late-note pitch
+# read can drift a real octave high as a note dies. Keyed by the
+# instrument directory name under assets/audio/notes/. Used only to gate
+# the octave-tolerant comparison in verify_chromatic_structure (see
+# ratio_matches_with_octave_tolerance) — not a detection-side change;
+# see normalized_autocorrelation_peak's docstring for why a detection-
+# side fix (a short post-attack window) was tried and reverted.
+PLUCKED_INSTRUMENT_DIRS = {"guitar"}
 
 
 def measure_file(mp3_path: Path, work_dir: Path) -> Measurement:
@@ -456,10 +481,63 @@ def verify_label_periodicity(dir_path: Path, work_dir: Path) -> list[LabelCheckR
     return results
 
 
+# (instrument dir name, filename) -> why this specific file is allowed to
+# fail the chromatic check without it meaning anything is wrong. This is
+# for a documented, judged-acceptable pitch ambiguity in a *specific*
+# file — not a general tolerance widening (that's what
+# PLUCKED_INSTRUMENT_DIRS is for, a real acoustic correction rather than
+# an exception). Add an entry only when a human has actually listened
+# and made this call; a failure not listed here is a real failure.
+KNOWN_ACCEPTABLE_DEVIATIONS: dict[tuple[str, str], str] = {
+    ("tuba", "c_sharp_3.mp3"): (
+        "Cooper, by ear against a pitch app: 'wiggles between C#3 and D3'. "
+        "The game only compares real sounding pitch between two notes on "
+        "the same instrument to decide which is higher, never names a "
+        "note out loud — the tier ladder's narrowest interval is 4 "
+        "semitones, so a 1-semitone ambiguity here can't flip which side "
+        "of a pair reads higher. Restored (2026-09) after being pulled "
+        "for measuring off-label; this is that same ambiguity, judged "
+        "acceptable rather than fixed."
+    ),
+}
+
+
+def ratio_matches_with_octave_tolerance(
+    actual_ratio: float, expected_ratio: float, tol_cents: float
+) -> tuple[bool, str | None]:
+    """For [PLUCKED_INSTRUMENT_DIRS] only: checks [actual_ratio] against
+    [expected_ratio] both directly and scaled by a real octave in either
+    direction, returning (matched, note) — [note] says which side read
+    the octave, or None if it matched directly with no drift at all.
+
+    This is a comparison-side tolerance, not a detection-side one (see
+    normalized_autocorrelation_peak's docstring for the detection-side
+    fix that was tried and reverted). A plucked string's fundamental
+    decays faster than its harmonics, so a whole-note read can lock onto
+    a harmonic and measure one side of a pair a real octave off — Cooper
+    confirmed this by ear against a pitch app on real guitar files
+    (f_sharp_3.mp3 measuring an octave high was exactly this). Checking
+    the ratio against 2x and 0.5x its expected value catches that
+    specific, explained failure mode without loosening the check for
+    anything else: a wrong-by-some-other-amount ratio still fails.
+    """
+    direct_cents = 1200 * math.log2(actual_ratio / expected_ratio)
+    if abs(direct_cents) <= tol_cents:
+        return True, None
+    high_cents = 1200 * math.log2((actual_ratio / 2) / expected_ratio)
+    if abs(high_cents) <= tol_cents:
+        return True, "the second file read a real octave high"
+    low_cents = 1200 * math.log2((actual_ratio * 2) / expected_ratio)
+    if abs(low_cents) <= tol_cents:
+        return True, "the first file read a real octave high"
+    return False, None
+
+
 @dataclass
 class ChromaticCheckFailure:
     description: str
     cents_error: float
+    accepted_reason: str | None = None
 
 
 def verify_chromatic_structure(
@@ -489,6 +567,16 @@ def verify_chromatic_structure(
     single file breaks its neighboring consecutive-ratio checks
     conspicuously. Nothing here is auto-corrected — failures are
     returned for the caller to report.
+
+    For [PLUCKED_INSTRUMENT_DIRS] (currently just guitar), a ratio that
+    misses the expected value is also checked against 2x and 0.5x that
+    value before being called a real failure (see
+    ratio_matches_with_octave_tolerance) — a plucked string's fundamental
+    decays faster than its harmonics, so a whole-note read can lock onto
+    a harmonic and measure one side of a pair a real octave off. This is
+    a comparison-side tolerance, not a detection-side change — every
+    instrument is still measured the same way; only guitar's pass/fail
+    judgment accounts for a real, confirmed acoustic ambiguity.
     """
     freqs: list[tuple[str, int, float]] = []  # (filename, midi, freq_hz)
     unparseable: list[str] = []
@@ -507,6 +595,13 @@ def verify_chromatic_structure(
     freqs.sort(key=lambda t: t[1])
     failures: list[ChromaticCheckFailure] = []
 
+    def known_reason(name1: str, name2: str) -> str | None:
+        for n in (name1, name2):
+            reason = KNOWN_ACCEPTABLE_DEVIATIONS.get((dir_path.name, n))
+            if reason is not None:
+                return reason
+        return None
+
     # Consecutive-pair check.
     for (name1, midi1, freq1), (name2, midi2, freq2) in zip(freqs, freqs[1:]):
         gap = midi2 - midi1
@@ -516,11 +611,26 @@ def verify_chromatic_structure(
         actual_ratio = freq2 / freq1
         cents_error = 1200 * math.log2(actual_ratio / expected_ratio)
         if abs(cents_error) > CHROMATIC_TOLERANCE_CENTS:
+            reason = known_reason(name1, name2)
+            if reason is None and dir_path.name in PLUCKED_INSTRUMENT_DIRS:
+                matched, note = ratio_matches_with_octave_tolerance(
+                    actual_ratio, expected_ratio, CHROMATIC_TOLERANCE_CENTS
+                )
+                if matched:
+                    reason = (
+                        f"plucked-string octave drift ({note}): a plucked "
+                        "string's fundamental decays faster than its "
+                        "harmonics, so a whole-note read can lock onto a "
+                        "harmonic and measure one side a real octave off — "
+                        "see PLUCKED_INSTRUMENT_DIRS. The pitch relationship "
+                        "checks out once that octave is accounted for."
+                    )
             failures.append(ChromaticCheckFailure(
                 f"{name1} -> {name2} ({gap} semitone(s) apart by filename): "
                 f"expected ratio {expected_ratio:.4f}, measured {actual_ratio:.4f} "
                 f"({freq1:.2f}Hz -> {freq2:.2f}Hz)",
                 cents_error,
+                accepted_reason=reason,
             ))
 
     # Exact-octave check, across every pair (not just consecutive ones —
@@ -536,11 +646,26 @@ def verify_chromatic_structure(
         actual_ratio = freq2 / freq1
         cents_error = 1200 * math.log2(actual_ratio / 2.0)
         if abs(cents_error) > CHROMATIC_TOLERANCE_CENTS:
+            reason = known_reason(name1, name2)
+            if reason is None and dir_path.name in PLUCKED_INSTRUMENT_DIRS:
+                matched, note = ratio_matches_with_octave_tolerance(
+                    actual_ratio, 2.0, CHROMATIC_TOLERANCE_CENTS
+                )
+                if matched:
+                    reason = (
+                        f"plucked-string octave drift ({note}): a plucked "
+                        "string's fundamental decays faster than its "
+                        "harmonics, so a whole-note read can lock onto a "
+                        "harmonic and measure one side a real octave off — "
+                        "see PLUCKED_INSTRUMENT_DIRS. The pitch relationship "
+                        "checks out once that octave is accounted for."
+                    )
             failures.append(ChromaticCheckFailure(
                 f"{name1} -> {name2} (octave apart by filename): "
                 f"expected ratio 2.0000, measured {actual_ratio:.4f} "
                 f"({freq1:.2f}Hz -> {freq2:.2f}Hz)",
                 cents_error,
+                accepted_reason=reason,
             ))
 
     if unparseable:
@@ -599,13 +724,21 @@ def main():
                 print(f"\n=== {d.name} (chromatic structure check) ===")
                 freqs, failures = verify_chromatic_structure(d, work_dir)
                 print(f"  {len(freqs)} files measured, sorted by filename-implied real pitch")
+                real_failures = [f for f in failures if f.accepted_reason is None]
+                accepted = [f for f in failures if f.accepted_reason is not None]
                 if not failures:
                     print("  PASS — every consecutive pair and every octave pair checked out")
+                elif not real_failures:
+                    print(f"  PASS — {len(accepted)} documented exception(s), see below")
                 else:
                     overall_ok = False
-                    for f in failures:
-                        cents_str = "n/a" if math.isnan(f.cents_error) else f"{f.cents_error:+.0f}c"
-                        print(f"  FAIL ({cents_str}): {f.description}")
+                for f in real_failures:
+                    cents_str = "n/a" if math.isnan(f.cents_error) else f"{f.cents_error:+.0f}c"
+                    print(f"  FAIL ({cents_str}): {f.description}")
+                for f in accepted:
+                    cents_str = "n/a" if math.isnan(f.cents_error) else f"{f.cents_error:+.0f}c"
+                    print(f"  ACCEPTED ({cents_str}): {f.description}")
+                    print(f"    -> {f.accepted_reason}")
         sys.exit(0 if overall_ok else 1)
 
     if args.verify_labels:

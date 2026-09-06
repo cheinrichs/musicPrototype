@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ear_trainer/models/concept_tier.dart';
 import 'package:ear_trainer/models/pitch_direction.dart';
+import 'package:ear_trainer/games/high_low/models/high_low_instrument.dart';
 import 'package:ear_trainer/games/high_low/services/prompt_generator.dart';
 
 void main() {
@@ -20,9 +21,10 @@ void main() {
     });
 
     test('both notes always fall within the chosen instrument\'s own '
-        'declared sample range, for every tier — this matters now that '
-        'not every instrument has the same two-octave range (guitar and '
-        'tuba are narrower; see HighLowInstrument\'s class doc)', () {
+        'declared sample range, for every tier — this matters because '
+        'guitar\'s declared range has two internal gaps (see '
+        'HighLowInstrument\'s class doc) even though its span matches '
+        'everyone else\'s', () {
       final generator = PromptGenerator(random: Random(99));
       for (final tier in ConceptTier.values) {
         for (var i = 0; i < 200; i++) {
@@ -50,10 +52,34 @@ void main() {
       }
     });
 
-    test('difficulty never falls outside the tier\'s bounds, even for an '
-        'instrument whose range is narrower than the tier\'s max interval '
-        '(guitar\'s 11-semitone span is smaller than T1\'s 12-semitone '
-        'max)', () {
+    test('never lands on one of guitar\'s missing notes (A3, A#4) — a '
+        'raw-offset picker could hit these even though they\'re inside '
+        'guitar\'s declared range; enumerating availableMidis pairs '
+        'cannot', () {
+      final generator = PromptGenerator(random: Random(2026));
+      final guitar = HighLowInstrument.guitar;
+      var sawGuitar = false;
+      for (var i = 0; i < 2000; i++) {
+        final prompt = generator.generatePrompt(
+          promptNumber: i,
+          tier: ConceptTier.t1,
+          targetDirection: PitchDirection.higher,
+        );
+        if (prompt.firstInstrument != guitar) continue;
+        sawGuitar = true;
+        for (final midi in [prompt.firstMidi, prompt.secondMidi]) {
+          expect(
+            guitar.missingMidis.contains(midi),
+            isFalse,
+            reason: 'guitar prompt $i used missing MIDI $midi',
+          );
+        }
+      }
+      expect(sawGuitar, isTrue, reason: 'guitar never got picked in 2000 tries');
+    });
+
+    test('difficulty never falls outside the tier\'s bounds, for every '
+        'instrument\'s own declared span', () {
       final generator = PromptGenerator(random: Random(123));
       for (final tier in ConceptTier.values) {
         for (var i = 0; i < 200; i++) {
