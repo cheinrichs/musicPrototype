@@ -3,14 +3,19 @@
 /// (same fallback the Sound Playground uses for missing instrument
 /// clips), and callers still pair every voice line with an on-screen
 /// caption via [captionText] so the stage stays legible if audio is ever
-/// missing — that fallback is exactly what [listenForLow] currently
-/// depends on (see its doc comment).
+/// missing — every line currently has a recording, but this fallback is
+/// why a future gap (the next re-recording batch replacing one of these,
+/// briefly) never breaks the stage outright.
 ///
-/// Re-recorded (2026-09, nine files) to replace the original placeholder
-/// takes, gain-normalized separately from the note library (voice sits
-/// louder — see tool/build_voice_lines.py) and format-converted from the
-/// 24kHz mono WAVs Cooper delivered to this project's standard mono/
-/// 44.1kHz/64kbps CBR mp3.
+/// Re-recorded 2026-09: nine lines replacing the original placeholder
+/// takes, plus one ([listenForLow]) filled from an earlier, separately-
+/// delivered take Cooper confirmed was already usable. All ten are gain-
+/// normalized together to their own target, separate from the note
+/// library (see tool/build_voice_lines.py — cross-batch consistency is a
+/// standing concern here, not a one-off: new lines arrive in whatever
+/// session Cooper's next batch of recording credits lands in, sometimes
+/// one at a time) and format-converted from the 24kHz mono WAVs Cooper
+/// delivers to this project's standard mono/44.1kHz/64kbps CBR mp3.
 enum VoiceLine {
   /// Piper, narrating the lower instrument in Observe (A0) — spoken as
   /// the first note of the pair ("That sounds low!").
@@ -39,13 +44,13 @@ enum VoiceLine {
   listenForHigh,
 
   /// Participate (A1) round prompt when the target is the lower one —
-  /// Piper's equivalent of [listenForHigh]. No recording exists for this
-  /// yet (2026-09's nine-file re-recording batch covered every other
-  /// line but not this one) — until one is delivered, this asset is
-  /// simply absent and play falls back to the on-screen caption only,
-  /// via the same missing-asset handling every other line already has.
-  /// Do not point this at a placeholder/stand-in take; leave it silent
-  /// until the real line exists.
+  /// Piper's equivalent of [listenForHigh]. The 2026-09 nine-line batch
+  /// covered every other line but not this one; filled from an earlier,
+  /// separately-delivered take instead (Cooper: "there's nothing wrong
+  /// with the listen for the low one line ... that line is fine for
+  /// use") rather than left silent — same 24kHz source format, and its
+  /// measured fundamental (108Hz) sits inside the 2026-09 Piper lines'
+  /// own range (106-142Hz).
   listenForLow,
 
   /// Trigger (A2) round prompt when the target is the higher one. Clef
@@ -78,7 +83,7 @@ enum VoiceLine {
     VoiceLine.clefSaysHigh => 'Clef: ooh, that sounds high!',
     VoiceLine.clefSaysHighSecond => 'Clef: ...and ooh, that sounds high!',
     VoiceLine.listenForHigh => 'Clef: ooh, listen for the high one.',
-    VoiceLine.listenForLow => 'Listen for the low one.',
+    VoiceLine.listenForLow => 'Piper: listen for the low one.',
     VoiceLine.putMeOnHigh => 'Clef: give me the high one.',
     VoiceLine.putMeOnLow => 'Piper: give me the low one.',
     VoiceLine.tryAgainClef => 'Clef: ooh, nearly! Let\'s listen again.',
