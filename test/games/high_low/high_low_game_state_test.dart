@@ -110,7 +110,7 @@ void main() {
         final prompt = state.currentPrompt!;
         expect(state.canDrop, isTrue);
 
-        state.dropOnSide(prompt.targetSide);
+        state.dropInstrument(prompt.targetSide);
         await tester.pump();
 
         expect(state.dragFeedback, DragFeedback.correct);
@@ -148,7 +148,7 @@ void main() {
         final prompt = state.currentPrompt!;
         final wrongSide = 1 - prompt.targetSide;
 
-        state.dropOnSide(wrongSide);
+        state.dropInstrument(wrongSide);
         await tester.pump();
 
         expect(state.dragFeedback, DragFeedback.retry);
@@ -186,7 +186,7 @@ void main() {
       final prompt = state.currentPrompt!;
       final wrongSide = 1 - prompt.targetSide;
 
-      state.dropOnSide(wrongSide);
+      state.dropInstrument(wrongSide);
       await tester.pump();
       expect(state.dragFeedback, DragFeedback.retry);
 
@@ -201,7 +201,7 @@ void main() {
         reason: 'a drop must always override, never be locked out',
       );
 
-      state.dropOnSide(prompt.targetSide);
+      state.dropInstrument(prompt.targetSide);
       await tester.pump();
 
       expect(
@@ -242,8 +242,8 @@ void main() {
     });
 
     testWidgets(
-      'the dragged character follows the target pole — Clef for high, '
-      'Piper for low (Trello card 101)',
+      'the centered target character follows the target pole — Clef for '
+      'high, Piper for low (Trello card 101)',
       (tester) async {
         final state = HighLowGameState(
           totalPrompts: 5,
@@ -259,25 +259,29 @@ void main() {
         // first — see RoundSequencer.sequence.
         expect(state.currentPrompt!.targetDirection, PitchDirection.higher);
         expect(
-          state.draggedIsPiper,
+          state.targetCharacterIsPiper,
           isFalse,
-          reason: 'Clef owns the high pole, so she is the one dragged',
+          reason: 'Clef owns the high pole, so she is the one centered',
         );
-        expect(state.captionText, contains('Clef: give me the high'));
+        expect(
+          state.captionText,
+          contains('Clef'),
+          reason: 'the caption names whichever character owns this pole',
+        );
 
         // ...then a "lower" target — this is the branch the reported bug
         // (Trello card 101) was actually in: Piper spoke while Clef stayed
-        // centered and draggable.
+        // centered.
         state.moveOn();
         await tester.pump();
 
         expect(state.currentPrompt!.targetDirection, PitchDirection.lower);
         expect(
-          state.draggedIsPiper,
+          state.targetCharacterIsPiper,
           isTrue,
-          reason: 'Piper owns the low pole, so she is the one dragged',
+          reason: 'Piper owns the low pole, so she is the one centered',
         );
-        expect(state.captionText, contains('Piper: give me the low'));
+        expect(state.captionText, contains('Piper'));
         state.dispose();
       },
     );

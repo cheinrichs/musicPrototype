@@ -29,12 +29,14 @@ import '../state/high_low_game_state.dart';
 /// flanking a randomized pair of instrument characters. The screen's
 /// behavior is entirely driven by [HighLowGameState.agencyStage] (Trello
 /// card 91): Observe narrates and never scores, Participate hints with a
-/// sparkle, Trigger asks the child to drag the target's narrator (Piper or
-/// Clef, whichever owns that round's pole — Trello card 101) onto the
-/// answer. See
-/// [HighLowGameState]'s class doc for the full stage breakdown — this
-/// screen only renders what that state exposes, it doesn't duplicate the
-/// stage logic.
+/// sparkle, Trigger centers the target's narrator (Piper or Clef,
+/// whichever owns that round's pole — Trello card 101) as a fixed drop
+/// target and asks the child to drag the correct instrument to her.
+/// (Reversed 2026-09 from an earlier design where the *character* was
+/// dragged onto a fixed instrument — see [HighLowGameState]'s class doc
+/// for why.) See [HighLowGameState]'s class doc for the full stage
+/// breakdown — this screen only renders what that state exposes, it
+/// doesn't duplicate the stage logic.
 ///
 /// A debug-only setup gate (Trello card 92) lets a developer pick the
 /// stage/tier/round-order before the round starts; it only ever mounts
@@ -52,11 +54,14 @@ class _HighLowScreenState extends State<HighLowScreen> {
   late HighLowGameState _gameState;
   bool _showDevGate = devToolsEnabled;
 
-  /// Which side (0/1) a drag is currently hovering over, for the
-  /// instrument's little "you're about to drop here" scale-up — purely a
-  /// transient UI cue, not game state, so it lives here rather than on
-  /// [HighLowGameState]. See [_buildDropZone].
-  int? _hoveredDropSide;
+  /// Whether a dragged instrument is currently hovering over the drop
+  /// zone, for the centered character's little "you're about to drop
+  /// here" scale-up — purely a transient UI cue, not game state, so it
+  /// lives here rather than on [HighLowGameState]. A single bool, not a
+  /// per-side flag, since 2026-09's reversal made the drop zone one
+  /// screen-spanning target (the character) rather than two per-instrument
+  /// halves — see [_buildDropZone].
+  bool _dragHovering = false;
 
   /// Boundary for "Report this round"'s screenshot — see
   /// [RoundReportService.shareReport]. Wraps the whole screen (below), not
@@ -207,10 +212,10 @@ class _HighLowScreenState extends State<HighLowScreen> {
   ///
   /// Top-aligned, not the default center: [GameScreenLayout] centers this
   /// whole body vertically in the space between the header and the
-  /// footer, and Trigger's centered, dragged narrator (Clef or Piper,
-  /// [_buildDragHandle]) stands tall enough — up to 72% of the screen
+  /// footer, and Trigger's centered target character (Clef or Piper,
+  /// [_buildTargetCharacter]) stands tall enough — up to 72% of the screen
   /// height — to reach exactly that vertical middle too. Centering here
-  /// sat Listen Again right behind the dragged character's head; hugging
+  /// sat Listen Again right behind the centered character's head; hugging
   /// the top instead keeps it tucked under the header, above where either
   /// character's head reaches.
   Widget _buildBody(BuildContext context) {
@@ -587,21 +592,18 @@ class _HighLowScreenState extends State<HighLowScreen> {
     final homeShift = screenWidth * 0.04;
     final isTrigger = _gameState.agencyStage == AgencyStage.trigger;
     final prompt = _gameState.currentPrompt;
-    // Trigger-only: whichever character owns this round's target pole is
-    // the one centered and dragged (Trello card 101) — the other stays put
-    // at its normal fixed spot, same as Observe/Participate.
-    final piperIsDragged = isTrigger && _gameState.draggedIsPiper;
-    final clefIsDragged = isTrigger && !_gameState.draggedIsPiper;
-    // A correct drop sticks the dragged character onto the instrument it
-    // landed on instead of springing back to center (Trello — "celebrate a
-    // correct drop"); see [_buildDragHandle]. [_dropAlignX] converts the
-    // target instrument's screen-space X into the -1..1 fraction
-    // [AnimatedAlign] wants.
+    // Trigger-only: whichever character owns this round's target pole
+    // stays centered as the fixed drop target (Trello card 101) — the
+    // other stays put at its normal fixed spot, same as
+    // Observe/Participate. (Reversed 2026-09: the centered character used
+    // to be the *dragged* one; now she just stands still and receives —
+    // see HighLowGameState's class doc.)
+    final piperIsTarget = isTrigger && _gameState.targetCharacterIsPiper;
+    final clefIsTarget = isTrigger && !_gameState.targetCharacterIsPiper;
+    // A correct drop slides the dragged instrument onto the centered
+    // character instead of springing back to its stump (Trello —
+    // "celebrate a correct drop"; see [_buildInstrumentSlot]).
     final celebrating = _gameState.dragFeedback == DragFeedback.correct;
-    final dropAnchorX = _gameState.lastDropSide == 1
-        ? rightAnchorX
-        : leftAnchorX;
-    final dropAlignX = ((dropAnchorX / screenWidth) * 2 - 1).clamp(-1.0, 1.0);
 
     return Stack(
       clipBehavior: Clip.none,
@@ -624,105 +626,85 @@ class _HighLowScreenState extends State<HighLowScreen> {
         ),
         _buildPiper(
           piperHeight,
-          piperIsDragged,
+          piperIsTarget,
           homeLift,
           groundY,
-          celebrating: celebrating && piperIsDragged,
-          dropAlignX: dropAlignX,
+          celebrating: celebrating && piperIsTarget,
+          hovering: _dragHovering && piperIsTarget,
         ),
         _buildClef(
           clefHeight,
-          clefIsDragged,
+          clefIsTarget,
           homeLift,
           homeShift,
           groundY,
-          celebrating: celebrating && clefIsDragged,
-          dropAlignX: dropAlignX,
+          celebrating: celebrating && clefIsTarget,
+          hovering: _dragHovering && clefIsTarget,
         ),
-        Positioned(
-          left: leftAnchorX - charSize / 2,
-          bottom: groundY,
-          child: AnimatedScale(
-            scale: _hoveredDropSide == 0 ? 1.06 : 1.0,
-            duration: AppAnimations.fast,
-            child: _InstrumentButton(
-              key: ValueKey('left-${_gameState.leftInstrument.name}'),
-              assetPath: _gameState.leftInstrument.leftAssetPath,
-              size: charSize,
-              glowing: _gameState.playingIndex == 0,
-              feedback: _feedbackFor(0),
-              showSparkle: _gameState.showHint && prompt?.targetSide == 0,
-              onTap: () => _onInstrumentTap(0),
-            ),
-          ),
+        _buildInstrumentSlot(
+          side: 0,
+          assetPath: _gameState.leftInstrument.leftAssetPath,
+          instrumentName: _gameState.leftInstrument.name,
+          anchorX: leftAnchorX,
+          screenWidth: screenWidth,
+          charSize: charSize,
+          groundY: groundY,
+          isTrigger: isTrigger,
+          celebratingThis: celebrating && _gameState.lastDropSide == 0,
+          glowing: _gameState.playingIndex == 0,
+          feedback: _feedbackFor(0),
+          showSparkle: _gameState.showHint && prompt?.targetSide == 0,
         ),
-        Positioned(
-          left: rightAnchorX - charSize / 2,
-          bottom: groundY,
-          child: AnimatedScale(
-            scale: _hoveredDropSide == 1 ? 1.06 : 1.0,
-            duration: AppAnimations.fast,
-            child: _InstrumentButton(
-              key: ValueKey('right-${_gameState.rightInstrument.name}'),
-              assetPath: _gameState.rightInstrument.rightAssetPath,
-              size: charSize,
-              glowing: _gameState.playingIndex == 1,
-              feedback: _feedbackFor(1),
-              showSparkle: _gameState.showHint && prompt?.targetSide == 1,
-              onTap: () => _onInstrumentTap(1),
-            ),
-          ),
+        _buildInstrumentSlot(
+          side: 1,
+          assetPath: _gameState.rightInstrument.rightAssetPath,
+          instrumentName: _gameState.rightInstrument.name,
+          anchorX: rightAnchorX,
+          screenWidth: screenWidth,
+          charSize: charSize,
+          groundY: groundY,
+          isTrigger: isTrigger,
+          celebratingThis: celebrating && _gameState.lastDropSide == 1,
+          glowing: _gameState.playingIndex == 1,
+          feedback: _feedbackFor(1),
+          showSparkle: _gameState.showHint && prompt?.targetSide == 1,
         ),
-        // Two big, non-overlapping halves of the whole play area, not two
-        // small boxes hugging each instrument (Trello — "forgiving drop
-        // targets"): a four-year-old's aim is imprecise, and with only two
-        // possible answers, "which half did you drop in" already *is*
-        // "which one did you mean," so there's no accuracy lost by being
-        // this generous. Painted last (on top of the stumps/Piper/Clef/
-        // instruments) so they aren't occluded by those images' full
-        // rectangular bounds — DragTarget defaults to
+        // One drop zone spanning the whole scene, not two per-instrument
+        // halves (Trello — "forgiving drop targets," now applied to the
+        // character-as-target instead of the instruments): there's only
+        // one place to drop any more — onto the centered character — so
+        // the most generous possible hitbox is the entire play area; which
+        // instrument was dragged (not where it landed) is what
+        // [HighLowGameState.dropInstrument] judges. Painted last (on top
+        // of the stumps/Piper/Clef/instruments) so it isn't occluded by
+        // those images' full rectangular bounds — DragTarget defaults to
         // HitTestBehavior.translucent, so sitting on top like this doesn't
-        // block the instruments' own tap-to-explore underneath.
-        if (isTrigger) ...[
-          _buildDropZone(side: 0, left: 0, width: screenWidth / 2),
-          _buildDropZone(
-            side: 1,
-            left: screenWidth / 2,
-            width: screenWidth / 2,
-          ),
-        ],
+        // block the instruments' own tap-to-explore (or drag-start)
+        // underneath.
+        if (isTrigger) _buildDropZone(),
       ],
     );
   }
 
-  /// One half of the whole play area as a drop target — see [_buildScene]'s
-  /// class doc for why generous, non-overlapping halves replace two small
-  /// boxes hugging each instrument. Invisible (a plain [SizedBox.expand]):
-  /// the instrument's own [AnimatedScale] hover cue, driven by
-  /// [_hoveredDropSide], is the only visual feedback a drag is over this
-  /// zone.
-  Widget _buildDropZone({
-    required int side,
-    required double left,
-    required double width,
-  }) {
-    return Positioned(
-      left: left,
-      top: 0,
-      bottom: 0,
-      width: width,
-      child: DragTarget<Object>(
+  /// The whole play area as a single drop target — see [_buildScene]'s
+  /// comment for why one generous, screen-spanning zone replaces the old
+  /// two per-instrument halves. Invisible (a plain [SizedBox.expand]): the
+  /// centered character's own scale-up hover cue, driven by
+  /// [_dragHovering], is the only visual feedback a drag is over this
+  /// zone. Data type is `int` (the dragged instrument's [side]) to match
+  /// the `Draggable<int>` each instrument wraps itself in — see
+  /// [_buildInstrumentSlot].
+  Widget _buildDropZone() {
+    return Positioned.fill(
+      child: DragTarget<int>(
         onWillAcceptWithDetails: (_) => _gameState.canDrop,
-        onAcceptWithDetails: (_) => _gameState.dropOnSide(side),
+        onAcceptWithDetails: (details) =>
+            _gameState.dropInstrument(details.data),
         onMove: (_) {
-          if (_hoveredDropSide != side) {
-            setState(() => _hoveredDropSide = side);
-          }
+          if (!_dragHovering) setState(() => _dragHovering = true);
         },
         onLeave: (_) {
-          if (_hoveredDropSide == side) {
-            setState(() => _hoveredDropSide = null);
-          }
+          if (_dragHovering) setState(() => _dragHovering = false);
         },
         builder: (context, candidateData, rejectedData) =>
             const SizedBox.expand(),
@@ -773,20 +755,20 @@ class _HighLowScreenState extends State<HighLowScreen> {
   /// grass; above it is the disc an instrument stands on.
   static const double _stumpSurfaceFraction = 0.37;
 
-  /// Clef: fixed far-right, unless she's this round's dragged answer
-  /// ([isDragged] — Clef owns the high pole, Trello card 101), in which
-  /// case she starts centered rather than on either side, which keeps the
-  /// drag distance to both instruments equal, per the design brief. Bobs
+  /// Clef: fixed far-right, unless she's this round's fixed drop target
+  /// ([isTarget] — Clef owns the high pole, Trello card 101), in which
+  /// case she stands centered rather than on either side, which keeps the
+  /// drag distance from both instruments equal, per the design brief. Bobs
   /// continuously either way — that idle motion is Clef's own character
-  /// beat, not a "you can drag me" cue.
+  /// beat, not a "drop here" cue (that's [hovering]/[celebrating] below).
   Widget _buildClef(
     double clefHeight,
-    bool isDragged,
+    bool isTarget,
     double homeLift,
     double homeShift,
-    double dragLift, {
+    double centerLift, {
     required bool celebrating,
-    required double dropAlignX,
+    required bool hovering,
   }) {
     final clefImage = Image.asset(
       'assets/images/characters/Clef.png',
@@ -801,24 +783,23 @@ class _HighLowScreenState extends State<HighLowScreen> {
           curve: Curves.easeInOut,
         );
 
-    if (!isDragged) {
+    if (!isTarget) {
       return Positioned(right: -homeShift, bottom: homeLift, child: bobbing);
     }
-    return _buildDragHandle(
-      image: clefImage,
+    return _buildTargetCharacter(
       bobbing: bobbing,
-      lift: dragLift,
+      lift: centerLift,
       size: clefHeight,
       celebrating: celebrating,
-      dropAlignX: dropAlignX,
+      hovering: hovering,
     );
   }
 
-  /// Piper: fixed far-left, unless she's this round's dragged answer
-  /// ([isDragged] — Piper owns the low pole, Trello card 101) — see
-  /// [_buildClef] for why the dragged character starts centered. Unlike
+  /// Piper: fixed far-left, unless she's this round's fixed drop target
+  /// ([isTarget] — Piper owns the low pole, Trello card 101) — see
+  /// [_buildClef] for why the target character stands centered. Unlike
   /// Clef, Piper doesn't idle-bob while fixed; only picks up motion once
-  /// she's the one being dragged.
+  /// she's the one being targeted.
   ///
   /// Sits flush with the screen's left edge, not pushed past it like
   /// Clef's `-homeShift` on the right — that negative offset cropped
@@ -828,11 +809,11 @@ class _HighLowScreenState extends State<HighLowScreen> {
   /// visibly cropping; Piper's doesn't.
   Widget _buildPiper(
     double piperHeight,
-    bool isDragged,
+    bool isTarget,
     double homeLift,
-    double dragLift, {
+    double centerLift, {
     required bool celebrating,
-    required double dropAlignX,
+    required bool hovering,
   }) {
     final piperImage = Image.asset(
       'assets/images/characters/Piper_Encouraging.png',
@@ -840,7 +821,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
       fit: BoxFit.contain,
     );
 
-    if (!isDragged) {
+    if (!isTarget) {
       return Positioned(
         left: 0,
         bottom: homeLift,
@@ -856,82 +837,161 @@ class _HighLowScreenState extends State<HighLowScreen> {
           duration: const Duration(milliseconds: 1200),
           curve: Curves.easeInOut,
         );
-    return _buildDragHandle(
-      image: piperImage,
+    return _buildTargetCharacter(
       bobbing: bobbing,
-      lift: dragLift,
+      lift: centerLift,
       size: piperHeight,
       celebrating: celebrating,
-      dropAlignX: dropAlignX,
+      hovering: hovering,
     );
   }
 
-  /// Wraps a character as the centered, draggable answer — shared by
-  /// [_buildClef] and [_buildPiper] (Trello card 101: either can be this
-  /// round's dragged character, depending on the target pole). [image] is
-  /// the plain (unanimated) art used for the drag feedback/left-behind
-  /// ghost; [bobbing] is the same art with the idle bob, used at rest.
-  /// [lift] raises it off the very bottom edge to the same stump-top line
-  /// the instruments sit on (Trello card S1v6sbrK — it used to sit flush
-  /// against the bottom edge, below the stump line).
+  /// A character standing centered as this round's fixed drop target —
+  /// shared by [_buildClef] and [_buildPiper] (Trello card 101: either can
+  /// own this round's target pole). [lift] raises it off the very bottom
+  /// edge to the same stump-top line the instruments sit on (Trello card
+  /// S1v6sbrK).
   ///
-  /// [celebrating] is the fix for "right and wrong currently look
-  /// identical" (Trello): previously nothing here ever moved, so a correct
-  /// drop and a wrong one looked exactly the same — the character just
-  /// reappeared centered either way, because the Draggable's real child was
-  /// never removed from its slot. On a correct drop this now slides the
-  /// character sideways to sit on the instrument it landed on
-  /// ([dropAlignX]) instead of snapping back to center, and adds a little
-  /// pulse plus a burst from the shared [DriftingNotes] component (already
-  /// used elsewhere for "this instrument is sounding," reused here rather
-  /// than inventing a second celebration effect). There's no alternate
-  /// "excited" sprite for either character in SongStone-UI-Kit yet (only
-  /// concept art) — this deliberately ships with the existing art rather
-  /// than faking one.
-  Widget _buildDragHandle({
-    required Widget image,
+  /// Never moves — that's the point of 2026-09's reversal (Trello,
+  /// "reverse the A2 drag interaction"): the character used to be the
+  /// dragged object and slide across the screen on a correct drop; now
+  /// she's the fixed anchor the *instrument* travels to (see
+  /// [_buildInstrumentSlot]'s own celebration), so all she needs is a
+  /// little liveliness of her own: [hovering] scales her up slightly while
+  /// a dragged instrument is over the drop zone (Trello — "you're about to
+  /// drop here"), and [celebrating] adds the same pulse-plus-[DriftingNotes]
+  /// burst used elsewhere for "something good just happened" (already used
+  /// for "this instrument is sounding" and for the pre-reversal dragged
+  /// character — reused again rather than inventing a third celebration
+  /// effect).
+  Widget _buildTargetCharacter({
     required Widget bobbing,
     required double lift,
     required double size,
     required bool celebrating,
-    required double dropAlignX,
+    required bool hovering,
   }) {
     return Positioned(
       left: 0,
       right: 0,
       bottom: lift,
-      child: AnimatedAlign(
-        alignment: celebrating
-            ? Alignment(dropAlignX, 1.0)
-            : Alignment.bottomCenter,
-        duration: const Duration(milliseconds: 500),
-        curve: Curves.easeOutBack,
-        child: celebrating
-            ? Stack(
-                clipBehavior: Clip.none,
-                alignment: Alignment.center,
-                children: [
-                  image
-                      .animate(onPlay: (c) => c.repeat(reverse: true))
-                      .scale(
-                        begin: const Offset(1, 1),
-                        end: const Offset(1.1, 1.1),
-                        duration: const Duration(milliseconds: 450),
-                        curve: Curves.easeInOut,
-                      ),
-                  Positioned(
-                    top: -size * 0.15,
-                    child: DriftingNotes(size: size, active: true),
-                  ),
-                ],
-              )
-            : Draggable<Object>(
-                data: 'narrator',
-                feedback: Opacity(opacity: 0.85, child: image),
-                childWhenDragging: Opacity(opacity: 0.3, child: image),
-                child: bobbing,
+      child: Align(
+        alignment: Alignment.bottomCenter,
+        child: Stack(
+          clipBehavior: Clip.none,
+          alignment: Alignment.center,
+          children: [
+            AnimatedScale(
+              scale: (celebrating || hovering) ? 1.08 : 1.0,
+              duration: AppAnimations.fast,
+              child: bobbing,
+            ),
+            if (celebrating)
+              Positioned(
+                top: -size * 0.15,
+                child: DriftingNotes(size: size, active: true),
               ),
+          ],
+        ),
       ),
+    );
+  }
+
+  /// One instrument, sitting on its stump at [anchorX] — always tappable
+  /// (exploration, every stage), and during Trigger also draggable onto
+  /// the centered character (Trello, "reverse the A2 drag interaction":
+  /// the instrument used to just sit here as a fixed answer the dragged
+  /// character landed on; now it's the thing the child picks up).
+  ///
+  /// [celebratingThis] mirrors the pre-reversal "celebrate a correct drop"
+  /// fix, just on the instrument instead of the character: on this
+  /// side's correct drop, it slides from its stump to the screen's exact
+  /// horizontal center (matching where [_buildTargetCharacter] already
+  /// sits, itself always centered regardless of its own width — see that
+  /// method) instead of snapping back, and picks up the same pulse and
+  /// [DriftingNotes] burst. [AnimatedPositioned] with a plain `left:`
+  /// offset (not the `Alignment`-based approach [_buildTargetCharacter]
+  /// uses) keeps the *resting* position pixel-identical to the pre-
+  /// reversal fixed anchor — this instrument sits here in every stage, not
+  /// just Trigger, so its everyday position can't shift by however much an
+  /// alignment-fraction approximation would introduce.
+  Widget _buildInstrumentSlot({
+    required int side,
+    required String assetPath,
+    required String instrumentName,
+    required double anchorX,
+    required double screenWidth,
+    required double charSize,
+    required double groundY,
+    required bool isTrigger,
+    required bool celebratingThis,
+    required bool glowing,
+    required _CharacterFeedback? feedback,
+    required bool showSparkle,
+  }) {
+    final targetLeft = celebratingThis
+        ? screenWidth / 2 - charSize / 2
+        : anchorX - charSize / 2;
+
+    Widget button = _InstrumentButton(
+      key: ValueKey('$side-$instrumentName'),
+      assetPath: assetPath,
+      size: charSize,
+      glowing: glowing,
+      feedback: feedback,
+      showSparkle: showSparkle,
+      onTap: () => _onInstrumentTap(side),
+    );
+
+    // Only draggable while this round is still answerable — once a side
+    // has celebrated a correct drop the round is already wrapping up, same
+    // as the pre-reversal character-Draggable disappearing in that branch.
+    if (isTrigger &&
+        !celebratingThis &&
+        _gameState.dragFeedback != DragFeedback.correct) {
+      button = Draggable<int>(
+        data: side,
+        feedback: Opacity(
+          opacity: 0.85,
+          child: Image.asset(
+            assetPath,
+            width: charSize,
+            height: charSize,
+            fit: BoxFit.contain,
+          ),
+        ),
+        childWhenDragging: Opacity(opacity: 0.3, child: button),
+        child: button,
+      );
+    }
+
+    if (celebratingThis) {
+      button = Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.center,
+        children: [
+          button
+              .animate(onPlay: (c) => c.repeat(reverse: true))
+              .scale(
+                begin: const Offset(1, 1),
+                end: const Offset(1.1, 1.1),
+                duration: const Duration(milliseconds: 450),
+                curve: Curves.easeInOut,
+              ),
+          Positioned(
+            top: -charSize * 0.15,
+            child: DriftingNotes(size: charSize, active: true),
+          ),
+        ],
+      );
+    }
+
+    return AnimatedPositioned(
+      duration: const Duration(milliseconds: 500),
+      curve: Curves.easeOutBack,
+      left: targetLeft,
+      bottom: groundY,
+      child: button,
     );
   }
 

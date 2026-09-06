@@ -55,13 +55,18 @@ enum VoiceLine {
 
   /// Trigger (A2) round prompt when the target is the higher one. Clef
   /// owns the high pole (Trello card 101), so this is Clef speaking in the
-  /// first person — Clef is also the one centered and dragged.
-  putMeOnHigh,
+  /// first person, asking to be handed the correct instrument — Clef
+  /// stays centered as the fixed drop target; the child drags an
+  /// instrument to her, not the other way around (renamed 2026-09 from
+  /// `putMeOnHigh` when the drag direction reversed — see
+  /// [captionText]'s doc comment for why the caption reads differently
+  /// from this same recording's actual words).
+  giveMeHigh,
 
   /// Trigger (A2) round prompt when the target is the lower one. Piper
-  /// owns the low pole (Trello card 101), so this is Piper speaking in the
-  /// first person — Piper is also the one centered and dragged.
-  putMeOnLow,
+  /// owns the low pole (Trello card 101) — see [giveMeHigh]'s doc comment
+  /// (renamed 2026-09 from `putMeOnLow`).
+  giveMeLow,
 
   /// Trigger (A2) gentle retry after a wrong drop, when Clef is the
   /// dragged character (i.e. the target was the high pole).
@@ -76,7 +81,17 @@ enum VoiceLine {
   /// Placeholder-friendly caption shown alongside the audio — see the
   /// class doc. Transcribes what's actually recorded, not a paraphrase,
   /// so the fallback reads the same as what a working line would sound
-  /// like.
+  /// like — with one deliberate exception: [giveMeHigh]/[giveMeLow]
+  /// follow a separate rule instead (Trello, "reverse the A2 drag
+  /// interaction"), because A2's caption and its spoken line now serve
+  /// different readers. The recording is Clef/Piper speaking in first
+  /// person to the child ("give me the high one"); the caption is read by
+  /// the supervising adult (the app currently targets age band
+  /// [kCurrentAgeBand] — see round_report.dart), who needs to know what
+  /// to help the child *do*, not hear the character's own line repeated
+  /// back in text. So these two describe the action instead of
+  /// transcribing the words — naming the instrument as what gets dragged,
+  /// matching the reversed mechanic.
   String get captionText => switch (this) {
     VoiceLine.piperSaysLow => 'Piper: that sounds low!',
     VoiceLine.piperSaysLowSecond => 'Piper: ...and that sounds low!',
@@ -84,8 +99,8 @@ enum VoiceLine {
     VoiceLine.clefSaysHighSecond => 'Clef: ...and ooh, that sounds high!',
     VoiceLine.listenForHigh => 'Clef: ooh, listen for the high one.',
     VoiceLine.listenForLow => 'Piper: listen for the low one.',
-    VoiceLine.putMeOnHigh => 'Clef: give me the high one.',
-    VoiceLine.putMeOnLow => 'Piper: give me the low one.',
+    VoiceLine.giveMeHigh => 'Drag the higher-sounding instrument to Clef.',
+    VoiceLine.giveMeLow => 'Drag the lower-sounding instrument to Piper.',
     VoiceLine.tryAgainClef => 'Clef: ooh, nearly! Let\'s listen again.',
     VoiceLine.tryAgainPiper => "Piper: nearly! Let's have another listen.",
   };

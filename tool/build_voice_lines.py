@@ -107,12 +107,12 @@ UPLOAD_TO_VOICE_LINE = {
     # 2026-09 batch (nine lines)
     "20bf64a5-Clef_ooh_that_sounds_high.wav": "clefSaysHigh",
     "75cb641e-Clef_and_ooh_that_sounds_high.wav": "clefSaysHighSecond",
-    "1929972d-Clef_Give_me_the_High_One.wav": "putMeOnHigh",
+    "1929972d-Clef_Give_me_the_High_One.wav": "giveMeHigh",
     "5958aac0-Clef_ooh_listen_for_the_high_one.wav": "listenForHigh",
     "d2df3e58-Clef_ooh_nearly_listen_again.wav": "tryAgainClef",
     "8a3a543e-Piper_Fox_That_sounds_low.wav": "piperSaysLow",
     "e442de23-Piper_Fox_and_that_sounds_low.wav": "piperSaysLowSecond",
-    "e00f0963-Piper_Fox_Give_me_the_Low_One.wav": "putMeOnLow",
+    "e00f0963-Piper_Fox_Give_me_the_Low_One.wav": "giveMeLow",
     "74310ef0-Piper_Fox_Nearly_Have_another_listen.wav": "tryAgainPiper",
     # Earlier take, confirmed usable by Cooper despite predating the 2026-09
     # batch ("there's nothing wrong with the listen for the low one line

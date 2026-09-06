@@ -178,8 +178,9 @@ enum HighLowInstrument {
   }
 
   /// Every asset path this instrument actually has, for preloading.
-  List<String> get allAssetPaths =>
-      [for (final midi in availableMidis) assetPathForMidi(midi)];
+  List<String> get allAssetPaths => [
+    for (final midi in availableMidis) assetPathForMidi(midi),
+  ];
 
   /// Semitones [lowestSampleMidi]..[highestSampleMidi] overlaps with
   /// [other]'s own range. Zero or negative means no usable overlap at

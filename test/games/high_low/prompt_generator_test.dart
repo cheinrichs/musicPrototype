@@ -75,7 +75,11 @@ void main() {
           );
         }
       }
-      expect(sawGuitar, isTrue, reason: 'guitar never got picked in 2000 tries');
+      expect(
+        sawGuitar,
+        isTrue,
+        reason: 'guitar never got picked in 2000 tries',
+      );
     });
 
     test('difficulty never falls outside the tier\'s bounds, for every '

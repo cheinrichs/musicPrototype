@@ -3,9 +3,14 @@
 Recordings for `VoiceLine` (see `lib/audio/voice_line.dart`) go here, one
 `.mp3` per enum value, named after it: `piperSaysLow.mp3`,
 `piperSaysLowSecond.mp3`, `clefSaysHigh.mp3`, `clefSaysHighSecond.mp3`,
-`listenForHigh.mp3`, `listenForLow.mp3`, `putMeOnHigh.mp3`,
-`putMeOnLow.mp3`, `tryAgainClef.mp3`, `tryAgainPiper.mp3`. All ten now
-exist.
+`listenForHigh.mp3`, `listenForLow.mp3`, `giveMeHigh.mp3`,
+`giveMeLow.mp3`, `tryAgainClef.mp3`, `tryAgainPiper.mp3`. All ten now
+exist. (`giveMeHigh`/`giveMeLow` were named `putMeOnHigh`/`putMeOnLow`
+until the A2 drag direction reversed 2026-09 — the child now drags an
+instrument to the character instead of dragging the character onto an
+instrument, so "put me on the high one" read backwards; the recording
+itself already said "give me the high one," so only the enum/asset names
+needed to catch up. See lib/audio/voice_line.dart's doc comments.)
 
 Nine re-recorded 2026-09 (`tool/build_voice_lines.py`) from 24kHz mono
 WAVs, replacing the original placeholder takes. The tenth,

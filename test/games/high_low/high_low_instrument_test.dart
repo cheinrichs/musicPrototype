@@ -21,18 +21,14 @@ void main() {
       );
     });
 
-    test(
-      'allAssetPaths covers exactly lowestSampleMidi..highestSampleMidi '
-      'for a gap-free instrument',
-      () {
-        final tuba = HighLowInstrument.tuba;
-        final expectedCount =
-            tuba.highestSampleMidi - tuba.lowestSampleMidi + 1;
-        expect(tuba.allAssetPaths.length, expectedCount);
-        expect(tuba.allAssetPaths.first, 'assets/audio/notes/tuba/c2.mp3');
-        expect(tuba.allAssetPaths.last, 'assets/audio/notes/tuba/b3.mp3');
-      },
-    );
+    test('allAssetPaths covers exactly lowestSampleMidi..highestSampleMidi '
+        'for a gap-free instrument', () {
+      final tuba = HighLowInstrument.tuba;
+      final expectedCount = tuba.highestSampleMidi - tuba.lowestSampleMidi + 1;
+      expect(tuba.allAssetPaths.length, expectedCount);
+      expect(tuba.allAssetPaths.first, 'assets/audio/notes/tuba/c2.mp3');
+      expect(tuba.allAssetPaths.last, 'assets/audio/notes/tuba/b3.mp3');
+    });
 
     test(
       'allAssetPaths skips missingMidis for a gapped instrument (guitar)',

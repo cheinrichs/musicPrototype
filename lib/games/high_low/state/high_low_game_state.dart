@@ -44,12 +44,19 @@ enum DragFeedback { none, correct, retry }
 ///   with Clef sparkling on the target. No question, no wrong answers, no
 ///   auto-advance.
 /// - Trigger (A2): same auto-play/cut-short/free-tap as Participate, plus
-///   a centered, draggable narrator the child drops onto the target
-///   instrument — whichever of Piper/Clef owns that round's target pole
-///   (Piper is low, Clef is high; see [draggedIsPiper] and Trello card
-///   101), so the character speaking the prompt is always the one being
-///   dragged. A wrong drop gets a gentle retry (fresh listen, no failure
-///   state); a correct drop is recorded and auto-advances.
+///   a centered narrator who stays put as the round's drop target, and
+///   two draggable instruments the child drags to her — whichever of
+///   Piper/Clef owns that round's target pole (Piper is low, Clef is
+///   high; see [targetCharacterIsPiper] and Trello card 101) is the one
+///   centered, so the character speaking the prompt is always the one
+///   the child is asked to feed the right instrument to. (Reversed
+///   2026-09 from an earlier design where the child dragged the
+///   character onto a fixed instrument — Trello, "reverse the A2 drag
+///   interaction": this matters for planned A4, ordering, where
+///   instruments are what get dragged into slots, so A2-A4 now share one
+///   verb instead of switching mid-ladder.) A wrong drop gets a gentle
+///   retry (fresh listen, no failure state); a correct drop is recorded
+///   and auto-advances.
 class HighLowGameState extends ChangeNotifier {
   /// How long each note of the intro pair rings (and its instrument
   /// wiggles/glows) before the sequence moves on — see the two call sites
@@ -164,23 +171,27 @@ class HighLowGameState extends ChangeNotifier {
   /// voice lines — see [VoiceLine]), or null between captions.
   String? get captionText => _activeCaption?.captionText;
 
-  /// Whether the child can drop the dragged character onto an instrument
+  /// Whether the child can drag an instrument onto the centered character
   /// right now. Deliberately not gated on [_status] beyond "not finished" —
   /// a child's drop must always override whatever's currently happening on
   /// screen (a retry's replay, its voice line) rather than being locked
   /// out behind an animation or a sound (Trello card jmuMDPcT). The one
   /// exception is once this round has already been answered correctly
-  /// ([DragFeedback.correct]): that guard lives in [dropOnSide] itself, to
-  /// avoid double-recording a result while the advance-to-next-round delay
-  /// is still pending.
+  /// ([DragFeedback.correct]): that guard lives in [dropInstrument] itself,
+  /// to avoid double-recording a result while the advance-to-next-round
+  /// delay is still pending.
   bool get canDrop =>
       agencyStage == AgencyStage.trigger && _status != GameStatus.completed;
 
-  /// Trigger-only: which character is this round's centered, draggable
-  /// answer — Piper owns the low pole, Clef owns the high pole (Trello
-  /// card 101), so this always agrees with [captionText]'s first-person
-  /// line ("put me on the ..."). Meaningless (and unused) outside Trigger.
-  bool get draggedIsPiper =>
+  /// Trigger-only: which character stays centered as this round's fixed
+  /// drop target — Piper owns the low pole, Clef owns the high pole
+  /// (Trello card 101), so this always agrees with [captionText]'s
+  /// first-person line ("give me the ..."). Meaningless (and unused)
+  /// outside Trigger. Named for the character, not for dragging, since
+  /// 2026-09's reversal made the character the stationary target and the
+  /// instruments the dragged objects (see the class doc) — this getter's
+  /// old name, `draggedIsPiper`, read backwards once that flipped.
+  bool get targetCharacterIsPiper =>
       currentPrompt?.targetDirection == PitchDirection.lower;
 
   /// Start a new game.
@@ -246,8 +257,8 @@ class HighLowGameState extends ChangeNotifier {
             : VoiceLine.listenForLow,
       AgencyStage.trigger =>
         prompt?.targetDirection == PitchDirection.higher
-            ? VoiceLine.putMeOnHigh
-            : VoiceLine.putMeOnLow,
+            ? VoiceLine.giveMeHigh
+            : VoiceLine.giveMeLow,
     };
     _status = GameStatus.playing;
     notifyListeners();
@@ -400,16 +411,20 @@ class HighLowGameState extends ChangeNotifier {
     );
   }
 
-  /// Trigger-only: the child drops the dragged character (see
-  /// [draggedIsPiper]) onto [side]. Never a failure state — a wrong drop
-  /// just retries with a fresh listen.
+  /// Trigger-only: the child drags the instrument on [side] onto the
+  /// centered character (see [targetCharacterIsPiper]). Never a failure
+  /// state — a wrong drop just retries with a fresh listen. [side]
+  /// identifies which instrument was dragged, not where it landed — since
+  /// 2026-09's reversal the character is the single fixed target, so
+  /// there's nowhere else a drop could land (see HighLowScreen's single,
+  /// screen-spanning drop zone).
   ///
   /// A drop is a child action, so it always overrides whatever's currently
   /// happening — a pending retry replay, its "try again" voice line, or the
   /// note pair mid-playback — rather than being swallowed while an
   /// animation or sound finishes (Trello card jmuMDPcT). See [canDrop] for
   /// the one exception (a round already answered correctly).
-  void dropOnSide(int side) {
+  void dropInstrument(int side) {
     if (!canDrop) return;
     if (_dragFeedback == DragFeedback.correct) return;
     final prompt = currentPrompt;
@@ -444,7 +459,7 @@ class HighLowGameState extends ChangeNotifier {
       });
     } else {
       _dragFeedback = DragFeedback.retry;
-      _activeCaption = draggedIsPiper
+      _activeCaption = targetCharacterIsPiper
           ? VoiceLine.tryAgainPiper
           : VoiceLine.tryAgainClef;
       _status = GameStatus.showingFeedback;
@@ -465,7 +480,8 @@ class HighLowGameState extends ChangeNotifier {
   /// after a flat, guessed 1400ms regardless of the line's real length —
   /// exactly the trap [_playCaptionThenIntro] already avoids for the
   /// round-start cue — so a longer retry recording got cut off by
-  /// `putMeOnHigh`/`putMeOnLow` starting over the top of it (Trello —
+  /// `giveMeHigh`/`giveMeLow` (then named `putMeOnHigh`/`putMeOnLow`)
+  /// starting over the top of it (Trello —
   /// "Clef's audio file keeps getting cut off"). Waiting for the longer of
   /// the two keeps the existing minimum dwell time for the shake/feedback
   /// when the line is short (or the asset's missing, in which case
@@ -483,8 +499,8 @@ class HighLowGameState extends ChangeNotifier {
     if (token != _roundToken) return;
     _dragFeedback = DragFeedback.none;
     _activeCaption = prompt.targetDirection == PitchDirection.higher
-        ? VoiceLine.putMeOnHigh
-        : VoiceLine.putMeOnLow;
+        ? VoiceLine.giveMeHigh
+        : VoiceLine.giveMeLow;
     _status = GameStatus.playing;
     notifyListeners();
     await _playCaptionThenIntro(token, _activeCaption!);

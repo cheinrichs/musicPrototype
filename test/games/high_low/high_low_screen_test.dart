@@ -83,15 +83,17 @@ void main() {
 
   testWidgets(
     'defaults to Trigger: round 1 is always a "higher" target (blocked '
-    'order), so a draggable Clef and a first-person "give me the high '
-    'one" prompt are shown once the intro finishes (Trello card 101 — '
-    'Clef owns the high pole, so she is the one speaking and dragged)',
+    'order), so both instruments are draggable and a caption naming Clef '
+    'is shown once the intro finishes (Trello card 101 — Clef owns the '
+    'high pole, so she is the one centered and spoken for; Trello, '
+    '"reverse the A2 drag interaction" — the instruments are what get '
+    'dragged, not Clef herself)',
     (tester) async {
       await pumpAndFinishIntro(tester);
 
       expect(tester.takeException(), isNull);
-      expect(find.byType(Draggable<Object>), findsOneWidget);
-      expect(find.textContaining('give me the high'), findsOneWidget);
+      expect(find.byType(Draggable<int>), findsNWidgets(2));
+      expect(find.textContaining('Clef'), findsOneWidget);
     },
   );
 
@@ -137,7 +139,7 @@ void main() {
     'tight landscape (iPhone SE)': tightViewport,
     'roomier landscape (iPhone 14)': roomyViewport,
   }.entries) {
-    testWidgets('the draggable narrator and both instrument drop targets are '
+    testWidgets('both draggable instruments and the single drop target are '
         'hit-testable on a ${entry.key} viewport — regression test for the '
         "body's SingleChildScrollView sitting in front of the scene in "
         "GameScreenLayout's background layer and silently absorbing every "
@@ -148,35 +150,39 @@ void main() {
       await pumpAndFinishIntro(tester, viewport: entry.value);
 
       expect(
-        find.byType(Draggable<Object>).hitTestable(),
-        findsOneWidget,
-        reason: 'the dragged narrator must be reachable by touch',
+        find.byType(Draggable<int>).hitTestable(),
+        findsNWidgets(2),
+        reason: 'both draggable instruments must be reachable by touch',
       );
       expect(
-        find.byType(DragTarget<Object>).hitTestable(),
-        findsNWidgets(2),
-        reason: 'both instrument drop targets must be reachable by touch',
+        find.byType(DragTarget<int>).hitTestable(),
+        findsOneWidget,
+        reason:
+            'the single, screen-spanning drop target must be reachable '
+            'by touch',
       );
     });
   }
 
   testWidgets(
-    'dragging the narrator onto an instrument and releasing completes a '
-    'round — proves the touch actually lands on a DragTarget end-to-end, '
+    'dragging an instrument onto the character and releasing completes a '
+    'round — proves the touch actually lands on the DragTarget end-to-end, '
     "not just that the widgets are hit-testable in isolation. The round's "
-    "target side is unseeded/random, so this drags onto one side and, if "
+    "target side is unseeded/random, so this drags one instrument and, if "
     "that wasn't the target (a gentle retry, not a failure state), "
-    'immediately retries on the other side — one of the two is guaranteed '
-    'correct, so completedCount reaching 1 proves a drop was accepted.',
+    'immediately retries with the other instrument — one of the two is '
+    'guaranteed correct, so completedCount reaching 1 proves a drop was '
+    'accepted.',
     (tester) async {
       await pumpAndFinishIntro(tester);
 
-      final narrator = find.byType(Draggable<Object>);
-      final targets = find.byType(DragTarget<Object>);
-      expect(targets, findsNWidgets(2));
+      final instruments = find.byType(Draggable<int>);
+      final target = find.byType(DragTarget<int>);
+      expect(instruments, findsNWidgets(2));
+      expect(target, findsOneWidget);
 
-      Future<void> dragOnto(Finder target) async {
-        final start = tester.getCenter(narrator);
+      Future<void> dragOnto(Finder instrument) async {
+        final start = tester.getCenter(instrument);
         final end = tester.getCenter(target);
         final gesture = await tester.startGesture(start);
         await tester.pump(const Duration(milliseconds: 20));
@@ -194,18 +200,18 @@ void main() {
         await tester.pump(Duration.zero);
       }
 
-      await dragOnto(targets.at(0));
+      await dragOnto(instruments.at(0));
 
       var completedCount = tester
           .widget<ProgressDots>(find.byType(ProgressDots))
           .completedCount;
 
       if (completedCount == 0) {
-        // First side was the wrong target — a gentle retry, not a failure
-        // state (see HighLowGameState.dropOnSide) — so the round is still
-        // live and a second drop is accepted immediately. The other side
-        // is then guaranteed correct.
-        await dragOnto(targets.at(1));
+        // First instrument was wrong — a gentle retry, not a failure state
+        // (see HighLowGameState.dropInstrument) — so the round is still
+        // live and a second drop is accepted immediately. The other
+        // instrument is then guaranteed correct.
+        await dragOnto(instruments.at(1));
         completedCount = tester
             .widget<ProgressDots>(find.byType(ProgressDots))
             .completedCount;
@@ -221,75 +227,61 @@ void main() {
   );
 
   testWidgets(
-    'each drop target spans its whole half of the play area, not a small '
-    "box hugging the instrument — a four-year-old's aim is imprecise, so "
-    'the hitbox needs to be substantially bigger than what it visually sits '
-    'on top of (Trello — "forgiving drop targets")',
+    'the single drop target spans the entire play area, not a small box '
+    "hugging the centered character — a four-year-old's aim is imprecise, "
+    'so the hitbox needs to be substantially bigger than what it visually '
+    'sits on top of (Trello — "forgiving drop targets," now applied to the '
+    'character-as-target instead of the instruments)',
     (tester) async {
       await pumpAndFinishIntro(tester, viewport: roomyViewport);
 
-      final targets = find.byType(DragTarget<Object>);
-      expect(targets, findsNWidgets(2));
+      final target = find.byType(DragTarget<int>);
+      expect(target, findsOneWidget);
 
-      final leftSize = tester.getSize(targets.at(0));
-      final rightSize = tester.getSize(targets.at(1));
+      final targetSize = tester.getSize(target);
 
-      // Each instrument button is a square sized off screen height (see
-      // _buildScene's `charSize`, 50% of screen height) — a drop target
-      // that's merely as big as the instrument would match that; this
-      // asserts it's dramatically bigger in both dimensions.
-      final instrumentSize = roomyViewport.height * 0.5;
+      // The centered character is a fraction of screen height (see
+      // _buildScene's clefHeight/piperHeight) — a drop target that's
+      // merely as big as her would match that; this asserts it's
+      // dramatically bigger in both dimensions, since it's meant to span
+      // the whole scene.
       expect(
-        leftSize.width,
-        greaterThan(instrumentSize * 1.5),
-        reason:
-            'a drop target should span most of its half of the screen '
-            'width, not a box the size of the instrument',
-      );
-      expect(
-        leftSize.height,
-        greaterThan(instrumentSize * 1.5),
-        reason:
-            'a drop target should span the full play-area height, not '
-            'just the instrument\'s own height',
-      );
-      expect(
-        rightSize,
-        leftSize,
-        reason: 'both halves of the play area should be equally generous',
-      );
-
-      // The two halves should tile the full width between them (allowing
-      // for floating-point rounding) rather than leaving a gap only the
-      // small old per-instrument boxes would have covered.
-      expect(
-        leftSize.width + rightSize.width,
+        targetSize.width,
         closeTo(roomyViewport.width, 1.0),
+        reason: 'the drop target should span the full play-area width',
+      );
+      expect(
+        targetSize.height,
+        closeTo(roomyViewport.height, 1.0),
+        reason: 'the drop target should span the full play-area height',
       );
     },
   );
 
   testWidgets(
-    'a drop anywhere in an instrument\'s half completes the round, even far '
-    "from the instrument's own small silhouette — proves the enlarged "
-    'target actually accepts a forgiving drop end-to-end, not just that it '
-    'measures big (Trello — "forgiving drop targets")',
+    'a drop anywhere on screen completes the round, even far from both the '
+    "centered character and the dragged instrument's own small silhouette "
+    '— proves the enlarged target actually accepts a forgiving drop '
+    'end-to-end, not just that it measures big (Trello — "forgiving drop '
+    'targets")',
     (tester) async {
       await pumpAndFinishIntro(tester, viewport: roomyViewport);
 
-      final narrator = find.byType(Draggable<Object>);
-      final targets = find.byType(DragTarget<Object>);
-      expect(targets, findsNWidgets(2));
+      final instruments = find.byType(Draggable<int>);
+      final target = find.byType(DragTarget<int>);
+      expect(instruments, findsNWidgets(2));
+      expect(target, findsOneWidget);
 
-      // Drop near the very top corner of each half — as far from the small,
-      // ground-level instrument silhouette as this half of the screen gets.
-      Future<void> dragToCorner(int side) async {
-        final targetRect = tester.getRect(targets.at(side));
+      // Drop near the very top corner of the screen — as far from the
+      // centered character and the ground-level instrument as this play
+      // area gets.
+      Future<void> dragToCorner(int instrumentIndex) async {
+        final targetRect = tester.getRect(target);
         final end = Offset(
-          side == 0 ? targetRect.left + 4 : targetRect.right - 4,
+          instrumentIndex == 0 ? targetRect.left + 4 : targetRect.right - 4,
           targetRect.top + 4,
         );
-        final start = tester.getCenter(narrator);
+        final start = tester.getCenter(instruments.at(instrumentIndex));
         final gesture = await tester.startGesture(start);
         await tester.pump(const Duration(milliseconds: 20));
         const steps = 10;
@@ -308,8 +300,8 @@ void main() {
           .completedCount;
 
       if (completedCount == 0) {
-        // Same "wrong side retries immediately" reasoning as the drag test
-        // above — one of the two corners is guaranteed correct.
+        // Same "wrong instrument retries immediately" reasoning as the
+        // drag test above — one of the two is guaranteed correct.
         await dragToCorner(1);
         completedCount = tester
             .widget<ProgressDots>(find.byType(ProgressDots))
@@ -321,8 +313,8 @@ void main() {
         completedCount,
         1,
         reason:
-            'a drop far from the instrument\'s own silhouette, but still '
-            'within its half, must still register',
+            'a drop far from the character and the instrument\'s own '
+            'silhouette, but still on screen, must still register',
       );
     },
   );
