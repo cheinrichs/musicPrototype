@@ -97,6 +97,32 @@ void main() {
     },
   );
 
+  testWidgets('the caption never renders flush against the close button — '
+      'regression test for Trello card hIKjobsB, found driving the '
+      'simulator: a long Trigger caption ("Drag the higher-sounding '
+      'instrument to Clef.") needs nearly the full width Expanded gives it, '
+      'and with no explicit margin its own left edge landed exactly on the '
+      'close button\'s right edge — no true overlap, but no breathing room '
+      'either, which reads as the caption running underneath the button', (
+    tester,
+  ) async {
+    await pumpAndFinishIntro(tester, viewport: tightViewport);
+
+    final closeRect = tester.getRect(find.byTooltip('Close'));
+    final captionRect = tester.getRect(find.textContaining('Clef'));
+
+    expect(
+      captionRect.left,
+      greaterThan(closeRect.right),
+      reason: 'the caption must start to the right of the close button',
+    );
+    expect(
+      captionRect.left - closeRect.right,
+      greaterThanOrEqualTo(4.0),
+      reason: 'there must be a real margin, not just adjacency',
+    );
+  });
+
   testWidgets('the skip pill is always enabled, even mid-intro', (
     tester,
   ) async {

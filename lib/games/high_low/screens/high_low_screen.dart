@@ -252,6 +252,29 @@ class _HighLowScreenState extends State<HighLowScreen> {
   /// room for the caption, matching the mockup layout (Trello card
   /// "Separate the stumps from the background art"): question at the top,
   /// progress dots along the bottom.
+  ///
+  /// [Expanded] alone isn't enough to keep the caption clear of the close
+  /// button: it constrains the caption's *available* width, but nothing
+  /// stopped the caption's own content from rendering flush against that
+  /// boundary with zero margin (Trello card hIKjobsB, found driving the
+  /// simulator — a long caption's centered text, wide enough to need
+  /// nearly the full Expanded width, measured with its own left edge
+  /// exactly touching the close button's right edge: no true overlap, but
+  /// no breathing room either, which reads as "running underneath" it).
+  /// Trigger's captions are the ones long enough to trigger this — e.g.
+  /// "Drag the higher-sounding instrument to Clef." — Observe/
+  /// Participate's shorter lines never got close enough to the edges to
+  /// show it. The explicit [SizedBox] gaps below are the fix: they
+  /// guarantee a minimum margin on both sides regardless of how wide the
+  /// caption's own text needs to be.
+  ///
+  /// (A first attempt moved the caption to its own row below the icons
+  /// instead, on the theory that *any* horizontal competition was the
+  /// risk. That was reverted: it grew the header tall enough, on a tight
+  /// landscape viewport, to push the body's Listen Again button down into
+  /// the exact screen-center point the background's drop zone gets
+  /// hit-tested at, regressing the drag interaction. Fixing the real,
+  /// narrow cause — no margin, not "shares a row" — avoids that.)
   Widget _buildHeader() {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -268,7 +291,9 @@ class _HighLowScreenState extends State<HighLowScreen> {
             context.go(AppRoutes.home);
           },
         ),
+        const SizedBox(width: AppSpacing.sm),
         Expanded(child: _buildPromptArea()),
+        const SizedBox(width: AppSpacing.sm),
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -572,8 +597,21 @@ class _HighLowScreenState extends State<HighLowScreen> {
     // card OCv6kVmd) from their original roughly-a-third/roughly-a-fifth
     // sizing.
     final charSize = screenHeight * 0.50;
-    final piperHeight = screenHeight * 0.72;
-    final clefHeight = screenHeight * 0.44;
+    final piperHomeHeight = screenHeight * 0.72;
+    final clefHomeHeight = screenHeight * 0.44;
+    // Trigger-only: whichever character is centered as the fixed drop
+    // target uses this size instead of her own home size (Trello card
+    // hIKjobsB — driving the simulator found Piper's home height, 72% of
+    // the screen, rendered enormous when centered and covered the Listen
+    // Again button/status line beneath it; Clef's smaller home height
+    // happened to already read fine centered, which is exactly why this
+    // wasn't caught by either character's *home* appearance alone). A
+    // single shared target size, close to Clef's already-working 44%
+    // rather than Piper's 72%, keeps the two characters visually
+    // consistent in the role they actually share now (centered, fixed,
+    // "hold still and receive the instrument") instead of carrying over
+    // a size difference that was only ever tuned for their *home* spots.
+    final targetCharacterHeight = screenHeight * 0.42;
     // The shared ground line: where each instrument's feet and its
     // stump's flat top surface meet — see the class doc above. Unlike the
     // old `stumpLift` this replaces, this is no longer calibrated against
@@ -625,7 +663,8 @@ class _HighLowScreenState extends State<HighLowScreen> {
           groundY: groundY,
         ),
         _buildPiper(
-          piperHeight,
+          piperHomeHeight,
+          targetCharacterHeight,
           piperIsTarget,
           homeLift,
           groundY,
@@ -633,7 +672,8 @@ class _HighLowScreenState extends State<HighLowScreen> {
           hovering: _dragHovering && piperIsTarget,
         ),
         _buildClef(
-          clefHeight,
+          clefHomeHeight,
+          targetCharacterHeight,
           clefIsTarget,
           homeLift,
           homeShift,
@@ -755,14 +795,18 @@ class _HighLowScreenState extends State<HighLowScreen> {
   /// grass; above it is the disc an instrument stands on.
   static const double _stumpSurfaceFraction = 0.37;
 
-  /// Clef: fixed far-right, unless she's this round's fixed drop target
-  /// ([isTarget] — Clef owns the high pole, Trello card 101), in which
-  /// case she stands centered rather than on either side, which keeps the
-  /// drag distance from both instruments equal, per the design brief. Bobs
+  /// Clef: fixed far-right at [homeHeight], unless she's this round's fixed
+  /// drop target ([isTarget] — Clef owns the high pole, Trello card 101),
+  /// in which case she's centered at [targetHeight] instead — a distinct,
+  /// smaller size (Trello card hIKjobsB), not [homeHeight] reused, since
+  /// centering a character sized for standing off to the side is exactly
+  /// what let Piper (see [_buildPiper]) grow large enough to cover the
+  /// header/body controls once she took the same fixed target role. Bobs
   /// continuously either way — that idle motion is Clef's own character
   /// beat, not a "drop here" cue (that's [hovering]/[celebrating] below).
   Widget _buildClef(
-    double clefHeight,
+    double homeHeight,
+    double targetHeight,
     bool isTarget,
     double homeLift,
     double homeShift,
@@ -770,11 +814,27 @@ class _HighLowScreenState extends State<HighLowScreen> {
     required bool celebrating,
     required bool hovering,
   }) {
-    final clefImage = Image.asset(
+    if (!isTarget) {
+      final clefImage = Image.asset(
+        'assets/images/characters/Clef.png',
+        height: homeHeight,
+      );
+      final bobbing = clefImage
+          .animate(onPlay: (c) => c.repeat(reverse: true))
+          .moveY(
+            begin: 0,
+            end: -6,
+            duration: const Duration(milliseconds: 1200),
+            curve: Curves.easeInOut,
+          );
+      return Positioned(right: -homeShift, bottom: homeLift, child: bobbing);
+    }
+
+    final targetImage = Image.asset(
       'assets/images/characters/Clef.png',
-      height: clefHeight,
+      height: targetHeight,
     );
-    final bobbing = clefImage
+    final bobbing = targetImage
         .animate(onPlay: (c) => c.repeat(reverse: true))
         .moveY(
           begin: 0,
@@ -782,24 +842,21 @@ class _HighLowScreenState extends State<HighLowScreen> {
           duration: const Duration(milliseconds: 1200),
           curve: Curves.easeInOut,
         );
-
-    if (!isTarget) {
-      return Positioned(right: -homeShift, bottom: homeLift, child: bobbing);
-    }
     return _buildTargetCharacter(
       bobbing: bobbing,
       lift: centerLift,
-      size: clefHeight,
+      size: targetHeight,
       celebrating: celebrating,
       hovering: hovering,
     );
   }
 
-  /// Piper: fixed far-left, unless she's this round's fixed drop target
-  /// ([isTarget] — Piper owns the low pole, Trello card 101) — see
-  /// [_buildClef] for why the target character stands centered. Unlike
-  /// Clef, Piper doesn't idle-bob while fixed; only picks up motion once
-  /// she's the one being targeted.
+  /// Piper: fixed far-left at [homeHeight], unless she's this round's fixed
+  /// drop target ([isTarget] — Piper owns the low pole, Trello card 101),
+  /// in which case she's centered at [targetHeight] instead — see
+  /// [_buildClef] for why that's a distinct, smaller size rather than
+  /// [homeHeight] reused. Unlike Clef, Piper doesn't idle-bob while fixed;
+  /// only picks up motion once she's the one being targeted.
   ///
   /// Sits flush with the screen's left edge, not pushed past it like
   /// Clef's `-homeShift` on the right — that negative offset cropped
@@ -808,20 +865,20 @@ class _HighLowScreenState extends State<HighLowScreen> {
   /// transparent margin on that side to absorb the same shift without
   /// visibly cropping; Piper's doesn't.
   Widget _buildPiper(
-    double piperHeight,
+    double homeHeight,
+    double targetHeight,
     bool isTarget,
     double homeLift,
     double centerLift, {
     required bool celebrating,
     required bool hovering,
   }) {
-    final piperImage = Image.asset(
-      'assets/images/characters/Piper_Encouraging.png',
-      height: piperHeight,
-      fit: BoxFit.contain,
-    );
-
     if (!isTarget) {
+      final piperImage = Image.asset(
+        'assets/images/characters/Piper_Encouraging.png',
+        height: homeHeight,
+        fit: BoxFit.contain,
+      );
       return Positioned(
         left: 0,
         bottom: homeLift,
@@ -829,6 +886,11 @@ class _HighLowScreenState extends State<HighLowScreen> {
       );
     }
 
+    final piperImage = Image.asset(
+      'assets/images/characters/Piper_Encouraging.png',
+      height: targetHeight,
+      fit: BoxFit.contain,
+    );
     final bobbing = piperImage
         .animate(onPlay: (c) => c.repeat(reverse: true))
         .moveY(
@@ -840,7 +902,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
     return _buildTargetCharacter(
       bobbing: bobbing,
       lift: centerLift,
-      size: piperHeight,
+      size: targetHeight,
       celebrating: celebrating,
       hovering: hovering,
     );
