@@ -263,7 +263,7 @@ void main() {
           isFalse,
           reason: 'Clef owns the high pole, so she is the one dragged',
         );
-        expect(state.captionText, contains('Clef: put me on the high'));
+        expect(state.captionText, contains('Clef: give me the high'));
 
         // ...then a "lower" target — this is the branch the reported bug
         // (Trello card 101) was actually in: Piper spoke while Clef stayed
@@ -277,7 +277,7 @@ void main() {
           isTrue,
           reason: 'Piper owns the low pole, so she is the one dragged',
         );
-        expect(state.captionText, contains('Piper: put me on the low'));
+        expect(state.captionText, contains('Piper: give me the low'));
         state.dispose();
       },
     );

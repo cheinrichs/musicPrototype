@@ -300,9 +300,15 @@ class HighLowGameState extends ChangeNotifier {
 
     _playingIndex = 1;
     if (agencyStage == AgencyStage.observe) {
+      // The "Second" variants continue the sentence the first note's
+      // narration started (e.g. "Ooh, that sounds high! ...and that
+      // sounds low!") — see VoiceLine.piperSaysLowSecond/
+      // clefSaysHighSecond's doc comments. Whichever character didn't
+      // narrate the first note always narrates the second, so this is
+      // just the opposite branch of the first caption's condition above.
       _activeCaption = prompt.leftIsHigher
-          ? VoiceLine.piperSaysLow
-          : VoiceLine.clefSaysHigh;
+          ? VoiceLine.piperSaysLowSecond
+          : VoiceLine.clefSaysHighSecond;
       unawaited(_audio.playVoiceLine(_activeCaption!));
     }
     notifyListeners();

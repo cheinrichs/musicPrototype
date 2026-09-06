@@ -83,7 +83,7 @@ void main() {
 
   testWidgets(
     'defaults to Trigger: round 1 is always a "higher" target (blocked '
-    'order), so a draggable Clef and a first-person "put me on the high '
+    'order), so a draggable Clef and a first-person "give me the high '
     'one" prompt are shown once the intro finishes (Trello card 101 — '
     'Clef owns the high pole, so she is the one speaking and dragged)',
     (tester) async {
@@ -91,7 +91,7 @@ void main() {
 
       expect(tester.takeException(), isNull);
       expect(find.byType(Draggable<Object>), findsOneWidget);
-      expect(find.textContaining('put me on the high'), findsOneWidget);
+      expect(find.textContaining('give me the high'), findsOneWidget);
     },
   );
 
@@ -242,13 +242,15 @@ void main() {
       expect(
         leftSize.width,
         greaterThan(instrumentSize * 1.5),
-        reason: 'a drop target should span most of its half of the screen '
+        reason:
+            'a drop target should span most of its half of the screen '
             'width, not a box the size of the instrument',
       );
       expect(
         leftSize.height,
         greaterThan(instrumentSize * 1.5),
-        reason: 'a drop target should span the full play-area height, not '
+        reason:
+            'a drop target should span the full play-area height, not '
             'just the instrument\'s own height',
       );
       expect(
@@ -417,7 +419,8 @@ void main() {
         expect(
           find.byType(CircularProgressIndicator),
           findsOneWidget,
-          reason: 'a tap needs a visible response before the slow work even '
+          reason:
+              'a tap needs a visible response before the slow work even '
               'starts, not just once it finishes',
         );
 
@@ -437,13 +440,15 @@ void main() {
         expect(
           find.byType(CircularProgressIndicator),
           findsNothing,
-          reason: 'the spinner must clear once the attempt finishes, '
+          reason:
+              'the spinner must clear once the attempt finishes, '
               'success or failure',
         );
         expect(
           find.text("Couldn't share this round's report."),
           findsOneWidget,
-          reason: 'a failure must be visible, not swallowed the way it was '
+          reason:
+              'a failure must be visible, not swallowed the way it was '
               'before (Cooper\'s report)',
         );
       },

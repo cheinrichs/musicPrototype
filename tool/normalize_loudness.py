@@ -211,10 +211,17 @@ def sustain_end(samples, sr, hop_ms=20, drop_db=20) -> int:
     return min(n, (last_good + 1) * hop)
 
 
-def measure_lufs(samples: array.array, sr: int) -> tuple[float | None, int]:
+def measure_lufs(samples: array.array, sr: int, whole_clip: bool = False) -> tuple[float | None, int]:
     """Returns (LUFS over the sustained portion, sustained-sample-count).
-    LUFS is None if the sustained portion is silent."""
-    end = sustain_end(samples, sr)
+    LUFS is None if the sustained portion is silent.
+
+    [whole_clip] skips the sustain-window trimming entirely and measures
+    the full clip instead — the trimming exists to stop a single struck/
+    plucked/bowed note's long decay tail from dragging integrated
+    loudness down, which doesn't apply to speech (multi-word voice lines
+    can have a brief pause between words that would trip the same
+    envelope-drop heuristic and truncate real content early)."""
+    end = len(samples) if whole_clip else sustain_end(samples, sr)
     sustained = samples[:end]
     x = [s / 32768.0 for s in sustained]
     weighted = k_weight(x, sr)
@@ -273,18 +280,34 @@ def resolve_dirs(repo_root: Path, requested: list[str] | None) -> list[Path]:
     return [repo_root / "assets" / "audio" / "notes" / name for name in HIGH_LOW_INSTRUMENT_DIRS]
 
 
-def process_file(mp3_path: Path, work_dir: Path, target_lufs: float | None, ffmpeg: str) -> FileReport:
+def process_file(
+    mp3_path: Path, work_dir: Path, target_lufs: float | None, ffmpeg: str,
+    whole_clip: bool = False, src_path: Path | None = None, group: str | None = None,
+) -> FileReport:
+    """Measures and (if target_lufs is given) gain-normalizes one file.
+
+    By default reads and writes the same [mp3_path] (the note-library
+    case: re-normalize in place). Pass [src_path] to read from a
+    different file than the mp3 written to [mp3_path] instead — e.g. a
+    freshly-decoded voice-line WAV at some arbitrary sample rate being
+    placed into the repo under its enum name for the first time; afconvert
+    resamples to SAMPLE_RATE regardless of the source rate. [group]
+    overrides the report's "instrument" field (cosmetic, for callers
+    outside the note library) — defaults to the parent directory name.
+    """
+    read_from = src_path if src_path is not None else mp3_path
     wav_path = work_dir / (mp3_path.stem + "_orig.wav")
-    decode_to_wav(mp3_path, wav_path)
+    decode_to_wav(read_from, wav_path)
     samples = read_pcm16_mono(wav_path)
     wav_path.unlink(missing_ok=True)
 
-    lufs_before, _ = measure_lufs(samples, SAMPLE_RATE)
+    lufs_before, _ = measure_lufs(samples, SAMPLE_RATE, whole_clip=whole_clip)
     peak_before = peak_dbfs(samples)
     tp_before = true_peak_dbtp(samples)
 
     report = FileReport(
-        instrument=mp3_path.parent.name, filename=mp3_path.name,
+        instrument=group if group is not None else mp3_path.parent.name,
+        filename=mp3_path.name,
         lufs_before=lufs_before, peak_before=peak_before, true_peak_before=tp_before,
     )
 
@@ -297,24 +320,42 @@ def process_file(mp3_path: Path, work_dir: Path, target_lufs: float | None, ffmp
     headroom_limited = gain_db > max_gain_for_headroom
     applied_gain = min(gain_db, max_gain_for_headroom)
 
-    factor = 10 ** (applied_gain / 20)
-    gained = [s * factor for s in samples]
+    # Encode, then verify the *actual* encoded true peak and correct if
+    # the lossy encode overshot the pre-encode estimate — mp3 encoding
+    # can push peaks higher than the source PCM had (worse for speech's
+    # sibilants/plosives than for a single musical note: this pipeline's
+    # note-library run never tripped this over 210 files, but voice did,
+    # landing at 0dBTP against a -1dBTP pre-encode target on more than
+    # one file). Capped at a few tries so pathological content can't loop
+    # forever; each retry only needs to claw back the measured overshoot.
+    final_samples = None
+    for _ in range(4):
+        factor = 10 ** (applied_gain / 20)
+        gained = [s * factor for s in samples]
 
-    norm_wav = work_dir / (mp3_path.stem + "_norm.wav")
-    write_pcm16_mono(norm_wav, gained)
-    encode_to_mp3(norm_wav, mp3_path, ffmpeg)
-    norm_wav.unlink(missing_ok=True)
+        norm_wav = work_dir / (mp3_path.stem + "_norm.wav")
+        write_pcm16_mono(norm_wav, gained)
+        mp3_path.parent.mkdir(parents=True, exist_ok=True)
+        encode_to_mp3(norm_wav, mp3_path, ffmpeg)
+        norm_wav.unlink(missing_ok=True)
 
-    # Re-measure the actual encoded result (mp3 is lossy — worth
-    # confirming what really landed, same lesson as the pitch audit).
-    check_wav = work_dir / (mp3_path.stem + "_check.wav")
-    decode_to_wav(mp3_path, check_wav)
-    final_samples = read_pcm16_mono(check_wav)
-    check_wav.unlink(missing_ok=True)
+        # Re-measure the actual encoded result (mp3 is lossy — worth
+        # confirming what really landed, same lesson as the pitch audit).
+        check_wav = work_dir / (mp3_path.stem + "_check.wav")
+        decode_to_wav(mp3_path, check_wav)
+        final_samples = read_pcm16_mono(check_wav)
+        check_wav.unlink(missing_ok=True)
+
+        encoded_tp = true_peak_dbtp(final_samples)
+        overshoot = encoded_tp - TRUE_PEAK_CEILING_DBTP
+        if overshoot <= 0.05:  # small tolerance for measurement noise
+            break
+        applied_gain -= overshoot
+        headroom_limited = True
 
     report.gain_db = applied_gain
     report.headroom_limited = headroom_limited
-    report.lufs_after, _ = measure_lufs(final_samples, SAMPLE_RATE)
+    report.lufs_after, _ = measure_lufs(final_samples, SAMPLE_RATE, whole_clip=whole_clip)
     report.peak_after = peak_dbfs(final_samples)
     report.true_peak_after = true_peak_dbtp(final_samples)
     return report
