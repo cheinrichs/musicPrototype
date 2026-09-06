@@ -95,14 +95,65 @@ void main() {
           final instrument = prompt.firstInstrument;
           final span =
               instrument.highestSampleMidi - instrument.lowestSampleMidi;
-          final expectedMin = min(tier.minSemitones, span);
+          // No longer min(tier.minSemitones, span): an instrument too
+          // narrow for this tier's floor is excluded before selection now
+          // (see the invariant test below), not silently given a smaller
+          // interval than the tier promised — so whichever instrument got
+          // picked is guaranteed to clear tier.minSemitones outright.
           final expectedMax = min(tier.maxSemitones, span);
           expect(
             prompt.difficulty,
-            inInclusiveRange(expectedMin, expectedMax),
+            inInclusiveRange(tier.minSemitones, expectedMax),
             reason:
                 '$tier on $instrument (span $span) prompt $i had '
                 'difficulty ${prompt.difficulty}',
+          );
+        }
+      }
+    });
+
+    test('never selects an instrument for a same-instrument round whose '
+        'own range is narrower than the tier\'s minimum interval — general '
+        'invariant, not tuba-specific, added after a real T1 round on '
+        'build 45 paired two tuba notes (D#2/A#2) a phone speaker '
+        'couldn\'t reproduce clearly enough to compare. This would have '
+        'caught that before Cooper did: it fails for any instrument this '
+        'narrow at any tier, not just tuba at T1.', () {
+      final generator = PromptGenerator(random: Random(555));
+      for (final tier in ConceptTier.values) {
+        for (var i = 0; i < 300; i++) {
+          final prompt = generator.generatePrompt(
+            promptNumber: i,
+            tier: tier,
+            targetDirection: PitchDirection.higher,
+          );
+          expect(
+            prompt.firstInstrument.hasRangeFor(tier.minSemitones),
+            isTrue,
+            reason:
+                '$tier picked ${prompt.firstInstrument}, whose range is '
+                'narrower than this tier\'s ${tier.minSemitones}-semitone '
+                'floor',
+          );
+        }
+      }
+    });
+
+    test('tuba specifically never appears in a T1/T2/T3 same-instrument '
+        'round — its post-audibility-cut range (3 semitones) clears only '
+        'T4\'s 2-semitone floor', () {
+      final generator = PromptGenerator(random: Random(777));
+      for (final tier in [ConceptTier.t1, ConceptTier.t2, ConceptTier.t3]) {
+        for (var i = 0; i < 300; i++) {
+          final prompt = generator.generatePrompt(
+            promptNumber: i,
+            tier: tier,
+            targetDirection: PitchDirection.higher,
+          );
+          expect(
+            prompt.firstInstrument,
+            isNot(HighLowInstrument.tuba),
+            reason: 'tuba was picked for $tier, which it cannot satisfy',
           );
         }
       }

@@ -182,9 +182,25 @@ enum HighLowInstrument {
     for (final midi in availableMidis) assetPathForMidi(midi),
   ];
 
+  /// Whether this instrument's own available notes span at least
+  /// [minSemitones] — the room a same-instrument round needs to place
+  /// two real notes that far apart. Not every instrument has enough:
+  /// tuba's post-2026-09 speaker-audibility cut (Trello — a real device
+  /// couldn't reproduce its lowest range clearly enough to compare) left
+  /// it only 3 semitones wide, narrower than every [ConceptTier]'s
+  /// [ConceptTier.minSemitones] except T4's own 2. [PromptGenerator]
+  /// uses this to exclude an instrument from a tier's round pool
+  /// entirely rather than silently generating a narrower-than-requested
+  /// interval — the bug that let a real round pair two tuba notes a
+  /// child (and the device) couldn't tell apart. General on purpose, not
+  /// tuba-specific: whatever instrument next ends up with a narrow
+  /// range, this catches it the same way.
+  bool hasRangeFor(int minSemitones) =>
+      availableMidis.last - availableMidis.first >= minSemitones;
+
   /// Semitones [lowestSampleMidi]..[highestSampleMidi] overlaps with
   /// [other]'s own range. Zero or negative means no usable overlap at
-  /// all — e.g. tuba (C2-B3) and flute (C4-B5) don't share any range. This
+  /// all — e.g. tuba (G#3-B3) and flute (C4-B5) don't share any range. This
   /// checks the coarse [lowestSampleMidi]/[highestSampleMidi] span, not
   /// [availableMidis] — fine for now since it's unused in production and
   /// guitar's two holes are single semitones, not enough to matter for a
@@ -203,8 +219,11 @@ enum HighLowInstrument {
   /// note at the bottom of the overlap for one side and [minSemitones]
   /// above it, within the overlap, for the other — swap which instrument
   /// gets which to flip who's higher). Tuba vs. flute is never pairable
-  /// (no overlap at all); tuba vs. guitar is, since their ranges share
-  /// several semitones. Deliberately not modeled as register "families" —
+  /// (no overlap at all); tuba vs. guitar overlaps by 3 semitones (tuba's
+  /// own [56, 59] sits entirely within guitar's [48, 71]) — enough for
+  /// T4's 2-semitone floor but not T1-T3's 4+, so which tiers can pair
+  /// them depends on which tier's asking, same as any other pair.
+  /// Deliberately not modeled as register "families" —
   /// register is a property of the measured samples, not a fixed trait of
   /// the instrument, and cello/piano/guitar all span whatever boundary a
   /// family list would try to draw.

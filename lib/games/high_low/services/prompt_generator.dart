@@ -41,9 +41,32 @@ class PromptGenerator {
     // think we'll be pitting different instruments against each other ever
     // and comparing pitch") — timbre varies *between* rounds instead, by
     // this pick happening fresh per prompt.
-    final instrumentValues = HighLowInstrument.values;
+    //
+    // Only instruments with enough real range for *this tier's* minimum
+    // interval are eligible — not every instrument qualifies for every
+    // tier (HighLowInstrument.hasRangeFor's doc comment has the full
+    // story: tuba's speaker-audibility range cut left it too narrow for
+    // T1-T3). This used to silently cap the requested interval down to
+    // whatever an instrument's own span allowed instead of excluding it,
+    // which is exactly how a real T1 round ended up pairing two tuba
+    // notes barely a fifth apart that a phone speaker (and a child)
+    // couldn't tell apart — the tier promised 7+ semitones, the code
+    // quietly gave 7 anyway since that's what fit, but tuba's *audibility*
+    // problem meant even a technically-correct interval wasn't usable.
+    // Excluding the instrument outright, rather than degrading the
+    // interval, is the fix — see prompt_generator_test.dart's invariant
+    // test for the general check this is meant to satisfy.
+    final eligibleInstruments = HighLowInstrument.values
+        .where((i) => i.hasRangeFor(tier.minSemitones))
+        .toList();
+    assert(
+      eligibleInstruments.isNotEmpty,
+      'No HighLowInstrument has enough range for $tier '
+      '(needs ${tier.minSemitones}+ semitones) — check HighLowInstrument '
+      'ranges.',
+    );
     final instrument =
-        instrumentValues[_random.nextInt(instrumentValues.length)];
+        eligibleInstruments[_random.nextInt(eligibleInstruments.length)];
 
     // Notes are picked as real MIDI pitches directly from *this*
     // instrument's own available notes (HighLowInstrument.availableMidis)
@@ -58,7 +81,9 @@ class PromptGenerator {
     final available = instrument.availableMidis;
     final span = available.last - available.first;
 
-    final minInterval = min(tier.minSemitones, span);
+    // minInterval no longer needs capping down to span — eligibility
+    // above already guarantees span >= tier.minSemitones.
+    final minInterval = tier.minSemitones;
     final maxInterval = min(tier.maxSemitones, span);
 
     final validPairs = <({int low, int high})>[

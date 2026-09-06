@@ -56,11 +56,11 @@ void main() {
       'pitch — no per-instrument offset to apply any more', () {
     final tubaSide = RoundReportSide(
       instrument: HighLowInstrument.tuba,
-      midi: 36, // real C2, tuba's lowest sample
+      midi: 56, // real G#3, tuba's lowest sample post-audibility-cut
     );
-    expect(tubaSide.assetPath, 'assets/audio/notes/tuba/c2.mp3');
-    expect(tubaSide.noteName, 'C2');
-    expect(tubaSide.frequencyHz, closeTo(65.41, 0.1));
+    expect(tubaSide.assetPath, 'assets/audio/notes/tuba/g_sharp_3.mp3');
+    expect(tubaSide.noteName, 'G#3');
+    expect(tubaSide.frequencyHz, closeTo(207.65, 0.1));
 
     final pianoSide = RoundReportSide(
       instrument: HighLowInstrument.piano,
@@ -74,7 +74,7 @@ void main() {
   test('toJson round-trips every field the audit/report needs', () {
     final report = buildReport(
       leftInstrument: HighLowInstrument.tuba,
-      leftMidi: 43, // real G2
+      leftMidi: 57, // real A3
       rightInstrument: HighLowInstrument.piano,
       rightMidi: 60, // real C4
     );
@@ -88,13 +88,13 @@ void main() {
     expect(json['round']['left']['instrument'], 'tuba');
     expect(
       json['round']['left']['assetPath'],
-      'assets/audio/notes/tuba/g2.mp3',
+      'assets/audio/notes/tuba/a3.mp3',
     );
-    expect(json['round']['left']['noteName'], 'G2');
+    expect(json['round']['left']['noteName'], 'A3');
     expect(
       json['round']['higherSide'],
       'right',
-    ); // piano C4 (60) > tuba G2 (43)
+    ); // piano C4 (60) > tuba A3 (57)
     expect(json['round']['response'], {
       'applicable': true,
       'side': 'right',

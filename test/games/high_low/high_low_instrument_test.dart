@@ -12,12 +12,15 @@ void main() {
         HighLowInstrument.piano.assetPathForMidi(61), // C#4
         'assets/audio/notes/piano/c_sharp_4.mp3',
       );
-      // Tuba's range is real C2-B3 (36-59) — a MIDI value outside a
+      // Tuba's range is real G#3-B3 (56-59) — a MIDI value outside a
       // standard instrument's C4-B5 shape, exactly the case the old
-      // Note-enum-keyed lookup couldn't represent.
+      // Note-enum-keyed lookup couldn't represent. (Restricted from a
+      // fully contiguous C2-B3 down to just G#3-B3 the same day, once a
+      // real device round exposed that tuba's low register wasn't
+      // reproducing clearly enough to compare — see the class doc.)
       expect(
-        HighLowInstrument.tuba.assetPathForMidi(36), // C2
-        'assets/audio/notes/tuba/c2.mp3',
+        HighLowInstrument.tuba.assetPathForMidi(56), // G#3
+        'assets/audio/notes/tuba/g_sharp_3.mp3',
       );
     });
 
@@ -26,7 +29,7 @@ void main() {
       final tuba = HighLowInstrument.tuba;
       final expectedCount = tuba.highestSampleMidi - tuba.lowestSampleMidi + 1;
       expect(tuba.allAssetPaths.length, expectedCount);
-      expect(tuba.allAssetPaths.first, 'assets/audio/notes/tuba/c2.mp3');
+      expect(tuba.allAssetPaths.first, 'assets/audio/notes/tuba/g_sharp_3.mp3');
       expect(tuba.allAssetPaths.last, 'assets/audio/notes/tuba/b3.mp3');
     });
 
@@ -95,10 +98,9 @@ void main() {
       );
     });
 
-    test('tuba pairs with guitar now that its C#3 gap is closed (real '
-        'C2-B3 reaches guitar\'s real C3-B4 bottom end), but with nothing '
-        'else — every other instrument starts at C4, one semitone above '
-        'tuba\'s own top note', () {
+    test('tuba pairs with guitar (its own G#3-B3 sits inside guitar\'s '
+        'C3-B4), but with nothing else — every other instrument starts at '
+        'C4, one semitone above tuba\'s own top note', () {
       expect(
         HighLowInstrument.tuba.canPairWith(
           HighLowInstrument.guitar,
@@ -119,6 +121,25 @@ void main() {
               'if a range was corrected, this test (and the class doc '
               'comment about tuba only pairing with guitar) may need '
               'updating',
+        );
+      }
+    });
+
+    test('hasRangeFor reflects each instrument\'s real span — tuba\'s '
+        'post-speaker-audibility G#3-B3 (3 semitones) is the one instrument '
+        'narrower than most tiers ask for; every other instrument spans a '
+        'full two-ish octaves and clears every tier', () {
+      expect(HighLowInstrument.tuba.hasRangeFor(2), isTrue); // T4
+      expect(HighLowInstrument.tuba.hasRangeFor(3), isTrue); // its own span
+      expect(HighLowInstrument.tuba.hasRangeFor(4), isFalse); // T2/T3
+      expect(HighLowInstrument.tuba.hasRangeFor(7), isFalse); // T1
+
+      for (final instrument in HighLowInstrument.values) {
+        if (instrument == HighLowInstrument.tuba) continue;
+        expect(
+          instrument.hasRangeFor(7),
+          isTrue,
+          reason: '$instrument unexpectedly too narrow for T1 (7 semitones)',
         );
       }
     });
