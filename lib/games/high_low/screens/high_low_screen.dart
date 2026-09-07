@@ -18,6 +18,7 @@ import '../../../ui/components/game_screen_layout.dart';
 import '../../../ui/components/glow_wiggle_character.dart';
 import '../../../ui/components/progress_dots.dart';
 import '../../../ui/theme/theme.dart';
+import '../models/high_low_instrument.dart';
 import '../models/round_report.dart';
 import '../services/round_report_service.dart';
 import '../state/high_low_game_state.dart';
@@ -638,38 +639,51 @@ class _HighLowScreenState extends State<HighLowScreen> {
     final homeLift = screenHeight * 0.08;
     final isTrigger = _gameState.agencyStage == AgencyStage.trigger;
     final prompt = _gameState.currentPrompt;
-    // Trigger-only: whichever character owns this round's target pole
-    // stays centered as the fixed drop target (Trello card 101) — the
-    // other stays put at its normal fixed spot, same as
-    // Observe/Participate. (Reversed 2026-09: the centered character used
-    // to be the *dragged* one; now she just stands still and receives —
-    // see HighLowGameState's class doc.)
-    final piperIsTarget = isTrigger && _gameState.targetCharacterIsPiper;
-    final clefIsTarget = isTrigger && !_gameState.targetCharacterIsPiper;
+    // Whichever character owns this round's target pole (Piper is low,
+    // Clef is high — Trello card 101) stays centered, at every stage once
+    // a round is underway: in Trigger she's the fixed drop target the
+    // child feeds instruments to; in Observe/Participate she has nothing
+    // to receive, but stands centered anyway as a second visual cue for
+    // what the child is listening for, alongside the caption/narration
+    // (Trello card 1SpHq2la — "add piper or clef appropriately to the
+    // middle on A0 and A1"). Same character, same centered position and
+    // size at every stage — only whether she's an interactive drop target
+    // ([isTrigger], gating [_buildDropZone] below) changes.
+    final piperIsTarget = prompt != null && _gameState.targetCharacterIsPiper;
+    final clefIsTarget = prompt != null && !_gameState.targetCharacterIsPiper;
     // A correct drop slides the dragged instrument onto the centered
     // character instead of springing back to its stump (Trello —
     // "celebrate a correct drop"; see [_buildInstrumentSlot]).
     final celebrating = _gameState.dragFeedback == DragFeedback.correct;
 
+    // Trello card NcVPjPZ5 — Cooper: "the pianos should not get the
+    // stumps, they look weird sitting on top of a stump." A piano's own
+    // art already reads as freestanding furniture, not something that
+    // rests on a tree stump the way a guitar or a violin does.
+    final leftIsPiano = _gameState.leftInstrument == HighLowInstrument.piano;
+    final rightIsPiano = _gameState.rightInstrument == HighLowInstrument.piano;
+
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        _buildStump(
-          assetPath: 'assets/images/backgrounds/props/StumpA.png',
-          naturalWidth: 1512,
-          naturalHeight: 794,
-          centerX: leftAnchorX,
-          charSize: charSize,
-          groundY: groundY,
-        ),
-        _buildStump(
-          assetPath: 'assets/images/backgrounds/props/StumpB.png',
-          naturalWidth: 1506,
-          naturalHeight: 781,
-          centerX: rightAnchorX,
-          charSize: charSize,
-          groundY: groundY,
-        ),
+        if (!leftIsPiano)
+          _buildStump(
+            assetPath: 'assets/images/backgrounds/props/StumpA.png',
+            naturalWidth: 1512,
+            naturalHeight: 794,
+            centerX: leftAnchorX,
+            charSize: charSize,
+            groundY: groundY,
+          ),
+        if (!rightIsPiano)
+          _buildStump(
+            assetPath: 'assets/images/backgrounds/props/StumpB.png',
+            naturalWidth: 1506,
+            naturalHeight: 781,
+            centerX: rightAnchorX,
+            charSize: charSize,
+            groundY: groundY,
+          ),
         _buildPiper(
           piperHomeHeight,
           targetCharacterHeight,
@@ -692,6 +706,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
           side: 0,
           assetPath: _gameState.leftInstrument.leftAssetPath,
           instrumentName: _gameState.leftInstrument.name,
+          isPiano: leftIsPiano,
           anchorX: leftAnchorX,
           screenWidth: screenWidth,
           charSize: charSize,
@@ -706,6 +721,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
           side: 1,
           assetPath: _gameState.rightInstrument.rightAssetPath,
           instrumentName: _gameState.rightInstrument.name,
+          isPiano: rightIsPiano,
           anchorX: rightAnchorX,
           screenWidth: screenWidth,
           charSize: charSize,
@@ -808,9 +824,14 @@ class _HighLowScreenState extends State<HighLowScreen> {
   /// smaller size (Trello card hIKjobsB), not [homeHeight] reused, since
   /// centering a character sized for standing off to the side is exactly
   /// what let Piper (see [_buildPiper]) grow large enough to cover the
-  /// header/body controls once she took the same fixed target role. Bobs
-  /// continuously either way — that idle motion is Clef's own character
-  /// beat, not a "drop here" cue (that's [hovering]/[celebrating] below).
+  /// header/body controls once she took the same fixed target role.
+  ///
+  /// Stationary either way (Trello card NcVPjPZ5, reversing an earlier
+  /// design where Clef bobbed continuously) — the idle motion moved to the
+  /// instruments instead, see [_buildInstrumentSlot]. A character that
+  /// never moves reads more clearly as "the one waiting to receive," and
+  /// leaves motion as a signal that means one thing (an instrument you can
+  /// interact with) rather than two.
   ///
   /// Home position mirrors Piper's exactly (flush with the screen's edge,
   /// `fit: BoxFit.contain`) — see [_buildPiper]'s doc comment for why the
@@ -836,31 +857,15 @@ class _HighLowScreenState extends State<HighLowScreen> {
         height: homeHeight,
         fit: BoxFit.contain,
       );
-      final bobbing = clefImage
-          .animate(onPlay: (c) => c.repeat(reverse: true))
-          .moveY(
-            begin: 0,
-            end: -6,
-            duration: const Duration(milliseconds: 1200),
-            curve: Curves.easeInOut,
-          );
-      return Positioned(right: 0, bottom: homeLift, child: bobbing);
+      return Positioned(right: 0, bottom: homeLift, child: clefImage);
     }
 
     final targetImage = Image.asset(
       'assets/images/characters/Clef.png',
       height: targetHeight,
     );
-    final bobbing = targetImage
-        .animate(onPlay: (c) => c.repeat(reverse: true))
-        .moveY(
-          begin: 0,
-          end: -6,
-          duration: const Duration(milliseconds: 1200),
-          curve: Curves.easeInOut,
-        );
     return _buildTargetCharacter(
-      bobbing: bobbing,
+      characterImage: targetImage,
       lift: centerLift,
       size: targetHeight,
       celebrating: celebrating,
@@ -872,8 +877,9 @@ class _HighLowScreenState extends State<HighLowScreen> {
   /// drop target ([isTarget] — Piper owns the low pole, Trello card 101),
   /// in which case she's centered at [targetHeight] instead — see
   /// [_buildClef] for why that's a distinct, smaller size rather than
-  /// [homeHeight] reused. Unlike Clef, Piper doesn't idle-bob while fixed;
-  /// only picks up motion once she's the one being targeted.
+  /// [homeHeight] reused. Stationary either way, same as Clef — see
+  /// [_buildClef]'s doc comment for why the idle motion moved to the
+  /// instruments instead (Trello card NcVPjPZ5).
   ///
   /// Sits flush with the screen's left edge (Trello card "Separate the
   /// stumps from the background art" — an earlier `-homeShift` push past
@@ -906,16 +912,8 @@ class _HighLowScreenState extends State<HighLowScreen> {
       height: targetHeight,
       fit: BoxFit.contain,
     );
-    final bobbing = piperImage
-        .animate(onPlay: (c) => c.repeat(reverse: true))
-        .moveY(
-          begin: 0,
-          end: -6,
-          duration: const Duration(milliseconds: 1200),
-          curve: Curves.easeInOut,
-        );
     return _buildTargetCharacter(
-      bobbing: bobbing,
+      characterImage: piperImage,
       lift: centerLift,
       size: targetHeight,
       celebrating: celebrating,
@@ -929,20 +927,20 @@ class _HighLowScreenState extends State<HighLowScreen> {
   /// edge to the same stump-top line the instruments sit on (Trello card
   /// S1v6sbrK).
   ///
-  /// Never moves — that's the point of 2026-09's reversal (Trello,
-  /// "reverse the A2 drag interaction"): the character used to be the
-  /// dragged object and slide across the screen on a correct drop; now
-  /// she's the fixed anchor the *instrument* travels to (see
-  /// [_buildInstrumentSlot]'s own celebration), so all she needs is a
-  /// little liveliness of her own: [hovering] scales her up slightly while
-  /// a dragged instrument is over the drop zone (Trello — "you're about to
-  /// drop here"), and [celebrating] adds the same pulse-plus-[DriftingNotes]
-  /// burst used elsewhere for "something good just happened" (already used
-  /// for "this instrument is sounding" and for the pre-reversal dragged
-  /// character — reused again rather than inventing a third celebration
-  /// effect).
+  /// Never moves — both because she's the fixed anchor the *instrument*
+  /// travels to since 2026-09's A2 reversal (Trello, "reverse the A2 drag
+  /// interaction"; see [_buildInstrumentSlot]'s own celebration), and
+  /// because Trello card NcVPjPZ5 made every character stationary,
+  /// centered or at the edges, moving idle motion onto the instruments
+  /// instead. All she needs is a little liveliness of her own:
+  /// [hovering] scales her up slightly while a dragged instrument is over
+  /// the drop zone (Trello — "you're about to drop here"), and
+  /// [celebrating] adds the same pulse-plus-[DriftingNotes] burst used
+  /// elsewhere for "something good just happened" (already used for "this
+  /// instrument is sounding" and for the pre-reversal dragged character —
+  /// reused again rather than inventing a third celebration effect).
   Widget _buildTargetCharacter({
-    required Widget bobbing,
+    required Widget characterImage,
     required double lift,
     required double size,
     required bool celebrating,
@@ -961,7 +959,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
             AnimatedScale(
               scale: (celebrating || hovering) ? 1.08 : 1.0,
               duration: AppAnimations.fast,
-              child: bobbing,
+              child: characterImage,
             ),
             if (celebrating)
               Positioned(
@@ -978,7 +976,10 @@ class _HighLowScreenState extends State<HighLowScreen> {
   /// (exploration, every stage), and during Trigger also draggable onto
   /// the centered character (Trello, "reverse the A2 drag interaction":
   /// the instrument used to just sit here as a fixed answer the dragged
-  /// character landed on; now it's the thing the child picks up).
+  /// character landed on; now it's the thing the child picks up). Bobs
+  /// gently while resting (side-to-side for [isPiano], up-and-down for
+  /// everything else) — see the `else` branch below, Trello card
+  /// NcVPjPZ5.
   ///
   /// [celebratingThis] mirrors the pre-reversal "celebrate a correct drop"
   /// fix, just on the instrument instead of the character: on this
@@ -996,6 +997,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
     required int side,
     required String assetPath,
     required String instrumentName,
+    required bool isPiano,
     required double anchorX,
     required double screenWidth,
     required double charSize,
@@ -1061,6 +1063,35 @@ class _HighLowScreenState extends State<HighLowScreen> {
           ),
         ],
       );
+    } else {
+      // Idle motion while resting on its stump — reversed from the old
+      // design where Piper/Clef bobbed instead (Trello card NcVPjPZ5).
+      // The instrument is now the thing the child can pick up and
+      // interact with, so it's the one that reads as "alive"; the
+      // characters are stationary throughout (see [_buildTargetCharacter]
+      // and [_buildClef]/[_buildPiper]'s doc comments). Pianos don't get
+      // a stump at all (see [_buildScene] — Cooper: "they look weird
+      // sitting on top of a stump"), and a vertical bob would look like
+      // they're floating in place above nothing without one to bounce
+      // against, so they get a slight side-to-side drift instead — just
+      // enough that they don't read as a frozen background prop.
+      button = isPiano
+          ? button
+                .animate(onPlay: (c) => c.repeat(reverse: true))
+                .moveX(
+                  begin: -4,
+                  end: 4,
+                  duration: const Duration(milliseconds: 1600),
+                  curve: Curves.easeInOut,
+                )
+          : button
+                .animate(onPlay: (c) => c.repeat(reverse: true))
+                .moveY(
+                  begin: 0,
+                  end: -6,
+                  duration: const Duration(milliseconds: 1200),
+                  curve: Curves.easeInOut,
+                );
     }
 
     return AnimatedPositioned(

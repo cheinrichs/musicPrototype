@@ -3,6 +3,7 @@ import 'package:ear_trainer/models/agency_stage.dart';
 import 'package:ear_trainer/models/concept_tier.dart';
 import 'package:ear_trainer/models/game_status.dart';
 import 'package:ear_trainer/models/pitch_direction.dart';
+import 'package:ear_trainer/models/round_order.dart';
 import 'package:ear_trainer/games/high_low/state/high_low_game_state.dart';
 
 // Uses `testWidgets` (not plain `test`) purely to get Flutter's fake-async
@@ -43,6 +44,46 @@ void main() {
         reason: 'Observe never auto-advances',
       );
     });
+
+    testWidgets(
+      'targetCharacterIsPiper is meaningful and canDrop is false — Trello '
+      'card 1SpHq2la: the target-pole character centers as a visual cue '
+      'even here, but there is no drag at this stage',
+      (tester) async {
+        // RoundOrder.blocked needs at least 3 rounds to produce its
+        // deterministic high-block-first sequence (see RoundSequencer) —
+        // with that, round 1's target is always "higher", i.e. Clef's
+        // pole, so targetCharacterIsPiper is deterministically false here
+        // rather than a coin flip.
+        final state = HighLowGameState(
+          totalPrompts: 3,
+          agencyStage: AgencyStage.observe,
+          roundOrder: RoundOrder.blocked,
+        );
+        addTearDown(state.dispose);
+        state.startGame();
+        // Let the intro's own scheduled timer run to completion so none
+        // is still pending when this test body returns — same reason the
+        // other tests in this file that don't otherwise interact with the
+        // intro advance past it (flutter_test asserts no pending Timer at
+        // teardown, and this state's own `dispose` only cancels it in an
+        // `addTearDown`, which runs after that assertion).
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 4700));
+
+        expect(state.currentPrompt, isNotNull);
+        expect(
+          state.targetCharacterIsPiper,
+          isFalse,
+          reason: 'round 1 targets the high pole, which Clef owns',
+        );
+        expect(
+          state.canDrop,
+          isFalse,
+          reason: 'Observe has no drag interaction at all',
+        );
+      },
+    );
   });
 
   group('HighLowGameState — Participate (A1)', () {
@@ -89,6 +130,41 @@ void main() {
       expect(state.status, GameStatus.completed);
       expect(state.instrumentation, isEmpty);
     });
+
+    testWidgets(
+      'targetCharacterIsPiper is meaningful and canDrop is false — Trello '
+      'card 1SpHq2la: the target-pole character centers as a visual cue '
+      'even here, but there is no drag at this stage',
+      (tester) async {
+        final state = HighLowGameState(
+          totalPrompts: 3,
+          agencyStage: AgencyStage.participate,
+          roundOrder: RoundOrder.blocked,
+        );
+        addTearDown(state.dispose);
+        state.startGame();
+        // Let the intro's own scheduled timer run to completion so none
+        // is still pending when this test body returns — same reason the
+        // other tests in this file that don't otherwise interact with the
+        // intro advance past it (flutter_test asserts no pending Timer at
+        // teardown, and this state's own `dispose` only cancels it in an
+        // `addTearDown`, which runs after that assertion).
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 4700));
+
+        expect(state.currentPrompt, isNotNull);
+        expect(
+          state.targetCharacterIsPiper,
+          isFalse,
+          reason: 'round 1 targets the high pole, which Clef owns',
+        );
+        expect(
+          state.canDrop,
+          isFalse,
+          reason: 'Participate has no drag interaction at all',
+        );
+      },
+    );
   });
 
   group('HighLowGameState — Trigger (A2)', () {

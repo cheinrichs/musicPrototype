@@ -35,6 +35,12 @@ enum DragFeedback { none, correct, retry }
 /// the card-91 rework: a toddler's instinct to tap a sound-making thing can
 /// no longer silently submit a graded answer.
 ///
+/// At every stage, whichever of Piper/Clef owns the round's target pole
+/// (Piper is low, Clef is high; see [targetCharacterIsPiper] and Trello
+/// card 101) stands centered as a second visual cue for what to listen
+/// for, alongside the caption/narration (Trello card 1SpHq2la). Only
+/// Trigger makes her an interactive drop target — see [canDrop].
+///
 /// - Observe (A0): the pair auto-plays; Piper/Clef narrate low/high as
 ///   each note sounds; free tapping is always available and never
 ///   interrupts the auto-play. No question, no scoring, no auto-advance —
@@ -44,19 +50,16 @@ enum DragFeedback { none, correct, retry }
 ///   with Clef sparkling on the target. No question, no wrong answers, no
 ///   auto-advance.
 /// - Trigger (A2): same auto-play/cut-short/free-tap as Participate, plus
-///   a centered narrator who stays put as the round's drop target, and
-///   two draggable instruments the child drags to her — whichever of
-///   Piper/Clef owns that round's target pole (Piper is low, Clef is
-///   high; see [targetCharacterIsPiper] and Trello card 101) is the one
-///   centered, so the character speaking the prompt is always the one
-///   the child is asked to feed the right instrument to. (Reversed
-///   2026-09 from an earlier design where the child dragged the
-///   character onto a fixed instrument — Trello, "reverse the A2 drag
-///   interaction": this matters for planned A4, ordering, where
-///   instruments are what get dragged into slots, so A2-A4 now share one
-///   verb instead of switching mid-ladder.) A wrong drop gets a gentle
-///   retry (fresh listen, no failure state); a correct drop is recorded
-///   and auto-advances.
+///   the centered character stays put as the round's drop target, and
+///   two draggable instruments the child drags to her, so the character
+///   speaking the prompt is always the one the child is asked to feed the
+///   right instrument to. (Reversed 2026-09 from an earlier design where
+///   the child dragged the character onto a fixed instrument — Trello,
+///   "reverse the A2 drag interaction": this matters for planned A4,
+///   ordering, where instruments are what get dragged into slots, so
+///   A2-A4 now share one verb instead of switching mid-ladder.) A wrong
+///   drop gets a gentle retry (fresh listen, no failure state); a correct
+///   drop is recorded and auto-advances.
 class HighLowGameState extends ChangeNotifier {
   /// How long each note of the intro pair rings (and its instrument
   /// wiggles/glows) before the sequence moves on — see the two call sites
@@ -183,14 +186,18 @@ class HighLowGameState extends ChangeNotifier {
   bool get canDrop =>
       agencyStage == AgencyStage.trigger && _status != GameStatus.completed;
 
-  /// Trigger-only: which character stays centered as this round's fixed
-  /// drop target — Piper owns the low pole, Clef owns the high pole
-  /// (Trello card 101), so this always agrees with [captionText]'s
-  /// first-person line ("give me the ..."). Meaningless (and unused)
-  /// outside Trigger. Named for the character, not for dragging, since
-  /// 2026-09's reversal made the character the stationary target and the
-  /// instruments the dragged objects (see the class doc) — this getter's
-  /// old name, `draggedIsPiper`, read backwards once that flipped.
+  /// Which character stays centered this round — Piper owns the low
+  /// pole, Clef owns the high pole (Trello card 101), so this always
+  /// agrees with [captionText]'s first-person line ("give me the ...")
+  /// in Trigger. Meaningful at every stage, not just Trigger: Observe and
+  /// Participate also center this same character as a second visual cue
+  /// for what to listen for (Trello card 1SpHq2la), even though only
+  /// Trigger makes her an interactive drop target — see [canDrop] and
+  /// `HighLowScreen._buildDropZone` for the stage gate on that part.
+  /// Named for the character, not for dragging, since 2026-09's reversal
+  /// made the character the stationary target and the instruments the
+  /// dragged objects (see the class doc) — this getter's old name,
+  /// `draggedIsPiper`, read backwards once that flipped.
   bool get targetCharacterIsPiper =>
       currentPrompt?.targetDirection == PitchDirection.lower;
 
