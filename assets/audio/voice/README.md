@@ -1,16 +1,41 @@
 # Voice lines (Trello card 93)
 
 Recordings for `VoiceLine` (see `lib/audio/voice_line.dart`) go here, one
-`.mp3` per enum value, named after it: `piperSaysLow.mp3`,
-`piperSaysLowSecond.mp3`, `clefSaysHigh.mp3`, `clefSaysHighSecond.mp3`,
-`listenForHigh.mp3`, `listenForLow.mp3`, `giveMeHigh.mp3`,
-`giveMeLow.mp3`, `tryAgainClef.mp3`, `tryAgainPiper.mp3`. All ten now
-exist. (`giveMeHigh`/`giveMeLow` were named `putMeOnHigh`/`putMeOnLow`
+`.mp3` per enum value, named after it. 23 exist as of 2026-09-07 — see
+`lib/audio/voice_line.dart`'s class doc for the full list and what each
+one is. (`giveMeHigh`/`giveMeLow` were named `putMeOnHigh`/`putMeOnLow`
 until the A2 drag direction reversed 2026-09 — the child now drags an
 instrument to the character instead of dragging the character onto an
 instrument, so "put me on the high one" read backwards; the recording
 itself already said "give me the high one," so only the enum/asset names
 needed to catch up. See lib/audio/voice_line.dart's doc comments.)
+
+## 2026-09-07: the 4-5 and 6-7 age bands
+
+Seventeen new lines (Trello card "Voice clips for the next age band of
+High/Low"), processed through the same `tool/build_voice_lines.py`
+pipeline as the batch below. Four of them *replace* existing files
+rather than adding new ones — `clefSaysHigh.mp3`, `clefSaysHighSecond.mp3`,
+`piperSaysLow.mp3`, `piperSaysLowSecond.mp3` — because Cooper's script
+review decided 4-5's slightly fuller wording ("That **one** sounds
+high") becomes canonical for both the 2-3 and 4-5 bands, retiring the
+2-3-only originals rather than keeping two near-identical recordings
+live. The other thirteen are new members, several for a 6-7 band that
+isn't complete yet (Clef's 6-7 A1/A2/nudge and the second half of his
+A0 pair have no recording yet) and one for 8+ (a single nudge line —
+see `lib/audio/voice_line.dart`'s class doc for why the rest of 8+
+collapsed into 6-7).
+
+No age-band selector exists in the app yet, so only the four repointed
+A0 files are actually reachable in a real session today — the other
+thirteen are real, committed, and tested (`test/audio/voice_line_test.dart`
+checks every `VoiceLine` resolves to a file that exists), ready for
+whenever that selector lands. Not a guess about scope: the age-band
+picker is its own separate, unstarted epic (Trello card PqqgLOwF), and
+this card's own description already treats "which band plays when" as
+outside what it's asking for — same shape as `ConceptTier`'s three-note
+tiers landing ahead of their own screen, which Cooper did confirm
+explicitly for that case.
 
 Nine re-recorded 2026-09 (`tool/build_voice_lines.py`) from 24kHz mono
 WAVs, replacing the original placeholder takes. The tenth,

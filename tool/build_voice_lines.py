@@ -121,6 +121,40 @@ UPLOAD_TO_VOICE_LINE = {
     # (106-142Hz), so it's a plausible match for the same character/session
     # family even though it arrived separately.
     "3d4ecc4c-Piper_Fox_Listen_for_the_Low_One.wav": "listenForLow",
+
+    # 2026-09-07 batch: the 4-5 and 6-7 age bands (Trello card
+    # "Voice clips for the next age band of High/Low"). Four of these
+    # *replace* the 2026-09 A0 pair above rather than adding new members —
+    # per Cooper's 2026-09-07 script review, 4-5's "That one sounds high"
+    # (vs. the original "That sounds high") became the canonical A0 line
+    # for *both* 2-3 and 4-5, since nothing in the app yet distinguishes
+    # those two bands and the two scripts were near-identical anyway. See
+    # lib/audio/voice_line.dart's doc comments for the rest of the mapping
+    # rationale (why each new member exists, and which checklist slots are
+    # still open).
+    "ab4bbcb2-Clef_Ooh_That_one_sounds_high.wav": "clefSaysHigh",
+    "49600543-Clef_And_ooh_That_one_sounds_high.wav": "clefSaysHighSecond",
+    "735c4610-Piper_That_one_sounds_low.wav": "piperSaysLow",
+    "e7fdf169-Piper_and_that_one_sounds_low.wav": "piperSaysLowSecond",
+    # 4-5, genuinely new lines (distinct wording from 2-3's).
+    "c67a7147-Clef_Which_one_sounds_high.wav": "listenForHigh45",
+    "8cf3f012-Piper_Which_one_sounds_low.wav": "listenForLow45",
+    "8b0e94bd-Clef_Can_you_give_me_the_high_one.wav": "giveMeHigh45",
+    "45da2503-Piper_Can_you_give_me_the_low_one.wav": "giveMeLow45",
+    "112fd5b9-Clef_Ooh_so_close_Lets_hear_that_again.wav": "tryAgainClef45",
+    "54969bc3-Piper_So_close_Lets_hear_it_again.wav": "tryAgainPiper45",
+    # 6-7. Clef's A0 has only its first-note version so far (the "and..."
+    # continuation, and Clef's A1/A2/nudge, are still outstanding — see
+    # the Trello card's checklist).
+    "f8b86557-Clef_That_notes_higher.wav": "clefSaysHigher67",
+    "5e19bbd6-Piper_That_ones_lower.wav": "piperSaysLower67",
+    "5d26a01f-Piper_and_that_ones_lower.wav": "piperSaysLower67Second",
+    "a49dc49d-Piper_Listen_for_the_lower_note.wav": "listenForLower67",
+    "e1ae2d10-Piper_Which_note_is_lower.wav": "whichIsLower67",
+    "1c1c97d2-Piper_Not_that_one___one_more_listen.wav": "tryAgainPiper67",
+    # 8+ — a single nudge line; see the "shared rotating nudge pool" card
+    # (Trello KmufGcge) for why this isn't a per-band A0/A1/A2 line.
+    "a8049f40-Piper_Thats_not_it._Try_again.wav": "tryAgainPiper8plus",
 }
 
 
