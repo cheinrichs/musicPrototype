@@ -55,6 +55,12 @@ class _HighLowScreenState extends State<HighLowScreen> {
   late HighLowGameState _gameState;
   bool _showDevGate = devToolsEnabled;
 
+  /// Whether a resting piano drifts side to side, per [_buildInstrumentSlot]
+  /// — off for now (Cooper is trying stationary pianos rather than
+  /// settling on the drift, Trello card NcVPjPZ5), flip to `true` to
+  /// bring it back.
+  static const _pianoDrifts = false;
+
   /// True after the dev gate picks a [ConceptTier.noteCount] 3 tier
   /// (T5-T8) — those tiers are real in [ConceptTier]/[PromptGenerator]
   /// (Trello card "Rebuild the tier ladder as eight tiers (2x2x2)"), but
@@ -1038,9 +1044,8 @@ class _HighLowScreenState extends State<HighLowScreen> {
   /// the centered character (Trello, "reverse the A2 drag interaction":
   /// the instrument used to just sit here as a fixed answer the dragged
   /// character landed on; now it's the thing the child picks up). Bobs
-  /// gently while resting (side-to-side for [isPiano], up-and-down for
-  /// everything else) — see the `else` branch below, Trello card
-  /// NcVPjPZ5.
+  /// gently up-and-down while resting — except a piano, currently
+  /// stationary (see [_pianoDrifts]) — Trello card NcVPjPZ5.
   ///
   /// [celebratingThis] mirrors the pre-reversal "celebrate a correct drop"
   /// fix, just on the instrument instead of the character: on this
@@ -1132,11 +1137,14 @@ class _HighLowScreenState extends State<HighLowScreen> {
       // characters are stationary throughout (see [_buildTargetCharacter]
       // and [_buildClef]/[_buildPiper]'s doc comments). Pianos don't get
       // a stump at all (see [_buildScene] — Cooper: "they look weird
-      // sitting on top of a stump"), and a vertical bob would look like
-      // they're floating in place above nothing without one to bounce
-      // against, so they get a slight side-to-side drift instead — just
-      // enough that they don't read as a frozen background prop.
-      button = isPiano
+      // sitting on top of a stump").
+      //
+      // Pianos are fully stationary for now, not drifting — Cooper is
+      // trying that rather than settling it ("i don't like the pianos
+      // bouncing side to side actually, i want to try them stationary").
+      // Flip [_pianoDrifts] back to true to bring the drift back; nothing
+      // else about it needs touching.
+      final pianoAnimation = _pianoDrifts
           ? button
                 .animate(onPlay: (c) => c.repeat(reverse: true))
                 .moveX(
@@ -1145,6 +1153,9 @@ class _HighLowScreenState extends State<HighLowScreen> {
                   duration: const Duration(milliseconds: 1600),
                   curve: Curves.easeInOut,
                 )
+          : button;
+      button = isPiano
+          ? pianoAnimation
           : button
                 .animate(onPlay: (c) => c.repeat(reverse: true))
                 .moveY(
