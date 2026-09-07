@@ -3,9 +3,9 @@
 🌱 1: Sound Awareness,Discriminate basic sound qualities,Long vs Short,1 sec vs burst,2–3 sec sustain,Variable lengths,Within rhythmic pattern
 🌱 1: Sound Awareness,Discriminate basic sound qualities,Attack,Very sharp vs very smooth,Moderate contrast,Short accents in sequence,Within melody
 🌱 1: Sound Awareness,Discriminate basic sound qualities,Release,Sudden stop vs fade,Short fade,Variable fade,Phrase-based release
-🎵 2: Pitch Awareness,Compare pitch height and distance,Interval Size,Large (5th+),3rd–5th,Stepwise,Mixed intervals
-🎵 2: Pitch Awareness,Compare pitch height and distance,Number of Notes,2,2–3,3–4,4–5
-🎵 2: Pitch Awareness,Compare pitch height and distance,Tempo,Slow,Moderate,Faster,Variable
+🎵 2: Pitch Awareness,"SUPERSEDED — see docs/product/HIGH_LOW_TIERS.md for the current 8-tier (2x2x2) ladder; this 4-tier row predates it",Interval Size,Large (5th+),3rd–5th,Stepwise,Mixed intervals
+🎵 2: Pitch Awareness,"SUPERSEDED — see docs/product/HIGH_LOW_TIERS.md for the current 8-tier (2x2x2) ladder; this 4-tier row predates it",Number of Notes,2,2–3,3–4,4–5
+🎵 2: Pitch Awareness,"SUPERSEDED — see docs/product/HIGH_LOW_TIERS.md for the current 8-tier (2x2x2) ladder; this 4-tier row predates it",Tempo,Slow,Moderate,Faster,Variable
 🌈 3: Contour & Shape,Understand melodic movement,# of Notes,2,3,4–5,5–7
 🌈 3: Contour & Shape,Understand melodic movement,Interval Type,Large leaps,Mixed,Stepwise,Mixed tricky
 🌈 3: Contour & Shape,Understand melodic movement,Tempo,Slow,Moderate,Faster,Variable
