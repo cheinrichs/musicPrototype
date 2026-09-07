@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import '../../app/router.dart';
+import '../components/adult_door.dart';
 import '../theme/theme.dart';
 
 /// The app's true entry point — a branded "SongStone" landing screen shown
@@ -37,6 +38,19 @@ class SongStoneHomeScreen extends StatelessWidget {
                   const SizedBox(width: AppSpacing.lg),
                   Expanded(flex: 4, child: _buildMenu(context)),
                 ],
+              ),
+            ),
+          ),
+          // Tucked in the corner, away from the wordmark and the menu
+          // pills both — see AdultDoor's own doc comment for why this is
+          // deliberately easy to miss rather than styled to match
+          // anything else here.
+          SafeArea(
+            child: Align(
+              alignment: Alignment.bottomRight,
+              child: AdultDoor(
+                semanticLabel: 'About and credits',
+                onTap: () => context.push(AppRoutes.credits),
               ),
             ),
           ),

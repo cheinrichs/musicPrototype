@@ -1,4 +1,5 @@
 import 'package:go_router/go_router.dart';
+import '../ui/screens/credits_screen.dart';
 import '../ui/screens/main_shell.dart';
 import '../ui/screens/songstone_home_screen.dart';
 import '../games/high_low/screens/high_low_screen.dart';
@@ -28,6 +29,7 @@ class AppRoutes {
   static const String pitchName = '/pitch-name';
   static const String reward = '/reward';
   static const String skillProfile = '/skill-profile';
+  static const String credits = '/credits';
 }
 
 /// Create the app router
@@ -84,6 +86,10 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: AppRoutes.skillProfile,
       builder: (context, state) => const SkillProfileScreen(),
+    ),
+    GoRoute(
+      path: AppRoutes.credits,
+      builder: (context, state) => const CreditsScreen(),
     ),
     GoRoute(
       path: AppRoutes.reward,
