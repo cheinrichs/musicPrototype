@@ -597,20 +597,30 @@ class _HighLowScreenState extends State<HighLowScreen> {
     // card OCv6kVmd) from their original roughly-a-third/roughly-a-fifth
     // sizing.
     final charSize = screenHeight * 0.50;
+    // Piper and Clef share one home height (Trello card "Scale the waiting
+    // character up at the screen edge for depth" — Cooper: "i like that
+    // clef become bigger on the right hand side the same way Piper is
+    // bigger over there. it creates some depth of field."). Clef used to
+    // be noticeably smaller here (44% vs Piper's 72%), which read as an
+    // inconsistency rather than a deliberate choice once Piper's edge
+    // size was established — the fix is parity, not a new number for
+    // Clef alone.
     final piperHomeHeight = screenHeight * 0.72;
-    final clefHomeHeight = screenHeight * 0.44;
+    final clefHomeHeight = piperHomeHeight;
     // Trigger-only: whichever character is centered as the fixed drop
     // target uses this size instead of her own home size (Trello card
-    // hIKjobsB — driving the simulator found Piper's home height, 72% of
-    // the screen, rendered enormous when centered and covered the Listen
-    // Again button/status line beneath it; Clef's smaller home height
-    // happened to already read fine centered, which is exactly why this
-    // wasn't caught by either character's *home* appearance alone). A
-    // single shared target size, close to Clef's already-working 44%
-    // rather than Piper's 72%, keeps the two characters visually
-    // consistent in the role they actually share now (centered, fixed,
-    // "hold still and receive the instrument") instead of carrying over
-    // a size difference that was only ever tuned for their *home* spots.
+    // hIKjobsB — driving the simulator found Piper's home height
+    // rendered enormous when centered and covered the Listen Again
+    // button/status line beneath it).
+    //
+    // NOTE — this makes the centered target character *smaller* than
+    // whichever character is standing at the edge. That's deliberate
+    // perspective (the edge is foreground/nearer the viewer, the
+    // centered drop target is background/further away), not a bug and
+    // not an oversight left over from tuning each character separately.
+    // Do not "fix" this by matching it to the home heights above —
+    // that's exactly the naive instinct that would flatten the depth
+    // this card asked for back out again.
     final targetCharacterHeight = screenHeight * 0.42;
     // The shared ground line: where each instrument's feet and its
     // stump's flat top surface meet — see the class doc above. Unlike the
@@ -620,14 +630,12 @@ class _HighLowScreenState extends State<HighLowScreen> {
     final groundY = screenHeight * 0.16;
     final leftAnchorX = screenWidth * 0.29;
     final rightAnchorX = screenWidth * 0.72;
-    // How far above the screen's bottom edge (and, for the fixed home
-    // spots, how far further outward past the screen's side edge) Piper
-    // and Clef sit — raised and pushed outward from their old flush-corner
-    // spots (Trello card S1v6sbrK: Piper's home was circled up-and-left of
-    // where she stood, Clef's up-and-right of hers; the drag round's
-    // centered character was sitting below the stump line entirely).
+    // How far above the screen's bottom edge Piper and Clef's home spots
+    // sit — raised from their old flush-corner spots (Trello card
+    // S1v6sbrK: Piper's home was circled up-and-left of where she stood,
+    // Clef's up-and-right of hers; the drag round's centered character
+    // was sitting below the stump line entirely).
     final homeLift = screenHeight * 0.08;
-    final homeShift = screenWidth * 0.04;
     final isTrigger = _gameState.agencyStage == AgencyStage.trigger;
     final prompt = _gameState.currentPrompt;
     // Trigger-only: whichever character owns this round's target pole
@@ -676,7 +684,6 @@ class _HighLowScreenState extends State<HighLowScreen> {
           targetCharacterHeight,
           clefIsTarget,
           homeLift,
-          homeShift,
           groundY,
           celebrating: celebrating && clefIsTarget,
           hovering: _dragHovering && clefIsTarget,
@@ -804,12 +811,21 @@ class _HighLowScreenState extends State<HighLowScreen> {
   /// header/body controls once she took the same fixed target role. Bobs
   /// continuously either way — that idle motion is Clef's own character
   /// beat, not a "drop here" cue (that's [hovering]/[celebrating] below).
+  ///
+  /// Home position mirrors Piper's exactly (flush with the screen's edge,
+  /// `fit: BoxFit.contain`) — see [_buildPiper]'s doc comment for why the
+  /// old `-homeShift` push past the edge is gone. It used to be there to
+  /// compensate for Clef's home size being noticeably smaller than
+  /// Piper's; now that they share [homeHeight] (Trello card "Scale the
+  /// waiting character up at the screen edge for depth"), that
+  /// compensation is not only unneeded but wrong — pushing a
+  /// Piper-sized Clef past the edge would clip her the same way it once
+  /// clipped Piper.
   Widget _buildClef(
     double homeHeight,
     double targetHeight,
     bool isTarget,
     double homeLift,
-    double homeShift,
     double centerLift, {
     required bool celebrating,
     required bool hovering,
@@ -818,6 +834,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
       final clefImage = Image.asset(
         'assets/images/characters/Clef.png',
         height: homeHeight,
+        fit: BoxFit.contain,
       );
       final bobbing = clefImage
           .animate(onPlay: (c) => c.repeat(reverse: true))
@@ -827,7 +844,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
             duration: const Duration(milliseconds: 1200),
             curve: Curves.easeInOut,
           );
-      return Positioned(right: -homeShift, bottom: homeLift, child: bobbing);
+      return Positioned(right: 0, bottom: homeLift, child: bobbing);
     }
 
     final targetImage = Image.asset(
@@ -858,12 +875,10 @@ class _HighLowScreenState extends State<HighLowScreen> {
   /// [homeHeight] reused. Unlike Clef, Piper doesn't idle-bob while fixed;
   /// only picks up motion once she's the one being targeted.
   ///
-  /// Sits flush with the screen's left edge, not pushed past it like
-  /// Clef's `-homeShift` on the right — that negative offset cropped
-  /// Piper in half against the left edge (Trello card "Separate the
-  /// stumps from the background art"). Clef's art apparently has enough
-  /// transparent margin on that side to absorb the same shift without
-  /// visibly cropping; Piper's doesn't.
+  /// Sits flush with the screen's left edge (Trello card "Separate the
+  /// stumps from the background art" — an earlier `-homeShift` push past
+  /// the edge cropped Piper in half). Clef's home position now mirrors
+  /// this exactly — see [_buildClef]'s doc comment.
   Widget _buildPiper(
     double homeHeight,
     double targetHeight,
