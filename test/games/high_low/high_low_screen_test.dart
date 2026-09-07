@@ -472,4 +472,70 @@ void main() {
       },
     );
   });
+
+  group('three-note tier placeholder (Trello card "Rebuild the tier ladder as '
+      'eight tiers (2x2x2)")', () {
+    tearDown(() {
+      devToolsEnabled = false;
+    });
+
+    testWidgets(
+      'picking a three-note tier (T5-T8) shows a placeholder instead of '
+      'starting the game — there is no screen for a third instrument '
+      'yet, and this must not crash or render a broken two-slot layout '
+      'for it',
+      (tester) async {
+        devToolsEnabled = true;
+        await tester.pumpWidget(
+          MaterialApp(
+            home: ChangeNotifierProvider(
+              create: (_) => DevSettingsState(),
+              child: const HighLowScreen(),
+            ),
+          ),
+        );
+        await tester.pump();
+
+        await tester.tap(find.text('T5'));
+        await tester.pump();
+        await tester.tap(find.text('Start'));
+        await tester.pump();
+
+        expect(find.textContaining("aren't built yet"), findsOneWidget);
+        expect(find.text('Dev: agency setup'), findsNothing);
+        expect(
+          find.byType(DragTarget<int>),
+          findsNothing,
+          reason: 'no game state was started, so no drop target either',
+        );
+
+        await tester.tap(find.text('Back to tier picker'));
+        await tester.pump();
+        expect(find.text('Dev: agency setup'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'a two-note tier (the T1 default) starts the real game, not the '
+      'placeholder',
+      (tester) async {
+        devToolsEnabled = true;
+        await tester.pumpWidget(
+          MaterialApp(
+            home: ChangeNotifierProvider(
+              create: (_) => DevSettingsState(),
+              child: const HighLowScreen(),
+            ),
+          ),
+        );
+        await tester.pump();
+
+        await tester.tap(find.text('Start'));
+        await tester.pump();
+        await tester.pump(Duration.zero);
+
+        expect(find.textContaining("aren't built yet"), findsNothing);
+      },
+    );
+  });
 }

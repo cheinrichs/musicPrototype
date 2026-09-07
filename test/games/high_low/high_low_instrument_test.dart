@@ -126,13 +126,23 @@ void main() {
     });
 
     test('hasRangeFor reflects each instrument\'s real span — tuba\'s '
-        'post-speaker-audibility G#3-B3 (3 semitones) is the one instrument '
-        'narrower than most tiers ask for; every other instrument spans a '
-        'full two-ish octaves and clears every tier', () {
-      expect(HighLowInstrument.tuba.hasRangeFor(2), isTrue); // T4
+        'post-speaker-audibility G#3-B3 (3 semitones) is narrower than '
+        'every one of the eight ConceptTiers now (the narrowest floor is '
+        '4, the old narrower-still T4 is gone); every other instrument '
+        'spans a full two-ish octaves and clears every tier', () {
+      expect(
+        HighLowInstrument.tuba.hasRangeFor(2),
+        isTrue,
+      ); // below every tier's floor
       expect(HighLowInstrument.tuba.hasRangeFor(3), isTrue); // its own span
-      expect(HighLowInstrument.tuba.hasRangeFor(4), isFalse); // T2/T3
-      expect(HighLowInstrument.tuba.hasRangeFor(7), isFalse); // T1
+      expect(
+        HighLowInstrument.tuba.hasRangeFor(4),
+        isFalse,
+      ); // narrow tiers' floor (T2/T4/T6/T8)
+      expect(
+        HighLowInstrument.tuba.hasRangeFor(7),
+        isFalse,
+      ); // wide tiers' floor (T1/T3/T5/T7)
 
       for (final instrument in HighLowInstrument.values) {
         if (instrument == HighLowInstrument.tuba) continue;

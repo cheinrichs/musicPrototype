@@ -55,6 +55,18 @@ class _HighLowScreenState extends State<HighLowScreen> {
   late HighLowGameState _gameState;
   bool _showDevGate = devToolsEnabled;
 
+  /// True after the dev gate picks a [ConceptTier.noteCount] 3 tier
+  /// (T5-T8) — those tiers are real in [ConceptTier]/[PromptGenerator]
+  /// (Trello card "Rebuild the tier ladder as eight tiers (2x2x2)"), but
+  /// no screen renders a three-note round yet: there's no design for
+  /// where a third instrument sits without competing with the centered
+  /// target character's own carefully-tuned position (Trello cards
+  /// NcVPjPZ5/1SpHq2la). [_gameState.startGame] is deliberately never
+  /// called in this case — see [_startFromDevGate] — so this shows a
+  /// plain placeholder instead of a broken or cramped two-slot layout
+  /// trying to represent a third note it has nowhere to put.
+  bool _threeNoteTierNotBuilt = false;
+
   /// Whether a dragged instrument is currently hovering over the drop
   /// zone, for the centered character's little "you're about to drop
   /// here" scale-up — purely a transient UI cue, not game state, so it
@@ -137,13 +149,58 @@ class _HighLowScreenState extends State<HighLowScreen> {
       ..agencyStage = devSettings.agencyStage
       ..conceptTier = devSettings.conceptTier
       ..roundOrder = devSettings.roundOrder;
-    setState(() => _showDevGate = false);
-    _gameState.startGame();
+    final threeNote = devSettings.conceptTier.noteCount == 3;
+    setState(() {
+      _showDevGate = false;
+      _threeNoteTierNotBuilt = threeNote;
+    });
+    if (!threeNote) _gameState.startGame();
   }
 
   /// Tapping an instrument is always exploration — see
   /// [HighLowGameState.tapInstrument].
   void _onInstrumentTap(int side) => _gameState.tapInstrument(side);
+
+  /// Shown instead of the real game when the dev gate picks a three-note
+  /// tier (T5-T8) — see [_threeNoteTierNotBuilt]. Plain and honest rather
+  /// than a broken attempt at the real scene: says what's missing, and
+  /// lets a developer get back to the tier picker without leaving the
+  /// game entirely.
+  Widget _buildThreeNoteNotBuiltPlaceholder() {
+    return Scaffold(
+      body: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Three-note tiers aren\'t built yet',
+                  style: AppTypography.bodyLarge,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Text(
+                  '${_gameState.conceptTier.label} asks "which one is the '
+                  'highest" across three notes. The tier and its prompt '
+                  'generator are ready — the on-screen layout for a third '
+                  'instrument isn\'t designed yet.',
+                  style: AppTypography.bodyMedium,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: AppSpacing.lg),
+                FilledButton(
+                  onPressed: () => setState(() => _showDevGate = true),
+                  child: const Text('Back to tier picker'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -152,6 +209,10 @@ class _HighLowScreenState extends State<HighLowScreen> {
       // unless devToolsEnabled, so a public App Store build never shows
       // this.
       return Scaffold(body: DevSetupOverlay(onStart: _startFromDevGate));
+    }
+
+    if (_threeNoteTierNotBuilt) {
+      return _buildThreeNoteNotBuiltPlaceholder();
     }
 
     return RepaintBoundary(

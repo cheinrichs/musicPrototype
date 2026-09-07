@@ -55,7 +55,7 @@ This is consistent with the judgement that a near-semitone discrimination is an 
 
 Earlier framing put three notes at A4 with ordering. Separating them is better and solves the jump problem:
 
-- **Tier** introduces the third note at T3, asked as *"give me the highest one."* Still selection.
+- **Tier** introduces the third note at T5, asked as *"give me the highest one."* Still selection.
 - **Agency A4** later asks her to *arrange* them. By then three notes is familiar and the only new thing is the ordering operation.
 
 Item count is a demand on what she can hold. Ordering is a demand on what she can do with it.

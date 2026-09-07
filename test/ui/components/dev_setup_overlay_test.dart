@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:ear_trainer/app/state/dev_settings_state.dart';
 import 'package:ear_trainer/models/agency_stage.dart';
+import 'package:ear_trainer/models/concept_tier.dart';
 import 'package:ear_trainer/ui/components/dev_setup_overlay.dart';
 
 void main() {
@@ -62,4 +63,29 @@ void main() {
         tester.view.physicalSize.height / tester.view.devicePixelRatio;
     expect(startButton.bottom, lessThanOrEqualTo(viewportHeight));
   });
+
+  testWidgets(
+    'offers all eight tier chips, T1 through T8 — Trello card "Rebuild '
+    'the tier ladder as eight tiers (2x2x2)": this screen only offered '
+    'four before',
+    (tester) async {
+      final devSettings = DevSettingsState();
+      await tester.pumpWidget(
+        ChangeNotifierProvider<DevSettingsState>.value(
+          value: devSettings,
+          child: MaterialApp(
+            home: Scaffold(body: DevSetupOverlay(onStart: () {})),
+          ),
+        ),
+      );
+
+      for (final label in ['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8']) {
+        expect(find.text(label), findsOneWidget);
+      }
+
+      await tester.tap(find.text('T8'));
+      await tester.pump();
+      expect(devSettings.conceptTier, ConceptTier.t8);
+    },
+  );
 }
