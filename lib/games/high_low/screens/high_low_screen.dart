@@ -11,7 +11,6 @@ import '../../../app/state/skill_state.dart';
 import '../../../models/agency_stage.dart';
 import '../../../models/musical_skill.dart';
 import '../../../models/game_status.dart';
-import '../../../ui/components/circle_icon_button.dart';
 import '../../../ui/components/dev_setup_overlay.dart';
 import '../../../ui/components/drifting_notes.dart';
 import '../../../ui/components/game_screen_layout.dart';
@@ -22,6 +21,7 @@ import '../models/high_low_instrument.dart';
 import '../models/round_report.dart';
 import '../services/round_report_service.dart';
 import '../state/high_low_game_state.dart';
+import '../widgets/high_low_header.dart';
 
 /// Main game screen for High/Low ear training.
 ///
@@ -244,7 +244,22 @@ class _HighLowScreenState extends State<HighLowScreen> {
             _buildScene(context),
           ],
         ),
-        header: _buildHeader(),
+        header: HighLowHeader(
+          onClose: () {
+            final extra =
+                GoRouterState.of(context).extra as Map<String, dynamic>?;
+            if (extra?['fromPath'] == true) {
+              context.read<ProgressState>().requestPathReturn();
+            }
+            context.go(AppRoutes.home);
+          },
+          captionText: _gameState.captionText,
+          reportButtonKey: devToolsEnabled ? _reportButtonKey : null,
+          onReportTap: _gameState.currentPrompt == null ? null : _onReportRound,
+          sharingReport: _sharingReport,
+          skipEnabled: _gameState.status != GameStatus.completed,
+          onSkip: _gameState.moveOn,
+        ),
         body: _buildBody(context),
         footer: ProgressDots(
           totalDots: _gameState.totalPrompts,
@@ -310,93 +325,6 @@ class _HighLowScreenState extends State<HighLowScreen> {
           ),
         );
       },
-    );
-  }
-
-  /// Close (left), the round's caption (center, see [_buildPromptArea]),
-  /// and the child's move-on/skip pill plus (dev builds only) the report
-  /// button (right) — [ProgressDots] used to sit in this row's center slot,
-  /// but moved down to [GameScreenLayout]'s `footer` (see `build`) to make
-  /// room for the caption, matching the mockup layout (Trello card
-  /// "Separate the stumps from the background art"): question at the top,
-  /// progress dots along the bottom.
-  ///
-  /// [Expanded] alone isn't enough to keep the caption clear of the close
-  /// button: it constrains the caption's *available* width, but nothing
-  /// stopped the caption's own content from rendering flush against that
-  /// boundary with zero margin (Trello card hIKjobsB, found driving the
-  /// simulator — a long caption's centered text, wide enough to need
-  /// nearly the full Expanded width, measured with its own left edge
-  /// exactly touching the close button's right edge: no true overlap, but
-  /// no breathing room either, which reads as "running underneath" it).
-  /// Trigger's captions are the ones long enough to trigger this — e.g.
-  /// "Drag the higher-sounding instrument to Clef." — Observe/
-  /// Participate's shorter lines never got close enough to the edges to
-  /// show it. The explicit [SizedBox] gaps below are the fix: they
-  /// guarantee a minimum margin on both sides regardless of how wide the
-  /// caption's own text needs to be.
-  ///
-  /// (A first attempt moved the caption to its own row below the icons
-  /// instead, on the theory that *any* horizontal competition was the
-  /// risk. That was reverted: it grew the header tall enough, on a tight
-  /// landscape viewport, to push the body's Listen Again button down into
-  /// the exact screen-center point the background's drop zone gets
-  /// hit-tested at, regressing the drag interaction. Fixing the real,
-  /// narrow cause — no margin, not "shares a row" — avoids that.)
-  Widget _buildHeader() {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        CircleIconButton(
-          icon: Icons.close_rounded,
-          tooltip: 'Close',
-          onTap: () {
-            final extra =
-                GoRouterState.of(context).extra as Map<String, dynamic>?;
-            if (extra?['fromPath'] == true) {
-              context.read<ProgressState>().requestPathReturn();
-            }
-            context.go(AppRoutes.home);
-          },
-        ),
-        const SizedBox(width: AppSpacing.sm),
-        Expanded(child: _buildPromptArea()),
-        const SizedBox(width: AppSpacing.sm),
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Dev-only report button (Trello card on0EymSu) — gated the
-            // same way as the dev gate above, so a public App Store build
-            // never shows it.
-            if (devToolsEnabled) ...[
-              Stack(
-                alignment: Alignment.center,
-                children: [
-                  CircleIconButton(
-                    key: _reportButtonKey,
-                    icon: Icons.ios_share_rounded,
-                    tooltip: 'Report this round',
-                    onTap: _gameState.currentPrompt == null || _sharingReport
-                        ? null
-                        : _onReportRound,
-                  ),
-                  // Immediate acknowledgement that the tap landed — a slow
-                  // capture-and-share otherwise gives no feedback at all
-                  // until (or unless) the share sheet finally appears.
-                  if (_sharingReport)
-                    const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
-                ],
-              ),
-              const SizedBox(width: AppSpacing.sm),
-            ],
-            _buildSkipPill(),
-          ],
-        ),
-      ],
     );
   }
 
@@ -480,112 +408,6 @@ class _HighLowScreenState extends State<HighLowScreen> {
     } finally {
       if (mounted) setState(() => _sharingReport = false);
     }
-  }
-
-  /// The child's move-on/skip control — a parchment pill in the header's
-  /// top-right corner, opposite the close X (Trello card "Move Skip back to
-  /// the top right as an icon-plus-text pill"). This reverses an earlier
-  /// decision (Trello card: "the move-on arrow is no longer adult-only"),
-  /// which had moved this control to a bottom-right arrow specifically so
-  /// skipping wasn't an adult-only, header-only affordance. Cooper reviewed
-  /// a mockup and preferred the top-right pill instead — it's still sized
-  /// generously (see [AppSpacing.largeTapTarget] below) so a child can
-  /// still find and hit it even though it reads visually quieter than the
-  /// old arrow did.
-  ///
-  /// Available from the very start of every round, at every stage, and
-  /// never gated on game phase — a child who wants to move on should be
-  /// able to, same as before (Trello card 91).
-  Widget _buildSkipPill() {
-    final enabled = _gameState.status != GameStatus.completed;
-    return Tooltip(
-      message: 'Skip',
-      child: GestureDetector(
-        onTap: enabled ? _gameState.moveOn : null,
-        child: AnimatedOpacity(
-          opacity: enabled ? 1 : 0.4,
-          duration: AppAnimations.fast,
-          child: Container(
-            constraints: const BoxConstraints(
-              minHeight: AppSpacing.largeTapTarget,
-            ),
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.md,
-              vertical: AppSpacing.sm,
-            ),
-            decoration: BoxDecoration(
-              gradient: AppColors.cardGradient,
-              borderRadius: BorderRadius.circular(AppSpacing.radiusRound),
-              border: Border.all(color: AppColors.cardEdge, width: 1.5),
-              boxShadow: const [
-                BoxShadow(
-                  color: AppColors.shadow,
-                  blurRadius: 8,
-                  offset: Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(
-                  Icons.fast_forward_rounded,
-                  color: AppColors.textSecondary,
-                  size: 26,
-                ),
-                const SizedBox(width: AppSpacing.sm),
-                Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Skip',
-                      style: AppTypography.bodyLarge.copyWith(fontSize: 18),
-                    ),
-                    Text(
-                      "I'm ready to move on",
-                      style: AppTypography.label.copyWith(letterSpacing: 0),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// The current round's spoken-line placeholder (Observe's live
-  /// narration, or the constant Participate/Trigger prompt, or a brief
-  /// retry line) — see [VoiceLine] for why this is text today. Lives at
-  /// the top of the screen now, in [_buildHeader]'s center slot, per the
-  /// mockup (Trello card "Separate the stumps from the background art") —
-  /// it used to sit mid-screen, directly on top of Listen Again and the
-  /// "Listen carefully..." status line. Reserves two lines' worth of
-  /// height even when empty so the header doesn't jump as [text] toggles
-  /// on and off between rounds.
-  Widget _buildPromptArea() {
-    final text = _gameState.captionText;
-    return SizedBox(
-      height:
-          AppTypography.heading3.fontSize! * AppTypography.heading3.height! * 2,
-      child: Center(
-        child: AnimatedSwitcher(
-          duration: AppAnimations.medium,
-          child: text == null
-              ? const SizedBox.shrink(key: ValueKey('caption-empty'))
-              : Text(
-                  text,
-                  key: ValueKey('caption-$text'),
-                  style: AppTypography.heading3,
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-        ),
-      ),
-    );
   }
 
   Widget _buildListenAgainButton() {
