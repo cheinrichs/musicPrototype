@@ -345,6 +345,36 @@ void main() {
     },
   );
 
+  testWidgets(
+    'the adult move-on control appears ~6s into an unanswered round '
+    '(default agency is Trigger) and resolves the round when tapped '
+    '(Trello card xpAkja5b)',
+    (tester) async {
+      await pumpAndFinishIntro(tester);
+
+      expect(
+        find.byIcon(Icons.check_circle_outline),
+        findsNothing,
+        reason: 'never visible immediately',
+      );
+
+      await tester.pump(const Duration(seconds: 6));
+
+      final moveOnControl = find.byIcon(Icons.check_circle_outline);
+      expect(moveOnControl, findsOneWidget);
+
+      await tester.tap(moveOnControl);
+      await tester.pump();
+      await tester.pump(Duration.zero);
+
+      expect(
+        tester.widget<ProgressDots>(find.byType(ProgressDots)).completedCount,
+        1,
+        reason: 'unlike Skip, moveOn resolves the round as answered',
+      );
+    },
+  );
+
   group('"Report this round" button (Trello card on0EymSu)', () {
     tearDown(() {
       // devToolsEnabled is a mutable, session-wide flag (see

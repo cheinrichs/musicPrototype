@@ -22,7 +22,12 @@ void main() {
         totalPrompts: 3,
         agencyStage: AgencyStage.observe,
       );
-      addTearDown(state.dispose);
+      // Disposed explicitly at the end (this round's own 6-second nudge
+      // timer — see HighLowGameState._finishIntro — is still pending once
+      // awaitingInput is reached, and addTearDown's dispose only runs
+      // after flutter_test's own pending-timer check) rather than via
+      // addTearDown — see the matching comment on the "targetCharacterIsPiper"
+      // test below.
       state.startGame();
       await tester.pump();
       expect(state.introPlaying, isTrue);
@@ -43,6 +48,7 @@ void main() {
         0,
         reason: 'Observe never auto-advances',
       );
+      state.dispose();
     });
 
     testWidgets(
@@ -60,14 +66,15 @@ void main() {
           agencyStage: AgencyStage.observe,
           roundOrder: RoundOrder.blocked,
         );
-        addTearDown(state.dispose);
         state.startGame();
-        // Let the intro's own scheduled timer run to completion so none
-        // is still pending when this test body returns — same reason the
-        // other tests in this file that don't otherwise interact with the
-        // intro advance past it (flutter_test asserts no pending Timer at
-        // teardown, and this state's own `dispose` only cancels it in an
-        // `addTearDown`, which runs after that assertion).
+        // Let the intro's own scheduled timer run to completion, same
+        // reason the other tests in this file that don't otherwise
+        // interact with the intro advance past it — but that alone isn't
+        // enough any more: reaching awaitingInput schedules a further
+        // 6-second nudge timer (Trello card 5tdMOMh3/xpAkja5b), which
+        // would still be pending at teardown, so this disposes explicitly
+        // at the end instead of via `addTearDown` (which runs *after*
+        // flutter_test's own pending-timer assertion).
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 4700));
 
@@ -82,6 +89,7 @@ void main() {
           isFalse,
           reason: 'Observe has no drag interaction at all',
         );
+        state.dispose();
       },
     );
   });
@@ -94,7 +102,9 @@ void main() {
         totalPrompts: 3,
         agencyStage: AgencyStage.participate,
       );
-      addTearDown(state.dispose);
+      // Disposed explicitly at the end — see the matching comment on the
+      // Observe "a tap never cuts the intro" test above (awaitingInput
+      // schedules a 6-second nudge timer still pending at teardown).
       state.startGame();
       await tester.pump();
       expect(state.introPlaying, isTrue);
@@ -104,32 +114,30 @@ void main() {
 
       expect(state.introPlaying, isFalse);
       expect(state.status, GameStatus.awaitingInput);
-      expect(
-        state.showHint,
-        isTrue,
-        reason: 'Clef should sparkle on the target once listening begins',
-      );
       expect(state.correctCount, 0, reason: 'no question, no wrong answers');
+      state.dispose();
     });
 
-    testWidgets('never records anything — there is nothing to score', (
-      tester,
-    ) async {
-      final state = HighLowGameState(
-        totalPrompts: 1,
-        agencyStage: AgencyStage.participate,
-      );
-      addTearDown(state.dispose);
-      state.startGame();
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 4700));
+    testWidgets(
+      'escaping without tapping records nothing — there is nothing to '
+      'score unless a real tap streak resolved the round',
+      (tester) async {
+        final state = HighLowGameState(
+          totalPrompts: 1,
+          agencyStage: AgencyStage.participate,
+        );
+        addTearDown(state.dispose);
+        state.startGame();
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 4700));
 
-      expect(state.status, GameStatus.awaitingInput);
-      state.moveOn();
-      await tester.pump();
-      expect(state.status, GameStatus.completed);
-      expect(state.instrumentation, isEmpty);
-    });
+        expect(state.status, GameStatus.awaitingInput);
+        state.escape();
+        await tester.pump();
+        expect(state.status, GameStatus.completed);
+        expect(state.instrumentation, isEmpty);
+      },
+    );
 
     testWidgets(
       'targetCharacterIsPiper is meaningful and canDrop is false — Trello '
@@ -141,14 +149,9 @@ void main() {
           agencyStage: AgencyStage.participate,
           roundOrder: RoundOrder.blocked,
         );
-        addTearDown(state.dispose);
         state.startGame();
-        // Let the intro's own scheduled timer run to completion so none
-        // is still pending when this test body returns — same reason the
-        // other tests in this file that don't otherwise interact with the
-        // intro advance past it (flutter_test asserts no pending Timer at
-        // teardown, and this state's own `dispose` only cancels it in an
-        // `addTearDown`, which runs after that assertion).
+        // Disposed explicitly at the end — see the matching comment on
+        // the Observe version of this test above.
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 4700));
 
@@ -163,6 +166,7 @@ void main() {
           isFalse,
           reason: 'Participate has no drag interaction at all',
         );
+        state.dispose();
       },
     );
   });
@@ -216,7 +220,6 @@ void main() {
           agencyStage: AgencyStage.trigger,
           conceptTier: ConceptTier.t1,
         );
-        addTearDown(state.dispose);
         state.startGame();
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 4700));
@@ -240,6 +243,11 @@ void main() {
         expect(state.status, GameStatus.awaitingInput);
         expect(state.dragFeedback, DragFeedback.none);
         expect(state.canDrop, isTrue, reason: 'a real retry, not stuck');
+        // Disposed explicitly (this second awaitingInput scheduled its
+        // own fresh 6-second nudge timer, still pending here) rather than
+        // via addTearDown — see the matching comment on the Observe "a
+        // tap never cuts the intro" test.
+        state.dispose();
       },
     );
 
@@ -300,7 +308,8 @@ void main() {
         totalPrompts: 1,
         agencyStage: AgencyStage.trigger,
       );
-      addTearDown(state.dispose);
+      // Disposed explicitly at the end — see the matching comment on the
+      // Observe "a tap never cuts the intro" test above.
       state.startGame();
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 4700));
@@ -315,6 +324,7 @@ void main() {
         reason: 'a tap must never commit an answer, even the right side',
       );
       expect(state.correctCount, 0);
+      state.dispose();
     });
 
     testWidgets(
@@ -325,9 +335,9 @@ void main() {
           totalPrompts: 5,
           agencyStage: AgencyStage.trigger,
         );
-        // Disposed explicitly at the end (moveOn below starts a new
+        // Disposed explicitly at the end (escape below starts a new
         // round's intro along the way) rather than via addTearDown — see
-        // the matching comment on the "moveOn always advances" test.
+        // the matching comment on the "escape always advances" test.
         state.startGame();
         await tester.pump();
 
@@ -348,7 +358,7 @@ void main() {
         // ...then a "lower" target — this is the branch the reported bug
         // (Trello card 101) was actually in: Piper spoke while Clef stayed
         // centered.
-        state.moveOn();
+        state.escape();
         await tester.pump();
 
         expect(state.currentPrompt!.targetDirection, PitchDirection.lower);
@@ -364,7 +374,7 @@ void main() {
   });
 
   group('HighLowGameState — shared controls', () {
-    testWidgets('moveOn always advances immediately, mid-intro, unscored', (
+    testWidgets('escape always advances immediately, mid-intro, unscored', (
       tester,
     ) async {
       final state = HighLowGameState(
@@ -377,7 +387,7 @@ void main() {
       await tester.pump();
       expect(state.status, GameStatus.playing);
 
-      state.moveOn();
+      state.escape();
       await tester.pump();
 
       expect(state.currentPromptIndex, 1);
@@ -387,7 +397,7 @@ void main() {
       state.dispose();
     });
 
-    testWidgets('moveOn on the last prompt completes the session', (
+    testWidgets('escape on the last prompt completes the session', (
       tester,
     ) async {
       final state = HighLowGameState(
@@ -398,10 +408,313 @@ void main() {
       state.startGame();
       await tester.pump();
 
-      state.moveOn();
+      state.escape();
       await tester.pump();
 
       expect(state.status, GameStatus.completed);
     });
+
+    testWidgets(
+      'the move-on control is invisible for the first 6 seconds, then '
+      'appears for Observe/Trigger but never Participate (Trello cards '
+      '5tdMOMh3/xpAkja5b)',
+      (tester) async {
+        for (final stage in AgencyStage.values) {
+          final state = HighLowGameState(
+            totalPrompts: 2,
+            agencyStage: stage,
+          );
+          addTearDown(state.dispose);
+          state.startGame();
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 4700));
+
+          expect(
+            state.showMoveOnControl,
+            isFalse,
+            reason: '$stage: never visible immediately',
+          );
+
+          await tester.pump(const Duration(seconds: 6));
+
+          expect(
+            state.showMoveOnControl,
+            stage != AgencyStage.participate,
+            reason:
+                '$stage: visible ~6s in for Observe/Trigger, never for '
+                'Participate (which has its own auto-advance instead)',
+          );
+        }
+      },
+    );
+
+    testWidgets(
+      'moveOn resolves the round — plays/sparkles the correct instrument '
+      'and advances, unlike escape (Trello card xpAkja5b)',
+      (tester) async {
+        final state = HighLowGameState(
+          totalPrompts: 2,
+          agencyStage: AgencyStage.observe,
+        );
+        state.startGame();
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 4700));
+        await tester.pump(const Duration(seconds: 6));
+        expect(state.showMoveOnControl, isTrue);
+
+        final targetSide = state.currentPrompt!.targetSide;
+        state.moveOn();
+        await tester.pump();
+
+        expect(state.dragFeedback, DragFeedback.correct);
+        expect(state.lastDropSide, targetSide);
+        expect(state.instrumentSparkleSide, targetSide);
+        expect(
+          state.correctCount,
+          1,
+          reason: 'unlike escape, moveOn resolves the round as answered',
+        );
+
+        await tester.pump(const Duration(milliseconds: 1300));
+        expect(state.currentPromptIndex, 1);
+        state.dispose();
+      },
+    );
+
+    testWidgets('moveOn does nothing before showMoveOnControl is true', (
+      tester,
+    ) async {
+      final state = HighLowGameState(
+        totalPrompts: 2,
+        agencyStage: AgencyStage.observe,
+      );
+      // Disposed explicitly at the end — the intro's own note-gap timer
+      // is still pending this early (see the matching comment on the
+      // Observe "a tap never cuts the intro" test above).
+      state.startGame();
+      await tester.pump();
+      expect(state.showMoveOnControl, isFalse);
+
+      state.moveOn();
+      await tester.pump();
+
+      expect(
+        state.correctCount,
+        0,
+        reason: 'the control is not built yet at this point, and the '
+            'method guards against being called anyway',
+      );
+      state.dispose();
+    });
+  });
+
+  group('HighLowGameState — captions (Trello card 5tdMOMh3)', () {
+    testWidgets(
+      'Observe shares one caption for both poles — it must not name which '
+      'character owns which pole',
+      (tester) async {
+        final state = HighLowGameState(
+          totalPrompts: 3,
+          agencyStage: AgencyStage.observe,
+          roundOrder: RoundOrder.blocked,
+        );
+        // Disposed explicitly at the end (escape below starts a second
+        // round whose own intro is still mid-flight, and the first
+        // round's own timers may not have finished either) rather than
+        // via addTearDown — see the matching comment on the Observe "a
+        // tap never cuts the intro" test.
+        state.startGame();
+        await tester.pump();
+
+        expect(state.captionText, 'Let them explore freely.');
+        expect(state.captionText, isNot(contains('Clef')));
+        expect(state.captionText, isNot(contains('Piper')));
+
+        state.escape();
+        await tester.pump();
+        expect(
+          state.captionText,
+          'Let them explore freely.',
+          reason: 'the low-pole round gets the identical caption',
+        );
+        state.dispose();
+      },
+    );
+
+    testWidgets('Participate names the sparkling character per pole', (
+      tester,
+    ) async {
+      final state = HighLowGameState(
+        totalPrompts: 3,
+        agencyStage: AgencyStage.participate,
+        roundOrder: RoundOrder.blocked,
+      );
+      // Disposed explicitly at the end — see the matching comment on the
+      // Observe caption test above.
+      state.startGame();
+      await tester.pump();
+
+      expect(state.currentPrompt!.targetDirection, PitchDirection.higher);
+      expect(state.captionText, contains('Clef sparkles'));
+
+      state.escape();
+      await tester.pump();
+      expect(state.currentPrompt!.targetDirection, PitchDirection.lower);
+      expect(state.captionText, contains('Piper sparkles'));
+      state.dispose();
+    });
+
+    testWidgets(
+      'the secondary Participate caption only appears ~6s in, and only '
+      'for Participate',
+      (tester) async {
+        final state = HighLowGameState(
+          totalPrompts: 1,
+          agencyStage: AgencyStage.participate,
+        );
+        addTearDown(state.dispose);
+        state.startGame();
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 4700));
+
+        expect(state.secondaryCaptionText, isNull);
+
+        await tester.pump(const Duration(seconds: 6));
+        expect(state.secondaryCaptionText, isNotNull);
+        expect(state.secondaryCaptionText, contains('Encourage your child'));
+      },
+    );
+  });
+
+  group('HighLowGameState — A0/A1 repeated taps (Trello card RqdPFKLf)', () {
+    testWidgets(
+      'a correct tap sparkles the owning character; a wrong tap resets '
+      'the streak with nothing negative',
+      (tester) async {
+        final state = HighLowGameState(
+          totalPrompts: 1,
+          agencyStage: AgencyStage.participate,
+        );
+        // Disposed explicitly at the end — see the matching comment on
+        // the Observe "a tap never cuts the intro" test above.
+        state.startGame();
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 4700));
+
+        final targetSide = state.currentPrompt!.targetSide;
+        final wrongSide = 1 - targetSide;
+
+        state.tapInstrument(targetSide);
+        await tester.pump();
+        expect(
+          state.characterSparkleIsPiper,
+          state.targetCharacterIsPiper,
+          reason: 'the owning character sparkles on a correct tap',
+        );
+
+        state.tapInstrument(wrongSide);
+        await tester.pump();
+        expect(state.status, GameStatus.awaitingInput);
+        expect(state.correctCount, 0, reason: 'a wrong tap is never a failure');
+        state.dispose();
+      },
+    );
+
+    testWidgets(
+      'five correct taps in a row celebrate and auto-advance, at both '
+      'Observe and Participate',
+      (tester) async {
+        for (final stage in [AgencyStage.observe, AgencyStage.participate]) {
+          final state = HighLowGameState(
+            totalPrompts: 2,
+            agencyStage: stage,
+          );
+          state.startGame();
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 4700));
+
+          final targetSide = state.currentPrompt!.targetSide;
+          for (var i = 0; i < 5; i++) {
+            state.tapInstrument(targetSide);
+            await tester.pump();
+          }
+
+          expect(
+            state.correctCount,
+            1,
+            reason: '$stage: five correct taps resolve the round',
+          );
+          expect(state.dragFeedback, DragFeedback.correct);
+
+          await tester.pump(const Duration(milliseconds: 1300));
+          expect(state.currentPromptIndex, 1);
+          state.dispose();
+        }
+      },
+    );
+
+    testWidgets('never advances at Trigger — tapping stays pure exploration', (
+      tester,
+    ) async {
+      final state = HighLowGameState(
+        totalPrompts: 1,
+        agencyStage: AgencyStage.trigger,
+      );
+      // Disposed explicitly at the end — see the matching comment on the
+      // Observe "a tap never cuts the intro" test above.
+      state.startGame();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 4700));
+
+      final targetSide = state.currentPrompt!.targetSide;
+      for (var i = 0; i < 5; i++) {
+        state.tapInstrument(targetSide);
+        await tester.pump();
+      }
+
+      expect(state.correctCount, 0);
+      expect(state.status, GameStatus.awaitingInput);
+      state.dispose();
+    });
+  });
+
+  group('HighLowGameState — speaking indicator (Trello card PIm7xE6n)', () {
+    testWidgets(
+      'nobody speaks before the game starts; the correct character speaks '
+      'once a Trigger round prompt begins',
+      (tester) async {
+        final state = HighLowGameState(
+          totalPrompts: 1,
+          agencyStage: AgencyStage.trigger,
+          roundOrder: RoundOrder.blocked,
+        );
+        // Disposed explicitly at the end — see the matching comment on
+        // the Observe "a tap never cuts the intro" test above.
+        expect(state.speakingIsPiper, isNull);
+
+        state.startGame();
+        // Checked synchronously, with no `await` in between: [_speak]
+        // sets [speakingIsPiper] before its own first `await`, and with
+        // AudioController uninitialized in this test environment (see
+        // this file's class doc), that `await` resolves on the very next
+        // microtask — a `tester.pump()` here would already see it
+        // cleared back to null.
+        expect(
+          state.speakingIsPiper,
+          isFalse,
+          reason: 'Round 1 (blocked order) targets "higher", Clef\'s pole, '
+              'so Clef speaks the "give me the high one" prompt',
+        );
+
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 4700));
+        expect(
+          state.speakingIsPiper,
+          isNull,
+          reason: 'nobody is speaking once the line has finished playing',
+        );
+        state.dispose();
+      },
+    );
   });
 }

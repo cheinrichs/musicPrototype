@@ -4,13 +4,15 @@ import 'package:ear_trainer/audio/voice_line.dart';
 
 void main() {
   group('VoiceLine', () {
-    test('every value has a non-empty caption', () {
+    test('every value resolves to exactly one speaker via isPiper — a '
+        'switch with no default, so an enum addition that forgets to '
+        'assign a speaker fails to compile rather than silently '
+        'defaulting to one character', () {
       for (final line in VoiceLine.values) {
-        expect(
-          line.captionText,
-          isNotEmpty,
-          reason: '$line has no caption text',
-        );
+        // A read is the assertion here: isPiper is a non-nullable bool
+        // computed by an exhaustive switch, so this line alone would fail
+        // to compile if any value were left unmapped.
+        expect(line.isPiper, isA<bool>());
       }
     });
 

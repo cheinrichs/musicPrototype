@@ -1,15 +1,15 @@
 /// Spoken lines used by the agency-staged games (Trello card 91).
 /// [AudioController.playVoiceLine] silently no-ops on a missing asset
 /// (same fallback the Sound Playground uses for missing instrument
-/// clips), and callers still pair every voice line with an on-screen
-/// caption via [captionText] so the stage stays legible if audio is ever
-/// missing — a real gap right now, not just a hypothetical one: several
+/// clips) — a real gap right now, not just a hypothetical one: several
 /// 6-7-band lines below have no recording yet (see each one's doc
-/// comment) and simply aren't referenced anywhere until they arrive.
+/// comment) and simply aren't referenced anywhere until they arrive. The
+/// on-screen caption no longer transcribes these lines (see [isPiper]'s
+/// doc comment), so a missing recording is otherwise silent.
 ///
 /// **No age-band selector exists anywhere in the app yet** (see
 /// `round_report.dart`'s `kCurrentAgeBand` doc comment) — every line
-/// below is real, recorded, gain-normalized, and captioned, but only the
+/// below is real, recorded and gain-normalized, but only the
 /// original ten (the 2-3/4-5-shared set) are actually wired into
 /// [HighLowGameState]'s round flow today. The rest exist so the *data*
 /// is complete and correct ahead of a future age-band picker — that
@@ -106,9 +106,8 @@ enum VoiceLine {
   /// person, asking to be handed the correct instrument — Clef stays
   /// centered as the fixed drop target; the child drags an instrument to
   /// her, not the other way around (renamed 2026-09 from `putMeOnHigh`
-  /// when the drag direction reversed — see [captionText]'s doc comment
-  /// for why the caption reads differently from this same recording's
-  /// actual words). 4-5 asks rather than instructs — see [giveMeHigh45].
+  /// when the drag direction reversed). 4-5 asks rather than instructs —
+  /// see [giveMeHigh45].
   giveMeHigh,
 
   /// Trigger (A2) round prompt when the target is the lower one — the
@@ -213,54 +212,45 @@ enum VoiceLine {
 
   String get assetPath => 'assets/audio/voice/$name.mp3';
 
-  /// Placeholder-friendly caption shown alongside the audio — see the
-  /// class doc. Transcribes what's actually recorded, not a paraphrase,
-  /// so the fallback reads the same as what a working line would sound
-  /// like — with one deliberate exception: the Trigger (A2) lines follow
-  /// a separate rule instead (Trello, "reverse the A2 drag interaction"),
-  /// because A2's caption and its spoken line now serve different
-  /// readers. The recording is Clef/Piper speaking in first person to
-  /// the child ("give me the high one"); the caption is read by the
-  /// supervising adult (the app currently targets age band
-  /// [kCurrentAgeBand] — see round_report.dart), who needs to know what
-  /// to help the child *do*, not hear the character's own line repeated
-  /// back in text. So these describe the action instead of transcribing
-  /// the words — naming the instrument as what gets dragged, matching
-  /// the reversed mechanic. That action is the same regardless of band
-  /// (it's still "drag the higher-sounding instrument to Clef" whether
-  /// Clef asked for it as "give me" or "which one is higher"), so every
-  /// A2 line's caption reuses the same two strings.
+  /// True if Piper speaks this line, false if Clef does — every line
+  /// belongs to exactly one of them (Trello card 101: Piper owns low,
+  /// Clef owns high). Drives the "the talker moves" speaking indicator
+  /// (Trello card PIm7xE6n) — [HighLowGameState] uses this to know which
+  /// of Piper/Clef to animate for however long a given line actually
+  /// takes to play, rather than re-deriving the speaker from round
+  /// context (which round's [PitchDirection] happens to be centered has
+  /// nothing to do with which note a per-note Observe narration is
+  /// currently describing).
   ///
-  /// **This whole scheme is provisional.** Trello card 5tdMOMh3
+  /// The per-line caption this used to carry (a direct transcription,
+  /// e.g. "Piper: that one sounds low!") is gone — Trello card 5tdMOMh3
   /// ("Captions become parent guidance, not a transcript of the voice
-  /// line") redefines captions entirely — six captions total, keyed by
-  /// stage and pole only, not by band or by individual line — but that
-  /// card isn't built yet. Until it lands, every new line below still
-  /// gets an honest transcription-style caption in the meantime, so nothing
-  /// here silently regresses to a missing caption.
-  String get captionText => switch (this) {
-    VoiceLine.piperSaysLow => 'Piper: that one sounds low!',
-    VoiceLine.piperSaysLowSecond => 'Piper: ...and that one sounds low!',
-    VoiceLine.clefSaysHigh => 'Clef: ooh, that one sounds high!',
-    VoiceLine.clefSaysHighSecond => 'Clef: ...and ooh, that one sounds high!',
-    VoiceLine.listenForHigh => 'Clef: ooh, listen for the high one.',
-    VoiceLine.listenForLow => 'Piper: listen for the low one.',
-    VoiceLine.giveMeHigh => 'Drag the higher-sounding instrument to Clef.',
-    VoiceLine.giveMeLow => 'Drag the lower-sounding instrument to Piper.',
-    VoiceLine.tryAgainClef => 'Clef: ooh, nearly! Let\'s listen again.',
-    VoiceLine.tryAgainPiper => "Piper: nearly! Let's have another listen.",
-    VoiceLine.listenForHigh45 => 'Clef: which one sounds high?',
-    VoiceLine.listenForLow45 => 'Piper: which one sounds low?',
-    VoiceLine.giveMeHigh45 => 'Drag the higher-sounding instrument to Clef.',
-    VoiceLine.giveMeLow45 => 'Drag the lower-sounding instrument to Piper.',
-    VoiceLine.tryAgainClef45 => 'Clef: ooh, so close! Let\'s hear that again.',
-    VoiceLine.tryAgainPiper45 => "Piper: so close! Let's hear it again.",
-    VoiceLine.clefSaysHigher67 => 'Clef: that note\'s higher.',
-    VoiceLine.piperSaysLower67 => 'Piper: that one\'s lower.',
-    VoiceLine.piperSaysLower67Second => 'Piper: ...and that one\'s lower.',
-    VoiceLine.listenForLower67 => 'Piper: listen for the lower note.',
-    VoiceLine.whichIsLower67 => 'Drag the lower-sounding instrument to Piper.',
-    VoiceLine.tryAgainPiper67 => 'Piper: not that one — one more listen.',
-    VoiceLine.tryAgainPiper8plus => "Piper: that's not it. Try again.",
+  /// line") replaced it with six fixed captions keyed by stage and pole
+  /// only, not by band or by individual line; see
+  /// [HighLowGameState.captionText].
+  bool get isPiper => switch (this) {
+    VoiceLine.piperSaysLow => true,
+    VoiceLine.piperSaysLowSecond => true,
+    VoiceLine.clefSaysHigh => false,
+    VoiceLine.clefSaysHighSecond => false,
+    VoiceLine.listenForHigh => false,
+    VoiceLine.listenForLow => true,
+    VoiceLine.giveMeHigh => false,
+    VoiceLine.giveMeLow => true,
+    VoiceLine.tryAgainClef => false,
+    VoiceLine.tryAgainPiper => true,
+    VoiceLine.listenForHigh45 => false,
+    VoiceLine.listenForLow45 => true,
+    VoiceLine.giveMeHigh45 => false,
+    VoiceLine.giveMeLow45 => true,
+    VoiceLine.tryAgainClef45 => false,
+    VoiceLine.tryAgainPiper45 => true,
+    VoiceLine.clefSaysHigher67 => false,
+    VoiceLine.piperSaysLower67 => true,
+    VoiceLine.piperSaysLower67Second => true,
+    VoiceLine.listenForLower67 => true,
+    VoiceLine.whichIsLower67 => true,
+    VoiceLine.tryAgainPiper67 => true,
+    VoiceLine.tryAgainPiper8plus => true,
   };
 }

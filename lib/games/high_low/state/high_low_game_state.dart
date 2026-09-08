@@ -29,26 +29,35 @@ enum DragFeedback { none, correct, retry }
 /// State machine for the High/Low game, parametrized by [AgencyStage]
 /// (Trello card 91), [ConceptTier], and [RoundOrder] (Trello card 95).
 ///
-/// Every stage shares one rule: tapping an instrument is *exploration* —
-/// it plays that instrument's note and never commits an answer, at any
-/// stage. Only Trigger's drag-and-drop commits. This is the whole point of
-/// the card-91 rework: a toddler's instinct to tap a sound-making thing can
-/// no longer silently submit a graded answer.
+/// A tap on an instrument always plays its note — that's exploration, at
+/// every stage, and a tap alone never *shows* a right/wrong verdict the
+/// way a Trigger drop's feedback does. But at A0/A1 a repeated tap on the
+/// correct instrument is still an answer, just a quiet one: five correct
+/// in a row resolves the round the same way a correct Trigger drop does
+/// (Trello card RqdPFKLf, "A0/A1 repeated taps") — see [tapInstrument]
+/// and [_celebrateCorrect]. A wrong tap there gets nothing negative at
+/// all, ever.
 ///
 /// At every stage, whichever of Piper/Clef owns the round's target pole
 /// (Piper is low, Clef is high; see [targetCharacterIsPiper] and Trello
 /// card 101) stands centered as a second visual cue for what to listen
-/// for, alongside the caption/narration (Trello card 1SpHq2la). Only
-/// Trigger makes her an interactive drop target — see [canDrop].
+/// for, alongside the caption (Trello card 1SpHq2la) — a fixed, parent-
+/// facing string (see [captionText]'s doc comment), not a transcript of
+/// whichever line is currently playing. Only Trigger makes her an
+/// interactive drop target — see [canDrop].
 ///
 /// - Observe (A0): the pair auto-plays; Piper/Clef narrate low/high as
-///   each note sounds; free tapping is always available and never
-///   interrupts the auto-play. No question, no scoring, no auto-advance —
-///   the child moves on via the header's arrow.
+///   each note sounds (see [speakingIsPiper] for the "talker moves"
+///   indicator this drives); free tapping is always available and never
+///   interrupts the auto-play. No question asked in the caption, but a
+///   correct tap still sparkles the owning character and a five-streak
+///   still resolves the round (see above). The child can always leave via
+///   [escape] (immediate) or, ~6 seconds in, [moveOn] (a resolved assist).
 /// - Participate (A1): a constant prompt ("Listen for the high one"), the
-///   pair auto-plays but a tap cuts it short, then free tapping continues
-///   with Clef sparkling on the target. No question, no wrong answers, no
-///   auto-advance.
+///   pair auto-plays but a tap cuts it short, then free tapping continues.
+///   A correct tap sparkles the owning character; five in a row resolves
+///   the round automatically — no separate move-on control here (see
+///   [showMoveOnControl]'s doc comment for why).
 /// - Trigger (A2): same auto-play/cut-short/free-tap as Participate, plus
 ///   the centered character stays put as the round's drop target, and
 ///   two draggable instruments the child drags to her, so the character
@@ -106,10 +115,49 @@ class HighLowGameState extends ChangeNotifier {
   Timer? _pendingTimer;
 
   bool _introPlaying = false;
+
+  /// Whether Participate's target-side instrument has started sparkling
+  /// yet this round — used only to gate [_firstResponseCorrect] below to
+  /// "before any hint existed"; no longer drives anything on screen
+  /// itself (Trello card RqdPFKLf retired the old continuous
+  /// instrument-sparkle hint in favor of [_characterSparkleIsPiper]'s
+  /// per-tap character sparkle).
   bool _hintVisible = false;
   DragFeedback _dragFeedback = DragFeedback.none;
   int? _lastDropSide;
   VoiceLine? _activeCaption;
+
+  /// Consecutive correct taps this round, A0/A1 only (Trello card
+  /// RqdPFKLf) — a wrong tap resets this to zero; five resolves the
+  /// round via [_celebrateCorrect]. Never incremented at Trigger, where
+  /// tapping stays pure exploration and only a drag/drop commits.
+  int _correctTapStreak = 0;
+
+  /// Which of Piper/Clef is currently speaking a voice line, tied to real
+  /// playback duration via [_speak] (Trello card PIm7xE6n) — null when
+  /// neither is. See [speakingIsPiper]'s doc comment for the interlock
+  /// with [_characterSparkleIsPiper].
+  bool? _speakingIsPiper;
+
+  /// Which of Piper/Clef should show the transient "found it" sparkle
+  /// right now (Trello card RqdPFKLf) — see
+  /// [characterSparkleIsPiper]'s doc comment.
+  bool? _characterSparkleIsPiper;
+  Timer? _characterSparkleTimer;
+
+  /// Which instrument slot should show the "found it" sparkle overlay
+  /// right now — see [instrumentSparkleSide]'s doc comment. Set only by
+  /// [moveOn]'s resolution.
+  int? _instrumentSparkleSide;
+
+  /// Whether the round's secondary guidance (Trello card 5tdMOMh3) or the
+  /// adult move-on control (Trello card xpAkja5b) should be visible right
+  /// now — set true ~6 seconds into an unanswered round by [_nudgeTimer],
+  /// reset on every fresh entry to [GameStatus.awaitingInput] (a new
+  /// round, a replay, a retry's re-listen) so a child who's mid-retry
+  /// always gets a fresh 6-second window before anything nudges again.
+  bool _nudgeVisible = false;
+  Timer? _nudgeTimer;
 
   // Per-round instrumentation (reset in _startRound; see [instrumentation]).
   bool _waitedForPlaythrough = true;
@@ -159,20 +207,103 @@ class HighLowGameState extends ChangeNotifier {
   /// hasn't finished or been cut off yet).
   bool get introPlaying => _introPlaying;
 
-  /// True only for Participate, once the child can act — drives Clef
-  /// sparkling on the target instrument.
-  bool get showHint => _hintVisible;
-
   DragFeedback get dragFeedback => _dragFeedback;
+
+  /// Which of Piper/Clef is currently speaking, for however long the line
+  /// actually takes to play (Trello card PIm7xE6n, "the talker moves") —
+  /// null when neither is. Nothing else about a character moves any more
+  /// (Trello card NcVPjPZ5 moved idle motion onto the instruments), which
+  /// is what makes this legible as its own distinct signal.
+  ///
+  /// Never true for the same character [characterSparkleIsPiper] is also
+  /// true for — motion means "I'm speaking", sparkle means "you found
+  /// it", and a character showing both at once would blur the two
+  /// (Trello cards RqdPFKLf/PIm7xE6n's shared interlock). See [_speak]
+  /// and [_sparkleCorrectTapCharacter].
+  bool? get speakingIsPiper => _speakingIsPiper;
+
+  /// Which of Piper/Clef should show the transient "found it" sparkle
+  /// right now (Trello card RqdPFKLf) — set for ~900ms on a correct A0/A1
+  /// tap (see [tapInstrument]), then cleared. See [speakingIsPiper]'s doc
+  /// comment for why this is never true for whichever character is
+  /// currently speaking.
+  bool? get characterSparkleIsPiper => _characterSparkleIsPiper;
+
+  /// Which instrument slot should show the "found it" sparkle overlay
+  /// right now — set only by [moveOn]'s resolution (Trello card
+  /// xpAkja5b: "the correct instrument plays and sparkles"), not by an
+  /// organic correct drop or the A0/A1 tap streak, whose own celebration
+  /// animations already draw the eye without needing it.
+  int? get instrumentSparkleSide => _instrumentSparkleSide;
 
   /// Which side the dragged character was last dropped on (correct or
   /// not) — the UI uses this to know which instrument to animate for
   /// [dragFeedback].
   int? get lastDropSide => _lastDropSide;
 
-  /// Caption text to show right now (placeholder for the not-yet-recorded
-  /// voice lines — see [VoiceLine]), or null between captions.
-  String? get captionText => _activeCaption?.captionText;
+  /// Parent-facing guidance for the current round — not a transcript of
+  /// the voice line (Trello card 5tdMOMh3, "Captions become parent
+  /// guidance, not a transcript of the voice line"). Six captions total:
+  /// keyed by [agencyStage] and pole only, never by age band or by which
+  /// individual voice line happens to be playing — the parent is the same
+  /// adult whatever the child's age (band-specific work all happens in
+  /// the voice, not here), and this stays constant for the whole round
+  /// rather than flickering per phase (intro/feedback/retry all show the
+  /// same thing).
+  ///
+  /// Observe's two poles deliberately share one string: naming which
+  /// character owns which pole here would hand the parent — and so the
+  /// child — the answer before the round asks one.
+  String? get captionText {
+    final prompt = currentPrompt;
+    if (prompt == null) return null;
+    final isHigh = prompt.targetDirection == PitchDirection.higher;
+    return switch (agencyStage) {
+      AgencyStage.observe => 'Let them explore freely.',
+      AgencyStage.participate => isHigh
+          ? 'Let them tap both instruments and find the higher one. Clef '
+                'sparkles when they find it.'
+          : 'Let them tap both instruments and find the lower one. Piper '
+                'sparkles when they find it.',
+      AgencyStage.trigger => isHigh
+          ? 'Help them drag the higher-sounding instrument to Clef.'
+          : 'Help them drag the lower-sounding instrument to Piper.',
+    };
+  }
+
+  /// Secondary guidance, shown only once [showMoveOnControl] would also
+  /// be considered (~6 seconds into an unanswered round — see
+  /// [_nudgeTimer]) and only for Participate; Observe/Trigger's secondary
+  /// nudge is [showMoveOnControl] itself, not text — neither has
+  /// Participate's five-tap-streak auto-advance, so a manual assist
+  /// control is the thing worth surfacing there instead (Trello card
+  /// 5tdMOMh3). Never shown immediately: arriving at the moment of
+  /// confusion is help, visible from the start it's noise nobody reads,
+  /// and nothing here should suggest the child is struggling while
+  /// they're doing fine.
+  String? get secondaryCaptionText {
+    if (!_nudgeVisible ||
+        agencyStage != AgencyStage.participate ||
+        _status != GameStatus.awaitingInput) {
+      return null;
+    }
+    final prompt = currentPrompt;
+    if (prompt == null) return null;
+    return prompt.targetDirection == PitchDirection.higher
+        ? 'Encourage your child to keep tapping the one that sounds higher.'
+        : 'Encourage your child to keep tapping the one that sounds lower.';
+  }
+
+  /// Whether the adult move-on control should be visible right now
+  /// (Trello card xpAkja5b) — Observe/Trigger's ~6-second secondary nudge
+  /// (see [_nudgeTimer]); Participate has no manual assist control (see
+  /// [secondaryCaptionText]'s doc comment for why).
+  bool get showMoveOnControl {
+    if (!_nudgeVisible || agencyStage == AgencyStage.participate) {
+      return false;
+    }
+    return _status == GameStatus.awaitingInput;
+  }
 
   /// Whether the child can drag an instrument onto the centered character
   /// right now. Deliberately not gated on [_status] beyond "not finished" —
@@ -243,9 +374,56 @@ class HighLowGameState extends ChangeNotifier {
     });
   }
 
+  void _cancelNudgeTimer() {
+    _nudgeTimer?.cancel();
+    _nudgeTimer = null;
+  }
+
+  void _cancelSparkleTimer() {
+    _characterSparkleTimer?.cancel();
+    _characterSparkleTimer = null;
+  }
+
+  /// Play [line], tracking [_speakingIsPiper] for however long it
+  /// actually takes to finish (Trello card PIm7xE6n, "the talker moves")
+  /// — ties the speaking-bob's duration to real playback completion via
+  /// [AudioController.playVoiceLineAndAwait], not a guessed timer (this
+  /// codebase has been bitten twice by a bare `play()` resolving on start
+  /// rather than completion). Guarded by [token] so a superseded round's
+  /// late completion can't clear a newer round's speaking state. Callers
+  /// that don't need to block on the line finishing wrap this in
+  /// `unawaited` themselves — the tracking still happens either way.
+  Future<void> _speak(int token, VoiceLine line) async {
+    _speakingIsPiper = line.isPiper;
+    notifyListeners();
+    await _audio.playVoiceLineAndAwait(line);
+    if (token != _roundToken) return;
+    _speakingIsPiper = null;
+    notifyListeners();
+  }
+
+  /// Transiently sparkles [isPiper]'s character on a correct A0/A1 tap
+  /// (Trello card RqdPFKLf) — suppressed if that same character is
+  /// currently speaking (the interlock in [speakingIsPiper]'s doc
+  /// comment). The tap still counts toward the streak either way; only
+  /// the visual cue is skipped for that instant.
+  void _sparkleCorrectTapCharacter(bool isPiper) {
+    if (_speakingIsPiper == isPiper) return;
+    _characterSparkleIsPiper = isPiper;
+    notifyListeners();
+    _characterSparkleTimer?.cancel();
+    _characterSparkleTimer = Timer(const Duration(milliseconds: 900), () {
+      _characterSparkleTimer = null;
+      _characterSparkleIsPiper = null;
+      notifyListeners();
+    });
+  }
+
   void _startRound() {
     final token = ++_roundToken;
     _cancelPendingTimer();
+    _cancelNudgeTimer();
+    _cancelSparkleTimer();
     _playingIndex = null;
     _dragFeedback = DragFeedback.none;
     _lastDropSide = null;
@@ -254,6 +432,11 @@ class HighLowGameState extends ChangeNotifier {
     _firstResponseSide = null;
     _firstResponseCorrect = null;
     _listenAgainCount = 0;
+    _correctTapStreak = 0;
+    _nudgeVisible = false;
+    _speakingIsPiper = null;
+    _characterSparkleIsPiper = null;
+    _instrumentSparkleSide = null;
 
     final prompt = currentPrompt;
     _activeCaption = switch (agencyStage) {
@@ -283,7 +466,7 @@ class HighLowGameState extends ChangeNotifier {
   /// go through here, since [_startRound] never sets a top-level
   /// [_activeCaption] for Observe.
   Future<void> _playCaptionThenIntro(int token, VoiceLine caption) async {
-    await _audio.playVoiceLineAndAwait(caption);
+    await _speak(token, caption);
     if (token != _roundToken) return;
     await _runIntro(token);
   }
@@ -301,7 +484,7 @@ class HighLowGameState extends ChangeNotifier {
       _activeCaption = prompt.leftIsHigher
           ? VoiceLine.clefSaysHigh
           : VoiceLine.piperSaysLow;
-      unawaited(_audio.playVoiceLine(_activeCaption!));
+      unawaited(_speak(token, _activeCaption!));
     }
     notifyListeners();
 
@@ -327,7 +510,7 @@ class HighLowGameState extends ChangeNotifier {
       _activeCaption = prompt.leftIsHigher
           ? VoiceLine.piperSaysLowSecond
           : VoiceLine.clefSaysHighSecond;
-      unawaited(_audio.playVoiceLine(_activeCaption!));
+      unawaited(_speak(token, _activeCaption!));
     }
     notifyListeners();
 
@@ -353,6 +536,20 @@ class HighLowGameState extends ChangeNotifier {
     _playingIndex = null;
     _hintVisible = agencyStage == AgencyStage.participate;
     _status = GameStatus.awaitingInput;
+
+    // Fresh 6-second window every time a round becomes actionable — the
+    // very first time, and again after every retry's re-listen (Trello
+    // cards 5tdMOMh3/xpAkja5b: secondary guidance/the move-on control
+    // never appears immediately, only once the child's had a real chance
+    // to try).
+    _nudgeVisible = false;
+    _cancelNudgeTimer();
+    _nudgeTimer = Timer(const Duration(seconds: 6), () {
+      if (token != _roundToken) return;
+      _nudgeVisible = true;
+      notifyListeners();
+    });
+
     notifyListeners();
   }
 
@@ -395,13 +592,37 @@ class HighLowGameState extends ChangeNotifier {
       _firstResponseCorrect = side == prompt.targetSide;
     }
 
-    _playingIndex = side;
+    // Observe's per-note narration comes before the tap-streak check
+    // below so its speaker is already reflected in [_speakingIsPiper] —
+    // the interlock in [speakingIsPiper]'s doc comment means a tap that
+    // both matches the target *and* triggers this same character's own
+    // narration must not also sparkle her at the same instant.
     if (agencyStage == AgencyStage.observe) {
       _activeCaption = side == prompt.higherSide
           ? VoiceLine.clefSaysHigh
           : VoiceLine.piperSaysLow;
-      unawaited(_audio.playVoiceLine(_activeCaption!));
+      unawaited(_speak(_roundToken, _activeCaption!));
     }
+
+    // At A0/A1, a repeated tap on the same (correct) instrument is an
+    // answer, not noise — a child who knows it has no other way to show
+    // it (Trello card RqdPFKLf). Five correct in a row resolves the
+    // round; a wrong tap resets the streak silently, with nothing
+    // negative shown at all — no nudge, no correction, just business as
+    // usual below (the tap still plays its own note either way).
+    if (agencyStage != AgencyStage.trigger) {
+      if (side == prompt.targetSide) {
+        _correctTapStreak++;
+        _sparkleCorrectTapCharacter(targetCharacterIsPiper);
+        if (_correctTapStreak >= 5) {
+          _celebrateCorrect(side, announceNote: false);
+        }
+      } else {
+        _correctTapStreak = 0;
+      }
+    }
+
+    _playingIndex = side;
     notifyListeners();
 
     final instrument = side == 0 ? leftInstrument : rightInstrument;
@@ -440,31 +661,19 @@ class HighLowGameState extends ChangeNotifier {
     _audio.stopCurrentNote();
     _audio.stopCurrentClip();
     _cancelPendingTimer();
-    final token = ++_roundToken;
     _introPlaying = false;
     _playingIndex = null;
 
-    _lastDropSide = side;
     _firstResponseSide ??= side;
     _firstResponseCorrect ??= side == prompt.targetSide;
 
     if (side == prompt.targetSide) {
-      _dragFeedback = DragFeedback.correct;
-      _status = GameStatus.showingFeedback;
-      _audio.playSfx(SfxType.correct);
-      _recordRoundResult();
-      notifyListeners();
-
-      _schedule(const Duration(milliseconds: 1200), () {
-        if (token != _roundToken) return;
-        if (_currentPromptIndex < totalPrompts - 1) {
-          _currentPromptIndex++;
-          _startRound();
-        } else {
-          _completeGame();
-        }
-      });
+      _celebrateCorrect(side, announceNote: false);
     } else {
+      final token = ++_roundToken;
+      _lastDropSide = side;
+      _cancelNudgeTimer();
+      _nudgeVisible = false;
       _dragFeedback = DragFeedback.retry;
       _activeCaption = targetCharacterIsPiper
           ? VoiceLine.tryAgainPiper
@@ -474,6 +683,49 @@ class HighLowGameState extends ChangeNotifier {
 
       unawaited(_playRetryThenIntro(token, prompt, _activeCaption!));
     }
+  }
+
+  /// Resolve this round as correct and advance after a short celebration
+  /// — shared by an organic Trigger drop, A0/A1's five-correct-taps
+  /// streak (Trello card RqdPFKLf), and the adult move-on control (Trello
+  /// card xpAkja5b). [announceNote] additionally plays the correct
+  /// instrument's own note and flashes its sparkle overlay — the "look,
+  /// this one" demonstration move-on's resolution promises; an organic
+  /// drop or a tap streak doesn't need it, since the child's own action
+  /// already drew attention to the right instrument. The instrument
+  /// visibly traveling to the character (rather than just pulsing in
+  /// place) is a Trigger-only distinction the screen makes on its own,
+  /// from [agencyStage] and [dragFeedback]/[lastDropSide] — not something
+  /// this method needs to know about.
+  void _celebrateCorrect(int side, {required bool announceNote}) {
+    final prompt = currentPrompt;
+    if (prompt == null) return;
+    _cancelNudgeTimer();
+    _nudgeVisible = false;
+    final token = ++_roundToken;
+    _lastDropSide = side;
+    _dragFeedback = DragFeedback.correct;
+    _status = GameStatus.showingFeedback;
+    _audio.playSfx(SfxType.correct);
+    _recordRoundResult();
+    if (announceNote) {
+      _instrumentSparkleSide = side;
+      final instrument = side == 0 ? leftInstrument : rightInstrument;
+      final midi = side == 0 ? prompt.firstMidi : prompt.secondMidi;
+      unawaited(_audio.playAssetForScale(instrument.assetPathForMidi(midi)));
+    }
+    notifyListeners();
+
+    _schedule(const Duration(milliseconds: 1200), () {
+      if (token != _roundToken) return;
+      _instrumentSparkleSide = null;
+      if (_currentPromptIndex < totalPrompts - 1) {
+        _currentPromptIndex++;
+        _startRound();
+      } else {
+        _completeGame();
+      }
+    });
   }
 
   /// How long a wrong drop's feedback (the shake, the retry line) stays on
@@ -499,10 +751,7 @@ class HighLowGameState extends ChangeNotifier {
     HighLowPrompt prompt,
     VoiceLine retryLine,
   ) async {
-    await Future.wait([
-      _audio.playVoiceLineAndAwait(retryLine),
-      _delay(_retryFeedbackMinimum),
-    ]);
+    await Future.wait([_speak(token, retryLine), _delay(_retryFeedbackMinimum)]);
     if (token != _roundToken) return;
     _dragFeedback = DragFeedback.none;
     _activeCaption = prompt.targetDirection == PitchDirection.higher
@@ -523,6 +772,7 @@ class HighLowGameState extends ChangeNotifier {
         waitedForPlaythrough: _waitedForPlaythrough,
         firstResponseCorrect: _firstResponseCorrect,
         listenAgainCount: _listenAgainCount,
+        correctTapCount: _correctTapStreak,
       ),
     );
   }
@@ -548,19 +798,26 @@ class HighLowGameState extends ChangeNotifier {
     if (token != _roundToken) return;
     final cue = _activeCaption;
     if (agencyStage != AgencyStage.observe && cue != null) {
-      await _audio.playVoiceLineAndAwait(cue);
+      await _speak(token, cue);
     }
   }
 
-  /// Move on to the next round (or finish the session) right now,
-  /// regardless of phase. Always available — an adult needs to be able to
-  /// advance a tiring child past a round that will never satisfy any
-  /// gating condition on its own (Observe/Participate never auto-advance;
-  /// Trigger might be mid-retry).
-  void moveOn() {
+  /// The child's escape control (Trello card xpAkja5b, "Split Skip into
+  /// two controls: escape and move-on") — immediate, no resolution, no
+  /// correct answer shown. Pressed by a bored or frustrated child;
+  /// evidence of difficulty, not mastery, so it must not share a code
+  /// path (or a logged event) with [moveOn]. Always available regardless
+  /// of phase — an adult needs to be able to advance a tiring child past
+  /// a round that will never satisfy any gating condition on its own
+  /// (Observe/Participate never auto-advance; Trigger might be
+  /// mid-retry). This is the control the header's Skip pill calls; it
+  /// was simply named `moveOn` before this card split the concept in two.
+  void escape() {
     if (_status == GameStatus.completed) return;
     _audio.stopCurrentNote();
     _cancelPendingTimer();
+    _cancelNudgeTimer();
+    _cancelSparkleTimer();
 
     // Skipped rounds aren't scored — nothing to record, this isn't an
     // answer of any kind.
@@ -572,9 +829,27 @@ class HighLowGameState extends ChangeNotifier {
     }
   }
 
+  /// The adult move-on control (Trello card xpAkja5b) — evidence of
+  /// mastery, not difficulty, so unlike [escape] this always resolves the
+  /// round first via [_celebrateCorrect]: the correct instrument plays
+  /// and sparkles, and (at Trigger) visibly travels to the character,
+  /// before the round turns. Only ever reachable once [showMoveOnControl]
+  /// has made the button visible (~6 seconds into an unanswered round),
+  /// but guarded here too rather than trusting the caller.
+  void moveOn() {
+    if (_status != GameStatus.awaitingInput) return;
+    final prompt = currentPrompt;
+    if (prompt == null) return;
+    _audio.stopCurrentNote();
+    _cancelPendingTimer();
+    _celebrateCorrect(prompt.targetSide, announceNote: true);
+  }
+
   void _completeGame() {
     _roundToken++;
     _cancelPendingTimer();
+    _cancelNudgeTimer();
+    _cancelSparkleTimer();
     _status = GameStatus.completed;
     _audio.playSfx(SfxType.reward);
     notifyListeners();
@@ -584,12 +859,19 @@ class HighLowGameState extends ChangeNotifier {
   void reset() {
     _roundToken++;
     _cancelPendingTimer();
+    _cancelNudgeTimer();
+    _cancelSparkleTimer();
     _status = GameStatus.notStarted;
     _prompts = [];
     _currentPromptIndex = 0;
     _results.clear();
     _instrumentation.clear();
     _activeCaption = null;
+    _correctTapStreak = 0;
+    _nudgeVisible = false;
+    _speakingIsPiper = null;
+    _characterSparkleIsPiper = null;
+    _instrumentSparkleSide = null;
     notifyListeners();
   }
 
@@ -599,6 +881,8 @@ class HighLowGameState extends ChangeNotifier {
   void dispose() {
     _roundToken++;
     _cancelPendingTimer();
+    _cancelNudgeTimer();
+    _cancelSparkleTimer();
     super.dispose();
   }
 }

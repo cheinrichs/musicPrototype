@@ -16,10 +16,19 @@ class RoundInstrumentation {
   /// How many times "Listen Again" was pressed this round.
   final int listenAgainCount;
 
+  /// Consecutive correct taps this round, at A0/A1 only (Trello card
+  /// RqdPFKLf, "A0/A1 repeated taps") — a wrong tap resets this to zero,
+  /// so it's the length of the streak that resolved (or was still
+  /// building toward) the five-in-a-row auto-advance, not a lifetime
+  /// total. Zero at every other stage, where tapping is pure exploration
+  /// and never an answer.
+  final int correctTapCount;
+
   const RoundInstrumentation({
     required this.promptNumber,
     required this.waitedForPlaythrough,
     required this.firstResponseCorrect,
     required this.listenAgainCount,
+    this.correctTapCount = 0,
   });
 }
