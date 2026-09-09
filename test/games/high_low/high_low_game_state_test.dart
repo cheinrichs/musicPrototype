@@ -684,7 +684,14 @@ void main() {
       'once a Trigger round prompt begins',
       (tester) async {
         final state = HighLowGameState(
-          totalPrompts: 1,
+          // RoundOrder.blocked needs at least 3 rounds to produce its
+          // deterministic high-block-first sequence (see
+          // RoundSequencer.sequence — below that it falls back to a
+          // per-round coin flip). This test was checking round 1's
+          // direction and used totalPrompts: 1, so it was actually
+          // asserting against an unseeded random draw — passed locally by
+          // chance, failed on CI when the draw came up "lower" instead.
+          totalPrompts: 3,
           agencyStage: AgencyStage.trigger,
           roundOrder: RoundOrder.blocked,
         );
