@@ -415,42 +415,35 @@ void main() {
     });
 
     testWidgets(
-      'the move-on control is invisible for the first 6 seconds, then '
-      'appears for Observe/Trigger but never Participate (Trello cards '
-      '5tdMOMh3/xpAkja5b)',
+      'escape is available at every stage, from the very start, and '
+      'never gated on anything the child has or hasn\'t done (Trello '
+      'card xpAkja5b, "the adult\'s persistent skip")',
       (tester) async {
         for (final stage in AgencyStage.values) {
-          final state = HighLowGameState(
-            totalPrompts: 2,
-            agencyStage: stage,
-          );
-          addTearDown(state.dispose);
+          final state = HighLowGameState(totalPrompts: 2, agencyStage: stage);
           state.startGame();
           await tester.pump();
-          await tester.pump(const Duration(milliseconds: 4700));
+          expect(state.status, isNot(GameStatus.completed));
+
+          state.escape();
+          await tester.pump();
 
           expect(
-            state.showMoveOnControl,
-            isFalse,
-            reason: '$stage: never visible immediately',
+            state.currentPromptIndex,
+            1,
+            reason: '$stage: escape advances immediately, no criterion',
           );
-
-          await tester.pump(const Duration(seconds: 6));
-
-          expect(
-            state.showMoveOnControl,
-            stage != AgencyStage.participate,
-            reason:
-                '$stage: visible ~6s in for Observe/Trigger, never for '
-                'Participate (which has its own auto-advance instead)',
-          );
+          state.dispose();
         }
       },
     );
+  });
 
+  group('HighLowGameState — the earned arrow (Trello card xpAkja5b)', () {
     testWidgets(
-      'moveOn resolves the round — plays/sparkles the correct instrument '
-      'and advances, unlike escape (Trello card xpAkja5b)',
+      'invisible until both instruments have been tapped, at any elapsed '
+      'time — never appears on its own, unlike the timed move-on control '
+      'this replaced',
       (tester) async {
         final state = HighLowGameState(
           totalPrompts: 2,
@@ -458,51 +451,118 @@ void main() {
         );
         state.startGame();
         await tester.pump();
-        await tester.pump(const Duration(milliseconds: 4700));
-        await tester.pump(const Duration(seconds: 6));
-        expect(state.showMoveOnControl, isTrue);
+        expect(state.showArrow, isFalse);
 
-        final targetSide = state.currentPrompt!.targetSide;
-        state.moveOn();
-        await tester.pump();
-
-        expect(state.dragFeedback, DragFeedback.correct);
-        expect(state.lastDropSide, targetSide);
-        expect(state.instrumentSparkleSide, targetSide);
+        // Well past where the old 6-second nudge would have fired — still
+        // invisible, because nothing has been tapped.
+        await tester.pump(const Duration(seconds: 10));
         expect(
-          state.correctCount,
-          1,
-          reason: 'unlike escape, moveOn resolves the round as answered',
+          state.showArrow,
+          isFalse,
+          reason: 'time alone must never reveal it',
         );
 
-        await tester.pump(const Duration(milliseconds: 1300));
+        state.tapInstrument(0);
+        await tester.pump();
+        expect(
+          state.showArrow,
+          isFalse,
+          reason: 'only one of the two instruments has been tapped so far',
+        );
+
+        state.tapInstrument(1);
+        await tester.pump();
+        expect(
+          state.showArrow,
+          isTrue,
+          reason: 'both instruments have now been tapped at least once',
+        );
+        state.dispose();
+      },
+    );
+
+    testWidgets(
+      'tapping the same side twice never earns it — both sides, not one '
+      'twice',
+      (tester) async {
+        final state = HighLowGameState(
+          totalPrompts: 1,
+          agencyStage: AgencyStage.observe,
+        );
+        state.startGame();
+        await tester.pump();
+
+        state.tapInstrument(0);
+        await tester.pump();
+        state.tapInstrument(0);
+        await tester.pump();
+
+        expect(state.showArrow, isFalse);
+        state.dispose();
+      },
+    );
+
+    testWidgets('never appears outside Observe', (tester) async {
+      for (final stage in [AgencyStage.participate, AgencyStage.trigger]) {
+        final state = HighLowGameState(totalPrompts: 1, agencyStage: stage);
+        state.startGame();
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 4700));
+
+        state.tapInstrument(0);
+        await tester.pump();
+        state.tapInstrument(1);
+        await tester.pump();
+
+        expect(state.showArrow, isFalse, reason: '$stage');
+        state.dispose();
+      }
+    });
+
+    testWidgets(
+      'tapArrow records the round as complete and advances — no sparkle, '
+      'no note replay, no travel animation, since Observe has no target '
+      'to demonstrate',
+      (tester) async {
+        final state = HighLowGameState(
+          totalPrompts: 2,
+          agencyStage: AgencyStage.observe,
+        );
+        state.startGame();
+        await tester.pump();
+        state.tapInstrument(0);
+        await tester.pump();
+        state.tapInstrument(1);
+        await tester.pump();
+        expect(state.showArrow, isTrue);
+
+        state.tapArrow();
+        await tester.pump();
+
+        expect(state.correctCount, 1);
+        expect(state.instrumentation, hasLength(1));
         expect(state.currentPromptIndex, 1);
         state.dispose();
       },
     );
 
-    testWidgets('moveOn does nothing before showMoveOnControl is true', (
-      tester,
-    ) async {
+    testWidgets('does nothing before showArrow is true', (tester) async {
       final state = HighLowGameState(
-        totalPrompts: 2,
+        totalPrompts: 1,
         agencyStage: AgencyStage.observe,
       );
-      // Disposed explicitly at the end — the intro's own note-gap timer
-      // is still pending this early (see the matching comment on the
-      // Observe "a tap never cuts the intro" test above).
       state.startGame();
       await tester.pump();
-      expect(state.showMoveOnControl, isFalse);
+      expect(state.showArrow, isFalse);
 
-      state.moveOn();
+      state.tapArrow();
       await tester.pump();
 
       expect(
         state.correctCount,
         0,
-        reason: 'the control is not built yet at this point, and the '
-            'method guards against being called anyway',
+        reason: 'not earned yet, and the method guards against being '
+            'called anyway',
       );
       state.dispose();
     });
@@ -586,17 +646,16 @@ void main() {
     );
   });
 
-  group('HighLowGameState — A0/A1 repeated taps (Trello card RqdPFKLf)', () {
+  group('HighLowGameState — Participate\'s cumulative sparkle (Trello card '
+      'RqdPFKLf)', () {
     testWidgets(
-      'a correct tap sparkles the owning character; a wrong tap resets '
-      'the streak with nothing negative',
+      'a correct tap sparkles the owning character and adds to the '
+      'cumulative count; a wrong tap adds nothing but is never a failure',
       (tester) async {
         final state = HighLowGameState(
           totalPrompts: 1,
           agencyStage: AgencyStage.participate,
         );
-        // Disposed explicitly at the end — see the matching comment on
-        // the Observe "a tap never cuts the intro" test above.
         state.startGame();
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 4700));
@@ -611,47 +670,105 @@ void main() {
           state.targetCharacterIsPiper,
           reason: 'the owning character sparkles on a correct tap',
         );
+        expect(state.correctTapProgress, 1);
 
         state.tapInstrument(wrongSide);
         await tester.pump();
         expect(state.status, GameStatus.awaitingInput);
         expect(state.correctCount, 0, reason: 'a wrong tap is never a failure');
+        expect(
+          state.correctTapProgress,
+          1,
+          reason: 'a wrong tap adds nothing, but must never subtract either '
+              '— the sparkle must never go backwards',
+        );
         state.dispose();
       },
     );
 
     testWidgets(
-      'five correct taps in a row celebrate and auto-advance, at both '
-      'Observe and Participate',
+      'the count is cumulative, not consecutive — wrong taps in between '
+      'do not reset it, and five total resolves the round with a '
+      'confetti trigger',
       (tester) async {
-        for (final stage in [AgencyStage.observe, AgencyStage.participate]) {
-          final state = HighLowGameState(
-            totalPrompts: 2,
-            agencyStage: stage,
-          );
-          state.startGame();
+        final state = HighLowGameState(
+          totalPrompts: 2,
+          agencyStage: AgencyStage.participate,
+        );
+        state.startGame();
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 4700));
+
+        final targetSide = state.currentPrompt!.targetSide;
+        final wrongSide = 1 - targetSide;
+        expect(state.confettiTrigger, 0);
+
+        // 3 correct, 1 wrong (must not undo any of the 3), 2 more correct
+        // — 5 total, never 5 *in a row*.
+        for (var i = 0; i < 3; i++) {
+          state.tapInstrument(targetSide);
           await tester.pump();
-          await tester.pump(const Duration(milliseconds: 4700));
-
-          final targetSide = state.currentPrompt!.targetSide;
-          for (var i = 0; i < 5; i++) {
-            state.tapInstrument(targetSide);
-            await tester.pump();
-          }
-
-          expect(
-            state.correctCount,
-            1,
-            reason: '$stage: five correct taps resolve the round',
-          );
-          expect(state.dragFeedback, DragFeedback.correct);
-
-          await tester.pump(const Duration(milliseconds: 1300));
-          expect(state.currentPromptIndex, 1);
-          state.dispose();
         }
+        expect(state.correctTapProgress, 3);
+
+        state.tapInstrument(wrongSide);
+        await tester.pump();
+        expect(state.correctTapProgress, 3);
+
+        state.tapInstrument(targetSide);
+        await tester.pump();
+        expect(state.correctTapProgress, 4);
+
+        state.tapInstrument(targetSide);
+        await tester.pump();
+
+        expect(state.correctCount, 1, reason: 'the fifth correct tap resolves it');
+        expect(state.dragFeedback, DragFeedback.correct);
+        expect(
+          state.confettiTrigger,
+          1,
+          reason: 'the confetti burst fires exactly on the fifth',
+        );
+        expect(
+          state.instrumentation.single.correctTapCount,
+          5,
+          reason: 'logged for assessment',
+        );
+        expect(
+          state.instrumentation.single.wrongTapCount,
+          1,
+          reason: 'the one wrong tap is still logged, even though it '
+              'never counted against the gate',
+        );
+
+        await tester.pump(const Duration(milliseconds: 1300));
+        expect(state.currentPromptIndex, 1);
+        state.dispose();
       },
     );
+
+    testWidgets('never applies at Observe or Trigger', (tester) async {
+      for (final stage in [AgencyStage.observe, AgencyStage.trigger]) {
+        final state = HighLowGameState(totalPrompts: 1, agencyStage: stage);
+        state.startGame();
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 4700));
+
+        final targetSide = state.currentPrompt!.targetSide;
+        for (var i = 0; i < 5; i++) {
+          state.tapInstrument(targetSide);
+          await tester.pump();
+        }
+
+        expect(
+          state.correctTapProgress,
+          0,
+          reason: '$stage: only Participate tracks this',
+        );
+        expect(state.correctCount, 0, reason: '$stage');
+        state.dispose();
+      }
+    });
 
     testWidgets('never advances at Trigger — tapping stays pure exploration', (
       tester,

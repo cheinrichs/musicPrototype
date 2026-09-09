@@ -208,7 +208,24 @@ enum VoiceLine {
   /// Piper's four pool candidates once Trello card KmufGcge builds the
   /// rotation. No Clef 8+ nudge exists because Clef's 6-7 nudge itself
   /// isn't recorded yet.
-  tryAgainPiper8plus;
+  tryAgainPiper8plus,
+
+  /// Observe (A0)'s first-time arrow cue ("Tap the arrow when you're
+  /// ready.") — spoken once per session, the first time the earned arrow
+  /// appears (Trello card xpAkja5b, "Two controls: the adult's persistent
+  /// skip, and the child's earned arrow"). **No recording exists yet** —
+  /// unlike every other line above, this one is a genuine hook: it plays
+  /// through the same silent-no-op-on-missing-asset path every line here
+  /// already has (see the class doc), so nothing breaks before a real
+  /// take arrives. Not spoken by either character in the way the rest of
+  /// this enum is — it's a system-level nudge, not in-character dialogue
+  /// — so [isPiper]'s `true` here is arbitrary bookkeeping to satisfy the
+  /// exhaustive switch, not a real assignment; [HighLowGameState] never
+  /// routes this line through the speaking-indicator machinery that
+  /// getter serves. Excluded from
+  /// `test/audio/voice_line_test.dart`'s "every value resolves to a real,
+  /// committed mp3" check for the same reason.
+  tapTheArrowWhenReady;
 
   String get assetPath => 'assets/audio/voice/$name.mp3';
 
@@ -252,5 +269,6 @@ enum VoiceLine {
     VoiceLine.whichIsLower67 => true,
     VoiceLine.tryAgainPiper67 => true,
     VoiceLine.tryAgainPiper8plus => true,
+    VoiceLine.tapTheArrowWhenReady => true, // arbitrary — see its doc comment
   };
 }

@@ -345,35 +345,100 @@ void main() {
     },
   );
 
-  testWidgets(
-    'the adult move-on control appears ~6s into an unanswered round '
-    '(default agency is Trigger) and resolves the round when tapped '
-    '(Trello card xpAkja5b)',
-    (tester) async {
-      await pumpAndFinishIntro(tester);
+  group('the earned arrow (Trello card xpAkja5b)', () {
+    tearDown(() {
+      devToolsEnabled = false;
+    });
 
-      expect(
-        find.byIcon(Icons.check_circle_outline),
-        findsNothing,
-        reason: 'never visible immediately',
-      );
+    testWidgets(
+      'appears only once both instruments have been tapped, never on a '
+      'timer, and resolves the round when tapped',
+      (tester) async {
+        devToolsEnabled = true;
+        tester.view.physicalSize = roomyViewport;
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(() {
+          tester.view.resetPhysicalSize();
+          tester.view.resetDevicePixelRatio();
+        });
 
-      await tester.pump(const Duration(seconds: 6));
+        await tester.pumpWidget(
+          MaterialApp(
+            home: ChangeNotifierProvider(
+              create: (_) => DevSettingsState(),
+              child: const HighLowScreen(),
+            ),
+          ),
+        );
+        await tester.pump();
 
-      final moveOnControl = find.byIcon(Icons.check_circle_outline);
-      expect(moveOnControl, findsOneWidget);
+        // Pick Observe (A0) — the earned arrow only ever appears there.
+        await tester.tap(find.text('A0 · Observe'));
+        await tester.pump();
+        await tester.tap(find.text('Start'));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 1200));
+        await tester.pump(const Duration(milliseconds: 1200));
+        await tester.pump(const Duration(milliseconds: 1200));
+        await tester.pump(const Duration(milliseconds: 1200));
+        await tester.pump(Duration.zero);
 
-      await tester.tap(moveOnControl);
-      await tester.pump();
-      await tester.pump(Duration.zero);
+        // Observe's instruments aren't Draggable (that's Trigger-only) and
+        // carry no other public-facing finder, so this taps the same
+        // on-screen coordinates `_buildScene` places them at — computed
+        // directly from its own anchor/ground formulas rather than
+        // guessed, so a future re-tuning of those constants keeps this
+        // test honest instead of silently coincidental.
+        final screenSize = roomyViewport;
+        final groundY = screenSize.height * 0.16;
+        final charSize = screenSize.height * 0.50;
+        final instrumentCenterY =
+            screenSize.height - groundY - charSize / 2;
+        final leftInstrument = Offset(
+          screenSize.width * 0.29,
+          instrumentCenterY,
+        );
+        final rightInstrument = Offset(
+          screenSize.width * 0.72,
+          instrumentCenterY,
+        );
 
-      expect(
-        tester.widget<ProgressDots>(find.byType(ProgressDots)).completedCount,
-        1,
-        reason: 'unlike Skip, moveOn resolves the round as answered',
-      );
-    },
-  );
+        // Long past where the old timed move-on control would have
+        // appeared — still nothing, because nothing's been tapped yet.
+        await tester.pump(const Duration(seconds: 10));
+        expect(
+          find.byIcon(Icons.arrow_forward_rounded),
+          findsNothing,
+          reason: 'time alone must never reveal it',
+        );
+
+        await tester.tapAt(leftInstrument);
+        await tester.pump();
+        expect(
+          find.byIcon(Icons.arrow_forward_rounded),
+          findsNothing,
+          reason: 'only one of the two instruments has been tapped so far',
+        );
+
+        await tester.tapAt(rightInstrument);
+        await tester.pump();
+        final arrow = find.byIcon(Icons.arrow_forward_rounded);
+        expect(arrow, findsOneWidget);
+
+        await tester.tap(arrow);
+        await tester.pump();
+        await tester.pump(Duration.zero);
+
+        expect(
+          tester
+              .widget<ProgressDots>(find.byType(ProgressDots))
+              .completedCount,
+          1,
+          reason: 'tapping the earned arrow resolves the round as complete',
+        );
+      },
+    );
+  });
 
   group('"Report this round" button (Trello card on0EymSu)', () {
     tearDown(() {

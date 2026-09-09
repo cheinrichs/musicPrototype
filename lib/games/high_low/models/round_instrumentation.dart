@@ -16,13 +16,21 @@ class RoundInstrumentation {
   /// How many times "Listen Again" was pressed this round.
   final int listenAgainCount;
 
-  /// Consecutive correct taps this round, at A0/A1 only (Trello card
-  /// RqdPFKLf, "A0/A1 repeated taps") — a wrong tap resets this to zero,
-  /// so it's the length of the streak that resolved (or was still
-  /// building toward) the five-in-a-row auto-advance, not a lifetime
-  /// total. Zero at every other stage, where tapping is pure exploration
-  /// and never an answer.
+  /// Cumulative correct taps this round, Participate (A1) only (Trello
+  /// card RqdPFKLf, "Completion criteria for A0 and A1, and the
+  /// correct-tap sparkle") — counts every correct tap toward the
+  /// five-in-a-row auto-advance; a wrong tap does *not* subtract from it
+  /// (see [wrongTapCount] instead). Deliberately generous as a gate — the
+  /// criterion is for progression, this field (with [wrongTapCount]) is
+  /// for assessment. Zero at every other stage: Observe's completion
+  /// criterion is coverage (tap each instrument), not a tap count, and
+  /// Trigger's tapping stays pure exploration.
   final int correctTapCount;
+
+  /// Wrong taps this round, Participate (A1) only — logged purely for
+  /// assessment; the gate itself ([correctTapCount] reaching five) never
+  /// looks at this. Zero at every other stage.
+  final int wrongTapCount;
 
   const RoundInstrumentation({
     required this.promptNumber,
@@ -30,5 +38,6 @@ class RoundInstrumentation {
     required this.firstResponseCorrect,
     required this.listenAgainCount,
     this.correctTapCount = 0,
+    this.wrongTapCount = 0,
   });
 }
