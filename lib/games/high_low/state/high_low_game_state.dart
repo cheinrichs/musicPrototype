@@ -254,6 +254,15 @@ class HighLowGameState extends ChangeNotifier {
   /// Observe's two poles deliberately share one string: naming which
   /// character owns which pole here would hand the parent — and so the
   /// child — the answer before the round asks one.
+  ///
+  /// Kept short enough to survive two lines at the narrowest supported
+  /// viewport without ellipsizing — see
+  /// `test/games/high_low/widgets/high_low_header_test.dart`. The header
+  /// is already tight between the close button and the Skip pill, so a
+  /// caption that's too long to fit loses exactly the pole word it
+  /// exists to carry (Cooper, driving the simulator: "'Find the …' tells
+  /// them nothing"). Fix a future truncation by shortening the string
+  /// further, not by growing the caption block.
   String? get captionText {
     final prompt = currentPrompt;
     if (prompt == null) return null;
@@ -261,13 +270,11 @@ class HighLowGameState extends ChangeNotifier {
     return switch (agencyStage) {
       AgencyStage.observe => 'Let them explore freely.',
       AgencyStage.participate => isHigh
-          ? 'Let them tap both instruments and find the higher one. Clef '
-                'sparkles when they find it.'
-          : 'Let them tap both instruments and find the lower one. Piper '
-                'sparkles when they find it.',
+          ? 'Let them tap both and find the higher one.'
+          : 'Let them tap both and find the lower one.',
       AgencyStage.trigger => isHigh
-          ? 'Help them drag the higher-sounding instrument to Clef.'
-          : 'Help them drag the lower-sounding instrument to Piper.',
+          ? 'Help them drag the higher instrument to Clef.'
+          : 'Help them drag the lower instrument to Piper.',
     };
   }
 
@@ -290,8 +297,8 @@ class HighLowGameState extends ChangeNotifier {
     final prompt = currentPrompt;
     if (prompt == null) return null;
     return prompt.targetDirection == PitchDirection.higher
-        ? 'Encourage your child to keep tapping the one that sounds higher.'
-        : 'Encourage your child to keep tapping the one that sounds lower.';
+        ? 'Encourage them to keep tapping the higher one.'
+        : 'Encourage them to keep tapping the lower one.';
   }
 
   /// Whether the adult move-on control should be visible right now

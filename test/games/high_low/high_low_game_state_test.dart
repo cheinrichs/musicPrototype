@@ -541,7 +541,7 @@ void main() {
       },
     );
 
-    testWidgets('Participate names the sparkling character per pole', (
+    testWidgets('Participate names the pole (higher/lower)', (
       tester,
     ) async {
       final state = HighLowGameState(
@@ -555,12 +555,12 @@ void main() {
       await tester.pump();
 
       expect(state.currentPrompt!.targetDirection, PitchDirection.higher);
-      expect(state.captionText, contains('Clef sparkles'));
+      expect(state.captionText, contains('higher one'));
 
       state.escape();
       await tester.pump();
       expect(state.currentPrompt!.targetDirection, PitchDirection.lower);
-      expect(state.captionText, contains('Piper sparkles'));
+      expect(state.captionText, contains('lower one'));
       state.dispose();
     });
 
@@ -581,7 +581,7 @@ void main() {
 
         await tester.pump(const Duration(seconds: 6));
         expect(state.secondaryCaptionText, isNotNull);
-        expect(state.secondaryCaptionText, contains('Encourage your child'));
+        expect(state.secondaryCaptionText, contains('Encourage them'));
       },
     );
   });

@@ -99,7 +99,7 @@ void main() {
 
   testWidgets('the caption never renders flush against the close button — '
       'regression test for Trello card hIKjobsB, found driving the '
-      'simulator: a long Trigger caption ("Drag the higher-sounding '
+      'simulator: a long Trigger caption ("Help them drag the higher '
       'instrument to Clef.") needs nearly the full width Expanded gives it, '
       'and with no explicit margin its own left edge landed exactly on the '
       'close button\'s right edge — no true overlap, but no breathing room '

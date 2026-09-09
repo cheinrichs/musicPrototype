@@ -102,6 +102,13 @@ class HighLowHeader extends StatelessWidget {
 /// Sized generously ([AppSpacing.largeTapTarget]) so a child can still
 /// find and hit it even though it reads visually quieter than the arrow
 /// this replaced.
+///
+/// The subtitle is deliberately about leaving, not about having
+/// succeeded (Trello card xpAkja5b, "Split Skip into two controls: escape
+/// and move-on") — "I'm ready to move on" is mastery language and now
+/// belongs to the adult move-on control instead (see
+/// `HighLowScreen`'s AdultDoor-styled control); this one needed its own
+/// wording that doesn't imply either failure or achievement.
 class HighLowSkipPill extends StatelessWidget {
   final bool enabled;
   final VoidCallback? onTap;
@@ -155,7 +162,7 @@ class HighLowSkipPill extends StatelessWidget {
                       style: AppTypography.bodyLarge.copyWith(fontSize: 18),
                     ),
                     Text(
-                      "I'm ready to move on",
+                      'I want something new',
                       style: AppTypography.label.copyWith(letterSpacing: 0),
                     ),
                   ],
