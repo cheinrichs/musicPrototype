@@ -5,6 +5,7 @@ import 'package:flutter_soloud/flutter_soloud.dart';
 import 'audio_session.dart';
 import 'note.dart';
 import 'sfx_type.dart';
+import 'single_voice.dart';
 import 'voice_line.dart';
 
 /// Audio controller singleton for managing game audio
@@ -24,7 +25,11 @@ class AudioController {
   final Map<String, AudioSource> _clipCache = {};
   bool _isInitialized = false;
   bool _isMuted = false;
-  SoundHandle? _currentNoteHandle;
+  // Latest-tap-wins for the shared note voice — see [SingleVoice] for why
+  // this isn't an awaited stop-then-play any more.
+  late final SingleVoice<SoundHandle> _noteVoice = SingleVoice<SoundHandle>(
+    stop: (handle) => unawaited(_soloud!.stop(handle)),
+  );
   SoundHandle? _currentClipHandle;
   AppLifecycleListener? _lifecycleListener;
 
@@ -155,30 +160,24 @@ class AudioController {
   Future<void> playAssetForScale(String path) async {
     if (!_isInitialized || _isMuted) return;
 
-    // Stop the previous note if still playing. Awaited so the engine has
-    // actually freed the voice before we request a new one below, instead
-    // of racing the stop against the next play call.
-    if (_currentNoteHandle != null) {
-      await _soloud!.stop(_currentNoteHandle!);
-      _currentNoteHandle = null;
-    }
-
-    if (!_noteCache.containsKey(path)) {
-      await _preloadAssetPath(path);
-    }
-
-    final source = _noteCache[path];
-    if (source != null) {
-      _currentNoteHandle = await _soloud!.play(source);
-    }
+    // Cut-and-replace, never wait: a retap must sound at once, not queue
+    // behind (or be swallowed by) the note already playing. The returned
+    // future still resolves when the new voice has *started*, which
+    // sequential callers (scale playback) rely on for their own timing.
+    await _noteVoice.retrigger(() async {
+      if (!_noteCache.containsKey(path)) {
+        await _preloadAssetPath(path);
+      }
+      final source = _noteCache[path];
+      return source == null ? null : await _soloud!.play(source);
+    });
   }
 
-  /// Stop the current scale note (call at end of scale)
+  /// Stop the current scale note (call at end of scale). Also cancels a
+  /// note that has been requested but hasn't started yet.
   void stopCurrentNote() {
-    if (_currentNoteHandle != null && _isInitialized) {
-      _soloud!.stop(_currentNoteHandle!);
-      _currentNoteHandle = null;
-    }
+    if (!_isInitialized) return;
+    _noteVoice.stopAll();
   }
 
   /// Play multiple notes simultaneously (for chords)
