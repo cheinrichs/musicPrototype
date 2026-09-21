@@ -23,6 +23,7 @@ import '../models/round_report.dart';
 import '../services/round_report_service.dart';
 import '../state/high_low_game_state.dart';
 import '../widgets/high_low_header.dart';
+import '../widgets/retry_shake.dart';
 
 /// Main game screen for High/Low ear training.
 ///
@@ -1328,7 +1329,11 @@ class _InstrumentButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isActive = glowing || feedback != null;
+    // Only a correct drop holds the grow-and-bob for its whole feedback
+    // window. A retry's feedback is the brief [RetryShake] alone — holding
+    // the grow/bob for the retry line's full length made the "not that
+    // one" gesture run as long as the clip.
+    final isActive = glowing || feedback == _CharacterFeedback.correct;
 
     return GestureDetector(
       onTap: onTap,
@@ -1344,9 +1349,9 @@ class _InstrumentButton extends StatelessWidget {
               isActive: isActive,
               wiggleWhenIdle: false,
               child: feedback == _CharacterFeedback.retry
-                  ? Image.asset(assetPath, fit: BoxFit.contain)
-                        .animate(onPlay: (c) => c.repeat(reverse: true))
-                        .shake(hz: 3, offset: const Offset(6, 0))
+                  ? RetryShake(
+                      child: Image.asset(assetPath, fit: BoxFit.contain),
+                    )
                   : Image.asset(assetPath, fit: BoxFit.contain),
             ),
             Positioned(
