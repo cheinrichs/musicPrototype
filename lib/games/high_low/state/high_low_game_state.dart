@@ -188,6 +188,14 @@ class HighLowGameState extends ChangeNotifier {
   bool? _characterSparkleIsPiper;
   Timer? _characterSparkleTimer;
 
+  /// Holds a tapped instrument's note effect ([playingIndex]) for
+  /// [_noteRingDuration], like the opening cue does. Playback resolves as
+  /// soon as a note *starts*, so clearing on playback completion (as this
+  /// used to) switched the notes off within a frame and a tap felt dead
+  /// next to the scripted cue. Cancelled whenever anything else takes over
+  /// [_playingIndex].
+  Timer? _tapRingTimer;
+
   /// Whether the round's secondary guidance (Trello card 5tdMOMh3) should
   /// be visible right now — set true ~6 seconds into an unanswered
   /// Participate round by [_nudgeTimer] (only ever scheduled for
@@ -330,12 +338,14 @@ class HighLowGameState extends ChangeNotifier {
     final isHigh = prompt.targetDirection == PitchDirection.higher;
     return switch (agencyStage) {
       AgencyStage.observe => 'Let them explore freely.',
-      AgencyStage.participate => isHigh
-          ? 'Let them tap both and find the higher one.'
-          : 'Let them tap both and find the lower one.',
-      AgencyStage.trigger => isHigh
-          ? 'Help them drag the higher instrument to Clef.'
-          : 'Help them drag the lower instrument to Piper.',
+      AgencyStage.participate =>
+        isHigh
+            ? 'Let them tap both and find the higher one.'
+            : 'Let them tap both and find the lower one.',
+      AgencyStage.trigger =>
+        isHigh
+            ? 'Help them drag the higher instrument to Clef.'
+            : 'Help them drag the lower instrument to Piper.',
     };
   }
 
@@ -438,6 +448,11 @@ class HighLowGameState extends ChangeNotifier {
     _nudgeTimer = null;
   }
 
+  void _cancelTapRingTimer() {
+    _tapRingTimer?.cancel();
+    _tapRingTimer = null;
+  }
+
   void _cancelSparkleTimer() {
     _characterSparkleTimer?.cancel();
     _characterSparkleTimer = null;
@@ -445,7 +460,7 @@ class HighLowGameState extends ChangeNotifier {
 
   /// Play [line], tracking [_speakingIsPiper] for however long it
   /// actually takes to finish (Trello card PIm7xE6n, "the talker moves")
-  /// — ties the speaking-bob's duration to real playback completion via
+  /// — ties the speaking sway's duration to real playback completion via
   /// [AudioController.playVoiceLineAndAwait], not a guessed timer (this
   /// codebase has been bitten twice by a bare `play()` resolving on start
   /// rather than completion). Guarded by [token] so a superseded round's
@@ -483,6 +498,7 @@ class HighLowGameState extends ChangeNotifier {
     _cancelPendingTimer();
     _cancelNudgeTimer();
     _cancelSparkleTimer();
+    _cancelTapRingTimer();
     _playingIndex = null;
     _dragFeedback = DragFeedback.none;
     _lastDropSide = null;
@@ -540,6 +556,7 @@ class HighLowGameState extends ChangeNotifier {
     if (prompt == null) return;
 
     _introPlaying = true;
+    _cancelTapRingTimer();
     _playingIndex = 0;
     if (agencyStage == AgencyStage.observe) {
       _activeCaption = prompt.leftIsHigher
@@ -560,6 +577,7 @@ class HighLowGameState extends ChangeNotifier {
     await _delay(_noteRingDuration);
     if (token != _roundToken) return;
 
+    _cancelTapRingTimer();
     _playingIndex = 1;
     if (agencyStage == AgencyStage.observe) {
       // The "Second" variants continue the sentence the first note's
@@ -710,16 +728,20 @@ class HighLowGameState extends ChangeNotifier {
 
     final instrument = side == 0 ? leftInstrument : rightInstrument;
     final midi = side == 0 ? prompt.firstMidi : prompt.secondMidi;
-    unawaited(
-      _audio.playAssetForScale(instrument.assetPathForMidi(midi)).then((_) {
-        // Only clear the wiggle if nothing newer (another tap, the
-        // next round) has already taken over `_playingIndex`.
-        if (_playingIndex == side) {
-          _playingIndex = null;
-          notifyListeners();
-        }
-      }),
-    );
+    unawaited(_audio.playAssetForScale(instrument.assetPathForMidi(midi)));
+
+    // Ring for as long as the scripted cue does, not for however long
+    // playback takes to *start* — see [_tapRingTimer]. A newer tap
+    // restarts the ring; anything else that takes over [_playingIndex]
+    // cancels it.
+    _cancelTapRingTimer();
+    _tapRingTimer = Timer(_noteRingDuration, () {
+      _tapRingTimer = null;
+      if (_playingIndex == side) {
+        _playingIndex = null;
+        notifyListeners();
+      }
+    });
   }
 
   /// Trigger-only: the child drags the instrument on [side] onto the
@@ -745,6 +767,7 @@ class HighLowGameState extends ChangeNotifier {
     _audio.stopCurrentClip();
     _cancelPendingTimer();
     _introPlaying = false;
+    _cancelTapRingTimer();
     _playingIndex = null;
 
     _firstResponseSide ??= side;
@@ -817,7 +840,10 @@ class HighLowGameState extends ChangeNotifier {
     HighLowPrompt prompt,
     VoiceLine retryLine,
   ) async {
-    await Future.wait([_speak(token, retryLine), _delay(_retryFeedbackMinimum)]);
+    await Future.wait([
+      _speak(token, retryLine),
+      _delay(_retryFeedbackMinimum),
+    ]);
     if (token != _roundToken) return;
     _dragFeedback = DragFeedback.none;
     _activeCaption = prompt.targetDirection == PitchDirection.higher
@@ -883,6 +909,7 @@ class HighLowGameState extends ChangeNotifier {
     _cancelPendingTimer();
     _cancelNudgeTimer();
     _cancelSparkleTimer();
+    _cancelTapRingTimer();
 
     // Skipped rounds aren't scored — nothing to record, this isn't an
     // answer of any kind.
@@ -924,6 +951,7 @@ class HighLowGameState extends ChangeNotifier {
     _cancelPendingTimer();
     _cancelNudgeTimer();
     _cancelSparkleTimer();
+    _cancelTapRingTimer();
     _status = GameStatus.completed;
     _audio.playSfx(SfxType.reward);
     notifyListeners();
@@ -935,6 +963,7 @@ class HighLowGameState extends ChangeNotifier {
     _cancelPendingTimer();
     _cancelNudgeTimer();
     _cancelSparkleTimer();
+    _cancelTapRingTimer();
     _status = GameStatus.notStarted;
     _prompts = [];
     _currentPromptIndex = 0;
@@ -960,6 +989,7 @@ class HighLowGameState extends ChangeNotifier {
     _cancelPendingTimer();
     _cancelNudgeTimer();
     _cancelSparkleTimer();
+    _cancelTapRingTimer();
     super.dispose();
   }
 }

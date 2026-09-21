@@ -24,6 +24,7 @@ import '../services/round_report_service.dart';
 import '../state/high_low_game_state.dart';
 import '../widgets/high_low_header.dart';
 import '../widgets/retry_settle.dart';
+import '../widgets/speaking_sway.dart';
 
 /// Main game screen for High/Low ear training.
 ///
@@ -951,7 +952,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
         child: Stack(
           clipBehavior: Clip.none,
           children: [
-            _buildSpeakingBob(child: clefImage, speaking: speaking),
+            SpeakingSway(isPiper: false, speaking: speaking, child: clefImage),
             if (sparkling) _buildCharacterSparkle(homeHeight, sparkleLevel),
           ],
         ),
@@ -963,6 +964,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
       height: targetHeight,
     );
     return _buildTargetCharacter(
+      isPiper: false,
       characterImage: targetImage,
       lift: centerLift,
       size: targetHeight,
@@ -1010,9 +1012,10 @@ class _HighLowScreenState extends State<HighLowScreen> {
         child: Stack(
           clipBehavior: Clip.none,
           children: [
-            _buildSpeakingBob(
-              child: piperImage.animate().fade(duration: AppAnimations.medium),
+            SpeakingSway(
+              isPiper: true,
               speaking: speaking,
+              child: piperImage.animate().fade(duration: AppAnimations.medium),
             ),
             if (sparkling) _buildCharacterSparkle(homeHeight, sparkleLevel),
           ],
@@ -1026,6 +1029,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
       fit: BoxFit.contain,
     );
     return _buildTargetCharacter(
+      isPiper: true,
       characterImage: piperImage,
       lift: centerLift,
       size: targetHeight,
@@ -1056,6 +1060,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
   /// instrument is sounding" and for the pre-reversal dragged character —
   /// reused again rather than inventing a third celebration effect).
   Widget _buildTargetCharacter({
+    required bool isPiper,
     required Widget characterImage,
     required double lift,
     required double size,
@@ -1078,9 +1083,10 @@ class _HighLowScreenState extends State<HighLowScreen> {
             AnimatedScale(
               scale: (celebrating || hovering) ? 1.08 : 1.0,
               duration: AppAnimations.fast,
-              child: _buildSpeakingBob(
-                child: characterImage,
+              child: SpeakingSway(
+                isPiper: isPiper,
                 speaking: speaking,
+                child: characterImage,
               ),
             ),
             if (celebrating)
@@ -1093,32 +1099,6 @@ class _HighLowScreenState extends State<HighLowScreen> {
         ),
       ),
     );
-  }
-
-  /// The "talker moves" speaking indicator (Trello card PIm7xE6n) — a
-  /// small bob for as long as [speaking] is true, tied to
-  /// [HighLowGameState.speakingIsPiper]'s real playback-duration tracking
-  /// rather than a guessed timer. It reads clearly precisely because
-  /// nothing else about a character moves any more (Trello card
-  /// NcVPjPZ5 moved idle motion onto the instruments instead) — glow was
-  /// considered and rejected for the same reason it was already dropped
-  /// elsewhere in this game (Trello card 96): motion is the one signal
-  /// left for "this character is doing something."
-  ///
-  /// Always mounted animating, amplitude zero when not speaking — same
-  /// pattern as [GlowWiggleCharacter] — rather than swapping the widget
-  /// in and out, which would remount the underlying `AnimationController`
-  /// and risk a "Timer still pending" test flake if a mount is
-  /// immediately followed by a dispose in the same tick.
-  Widget _buildSpeakingBob({required Widget child, required bool speaking}) {
-    return child
-        .animate(onPlay: (c) => c.repeat(reverse: true))
-        .moveY(
-          begin: 0,
-          end: speaking ? -6 : 0,
-          duration: const Duration(milliseconds: 900),
-          curve: Curves.easeInOut,
-        );
   }
 
   /// Fixed positions, each `(top, right)` as a fraction of the
@@ -1139,7 +1119,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
   /// visual language as the instrument's own ✨ overlay
   /// ([_InstrumentButton]), anchored to a character instead. Callers
   /// guarantee this is never shown for the same character
-  /// [_buildSpeakingBob] is animating at the same instant — see
+  /// [SpeakingSway] is animating at the same instant — see
   /// [HighLowGameState.speakingIsPiper]'s doc comment for why the two
   /// signals must not collide.
   ///
@@ -1181,7 +1161,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
   /// Perfectly still while resting — idle motion was retired here
   /// entirely (Cooper, driving the simulator: "the instruments and the
   /// characters don't have any idle bobbing"), so nothing on screen
-  /// idles any more; motion is reserved for [_buildSpeakingBob], which
+  /// idles any more; motion is reserved for [SpeakingSway], which
   /// only ever means one thing.
   ///
   /// [celebratingThis] mirrors the pre-reversal "celebrate a correct drop"

@@ -841,4 +841,52 @@ void main() {
       },
     );
   });
+
+  group('HighLowGameState — a tap rings like the scripted playback', () {
+    testWidgets(
+      'tapping an instrument holds its note effect (playingIndex) for the '
+      "same ring the opening cue uses, then clears — playback resolves as "
+      'soon as a note *starts*, so without this the notes flashed for a '
+      'frame and a tap felt dead next to the scripted cue',
+      (tester) async {
+        final state = HighLowGameState(
+          totalPrompts: 3,
+          agencyStage: AgencyStage.participate,
+        );
+        state.startGame();
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 4700));
+        expect(state.status, GameStatus.awaitingInput);
+        expect(state.playingIndex, isNull);
+
+        state.tapInstrument(0);
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(
+          state.playingIndex,
+          0,
+          reason: 'the tapped instrument is still ringing shortly after',
+        );
+        await tester.pump(const Duration(milliseconds: 1500));
+        expect(state.playingIndex, 0, reason: 'still inside the 2.3s ring');
+
+        await tester.pump(const Duration(milliseconds: 900));
+        expect(state.playingIndex, isNull, reason: 'the ring has ended');
+
+        // A second tap on the other instrument takes over, and the first
+        // tap's ring must not clear the second's early.
+        state.tapInstrument(0);
+        await tester.pump(const Duration(milliseconds: 1500));
+        state.tapInstrument(1);
+        await tester.pump(const Duration(milliseconds: 1500));
+        expect(
+          state.playingIndex,
+          1,
+          reason: "the earlier tap's timer must not cut the newer ring short",
+        );
+        await tester.pump(const Duration(milliseconds: 1000));
+        expect(state.playingIndex, isNull);
+        state.dispose();
+      },
+    );
+  });
 }
