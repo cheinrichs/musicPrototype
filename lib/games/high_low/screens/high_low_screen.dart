@@ -23,7 +23,7 @@ import '../models/round_report.dart';
 import '../services/round_report_service.dart';
 import '../state/high_low_game_state.dart';
 import '../widgets/high_low_header.dart';
-import '../widgets/retry_shake.dart';
+import '../widgets/retry_settle.dart';
 
 /// Main game screen for High/Low ear training.
 ///
@@ -202,16 +202,30 @@ class _HighLowScreenState extends State<HighLowScreen> {
   void _onInstrumentDropped(DragTargetDetails<int> details, double charSize) {
     final side = details.data;
     final box = _instrumentSlotKeys[side].currentContext?.findRenderObject();
+    var releasedFrom = Offset.zero;
     if (box is RenderBox && box.hasSize) {
-      final travelled = (details.offset - box.localToGlobal(Offset.zero))
-          .distance;
-      if (travelled < charSize * _minAnswerDragFraction) {
+      releasedFrom = details.offset - box.localToGlobal(Offset.zero);
+      if (releasedFrom.distance < charSize * _minAnswerDragFraction) {
         _onInstrumentTap(side);
         return;
       }
     }
+    // Set before the drop so the rebuild it triggers already knows where a
+    // wrong drop's return journey starts — see [RetrySettle].
+    _lastDropFrom = releasedFrom;
+    _dropSerial++;
     _gameState.dropInstrument(side);
   }
+
+  /// Where the most recent counted drop released its instrument, relative
+  /// to the stump it rests on — the start of a wrong drop's return
+  /// journey ([RetrySettle]).
+  Offset _lastDropFrom = Offset.zero;
+
+  /// Bumped on every counted drop and used as [RetrySettle]'s key, so a
+  /// second wrong drop during the same retry window replays the return
+  /// from its own release point instead of reusing the first.
+  int _dropSerial = 0;
 
   /// Shown instead of the real game when the dev gate picks a three-note
   /// tier (T5-T8) — see [_threeNoteTierNotBuilt]. Plain and honest rather
@@ -792,32 +806,30 @@ class _HighLowScreenState extends State<HighLowScreen> {
         onTap: _gameState.tapArrow,
         child:
             Container(
-                  width: 72,
-                  height: 72,
-                  decoration: const BoxDecoration(
-                    gradient: AppColors.ctaGradient,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.ctaShadow,
-                        blurRadius: 14,
-                        offset: Offset(0, 6),
-                      ),
-                    ],
+              width: 72,
+              height: 72,
+              decoration: const BoxDecoration(
+                gradient: AppColors.ctaGradient,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.ctaShadow,
+                    blurRadius: 14,
+                    offset: Offset(0, 6),
                   ),
-                  child: const Icon(
-                    Icons.arrow_forward_rounded,
-                    color: Colors.white,
-                    size: 40,
-                  ),
-                )
-                .animate()
-                .scale(
-                  begin: const Offset(0.4, 0.4),
-                  end: const Offset(1, 1),
-                  duration: AppAnimations.medium,
-                  curve: Curves.elasticOut,
-                ),
+                ],
+              ),
+              child: const Icon(
+                Icons.arrow_forward_rounded,
+                color: Colors.white,
+                size: 40,
+              ),
+            ).animate().scale(
+              begin: const Offset(0.4, 0.4),
+              end: const Offset(1, 1),
+              duration: AppAnimations.medium,
+              curve: Curves.elasticOut,
+            ),
       ),
     );
   }
@@ -1212,6 +1224,8 @@ class _HighLowScreenState extends State<HighLowScreen> {
       size: charSize,
       glowing: glowing,
       feedback: feedback,
+      retryFrom: _lastDropFrom,
+      dropSerial: _dropSerial,
       onTap: () => _onInstrumentTap(side),
     );
 
@@ -1316,6 +1330,12 @@ class _InstrumentButton extends StatelessWidget {
   final double size;
   final bool glowing;
   final _CharacterFeedback? feedback;
+
+  /// Where a wrong drop released this instrument, relative to its stump,
+  /// and which drop that was — the start point and replay key for
+  /// [RetrySettle]. Only read while [feedback] is retry.
+  final Offset retryFrom;
+  final int dropSerial;
   final VoidCallback onTap;
 
   const _InstrumentButton({
@@ -1324,13 +1344,15 @@ class _InstrumentButton extends StatelessWidget {
     required this.size,
     required this.glowing,
     required this.feedback,
+    required this.retryFrom,
+    required this.dropSerial,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     // Only a correct drop holds the grow-and-bob for its whole feedback
-    // window. A retry's feedback is the brief [RetryShake] alone — holding
+    // window. A retry's feedback is the brief [RetrySettle] alone — holding
     // the grow/bob for the retry line's full length made the "not that
     // one" gesture run as long as the clip.
     final isActive = glowing || feedback == _CharacterFeedback.correct;
@@ -1349,7 +1371,9 @@ class _InstrumentButton extends StatelessWidget {
               isActive: isActive,
               wiggleWhenIdle: false,
               child: feedback == _CharacterFeedback.retry
-                  ? RetryShake(
+                  ? RetrySettle(
+                      key: ValueKey(dropSerial),
+                      from: retryFrom,
                       child: Image.asset(assetPath, fit: BoxFit.contain),
                     )
                   : Image.asset(assetPath, fit: BoxFit.contain),
