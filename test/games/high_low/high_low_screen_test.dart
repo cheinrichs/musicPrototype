@@ -345,6 +345,61 @@ void main() {
     },
   );
 
+  group('a tap or a short accidental drag never answers at Trigger '
+      '(Trello card L00pxs7q)', () {
+    testWidgets(
+      'a plain tap on either instrument plays it but never resolves the round',
+      (tester) async {
+        await pumpAndFinishIntro(tester, viewport: roomyViewport);
+        final instruments = find.byType(Draggable<int>);
+
+        for (final i in [0, 1]) {
+          await tester.tap(instruments.at(i));
+          await tester.pump();
+          await tester.pump(Duration.zero);
+        }
+
+        expect(tester.takeException(), isNull);
+        expect(
+          tester.widget<ProgressDots>(find.byType(ProgressDots)).completedCount,
+          0,
+          reason: 'a tap is exploration — only a drag answers at Trigger',
+        );
+      },
+    );
+
+    testWidgets(
+      'a short drag that barely clears the touch slop — a finger that slid '
+      'during a tap — never resolves the round, on either instrument',
+      (tester) async {
+        await pumpAndFinishIntro(tester, viewport: roomyViewport);
+        final instruments = find.byType(Draggable<int>);
+
+        for (final i in [0, 1]) {
+          final start = tester.getCenter(instruments.at(i));
+          final gesture = await tester.startGesture(start);
+          await tester.pump(const Duration(milliseconds: 20));
+          // 30px: past the ~18px touch slop that starts a Draggable, but a
+          // tiny fraction of the ~200px trip to the centered character.
+          await gesture.moveTo(start + const Offset(30, 0));
+          await tester.pump(const Duration(milliseconds: 20));
+          await gesture.up();
+          await tester.pump();
+          await tester.pump(Duration.zero);
+        }
+
+        expect(tester.takeException(), isNull);
+        expect(
+          tester.widget<ProgressDots>(find.byType(ProgressDots)).completedCount,
+          0,
+          reason:
+              'one of the two instruments is the correct one — a 30px slide '
+              'must not be read as the answer',
+        );
+      },
+    );
+  });
+
   group('the earned arrow (Trello card xpAkja5b)', () {
     tearDown(() {
       devToolsEnabled = false;
@@ -383,25 +438,24 @@ void main() {
         await tester.pump(const Duration(milliseconds: 1200));
         await tester.pump(Duration.zero);
 
-        // Observe's instruments aren't Draggable (that's Trigger-only) and
-        // carry no other public-facing finder, so this taps the same
-        // on-screen coordinates `_buildScene` places them at — computed
-        // directly from its own anchor/ground formulas rather than
-        // guessed, so a future re-tuning of those constants keeps this
-        // test honest instead of silently coincidental.
-        final screenSize = roomyViewport;
-        final groundY = screenSize.height * 0.16;
-        final charSize = screenSize.height * 0.50;
-        final instrumentCenterY =
-            screenSize.height - groundY - charSize / 2;
-        final leftInstrument = Offset(
-          screenSize.width * 0.29,
-          instrumentCenterY,
+        // Same real-decode wait as pumpAndFinishIntro (see its comment):
+        // a hit test against a not-yet-sized image box always misses, so
+        // without this the taps below race the asset decode — this test
+        // passed on CI and locally only by winning that race.
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 50)),
         );
-        final rightInstrument = Offset(
-          screenSize.width * 0.72,
-          instrumentCenterY,
+        await tester.pump();
+
+        // Observe's instruments aren't Draggable (that's Trigger-only), so
+        // find them by their private button type rather than by
+        // hard-coded coordinates copied from _buildScene's layout math.
+        final instruments = find.byWidgetPredicate(
+          (w) => w.runtimeType.toString() == '_InstrumentButton',
         );
+        expect(instruments, findsNWidgets(2));
+        final leftInstrument = tester.getCenter(instruments.at(0));
+        final rightInstrument = tester.getCenter(instruments.at(1));
 
         // Long past where the old timed move-on control would have
         // appeared — still nothing, because nothing's been tapped yet.

@@ -181,6 +181,37 @@ class _HighLowScreenState extends State<HighLowScreen> {
   /// [HighLowGameState.tapInstrument].
   void _onInstrumentTap(int side) => _gameState.tapInstrument(side);
 
+  /// One per side, on each instrument's slot, so a drop can measure how far
+  /// the instrument actually travelled from where it rests.
+  final List<GlobalKey> _instrumentSlotKeys = [GlobalKey(), GlobalKey()];
+
+  /// A drop only answers the round if the instrument travelled at least
+  /// this far ([_minAnswerDragFraction] of [charSize]) from its stump. The
+  /// drop zone is the whole screen, so without this floor any drag past
+  /// the ~18px touch slop — a small child's finger sliding during a tap —
+  /// counted as a full answer and sent the instrument to the character
+  /// (Trello card L00pxs7q). The trip to the centered character is about
+  /// 0.9 x [charSize], so half of that is well clear of a slide and well
+  /// short of a deliberate drag.
+  static const double _minAnswerDragFraction = 0.5;
+
+  /// A drag that ends short of the answer threshold is the tap it was
+  /// meant to be: the drag gesture won the arena, so the instrument's own
+  /// tap never fired, and this plays it instead.
+  void _onInstrumentDropped(DragTargetDetails<int> details, double charSize) {
+    final side = details.data;
+    final box = _instrumentSlotKeys[side].currentContext?.findRenderObject();
+    if (box is RenderBox && box.hasSize) {
+      final travelled = (details.offset - box.localToGlobal(Offset.zero))
+          .distance;
+      if (travelled < charSize * _minAnswerDragFraction) {
+        _onInstrumentTap(side);
+        return;
+      }
+    }
+    _gameState.dropInstrument(side);
+  }
+
   /// Shown instead of the real game when the dev gate picks a three-note
   /// tier (T5-T8) — see [_threeNoteTierNotBuilt]. Plain and honest rather
   /// than a broken attempt at the real scene: says what's missing, and
@@ -709,7 +740,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
         // HitTestBehavior.translucent, so sitting on top like this doesn't
         // block the instruments' own tap-to-explore (or drag-start)
         // underneath.
-        if (isTrigger) _buildDropZone(),
+        if (isTrigger) _buildDropZone(charSize),
         // The child's earned arrow (Trello card xpAkja5b, "Two controls:
         // the adult's persistent skip, and the child's earned arrow") —
         // Observe only, below the centered target character, visible
@@ -798,12 +829,12 @@ class _HighLowScreenState extends State<HighLowScreen> {
   /// zone. Data type is `int` (the dragged instrument's [side]) to match
   /// the `Draggable<int>` each instrument wraps itself in — see
   /// [_buildInstrumentSlot].
-  Widget _buildDropZone() {
+  Widget _buildDropZone(double charSize) {
     return Positioned.fill(
       child: DragTarget<int>(
         onWillAcceptWithDetails: (_) => _gameState.canDrop,
         onAcceptWithDetails: (details) =>
-            _gameState.dropInstrument(details.data),
+            _onInstrumentDropped(details, charSize),
         onMove: (_) {
           if (!_dragHovering) setState(() => _dragHovering = true);
         },
@@ -1227,6 +1258,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
     }
 
     return AnimatedPositioned(
+      key: _instrumentSlotKeys[side],
       duration: const Duration(milliseconds: 500),
       curve: Curves.easeOutBack,
       left: targetLeft,
