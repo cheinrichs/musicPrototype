@@ -106,6 +106,41 @@ Used for A0→A1 in High/Low: complete one stage.
   independently 59 times.
 - **Promotion should never remove anything.** Each stage contains the one below — free
   exploration survives into the level where a question is added.
+- **Never advance tier and agency in the same round.** If both come due at once, the
+  next round shows only the new agency, and the tier increase pauses for a stone.
+  Agency takes priority because it changes what she is being asked to *do*; a tier
+  change only changes how hard the same task is. This needs the per-round tracking
+  log to enforce — something has to know what changed last and when.
+
+### Which tiers are reachable at which agency level
+
+Decided 2026-09-25.
+
+**Tier does not advance at A0.** At A0 the child produces no answer — High/Low's
+Observe completion criterion is coverage (tap each instrument), not correctness — so
+there is no evidence of discrimination to advance on. Advancing tier there isn't
+advancement, it's a playlist silently getting harder with nobody checking, and it's
+why the step from A0 to A1 was landing like a cliff.
+
+At A0, vary the *surface* instead of the difficulty: different instruments and
+different notes, same interval band. That keeps a child who lives in Observe for a
+while from getting the same two instruments forever, without pretending progress
+happened.
+
+The tier ladder starts where evidence does:
+
+- **A0 holds at T1.** No answer, no evidence, no movement.
+- **A1 gives a weak signal** — does she tap the target — with no failure state, so
+  tier *may* creep, but it stops short of T5 (High/Low's three-note tier — see
+  `HIGH_LOW_TIERS.md`). This bound exists on its own evidentiary merits, not to dodge
+  a layout problem, but it also happens to be exactly what keeps A1's centered
+  narrator character and the three-note ordering screen's centre-back pedestal from
+  ever wanting the screen's middle at the same time.
+- **A2 gives a real answer** (a drop can be wrong), and tier moves properly.
+
+This doesn't resolve the mastery algorithm or promotion thresholds themselves — see
+Open Questions below — only the *bound* on how far tier can reach before agency has
+caught up with it.
 
 ---
 

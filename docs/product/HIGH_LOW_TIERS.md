@@ -33,6 +33,8 @@ Eight tiers, a complete 2×2×2 across three independent properties: **interval 
 
 Each new demand is introduced **on its own with everything else relaxed**, then hardened by narrowing the interval, then eventually combined. The interval widens back to 7–12 at T3, T5 and T7 — every point where something new arrives.
 
+**Not every tier is reachable at every agency level.** Decided 2026-09-25, see `ADVANCEMENT_SIGNALS.md` for the full reasoning: A0 holds at T1 (no answer, no evidence, no movement); A1 can creep but stops short of T5; T5+ (three notes) requires A2. This is also why the three-note ordering screen only ever needs to build its A2+ layout — A1 never reaches a tier that has a third note to order.
+
 ### On features switching off
 
 Instrument contrast is on at T3–T4, **off** at T5–T6, back on at T7–T8. That is deliberate and correct.
@@ -51,6 +53,28 @@ Every tier now uses 7–12 or 4–7. The old T4's **2–4 semitone band no longe
 
 This is consistent with the judgement that a near-semitone discrimination is an ear-acuity test rather than a high-versus-low one — a different skill, and a frustrating one at five. Flagged here so it stays a deliberate choice rather than an artefact of building the grid.
 
+### Three notes gets its own layout, deliberately unlike the two-note one
+
+Decided 2026-09-25. An earlier concept-art brief asked for the three-instrument
+layout to be the same composition as the two-instrument one with a third instrument
+added. Cooper reversed that after seeing the art: *"having the three instrument
+layout be visually different than the 2 instrument layout will help with the child
+understanding its a different mechanic and to pay attention to what the new thing
+being asked is."* A layout that reads as "same screen, one more thing" invites the
+child to keep doing what worked before, when the actual question has changed from
+"which is higher" to "which is highest." Two stumps side by side and a triangle with
+a tall pedestal centre-back are already a fundamentally different formation — lean
+into that difference rather than sanding it down for compositional continuity.
+
+The centre-back pedestal must still be **levelled** with the two front stumps so all
+three instrument tops sit at the same screen height — the ordering tree teaches that
+height means pitch, and any second height signal in the scene (the pedestal's own
+perspective placement, uncorrected, sits it noticeably above the front stumps) would
+read as "the middle one is the high note," a giveaway a child could win from without
+listening. Levelling and "visually different" are not in tension: levelling is about
+the instruments' tops sharing a height, not about the two formations resembling each
+other.
+
 ### Why three notes is a tier, not an agency level
 
 Earlier framing put three notes at A4 with ordering. Separating them is better and solves the jump problem:
@@ -59,12 +83,6 @@ Earlier framing put three notes at A4 with ordering. Separating them is better a
 - **Agency A4** later asks her to *arrange* them. By then three notes is familiar and the only new thing is the ordering operation.
 
 Item count is a demand on what she can hold. Ordering is a demand on what she can do with it.
-
-### Never advance tier and agency together
-
-If a tier increase and an agency increase both come due, **show only the new agency and pause the tier for a stone.** Agency takes priority because it changes what she is being asked to *do*; a tier change only changes how hard the same task is.
-
-This needs the per-round tracking log to enforce — something has to know what changed last.
 
 ### Replays
 

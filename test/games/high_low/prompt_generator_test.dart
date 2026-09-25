@@ -394,6 +394,96 @@ void main() {
           );
         }
       });
+
+      test(
+        'for every legal three-note pairing, each instrument sometimes '
+        'lands as the highest note and sometimes as the lowest — a '
+        'per-pair check, not just "some instrument somewhere" (Trello: a '
+        'cross-instrument pool that silently dropped one instrument\'s '
+        'notes at every pitch its partner also covered made this a *100%* '
+        'correlation for every real pairing, not a subtle skew — cello '
+        'paired with guitar always put cello highest and guitar lowest, '
+        'in thousands of samples, because cello only survived at pitches '
+        'entirely above guitar\'s whole range)',
+        () {
+          final generator = PromptGenerator(random: Random(5));
+          for (final tier in [ConceptTier.t7, ConceptTier.t8]) {
+            // Bucket outcomes by which pair of instruments actually showed
+            // up — PromptGenerator doesn't expose a way to force a
+            // specific pair, so this samples broadly and checks every
+            // pair that occurred often enough to judge.
+            final maxCounts = <String, Map<HighLowInstrument, int>>{};
+            final minCounts = <String, Map<HighLowInstrument, int>>{};
+            final sampleCounts = <String, int>{};
+
+            for (var i = 0; i < 3000; i++) {
+              final prompt = generator.generatePrompt(
+                promptNumber: i,
+                tier: tier,
+                targetDirection: PitchDirection.higher,
+              );
+              final notes = [
+                (prompt.firstInstrument, prompt.firstMidi),
+                (prompt.secondInstrument, prompt.secondMidi),
+                (prompt.thirdInstrument!, prompt.thirdMidi!),
+              ]..sort((a, b) => a.$2.compareTo(b.$2));
+              // Built from all three notes, not just the extremes — a
+              // "2-from-A, 1-from-B" split can land B's single note in
+              // the *middle*, which would leave it out if this only
+              // looked at the highest and lowest.
+              final pairKey =
+                  (notes.map((n) => n.$1).toSet().toList()
+                        ..sort((a, b) => a.index.compareTo(b.index)))
+                      .map((i) => i.name)
+                      .join('+');
+
+              sampleCounts[pairKey] = (sampleCounts[pairKey] ?? 0) + 1;
+              final maxes = maxCounts.putIfAbsent(pairKey, () => {});
+              final mins = minCounts.putIfAbsent(pairKey, () => {});
+              maxes[notes.last.$1] = (maxes[notes.last.$1] ?? 0) + 1;
+              mins[notes.first.$1] = (mins[notes.first.$1] ?? 0) + 1;
+            }
+
+            expect(
+              sampleCounts.length,
+              greaterThan(1),
+              reason:
+                  '$tier: every generated prompt used the exact same pair '
+                  'of instruments — the pool of eligible pairs is much '
+                  'larger than that',
+            );
+
+            for (final pairKey in sampleCounts.keys) {
+              // Skip a pair sampled too rarely to judge fairly by chance
+              // alone — every real pair gets thousands of shared draws
+              // across 3000 iterations, so this only excludes noise.
+              if (sampleCounts[pairKey]! < 20) continue;
+              final instruments = pairKey.split('+');
+              for (final name in instruments) {
+                final instrument = HighLowInstrument.values.firstWhere(
+                  (i) => i.name == name,
+                );
+                expect(
+                  maxCounts[pairKey]![instrument] ?? 0,
+                  greaterThan(0),
+                  reason:
+                      '$tier $pairKey: $name was never the highest of the '
+                      'three in ${sampleCounts[pairKey]} samples — "which '
+                      'instrument is highest" would be a giveaway for '
+                      'this pair',
+                );
+                expect(
+                  minCounts[pairKey]![instrument] ?? 0,
+                  greaterThan(0),
+                  reason:
+                      '$tier $pairKey: $name was never the lowest of the '
+                      'three in ${sampleCounts[pairKey]} samples',
+                );
+              }
+            }
+          }
+        },
+      );
     });
 
     group('two-note tiers (T1/T2/T3/T4)', () {

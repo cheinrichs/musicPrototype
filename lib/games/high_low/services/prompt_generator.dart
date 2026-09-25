@@ -179,18 +179,39 @@ class PromptGenerator {
     );
   }
 
-  /// Picks [count] (2 or 3) notes from [pool] with no repeated pitch, such
-  /// that every *adjacent* gap in sorted pitch order falls within
-  /// [tier]'s [ConceptTier.minSemitones]..[ConceptTier.maxSemitones] —
-  /// the direct three-note generalization of the original two-note
-  /// "enumerate every valid pair" approach (cheap: even a combined
-  /// cross-instrument pool is at most ~50 notes, so enumerating every
-  /// 2- or 3-element combination is trivially fast). If [requireBothOf]
-  /// is given, only combinations using at least one note from each of
-  /// those instruments qualify (see
+  /// Picks [count] (2 or 3) notes from [pool], such that every *adjacent*
+  /// gap in sorted pitch order falls within [tier]'s
+  /// [ConceptTier.minSemitones]..[ConceptTier.maxSemitones] — the direct
+  /// three-note generalization of the original two-note "enumerate every
+  /// valid pair" approach (cheap: even a combined cross-instrument pool is
+  /// at most ~50 notes, so enumerating every 2- or 3-element combination is
+  /// trivially fast). If [requireBothOf] is given, only combinations using
+  /// at least one note from each of those instruments qualify (see
   /// [_generateVaryingInstrumentPrompt] for why) — and `null` is returned
   /// (rather than throwing) when no such combination exists, so the
   /// caller can retry with a different instrument pair.
+  ///
+  /// Deliberately does *not* deduplicate [pool] by raw pitch value before
+  /// combining, even though [byMidi] used to (Trello — cross-instrument
+  /// three-note position fairness): most of this library's instruments
+  /// share the identical declared C4-B5 range, so a combined pool very
+  /// often has two different instruments offering the exact same real
+  /// pitch. Collapsing those into one slot silently discarded whichever
+  /// instrument's note lost the key collision (last-in-pool-order wins a
+  /// `Map`) — for a same-full-range pair like cello+flute that discarded
+  /// *one of the two instruments entirely*, and for a partial-overlap pair
+  /// like cello+guitar it left one instrument representable only by the
+  /// non-overlapping remainder of its range, which sits entirely above or
+  /// entirely below the other instrument's — guaranteeing that instrument
+  /// was *always* the extreme note, never the middle one, for every single
+  /// generated prompt with that pair (found via
+  /// `test/games/high_low/cross_instrument_pairing_test.dart`'s
+  /// three-note fairness check: 100% correlation across thousands of
+  /// samples, not a subtle skew). Two notes at the exact same pitch can
+  /// never both survive into one combo regardless — a zero-semitone gap
+  /// always fails [_gapsInBounds] — so keeping every candidate distinct
+  /// costs nothing and only restores combinations the old dedup was
+  /// silently hiding.
   ///
   /// The chosen notes are then shuffled into first/second(/third)
   /// position — a fixed assignment (e.g. always placing the lower note
@@ -203,71 +224,68 @@ class PromptGenerator {
     required ConceptTier tier,
     Set<HighLowInstrument>? requireBothOf,
   }) {
-    final byMidi = <int, _Note>{for (final note in pool) note.midi: note};
-    final midis = byMidi.keys.toList()..sort();
+    final notes = [...pool]..sort((a, b) => a.midi.compareTo(b.midi));
 
     final combinations = count == 2
-        ? _pairs(midis)
-        : _triples(midis, tier.minSemitones, tier.maxSemitones);
+        ? _pairs(notes)
+        : _triples(notes, tier.minSemitones, tier.maxSemitones);
 
-    final valid = <List<int>>[
+    final valid = <List<_Note>>[
       for (final combo in combinations)
         if (_gapsInBounds(combo, tier.minSemitones, tier.maxSemitones) &&
             (requireBothOf == null ||
                 requireBothOf.every(
-                  (i) => combo.any((m) => byMidi[m]!.instrument == i),
+                  (i) => combo.any((note) => note.instrument == i),
                 )))
           combo,
     ];
     if (valid.isEmpty) return null;
 
-    final chosen =
-        valid[_random.nextInt(valid.length)]
-            .map((midi) => byMidi[midi]!)
-            .toList()
-          ..shuffle(_random);
+    final chosen = [...valid[_random.nextInt(valid.length)]]
+      ..shuffle(_random);
     return chosen;
   }
 
-  /// Every 2-element ascending combination of [midis] — the two-note
-  /// case doesn't need [minSemitones]/[maxSemitones] pre-filtering here
-  /// since [_gapsInBounds] checks the single gap directly.
-  Iterable<List<int>> _pairs(List<int> midis) sync* {
-    for (var i = 0; i < midis.length; i++) {
-      for (var j = i + 1; j < midis.length; j++) {
-        yield [midis[i], midis[j]];
+  /// Every 2-element ascending-by-pitch combination of [notes] — the
+  /// two-note case doesn't need [minSemitones]/[maxSemitones]
+  /// pre-filtering here since [_gapsInBounds] checks the single gap
+  /// directly.
+  Iterable<List<_Note>> _pairs(List<_Note> notes) sync* {
+    for (var i = 0; i < notes.length; i++) {
+      for (var j = i + 1; j < notes.length; j++) {
+        yield [notes[i], notes[j]];
       }
     }
   }
 
-  /// Every 3-element ascending combination of [midis] whose two adjacent
-  /// gaps could plausibly both fit [minSemitones]..[maxSemitones] —
-  /// pruned during generation (not just filtered after) since an
+  /// Every 3-element ascending-by-pitch combination of [notes] whose two
+  /// adjacent gaps could plausibly both fit [minSemitones]..[maxSemitones]
+  /// — pruned during generation (not just filtered after) since an
   /// unpruned combined cross-instrument pool's full C(n,3) can run into
   /// the tens of thousands.
-  Iterable<List<int>> _triples(
-    List<int> midis,
+  Iterable<List<_Note>> _triples(
+    List<_Note> notes,
     int minSemitones,
     int maxSemitones,
   ) sync* {
-    for (var i = 0; i < midis.length; i++) {
-      for (var j = i + 1; j < midis.length; j++) {
-        final firstGap = midis[j] - midis[i];
+    for (var i = 0; i < notes.length; i++) {
+      for (var j = i + 1; j < notes.length; j++) {
+        final firstGap = notes[j].midi - notes[i].midi;
         if (firstGap < minSemitones || firstGap > maxSemitones) continue;
-        for (var k = j + 1; k < midis.length; k++) {
-          yield [midis[i], midis[j], midis[k]];
+        for (var k = j + 1; k < notes.length; k++) {
+          yield [notes[i], notes[j], notes[k]];
         }
       }
     }
   }
 
   bool _gapsInBounds(
-    List<int> sortedCombo,
+    List<_Note> sortedCombo,
     int minSemitones,
     int maxSemitones,
   ) {
     for (var i = 1; i < sortedCombo.length; i++) {
-      final gap = sortedCombo[i] - sortedCombo[i - 1];
+      final gap = sortedCombo[i].midi - sortedCombo[i - 1].midi;
       if (gap < minSemitones || gap > maxSemitones) return false;
     }
     return true;
