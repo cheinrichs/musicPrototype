@@ -81,7 +81,19 @@ enum HighLowInstrument {
   // measured (and --verify-chromatic checks it) with a real detection-
   // side fix instead — an FFT peak in that same early window — see
   // tool/measure_note_pitch.py's SPECTRAL_PEAK_INSTRUMENT_DIRS.
-  bells('Bell', 'bell', 'bells', 84, 96),
+  bells(
+    'Bell',
+    'bell',
+    'bells',
+    84,
+    96,
+    // Cooper, on device: "the bells art should be like 50% as large" — the
+    // handbell art reads visually larger than every other instrument at
+    // the same charSize (every instrument's asset is full-bleed with no
+    // transparent padding to trim, so there was no per-asset fix; see
+    // [displaySizeScale]'s own doc for why this lives here instead).
+    displaySizeScale: 0.5,
+  ),
   cello('Cello', 'cello', 'cello', 60, 83),
   flute('Flute', 'flute', 'flute', 60, 83),
   // Guitar (2026-09 audit): real pitch is one octave below its file names
@@ -159,6 +171,7 @@ enum HighLowInstrument {
     this.lowestSampleMidi,
     this.highestSampleMidi, {
     this.missingMidis = const {},
+    this.displaySizeScale = 1.0,
   });
 
   final String _assetBaseName;
@@ -189,6 +202,19 @@ enum HighLowInstrument {
   /// to whatever contiguous run excludes them, making its two restored
   /// 2026-09 notes undeclared and unreachable.
   final Set<int> missingMidis;
+
+  /// Multiplier on the screen's shared per-slot instrument size (Trello,
+  /// Cooper on device: "the bells art should be like 50% as large"). Every
+  /// instrument used to render at the exact same size regardless of
+  /// identity — a shared default with no per-instrument override — which
+  /// is exactly what let one oversized asset go unnoticed until someone
+  /// looked at it next to another instrument. Defaults to 1.0 (the
+  /// original shared size) for everyone except [bells]; scaling lives here
+  /// rather than by editing the asset so the screen's own depth-position
+  /// and playing-instrument-grows scaling (both applied as multiplicative
+  /// transforms on top of the base size) keep working unchanged — this is
+  /// the base they multiply, not a replacement for them.
+  final double displaySizeScale;
 
   /// Every real MIDI note this instrument actually has a sample for,
   /// ascending — [lowestSampleMidi]..[highestSampleMidi] with

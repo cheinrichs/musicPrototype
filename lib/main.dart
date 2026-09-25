@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'app/app.dart';
 import 'app/config.dart';
 import 'audio/audio_controller.dart';
+import 'audio/voice_envelope.dart';
 import 'games/high_low/models/high_low_instrument.dart';
 
 void main() async {
@@ -33,6 +36,13 @@ void main() async {
     // Audio failed to initialize - app can still work without audio
     debugPrint('Audio initialization failed: $e');
   }
+
+  // Load the speaking-indicator loudness envelopes (see
+  // tool/build_voice_envelopes.py) ahead of time so the first line spoken
+  // has data rather than racing the first lookup. A missing/corrupt
+  // manifest already falls back to a flat pulse (VoiceEnvelopeLibrary),
+  // so this is best-effort, same as audio init above.
+  unawaited(VoiceEnvelopeLibrary.preload());
 
   runApp(const EarTrainerApp());
 }

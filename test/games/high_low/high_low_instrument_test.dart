@@ -175,4 +175,22 @@ void main() {
       );
     });
   });
+
+  group('displaySizeScale (Cooper, on device: "the bells art should be '
+      'like 50% as large")', () {
+    test('bells alone renders at half the shared instrument size', () {
+      expect(HighLowInstrument.bells.displaySizeScale, 0.5);
+    });
+
+    test('every other instrument keeps the original shared default', () {
+      for (final instrument in HighLowInstrument.values) {
+        if (instrument == HighLowInstrument.bells) continue;
+        expect(
+          instrument.displaySizeScale,
+          1.0,
+          reason: '${instrument.name} was not part of the bells fix',
+        );
+      }
+    });
+  });
 }

@@ -345,6 +345,92 @@ void main() {
     },
   );
 
+  group('the centered target character (revises Trello card 1SpHq2la)', () {
+    tearDown(() {
+      devToolsEnabled = false;
+    });
+
+    /// Every Piper/Clef `Image` currently mounted, by its rendered height
+    /// — home and centered-target are the same widget type at different
+    /// declared heights, so this is how the two are told apart without
+    /// depending on exact screen-height arithmetic: home heights for Piper
+    /// and Clef are always equal to each other, so any *difference*
+    /// between the two on screen at once can only mean one of them is
+    /// centered at the (distinctly smaller) target size.
+    Set<double?> characterImageHeights(WidgetTester tester) {
+      final finder = find.byWidgetPredicate((w) {
+        if (w is! Image) return false;
+        final image = w.image;
+        return image is AssetImage &&
+            (image.assetName.contains('Clef.png') ||
+                image.assetName.contains('Piper_Encouraging.png'));
+      });
+      return {
+        for (final element in finder.evaluate())
+          (element.widget as Image).height,
+      };
+    }
+
+    Future<void> startAt(WidgetTester tester, String agencyChip) async {
+      devToolsEnabled = true;
+      tester.view.physicalSize = roomyViewport;
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: ChangeNotifierProvider(
+            create: (_) => DevSettingsState(),
+            child: const HighLowScreen(),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.tap(find.text(agencyChip));
+      await tester.pump();
+      await tester.tap(find.text('Start'));
+      await tester.pump();
+      await tester.pump(Duration.zero);
+    }
+
+    testWidgets(
+      'at Observe (A0), neither Piper nor Clef is centered — both sit at '
+      'the same home size, and the middle is left for the earned arrow, '
+      'not a narrator (Cooper: "we\'re not asking them to listen for a '
+      'high or low note at A0")',
+      (tester) async {
+        await startAt(tester, 'A0 · Observe');
+
+        expect(
+          characterImageHeights(tester),
+          hasLength(1),
+          reason:
+              'one shared height means neither character has switched to '
+              'the smaller centered-target size',
+        );
+      },
+    );
+
+    testWidgets(
+      'at Participate (A1), the target-pole character is centered as a '
+      'listening cue — the one case this behavior still applies to',
+      (tester) async {
+        await startAt(tester, 'A1 · Participate');
+
+        expect(
+          characterImageHeights(tester),
+          hasLength(2),
+          reason:
+              'two distinct heights means one character has switched to '
+              'the smaller centered-target size while the other stays home',
+        );
+      },
+    );
+  });
+
   group('a tap or a short accidental drag never answers at Trigger '
       '(Trello card L00pxs7q)', () {
     testWidgets(

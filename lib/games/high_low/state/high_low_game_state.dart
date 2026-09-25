@@ -181,6 +181,8 @@ class HighLowGameState extends ChangeNotifier {
   /// neither is. See [speakingIsPiper]'s doc comment for the interlock
   /// with [_characterSparkleIsPiper].
   bool? _speakingIsPiper;
+  VoiceLine? _speakingLine;
+  int _speakingGeneration = 0;
 
   /// Which of Piper/Clef should show the transient "found it" sparkle
   /// right now (Trello card RqdPFKLf) — see
@@ -270,6 +272,17 @@ class HighLowGameState extends ChangeNotifier {
   /// (Trello cards RqdPFKLf/PIm7xE6n's shared interlock). See [_speak]
   /// and [_sparkleCorrectTapCharacter].
   bool? get speakingIsPiper => _speakingIsPiper;
+
+  /// The line currently speaking, for looking up its precomputed loudness
+  /// envelope (see `VoiceEnvelopeLibrary`) — only meaningful while
+  /// [speakingIsPiper] is non-null. Paired with [speakingGeneration] so a
+  /// listener can tell a *new* line starting from the same character
+  /// speaking twice in a row, which needs its elapsed-time clock reset
+  /// even though [speakingIsPiper] doesn't change.
+  VoiceLine? get speakingLine => _speakingLine;
+
+  /// Bumped every time [_speak] starts a new line. See [speakingLine].
+  int get speakingGeneration => _speakingGeneration;
 
   /// Which of Piper/Clef should show the transient "found it" sparkle
   /// right now (Trello card RqdPFKLf) — set for ~900ms on a correct
@@ -469,10 +482,13 @@ class HighLowGameState extends ChangeNotifier {
   /// `unawaited` themselves — the tracking still happens either way.
   Future<void> _speak(int token, VoiceLine line) async {
     _speakingIsPiper = line.isPiper;
+    _speakingLine = line;
+    _speakingGeneration++;
     notifyListeners();
     await _audio.playVoiceLineAndAwait(line);
     if (token != _roundToken) return;
     _speakingIsPiper = null;
+    _speakingLine = null;
     notifyListeners();
   }
 

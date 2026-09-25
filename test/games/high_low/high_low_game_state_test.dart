@@ -815,6 +815,8 @@ void main() {
         // Disposed explicitly at the end — see the matching comment on
         // the Observe "a tap never cuts the intro" test above.
         expect(state.speakingIsPiper, isNull);
+        expect(state.speakingLine, isNull);
+        final generationBeforeSpeaking = state.speakingGeneration;
 
         state.startGame();
         // Checked synchronously, with no `await` in between: [_speak]
@@ -829,6 +831,18 @@ void main() {
           reason: 'Round 1 (blocked order) targets "higher", Clef\'s pole, '
               'so Clef speaks the "give me the high one" prompt',
         );
+        expect(
+          state.speakingLine,
+          isNotNull,
+          reason: 'the speaking-pulse widget needs a line to look up its '
+              'envelope by',
+        );
+        expect(
+          state.speakingGeneration,
+          greaterThan(generationBeforeSpeaking),
+          reason: 'bumped so the speaking-pulse widget can tell a new line '
+              'started even when the same character keeps speaking',
+        );
 
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 4700));
@@ -837,6 +851,7 @@ void main() {
           isNull,
           reason: 'nobody is speaking once the line has finished playing',
         );
+        expect(state.speakingLine, isNull);
         state.dispose();
       },
     );

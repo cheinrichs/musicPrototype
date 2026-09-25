@@ -24,7 +24,7 @@ import '../services/round_report_service.dart';
 import '../state/high_low_game_state.dart';
 import '../widgets/high_low_header.dart';
 import '../widgets/retry_settle.dart';
-import '../widgets/speaking_sway.dart';
+import '../widgets/speaking_pulse.dart';
 
 /// Main game screen for High/Low ear training.
 ///
@@ -200,13 +200,17 @@ class _HighLowScreenState extends State<HighLowScreen> {
   /// A drag that ends short of the answer threshold is the tap it was
   /// meant to be: the drag gesture won the arena, so the instrument's own
   /// tap never fired, and this plays it instead.
-  void _onInstrumentDropped(DragTargetDetails<int> details, double charSize) {
+  void _onInstrumentDropped(
+    DragTargetDetails<int> details,
+    List<double> charSizesBySide,
+  ) {
     final side = details.data;
     final box = _instrumentSlotKeys[side].currentContext?.findRenderObject();
     var releasedFrom = Offset.zero;
     if (box is RenderBox && box.hasSize) {
       releasedFrom = details.offset - box.localToGlobal(Offset.zero);
-      if (releasedFrom.distance < charSize * _minAnswerDragFraction) {
+      if (releasedFrom.distance <
+          charSizesBySide[side] * _minAnswerDragFraction) {
         _onInstrumentTap(side);
         return;
       }
@@ -620,6 +624,14 @@ class _HighLowScreenState extends State<HighLowScreen> {
     final groundY = screenHeight * 0.16;
     final leftAnchorX = screenWidth * 0.29;
     final rightAnchorX = screenWidth * 0.72;
+    // Per-instrument multiplier on the shared [charSize] (Trello, Cooper on
+    // device: "the bells art should be like 50% as large") — see
+    // [HighLowInstrument.displaySizeScale]'s doc for why this lives on the
+    // instrument, not the asset. Applied as the *base* size each slot's own
+    // depth/celebration scaling then multiplies on top of, same as before.
+    final leftCharSize = charSize * _gameState.leftInstrument.displaySizeScale;
+    final rightCharSize =
+        charSize * _gameState.rightInstrument.displaySizeScale;
     // How far above the screen's bottom edge Piper and Clef's home spots
     // sit — raised from their old flush-corner spots (Trello card
     // S1v6sbrK: Piper's home was circled up-and-left of where she stood,
@@ -629,17 +641,29 @@ class _HighLowScreenState extends State<HighLowScreen> {
     final isTrigger = _gameState.agencyStage == AgencyStage.trigger;
     final prompt = _gameState.currentPrompt;
     // Whichever character owns this round's target pole (Piper is low,
-    // Clef is high — Trello card 101) stays centered, at every stage once
-    // a round is underway: in Trigger she's the fixed drop target the
-    // child feeds instruments to; in Observe/Participate she has nothing
-    // to receive, but stands centered anyway as a second visual cue for
-    // what the child is listening for, alongside the caption/narration
-    // (Trello card 1SpHq2la — "add piper or clef appropriately to the
-    // middle on A0 and A1"). Same character, same centered position and
-    // size at every stage — only whether she's an interactive drop target
-    // ([isTrigger], gating [_buildDropZone] below) changes.
-    final piperIsTarget = prompt != null && _gameState.targetCharacterIsPiper;
-    final clefIsTarget = prompt != null && !_gameState.targetCharacterIsPiper;
+    // Clef is high — Trello card 101) stays centered at Participate and
+    // Trigger: in Trigger she's the fixed drop target the child feeds
+    // instruments to; in Participate she has nothing to receive, but
+    // stands centered anyway as a visual cue for which pole the child is
+    // listening for, alongside the caption/narration.
+    //
+    // Not at Observe, though — this revises Trello card 1SpHq2la ("add
+    // piper or clef appropriately to the middle on A0 and A1"), which
+    // Cooper walked back after seeing it running: "my reasoning for having
+    // the character in the middle for A0 is flawed because we're not
+    // asking them to listen for a high or low note at A0." Observe has no
+    // pole to cue — the characters just narrate — so a centered character
+    // there has nothing to do, and the middle is needed for the earned
+    // arrow instead (Trello card xpAkja5b), which only ever appears at
+    // Observe. The two therefore never compete for the center: Observe
+    // shows the arrow and no character, Participate/Trigger show the
+    // character and no arrow.
+    final centerTargetCharacter =
+        prompt != null && _gameState.agencyStage != AgencyStage.observe;
+    final piperIsTarget =
+        centerTargetCharacter && _gameState.targetCharacterIsPiper;
+    final clefIsTarget =
+        centerTargetCharacter && !_gameState.targetCharacterIsPiper;
     // A correct drop slides the dragged instrument onto the centered
     // character instead of springing back to its stump (Trello —
     // "celebrate a correct drop"; see [_buildInstrumentSlot]).
@@ -656,6 +680,15 @@ class _HighLowScreenState extends State<HighLowScreen> {
     // since only one of Piper/Clef can be speaking or sparkling at once.
     final piperSpeaking = _gameState.speakingIsPiper == true;
     final clefSpeaking = _gameState.speakingIsPiper == false;
+    // Absence cue (Cooper: pair the speaking pulse with dimming whoever
+    // *isn't* talking) — cheap, adds no new motion to a screen about to
+    // have plenty, and keeps the speaker unambiguous even on a glance.
+    // Neither is dimmed while nobody's speaking.
+    final anyoneSpeaking = _gameState.speakingIsPiper != null;
+    final piperDimmed = anyoneSpeaking && !piperSpeaking;
+    final clefDimmed = anyoneSpeaking && !clefSpeaking;
+    final speakingLineName = _gameState.speakingLine?.name;
+    final speakingGeneration = _gameState.speakingGeneration;
     final piperSparkling = _gameState.characterSparkleIsPiper == true;
     final clefSparkling = _gameState.characterSparkleIsPiper == false;
     // How many cumulative correct taps Participate has banked (0-5) —
@@ -702,6 +735,9 @@ class _HighLowScreenState extends State<HighLowScreen> {
           celebrating: celebrating && piperIsTarget,
           hovering: _dragHovering && piperIsTarget,
           speaking: piperSpeaking,
+          dimmed: piperDimmed,
+          speakingLineName: speakingLineName,
+          speakingGeneration: speakingGeneration,
           sparkling: piperSparkling,
           sparkleLevel: sparkleLevel,
         ),
@@ -714,6 +750,9 @@ class _HighLowScreenState extends State<HighLowScreen> {
           celebrating: celebrating && clefIsTarget,
           hovering: _dragHovering && clefIsTarget,
           speaking: clefSpeaking,
+          dimmed: clefDimmed,
+          speakingLineName: speakingLineName,
+          speakingGeneration: speakingGeneration,
           sparkling: clefSparkling,
           sparkleLevel: sparkleLevel,
         ),
@@ -723,7 +762,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
           instrumentName: _gameState.leftInstrument.name,
           anchorX: leftAnchorX,
           screenWidth: screenWidth,
-          charSize: charSize,
+          charSize: leftCharSize,
           groundY: groundY,
           isTrigger: isTrigger,
           celebratingThis: celebrating && _gameState.lastDropSide == 0,
@@ -736,7 +775,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
           instrumentName: _gameState.rightInstrument.name,
           anchorX: rightAnchorX,
           screenWidth: screenWidth,
-          charSize: charSize,
+          charSize: rightCharSize,
           groundY: groundY,
           isTrigger: isTrigger,
           celebratingThis: celebrating && _gameState.lastDropSide == 1,
@@ -756,7 +795,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
         // HitTestBehavior.translucent, so sitting on top like this doesn't
         // block the instruments' own tap-to-explore (or drag-start)
         // underneath.
-        if (isTrigger) _buildDropZone(charSize),
+        if (isTrigger) _buildDropZone([leftCharSize, rightCharSize]),
         // The child's earned arrow (Trello card xpAkja5b, "Two controls:
         // the adult's persistent skip, and the child's earned arrow") —
         // Observe only, below the centered target character, visible
@@ -843,12 +882,12 @@ class _HighLowScreenState extends State<HighLowScreen> {
   /// zone. Data type is `int` (the dragged instrument's [side]) to match
   /// the `Draggable<int>` each instrument wraps itself in — see
   /// [_buildInstrumentSlot].
-  Widget _buildDropZone(double charSize) {
+  Widget _buildDropZone(List<double> charSizesBySide) {
     return Positioned.fill(
       child: DragTarget<int>(
         onWillAcceptWithDetails: (_) => _gameState.canDrop,
         onAcceptWithDetails: (details) =>
-            _onInstrumentDropped(details, charSize),
+            _onInstrumentDropped(details, charSizesBySide),
         onMove: (_) {
           if (!_dragHovering) setState(() => _dragHovering = true);
         },
@@ -904,6 +943,13 @@ class _HighLowScreenState extends State<HighLowScreen> {
   /// grass; above it is the disc an instrument stands on.
   static const double _stumpSurfaceFraction = 0.37;
 
+  /// Opacity for whichever character *isn't* speaking, while the other one
+  /// is (Cooper: pair the speaking pulse with dimming the non-speaker) —
+  /// quiet, cheap, and adds no new motion; makes the speaker unambiguous
+  /// even on a glance. Neither character is dimmed while nobody's
+  /// speaking — see [_buildScene]'s `anyoneSpeaking` computation.
+  static const double _dimmedOpacity = 0.55;
+
   /// Clef: fixed far-right at [homeHeight], unless she's this round's fixed
   /// drop target ([isTarget] — Clef owns the high pole, Trello card 101),
   /// in which case she's centered at [targetHeight] instead — a distinct,
@@ -937,6 +983,9 @@ class _HighLowScreenState extends State<HighLowScreen> {
     required bool celebrating,
     required bool hovering,
     required bool speaking,
+    required bool dimmed,
+    required String? speakingLineName,
+    required int speakingGeneration,
     required bool sparkling,
     required int sparkleLevel,
   }) {
@@ -952,7 +1001,16 @@ class _HighLowScreenState extends State<HighLowScreen> {
         child: Stack(
           clipBehavior: Clip.none,
           children: [
-            SpeakingSway(isPiper: false, speaking: speaking, child: clefImage),
+            AnimatedOpacity(
+              opacity: dimmed ? _dimmedOpacity : 1.0,
+              duration: AppAnimations.fast,
+              child: SpeakingPulse(
+                speaking: speaking,
+                line: speakingLineName,
+                generation: speakingGeneration,
+                child: clefImage,
+              ),
+            ),
             if (sparkling) _buildCharacterSparkle(homeHeight, sparkleLevel),
           ],
         ),
@@ -964,13 +1022,15 @@ class _HighLowScreenState extends State<HighLowScreen> {
       height: targetHeight,
     );
     return _buildTargetCharacter(
-      isPiper: false,
       characterImage: targetImage,
       lift: centerLift,
       size: targetHeight,
       celebrating: celebrating,
       hovering: hovering,
       speaking: speaking,
+      dimmed: dimmed,
+      speakingLineName: speakingLineName,
+      speakingGeneration: speakingGeneration,
       sparkling: sparkling,
       sparkleLevel: sparkleLevel,
     );
@@ -997,6 +1057,9 @@ class _HighLowScreenState extends State<HighLowScreen> {
     required bool celebrating,
     required bool hovering,
     required bool speaking,
+    required bool dimmed,
+    required String? speakingLineName,
+    required int speakingGeneration,
     required bool sparkling,
     required int sparkleLevel,
   }) {
@@ -1012,10 +1075,15 @@ class _HighLowScreenState extends State<HighLowScreen> {
         child: Stack(
           clipBehavior: Clip.none,
           children: [
-            SpeakingSway(
-              isPiper: true,
-              speaking: speaking,
-              child: piperImage.animate().fade(duration: AppAnimations.medium),
+            AnimatedOpacity(
+              opacity: dimmed ? _dimmedOpacity : 1.0,
+              duration: AppAnimations.fast,
+              child: SpeakingPulse(
+                speaking: speaking,
+                line: speakingLineName,
+                generation: speakingGeneration,
+                child: piperImage.animate().fade(duration: AppAnimations.medium),
+              ),
             ),
             if (sparkling) _buildCharacterSparkle(homeHeight, sparkleLevel),
           ],
@@ -1029,13 +1097,15 @@ class _HighLowScreenState extends State<HighLowScreen> {
       fit: BoxFit.contain,
     );
     return _buildTargetCharacter(
-      isPiper: true,
       characterImage: piperImage,
       lift: centerLift,
       size: targetHeight,
       celebrating: celebrating,
       hovering: hovering,
       speaking: speaking,
+      dimmed: dimmed,
+      speakingLineName: speakingLineName,
+      speakingGeneration: speakingGeneration,
       sparkling: sparkling,
       sparkleLevel: sparkleLevel,
     );
@@ -1060,13 +1130,15 @@ class _HighLowScreenState extends State<HighLowScreen> {
   /// instrument is sounding" and for the pre-reversal dragged character —
   /// reused again rather than inventing a third celebration effect).
   Widget _buildTargetCharacter({
-    required bool isPiper,
     required Widget characterImage,
     required double lift,
     required double size,
     required bool celebrating,
     required bool hovering,
     required bool speaking,
+    required bool dimmed,
+    required String? speakingLineName,
+    required int speakingGeneration,
     required bool sparkling,
     required int sparkleLevel,
   }) {
@@ -1083,10 +1155,15 @@ class _HighLowScreenState extends State<HighLowScreen> {
             AnimatedScale(
               scale: (celebrating || hovering) ? 1.08 : 1.0,
               duration: AppAnimations.fast,
-              child: SpeakingSway(
-                isPiper: isPiper,
-                speaking: speaking,
-                child: characterImage,
+              child: AnimatedOpacity(
+                opacity: dimmed ? _dimmedOpacity : 1.0,
+                duration: AppAnimations.fast,
+                child: SpeakingPulse(
+                  speaking: speaking,
+                  line: speakingLineName,
+                  generation: speakingGeneration,
+                  child: characterImage,
+                ),
               ),
             ),
             if (celebrating)
@@ -1119,7 +1196,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
   /// visual language as the instrument's own ✨ overlay
   /// ([_InstrumentButton]), anchored to a character instead. Callers
   /// guarantee this is never shown for the same character
-  /// [SpeakingSway] is animating at the same instant — see
+  /// [SpeakingPulse] is animating at the same instant — see
   /// [HighLowGameState.speakingIsPiper]'s doc comment for why the two
   /// signals must not collide.
   ///
@@ -1161,7 +1238,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
   /// Perfectly still while resting — idle motion was retired here
   /// entirely (Cooper, driving the simulator: "the instruments and the
   /// characters don't have any idle bobbing"), so nothing on screen
-  /// idles any more; motion is reserved for [SpeakingSway], which
+  /// idles any more; motion is reserved for [SpeakingPulse], which
   /// only ever means one thing.
   ///
   /// [celebratingThis] mirrors the pre-reversal "celebrate a correct drop"
