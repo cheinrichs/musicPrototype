@@ -904,4 +904,45 @@ void main() {
       },
     );
   });
+
+  group('HighLowGameState — agency bounds the tier (docs/product/'
+      'ADVANCEMENT_SIGNALS.md)', () {
+    testWidgets(
+      'a three-note tier requested below A2 plays as the highest tier that '
+      'agency can reach, and never generates a third note',
+      (tester) async {
+        for (final stage in [AgencyStage.observe, AgencyStage.participate]) {
+          final state = HighLowGameState(
+            totalPrompts: 3,
+            agencyStage: stage,
+            conceptTier: ConceptTier.t8,
+          );
+          expect(
+            state.conceptTier,
+            stage == AgencyStage.observe ? ConceptTier.t1 : ConceptTier.t4,
+            reason: '$stage',
+          );
+          state.startGame();
+          await tester.pump();
+          expect(state.currentPrompt!.thirdMidi, isNull, reason: '$stage');
+          state.dispose();
+        }
+      },
+    );
+
+    testWidgets('at A2 the requested three-note tier is honored', (
+      tester,
+    ) async {
+      final state = HighLowGameState(
+        totalPrompts: 3,
+        agencyStage: AgencyStage.trigger,
+        conceptTier: ConceptTier.t5,
+      );
+      expect(state.conceptTier, ConceptTier.t5);
+      state.startGame();
+      await tester.pump();
+      expect(state.currentPrompt!.thirdMidi, isNotNull);
+      state.dispose();
+    });
+  });
 }

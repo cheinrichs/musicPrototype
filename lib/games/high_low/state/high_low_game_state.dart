@@ -96,8 +96,18 @@ class HighLowGameState extends ChangeNotifier {
   /// 92) before calling [startGame] — see DevSetupOverlay. Never changes
   /// mid-session.
   AgencyStage agencyStage;
-  ConceptTier conceptTier;
   RoundOrder roundOrder;
+
+  /// The tier the session was asked to run at (see [conceptTier]).
+  ConceptTier requestedTier;
+
+  /// The tier actually played: [requestedTier], brought down to the
+  /// highest one [agencyStage] can reach (see [ConceptTier.isReachableAt])
+  /// — A0 holds at T1 and A1 stops short of the three-note tiers, so a
+  /// state asked for more than its agency has earned quietly plays what it
+  /// has, rather than showing a child a round their stage can't support.
+  ConceptTier get conceptTier => requestedTier.clampedTo(agencyStage);
+  set conceptTier(ConceptTier tier) => requestedTier = tier;
 
   GameStatus _status = GameStatus.notStarted;
   List<HighLowPrompt> _prompts = [];
@@ -222,9 +232,10 @@ class HighLowGameState extends ChangeNotifier {
     RoundSequencer? sequencer,
     this.totalPrompts = 5,
     this.agencyStage = AgencyStage.trigger,
-    this.conceptTier = ConceptTier.t1,
+    ConceptTier conceptTier = ConceptTier.t1,
     this.roundOrder = RoundOrder.blocked,
-  }) : _audio = audio ?? AudioController.instance,
+  }) : requestedTier = conceptTier,
+       _audio = audio ?? AudioController.instance,
        _generator = generator ?? PromptGenerator(),
        _sequencer = sequencer ?? RoundSequencer();
 

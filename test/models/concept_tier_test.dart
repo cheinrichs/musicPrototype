@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ear_trainer/models/agency_stage.dart';
 import 'package:ear_trainer/models/concept_tier.dart';
 
 void main() {
@@ -96,6 +97,46 @@ void main() {
         'T7',
         'T8',
       ]);
+    });
+  });
+
+  group('which tiers each agency stage can reach (decided 2026-09-25, '
+      'docs/product/ADVANCEMENT_SIGNALS.md)', () {
+    test('A0 holds at T1 — no answer, no evidence, no movement', () {
+      for (final tier in ConceptTier.values) {
+        expect(
+          tier.isReachableAt(AgencyStage.observe),
+          tier == ConceptTier.t1,
+          reason: '$tier at A0',
+        );
+      }
+    });
+
+    test('A1 can creep through T4 but stops short of T5 — three notes '
+        'needs A2', () {
+      for (final tier in ConceptTier.values) {
+        expect(
+          tier.isReachableAt(AgencyStage.participate),
+          tier.noteCount == 2,
+          reason: '$tier at A1',
+        );
+      }
+    });
+
+    test('A2 reaches every tier', () {
+      for (final tier in ConceptTier.values) {
+        expect(tier.isReachableAt(AgencyStage.trigger), isTrue);
+      }
+    });
+
+    test('clampedTo brings an unreachable tier down to the highest one '
+        'that is reachable, and leaves a reachable one alone', () {
+      expect(ConceptTier.t8.clampedTo(AgencyStage.observe), ConceptTier.t1);
+      expect(ConceptTier.t3.clampedTo(AgencyStage.observe), ConceptTier.t1);
+      expect(ConceptTier.t8.clampedTo(AgencyStage.participate), ConceptTier.t4);
+      expect(ConceptTier.t5.clampedTo(AgencyStage.participate), ConceptTier.t4);
+      expect(ConceptTier.t3.clampedTo(AgencyStage.participate), ConceptTier.t3);
+      expect(ConceptTier.t8.clampedTo(AgencyStage.trigger), ConceptTier.t8);
     });
   });
 }

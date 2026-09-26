@@ -80,6 +80,9 @@ class DevSetupOverlay extends StatelessWidget {
                     labelOf: (t) => t.label,
                     selected: devSettings.conceptTier,
                     onSelected: devSettings.setConceptTier,
+                    // Tiers the chosen agency stage can't reach are shown
+                    // but disabled — see ConceptTier.isReachableAt.
+                    isEnabled: (t) => t.isReachableAt(devSettings.agencyStage),
                   ),
                   const SizedBox(height: AppSpacing.xs),
                   _SettingRow<RoundOrder>(
@@ -126,6 +129,7 @@ class _SettingRow<T> extends StatelessWidget {
   final String Function(T) labelOf;
   final T selected;
   final ValueChanged<T> onSelected;
+  final bool Function(T)? isEnabled;
 
   const _SettingRow({
     required this.title,
@@ -133,6 +137,7 @@ class _SettingRow<T> extends StatelessWidget {
     required this.labelOf,
     required this.selected,
     required this.onSelected,
+    this.isEnabled,
   });
 
   @override
@@ -160,7 +165,9 @@ class _SettingRow<T> extends StatelessWidget {
                   visualDensity: VisualDensity.compact,
                   materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   selected: value == selected,
-                  onSelected: (_) => onSelected(value),
+                  onSelected: (isEnabled?.call(value) ?? true)
+                      ? (_) => onSelected(value)
+                      : null,
                 ),
             ],
           ),

@@ -75,6 +75,22 @@ listening. Levelling and "visually different" are not in tension: levelling is a
 the instruments' tops sharing a height, not about the two formations resembling each
 other.
 
+**Measured, so it can be built without re-deriving it** (2026-09-26). Both props are placed by their
+own *surface line* — the front edge of the flat top face, where the ring face meets the rim blocks —
+not by their image bounds: `StumpA.png`/`StumpB.png` at **0.37** of image height (already
+`_stumpSurfaceFraction` in `HighLowScreen`), `PedestalTall.png` (1188×1034) at **0.15**, read by eye off
+the art so good to about ±0.01 (under 1% of instrument size). Levelling is then placing all three props
+so those lines share one screen height; every instrument top follows because every instrument is the same
+size. Rendered both ways at 844×390 with the real art: with the surface lines shared, the three tops land
+on one line; with the pedestal 19% of screen height higher (as composited), its instrument stands well
+above the other two.
+
+**Open composition question** for whoever builds the screen: with the surface lines shared, the pedestal's
+trunk (85% of its height sits *below* its surface) runs off the bottom edge, so it reads as a tall trunk
+rising from below the screen rather than as a prop set further back. The fixes are art-direction calls, not
+geometry — accept the cropped base, raise the shared ground line for the whole formation, or use a
+shorter pedestal. Whichever is chosen, keep the rule above: the three surface lines must coincide.
+
 ### Why three notes is a tier, not an agency level
 
 Earlier framing put three notes at A4 with ordering. Separating them is better and solves the jump problem:

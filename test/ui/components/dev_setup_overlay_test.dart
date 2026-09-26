@@ -88,4 +88,42 @@ void main() {
       expect(devSettings.conceptTier, ConceptTier.t8);
     },
   );
+
+  testWidgets(
+    'tiers the chosen agency stage cannot reach are shown but disabled — '
+    'the gate must not let a developer build a state the product cannot '
+    'reach (A1 stops short of T5; A0 holds at T1)',
+    (tester) async {
+      final devSettings = DevSettingsState();
+      await tester.pumpWidget(
+        ChangeNotifierProvider<DevSettingsState>.value(
+          value: devSettings,
+          child: MaterialApp(
+            home: Scaffold(body: DevSetupOverlay(onStart: () {})),
+          ),
+        ),
+      );
+
+      bool enabled(String label) => tester
+          .widget<ChoiceChip>(find.widgetWithText(ChoiceChip, label))
+          .onSelected != null;
+
+      for (final t in ['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8']) {
+        expect(enabled(t), isTrue, reason: '$t at the default (A2)');
+      }
+
+      await tester.tap(find.text('A1 · Participate'));
+      await tester.pump();
+      expect([for (final t in ['T1', 'T2', 'T3', 'T4']) enabled(t)],
+          everyElement(isTrue));
+      expect([for (final t in ['T5', 'T6', 'T7', 'T8']) enabled(t)],
+          everyElement(isFalse));
+
+      await tester.tap(find.text('A0 · Observe'));
+      await tester.pump();
+      expect(enabled('T1'), isTrue);
+      expect([for (final t in ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8']) enabled(t)],
+          everyElement(isFalse));
+    },
+  );
 }

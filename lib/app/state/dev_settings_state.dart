@@ -24,12 +24,19 @@ class DevSettingsState extends ChangeNotifier {
   ConceptTier get conceptTier => _conceptTier;
   RoundOrder get roundOrder => _roundOrder;
 
+  /// Lowering agency brings the tier down with it: the product cannot
+  /// reach a tier its agency stage hasn't earned (see
+  /// [ConceptTier.isReachableAt]), so the gate must not let a developer
+  /// build one either. Raising agency again does not restore it.
   void setAgencyStage(AgencyStage stage) {
     _agencyStage = stage;
+    _conceptTier = _conceptTier.clampedTo(stage);
     notifyListeners();
   }
 
+  /// Ignored if [tier] is unreachable at the current agency stage.
   void setConceptTier(ConceptTier tier) {
+    if (!tier.isReachableAt(_agencyStage)) return;
     _conceptTier = tier;
     notifyListeners();
   }

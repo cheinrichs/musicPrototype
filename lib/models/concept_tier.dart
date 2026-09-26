@@ -1,3 +1,5 @@
+import 'agency_stage.dart';
+
 /// How musically demanding a round's *stimulus* is, independent of how
 /// much the child is asked to do with it (that's `AgencyStage`).
 ///
@@ -113,6 +115,32 @@ enum ConceptTier {
     ConceptTier.t7 => 'T7',
     ConceptTier.t8 => 'T8',
   };
+
+  /// Whether a child at [stage] can be shown this tier (decided
+  /// 2026-09-25 — see `docs/product/ADVANCEMENT_SIGNALS.md`, "Which tiers
+  /// are reachable at which agency level"). Tier only advances on evidence
+  /// of discrimination, and agency decides how much evidence a round
+  /// produces:
+  ///
+  /// - **A0** produces no answer at all, so it holds at [t1].
+  /// - **A1** gives a weak signal (does she tap the target) with no
+  ///   failure state, so tier may creep, but stops short of the three-note
+  ///   tiers ([t5] onward).
+  /// - **A2** gives a real answer, so every tier is reachable.
+  bool isReachableAt(AgencyStage stage) => switch (stage) {
+    AgencyStage.observe => this == ConceptTier.t1,
+    AgencyStage.participate => noteCount == 2,
+    AgencyStage.trigger => true,
+  };
+
+  /// The highest tier reachable at [stage].
+  static ConceptTier highestReachableAt(AgencyStage stage) =>
+      values.lastWhere((t) => t.isReachableAt(stage));
+
+  /// This tier, or the highest one [stage] can reach if this one is beyond
+  /// it.
+  ConceptTier clampedTo(AgencyStage stage) =>
+      isReachableAt(stage) ? this : highestReachableAt(stage);
 }
 
 enum _IntervalBand { wide, narrow }
