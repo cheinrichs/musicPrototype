@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ear_trainer/audio/voice_envelope.dart';
+import 'package:ear_trainer/games/high_low/widgets/mouth_frames.dart';
 import 'package:ear_trainer/games/high_low/widgets/speaking_pulse.dart';
 
 void main() {
@@ -169,5 +170,76 @@ void main() {
 
     expect(scaleOf(tester), closeTo(1.0, 0.001));
     expect(tester.hasRunningAnimations, isFalse);
+  });
+
+  group('SpeakingPulse.builder — the mouth follows the same envelope', () {
+    Future<void> pumpBuilder(
+      WidgetTester tester, {
+      required bool speaking,
+      required String? line,
+      required List<MouthFrame> seen,
+    }) {
+      return tester.pumpWidget(
+        MaterialApp(
+          home: SpeakingPulse.builder(
+            speaking: speaking,
+            line: line,
+            generation: 1,
+            builder: (context, amplitude, mouth) {
+              seen.add(mouth);
+              return const SizedBox(width: 40, height: 80);
+            },
+          ),
+        ),
+      );
+    }
+
+    testWidgets('a loud envelope opens the mouth wide; silence closes it',
+        (tester) async {
+      VoiceEnvelopeLibrary.debugSetCache({
+        'loud': VoiceEnvelope(hopMs: 30, samples: List.filled(30, 1.0)),
+      });
+      final seen = <MouthFrame>[];
+      await pumpBuilder(tester, speaking: true, line: 'loud', seen: seen);
+      for (var i = 0; i < 20; i++) {
+        await tester.pump(const Duration(milliseconds: 20));
+      }
+      expect(seen.last, MouthFrame.wide);
+
+      await pumpBuilder(tester, speaking: false, line: 'loud', seen: seen);
+      for (var i = 0; i < 40; i++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      expect(seen.last, MouthFrame.closed);
+    });
+
+    testWidgets(
+      'the mouth and the scale pulse are driven by one amplitude — a '
+      'quiet stretch closes the mouth at the same time the pulse settles',
+      (tester) async {
+        VoiceEnvelopeLibrary.debugSetCache({
+          'loudThenQuiet': VoiceEnvelope(
+            hopMs: 30,
+            samples: [...List.filled(15, 1.0), ...List.filled(30, 0.0)],
+          ),
+        });
+        final seen = <MouthFrame>[];
+        await pumpBuilder(
+          tester,
+          speaking: true,
+          line: 'loudThenQuiet',
+          seen: seen,
+        );
+        for (var i = 0; i < 20; i++) {
+          await tester.pump(const Duration(milliseconds: 20));
+        }
+        expect(seen.last, MouthFrame.wide, reason: 'during the loud part');
+
+        for (var i = 0; i < 25; i++) {
+          await tester.pump(const Duration(milliseconds: 20));
+        }
+        expect(seen.last, MouthFrame.closed, reason: 'after it goes quiet');
+      },
+    );
   });
 }

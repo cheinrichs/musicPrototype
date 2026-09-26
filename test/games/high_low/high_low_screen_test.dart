@@ -362,7 +362,7 @@ void main() {
         if (w is! Image) return false;
         final image = w.image;
         return image is AssetImage &&
-            (image.assetName.contains('Clef.png') ||
+            (image.assetName.contains('clef_mouth') ||
                 image.assetName.contains('Piper_Encouraging.png'));
       });
       return {

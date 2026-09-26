@@ -23,6 +23,7 @@ import '../models/round_report.dart';
 import '../services/round_report_service.dart';
 import '../state/high_low_game_state.dart';
 import '../widgets/high_low_header.dart';
+import '../widgets/mouth_frames.dart';
 import '../widgets/retry_settle.dart';
 import '../widgets/speaking_pulse.dart';
 
@@ -990,11 +991,6 @@ class _HighLowScreenState extends State<HighLowScreen> {
     required int sparkleLevel,
   }) {
     if (!isTarget) {
-      final clefImage = Image.asset(
-        'assets/images/characters/Clef.png',
-        height: homeHeight,
-        fit: BoxFit.contain,
-      );
       return Positioned(
         right: 0,
         bottom: homeLift,
@@ -1004,11 +1000,11 @@ class _HighLowScreenState extends State<HighLowScreen> {
             AnimatedOpacity(
               opacity: dimmed ? _dimmedOpacity : 1.0,
               duration: AppAnimations.fast,
-              child: SpeakingPulse(
+              child: SpeakingPulse.builder(
                 speaking: speaking,
                 line: speakingLineName,
                 generation: speakingGeneration,
-                child: clefImage,
+                builder: _clefSprite(homeHeight),
               ),
             ),
             if (sparkling) _buildCharacterSparkle(homeHeight, sparkleLevel),
@@ -1017,12 +1013,8 @@ class _HighLowScreenState extends State<HighLowScreen> {
       );
     }
 
-    final targetImage = Image.asset(
-      'assets/images/characters/Clef.png',
-      height: targetHeight,
-    );
     return _buildTargetCharacter(
-      characterImage: targetImage,
+      characterBuilder: _clefSprite(targetHeight),
       lift: centerLift,
       size: targetHeight,
       celebrating: celebrating,
@@ -1035,6 +1027,17 @@ class _HighLowScreenState extends State<HighLowScreen> {
       sparkleLevel: sparkleLevel,
     );
   }
+
+  /// Clef drawn from her registered mouth frames at [height], the mouth
+  /// following the same envelope tick as the speaking pulse. She has no
+  /// separate idle sprite: the closed frame *is* her resting pose, so
+  /// starting to speak changes only the mouth, never swaps the art.
+  MouthSpriteBuilder _clefSprite(double height) =>
+      (context, amplitude, mouth) => MouthSprite(
+        frames: clefMouthFrameAssets,
+        frame: mouth,
+        height: height,
+      );
 
   /// Piper: fixed far-left at [homeHeight], unless she's this round's fixed
   /// drop target ([isTarget] — Piper owns the low pole, Trello card 101),
@@ -1082,7 +1085,9 @@ class _HighLowScreenState extends State<HighLowScreen> {
                 speaking: speaking,
                 line: speakingLineName,
                 generation: speakingGeneration,
-                child: piperImage.animate().fade(duration: AppAnimations.medium),
+                child: piperImage.animate().fade(
+                  duration: AppAnimations.medium,
+                ),
               ),
             ),
             if (sparkling) _buildCharacterSparkle(homeHeight, sparkleLevel),
@@ -1130,7 +1135,8 @@ class _HighLowScreenState extends State<HighLowScreen> {
   /// instrument is sounding" and for the pre-reversal dragged character —
   /// reused again rather than inventing a third celebration effect).
   Widget _buildTargetCharacter({
-    required Widget characterImage,
+    Widget? characterImage,
+    MouthSpriteBuilder? characterBuilder,
     required double lift,
     required double size,
     required bool celebrating,
@@ -1158,12 +1164,19 @@ class _HighLowScreenState extends State<HighLowScreen> {
               child: AnimatedOpacity(
                 opacity: dimmed ? _dimmedOpacity : 1.0,
                 duration: AppAnimations.fast,
-                child: SpeakingPulse(
-                  speaking: speaking,
-                  line: speakingLineName,
-                  generation: speakingGeneration,
-                  child: characterImage,
-                ),
+                child: characterBuilder != null
+                    ? SpeakingPulse.builder(
+                        speaking: speaking,
+                        line: speakingLineName,
+                        generation: speakingGeneration,
+                        builder: characterBuilder,
+                      )
+                    : SpeakingPulse(
+                        speaking: speaking,
+                        line: speakingLineName,
+                        generation: speakingGeneration,
+                        child: characterImage!,
+                      ),
               ),
             ),
             if (celebrating)

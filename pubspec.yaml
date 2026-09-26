@@ -66,6 +66,7 @@ flutter:
     - assets/audio/playground/
     - assets/audio/voice/
     - assets/images/characters/
+    - assets/images/characters/clef/
     - assets/images/characters/instruments/
     - assets/images/icons/
     - assets/images/stickers/

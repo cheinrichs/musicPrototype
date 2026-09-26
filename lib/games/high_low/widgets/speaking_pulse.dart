@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import '../../../audio/voice_envelope.dart';
+import 'mouth_frames.dart';
 
 /// The speaking indicator (Trello card PIm7xE6n) — replaces the earlier
 /// bob and sway. Cooper rejected both on device with the same underlying
@@ -41,7 +42,20 @@ class SpeakingPulse extends StatefulWidget {
   /// background size ratio.
   static const double maxScaleDelta = 0.06;
 
-  final Widget child;
+  /// Static content to scale — used when only the pulse is wanted. Exactly
+  /// one of [child] / [builder] is set.
+  final Widget? child;
+
+  /// Builds the content from the live eased [amplitude] (0-1) and the
+  /// [MouthFrame] chosen from it, for characters that also have mouth
+  /// frames. Both come from the same envelope tick as the pulse itself.
+  final Widget Function(
+    BuildContext context,
+    double amplitude,
+    MouthFrame mouth,
+  )?
+  builder;
+
   final bool speaking;
 
   /// The asset name (`VoiceLine.name`) of the line currently — or, while
@@ -58,11 +72,19 @@ class SpeakingPulse extends StatefulWidget {
 
   const SpeakingPulse({
     super.key,
-    required this.child,
+    required Widget this.child,
     required this.speaking,
     required this.line,
     required this.generation,
-  });
+  }) : builder = null;
+
+  const SpeakingPulse.builder({
+    super.key,
+    required MouthSpriteBuilder this.builder,
+    required this.speaking,
+    required this.line,
+    required this.generation,
+  }) : child = null;
 
   @override
   State<SpeakingPulse> createState() => _SpeakingPulseState();
@@ -77,6 +99,7 @@ class _SpeakingPulseState extends State<SpeakingPulse>
   /// Eased amplitude actually shown, 0..1 — smooths the coarse envelope
   /// (30ms hops) into something that doesn't visibly step.
   double _displayed = 0;
+  MouthFrame _mouth = MouthFrame.closed;
 
   @override
   void initState() {
@@ -125,11 +148,15 @@ class _SpeakingPulseState extends State<SpeakingPulse>
     // simple. The same blend eases back to rest once [_targetAmplitude]
     // drops to 0 when [speaking] goes false, with no separate case needed.
     final target = _targetAmplitude;
-    setState(() => _displayed += (target - _displayed) * 0.3);
-    if (!widget.speaking && _displayed < 0.002) {
-      _displayed = 0;
-      _ticker.stop();
-    }
+    setState(() {
+      _displayed += (target - _displayed) * 0.3;
+      _mouth = nextMouthFrame(_mouth, _displayed);
+      if (!widget.speaking && _displayed < 0.002) {
+        _displayed = 0;
+        _mouth = MouthFrame.closed;
+      }
+    });
+    if (!widget.speaking && _displayed == 0) _ticker.stop();
   }
 
   @override
@@ -137,7 +164,9 @@ class _SpeakingPulseState extends State<SpeakingPulse>
     return Transform.scale(
       scale: 1.0 + _displayed * SpeakingPulse.maxScaleDelta,
       alignment: Alignment.bottomCenter,
-      child: widget.child,
+      child: widget.builder != null
+          ? widget.builder!(context, _displayed, _mouth)
+          : widget.child,
     );
   }
 }
