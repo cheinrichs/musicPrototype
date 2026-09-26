@@ -17,15 +17,16 @@ import '../../../ui/components/dev_setup_overlay.dart';
 import '../../../ui/components/drifting_notes.dart';
 import '../../../ui/components/game_screen_layout.dart';
 import '../../../ui/components/glow_wiggle_character.dart';
-import '../../../ui/components/progress_dots.dart';
 import '../../../ui/theme/theme.dart';
 import '../models/high_low_instrument.dart';
 import '../models/round_report.dart';
 import '../services/round_report_service.dart';
 import '../state/high_low_game_state.dart';
 import '../ordering/ordering_screen.dart';
+import '../models/high_low_layout.dart';
+import '../widgets/character_art.dart';
+import '../widgets/high_low_footer.dart';
 import '../widgets/high_low_header.dart';
-import '../widgets/mouth_frames.dart';
 import '../widgets/retry_settle.dart';
 import '../widgets/speaking_pulse.dart';
 
@@ -51,7 +52,11 @@ import '../widgets/speaking_pulse.dart';
 /// local debug runs, false for a public App Store build) is true, so a
 /// public build always goes straight to the production defaults.
 class HighLowScreen extends StatefulWidget {
-  const HighLowScreen({super.key});
+  /// Supplied by tests so a round's outcome is known; otherwise the screen
+  /// makes and disposes its own.
+  final HighLowGameState? gameState;
+
+  const HighLowScreen({super.key, this.gameState});
 
   @override
   State<HighLowScreen> createState() => _HighLowScreenState();
@@ -59,6 +64,7 @@ class HighLowScreen extends StatefulWidget {
 
 class _HighLowScreenState extends State<HighLowScreen> {
   late HighLowGameState _gameState;
+  late final bool _ownsGameState;
   bool _showDevGate = devToolsEnabled;
 
   /// True after the dev gate picks a [ConceptTier.noteCount] 3 tier
@@ -117,7 +123,8 @@ class _HighLowScreenState extends State<HighLowScreen> {
   @override
   void initState() {
     super.initState();
-    _gameState = HighLowGameState();
+    _ownsGameState = widget.gameState == null;
+    _gameState = widget.gameState ?? HighLowGameState();
     _gameState.addListener(_onGameStateChanged);
     _confettiController = ConfettiController(
       duration: AppAnimations.confettiBurst,
@@ -133,7 +140,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
   @override
   void dispose() {
     _gameState.removeListener(_onGameStateChanged);
-    _gameState.dispose();
+    if (_ownsGameState) _gameState.dispose();
     _confettiController.dispose();
     super.dispose();
   }
@@ -351,18 +358,20 @@ class _HighLowScreenState extends State<HighLowScreen> {
                   ? null
                   : _onReportRound,
               sharingReport: _sharingReport,
-              skipEnabled: _gameState.status != GameStatus.completed,
-              onSkip: _gameState.escape,
             ),
-            body: _buildBody(context),
-            footer: ProgressDots(
+            // The middle is clear: Listen Again and the status line are
+            // bottom-left, and progress and Skip share the bottom-right
+            // corner (kept as two separate objects — see [HighLowFooter]).
+            body: const SizedBox.shrink(),
+            footer: HighLowFooter(
+              leading: _buildBottomLeft(),
               totalDots: _gameState.totalPrompts,
               currentIndex: _gameState.currentPromptIndex,
               completedCount: _gameState.results.length,
+              skipEnabled: _gameState.status != GameStatus.completed,
+              onSkip: _gameState.escape,
             ),
-            // _buildBody already guarantees it never overflows its own budget
-            // (FittedBox(fit: scaleDown) inside a SizedBox sized off the real
-            // available height) — GameScreenLayout's scroll-fallback isn't
+            // The body is empty, so GameScreenLayout's scroll-fallback isn't
             // needed here, and worse, actively broke the drag-to-answer
             // interaction: a Scrollable hit-tests its whole viewport, not
             // just where it paints, so it sat in front of `background` and
@@ -403,51 +412,20 @@ class _HighLowScreenState extends State<HighLowScreen> {
     );
   }
 
-  /// The app is landscape-only, so the available height for everything
-  /// between the header and the footer is tight and varies a lot by
-  /// device. Now that the caption lives in [_buildHeader] instead of here
-  /// (Trello card "Separate the stumps from the background art" — it used
-  /// to sit stacked directly on top of the Listen Again button and the
-  /// "Listen carefully..." status line), this body is just Listen
-  /// Again + status, and [constraints.maxHeight] from the enclosing
-  /// `Expanded` is already the accurate leftover space between the
-  /// header and the [ProgressDots] footer — no need to re-derive it from
-  /// `MediaQuery` and a guessed header height. Still scaled down to fit
-  /// via [FittedBox] rather than scrolling, for the same reason as before:
-  /// a kid mid-round shouldn't have to scroll to see Listen Again.
-  ///
-  /// Top-aligned, not the default center: [GameScreenLayout] centers this
-  /// whole body vertically in the space between the header and the
-  /// footer, and Trigger's centered target character (Clef or Piper,
-  /// [_buildTargetCharacter]) stands tall enough — up to 72% of the screen
-  /// height — to reach exactly that vertical middle too. Centering here
-  /// sat Listen Again right behind the centered character's head; hugging
-  /// the top instead keeps it tucked under the header, above where either
-  /// character's head reaches.
-  Widget _buildBody(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final budget = constraints.hasBoundedHeight
-            ? constraints.maxHeight
-            : MediaQuery.of(context).size.height * 0.3;
-
-        return SizedBox(
-          width: constraints.maxWidth,
-          height: budget.clamp(80.0, 900.0),
-          child: FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.topCenter,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _buildListenAgainButton(),
-                const SizedBox(height: AppSpacing.xs),
-                _buildStatusText(),
-              ],
-            ),
-          ),
-        );
-      },
+  /// Listen Again and the round's status line, bottom-left — the corner
+  /// opposite progress and Skip, leaving the centre of the screen clear.
+  Widget _buildBottomLeft() {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _buildListenAgainButton(),
+        const SizedBox(width: AppSpacing.sm),
+        Padding(
+          padding: const EdgeInsets.only(bottom: 4),
+          child: _buildStatusText(),
+        ),
+      ],
     );
   }
 
@@ -602,63 +580,47 @@ class _HighLowScreenState extends State<HighLowScreen> {
   /// measurements makes that whole bug class impossible by construction.
   Widget _buildScene(BuildContext context) {
     final size = MediaQuery.of(context).size;
-    final screenHeight = size.height;
     final screenWidth = size.width;
     // Proportions of screen height, per the concept art (Trello card 56).
     // Instruments stay put on the stumps (Trello card S1v6sbrK — "in the
     // right place, don't move them"); Piper and Clef are doubled (Trello
     // card OCv6kVmd) from their original roughly-a-third/roughly-a-fifth
     // sizing.
-    final charSize = screenHeight * 0.50;
-    // Piper and Clef share one home height (Trello card "Scale the waiting
-    // character up at the screen edge for depth" — Cooper: "i like that
-    // clef become bigger on the right hand side the same way Piper is
-    // bigger over there. it creates some depth of field."). Clef used to
-    // be noticeably smaller here (44% vs Piper's 72%), which read as an
-    // inconsistency rather than a deliberate choice once Piper's edge
-    // size was established — the fix is parity, not a new number for
-    // Clef alone.
-    final piperHomeHeight = screenHeight * 0.72;
-    final clefHomeHeight = piperHomeHeight;
-    // Trigger-only: whichever character is centered as the fixed drop
-    // target uses this size instead of her own home size (Trello card
-    // hIKjobsB — driving the simulator found Piper's home height
-    // rendered enormous when centered and covered the Listen Again
-    // button/status line beneath it).
-    //
-    // NOTE — this makes the centered target character *smaller* than
-    // whichever character is standing at the edge. That's deliberate
-    // perspective (the edge is foreground/nearer the viewer, the
-    // centered drop target is background/further away), not a bug and
-    // not an oversight left over from tuning each character separately.
-    // Do not "fix" this by matching it to the home heights above —
-    // that's exactly the naive instinct that would flatten the depth
-    // this card asked for back out again.
-    final targetCharacterHeight = screenHeight * 0.42;
-    // The shared ground line: where each instrument's feet and its
-    // stump's flat top surface meet — see the class doc above. Unlike the
-    // old `stumpLift` this replaces, this is no longer calibrated against
-    // a painted stump in the background art (there isn't one any more);
-    // it's just a comfortable resting line near the bottom of the scene.
-    final groundY = screenHeight * 0.16;
-    final leftAnchorX = screenWidth * 0.29;
-    final rightAnchorX = screenWidth * 0.72;
+    // All sizes and positions come from [HighLowLayout] (pure geometry, so
+    // its rules are tested at real screen sizes): the drop target is the
+    // prominent character, the one standing by recedes, and nothing runs
+    // off the edge on a notched phone.
+    final insets = MediaQuery.paddingOf(context);
+    final prompt = _gameState.currentPrompt;
+    final centerTargetCharacter =
+        prompt != null && _gameState.agencyStage != AgencyStage.observe;
+    final layout = HighLowLayout(
+      size,
+      insets: insets,
+      hasTarget: centerTargetCharacter,
+    );
+    final charSize = layout.instrumentSize;
+    final groundY = layout.groundY;
+    final leftAnchorX = layout.instrumentAnchorX(0);
+    final rightAnchorX = layout.instrumentAnchorX(1);
     // Per-instrument multiplier on the shared [charSize] (Trello, Cooper on
     // device: "the bells art should be like 50% as large") — see
     // [HighLowInstrument.displaySizeScale]'s doc for why this lives on the
-    // instrument, not the asset. Applied as the *base* size each slot's own
-    // depth/celebration scaling then multiplies on top of, same as before.
+    // instrument, not the asset.
     final leftCharSize = charSize * _gameState.leftInstrument.displaySizeScale;
     final rightCharSize =
         charSize * _gameState.rightInstrument.displaySizeScale;
-    // How far above the screen's bottom edge Piper and Clef's home spots
-    // sit — raised from their old flush-corner spots (Trello card
-    // S1v6sbrK: Piper's home was circled up-and-left of where she stood,
-    // Clef's up-and-right of hers; the drag round's centered character
-    // was sitting below the stump line entirely).
-    final homeLift = screenHeight * 0.08;
+    // Bells hang from their ring, so they float slightly proud of the stump
+    // instead of sinking into it (Cooper, on device).
+    final leftFeetLift = layout.instrumentFeetLift(
+      size: leftCharSize,
+      floatFraction: _gameState.leftInstrument.floatFraction,
+    );
+    final rightFeetLift = layout.instrumentFeetLift(
+      size: rightCharSize,
+      floatFraction: _gameState.rightInstrument.floatFraction,
+    );
     final isTrigger = _gameState.agencyStage == AgencyStage.trigger;
-    final prompt = _gameState.currentPrompt;
     // Whichever character owns this round's target pole (Piper is low,
     // Clef is high — Trello card 101) stays centered at Participate and
     // Trigger: in Trigger she's the fixed drop target the child feeds
@@ -677,8 +639,6 @@ class _HighLowScreenState extends State<HighLowScreen> {
     // Observe. The two therefore never compete for the center: Observe
     // shows the arrow and no character, Participate/Trigger show the
     // character and no arrow.
-    final centerTargetCharacter =
-        prompt != null && _gameState.agencyStage != AgencyStage.observe;
     final piperIsTarget =
         centerTargetCharacter && _gameState.targetCharacterIsPiper;
     final clefIsTarget =
@@ -745,36 +705,13 @@ class _HighLowScreenState extends State<HighLowScreen> {
             charSize: charSize,
             groundY: groundY,
           ),
-        _buildPiper(
-          piperHomeHeight,
-          targetCharacterHeight,
-          piperIsTarget,
-          homeLift,
-          groundY,
-          celebrating: celebrating && piperIsTarget,
-          hovering: _dragHovering && piperIsTarget,
-          speaking: piperSpeaking,
-          dimmed: piperDimmed,
-          speakingLineName: speakingLineName,
-          speakingGeneration: speakingGeneration,
-          sparkling: piperSparkling,
-          sparkleLevel: sparkleLevel,
-        ),
-        _buildClef(
-          clefHomeHeight,
-          targetCharacterHeight,
-          clefIsTarget,
-          homeLift,
-          groundY,
-          celebrating: celebrating && clefIsTarget,
-          hovering: _dragHovering && clefIsTarget,
-          speaking: clefSpeaking,
-          dimmed: clefDimmed,
-          speakingLineName: speakingLineName,
-          speakingGeneration: speakingGeneration,
-          sparkling: clefSparkling,
-          sparkleLevel: sparkleLevel,
-        ),
+        // Instruments first, characters over them: a correct drop slides
+        // the instrument onto the centred character, and painting it on
+        // top hid the celebration pose entirely once the characters were
+        // sized below the instruments (found in an offscreen render, not
+        // on device). At rest nothing overlaps (see [HighLowLayout]), so
+        // the order only shows during that landing — the character stands
+        // in front of the instrument it was just handed.
         _buildInstrumentSlot(
           side: 0,
           assetPath: _gameState.leftInstrument.leftAssetPath,
@@ -782,7 +719,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
           anchorX: leftAnchorX,
           screenWidth: screenWidth,
           charSize: leftCharSize,
-          groundY: groundY,
+          groundY: groundY + leftFeetLift,
           isTrigger: isTrigger,
           celebratingThis: celebrating && _gameState.lastDropSide == 0,
           glowing: _gameState.playingIndex == 0,
@@ -795,11 +732,37 @@ class _HighLowScreenState extends State<HighLowScreen> {
           anchorX: rightAnchorX,
           screenWidth: screenWidth,
           charSize: rightCharSize,
-          groundY: groundY,
+          groundY: groundY + rightFeetLift,
           isTrigger: isTrigger,
           celebratingThis: celebrating && _gameState.lastDropSide == 1,
           glowing: _gameState.playingIndex == 1,
           feedback: _feedbackFor(1),
+        ),
+        _buildCharacter(
+          layout: layout,
+          isPiper: true,
+          isTarget: piperIsTarget,
+          pose: _poseFor(isTarget: piperIsTarget, celebrating: celebrating),
+          hovering: _dragHovering && piperIsTarget,
+          speaking: piperSpeaking,
+          dimmed: piperDimmed,
+          speakingLineName: speakingLineName,
+          speakingGeneration: speakingGeneration,
+          sparkling: piperSparkling,
+          sparkleLevel: sparkleLevel,
+        ),
+        _buildCharacter(
+          layout: layout,
+          isPiper: false,
+          isTarget: clefIsTarget,
+          pose: _poseFor(isTarget: clefIsTarget, celebrating: celebrating),
+          hovering: _dragHovering && clefIsTarget,
+          speaking: clefSpeaking,
+          dimmed: clefDimmed,
+          speakingLineName: speakingLineName,
+          speakingGeneration: speakingGeneration,
+          sparkling: clefSparkling,
+          sparkleLevel: sparkleLevel,
         ),
         // One drop zone spanning the whole scene, not two per-instrument
         // halves (Trello — "forgiving drop targets," now applied to the
@@ -969,37 +932,36 @@ class _HighLowScreenState extends State<HighLowScreen> {
   /// speaking — see [_buildScene]'s `anyoneSpeaking` computation.
   static const double _dimmedOpacity = 0.55;
 
-  /// Clef: fixed far-right at [homeHeight], unless she's this round's fixed
-  /// drop target ([isTarget] — Clef owns the high pole, Trello card 101),
-  /// in which case she's centered at [targetHeight] instead — a distinct,
-  /// smaller size (Trello card hIKjobsB), not [homeHeight] reused, since
-  /// centering a character sized for standing off to the side is exactly
-  /// what let Piper (see [_buildPiper]) grow large enough to cover the
-  /// header/body controls once she took the same fixed target role.
+  /// Which pose the character shows. Only the drop target changes pose —
+  /// the one standing by just speaks. A correct drop celebrates; a wrong
+  /// drop, and the idle nudge (Participate's secondary caption), show her
+  /// thinking. Celebration and thinking are discrete moments, so each is a
+  /// single image; only the speaking pose has mouth frames.
+  CharacterPose _poseFor({required bool isTarget, required bool celebrating}) {
+    if (!isTarget) return CharacterPose.speaking;
+    if (celebrating) return CharacterPose.celebrating;
+    if (_gameState.dragFeedback == DragFeedback.retry ||
+        _gameState.secondaryCaptionText != null) {
+      return CharacterPose.thinking;
+    }
+    return CharacterPose.speaking;
+  }
+
+  /// Piper or Clef, either standing by at her edge or centred as this
+  /// round's drop target (Trello card 101: whoever owns the pole is the
+  /// target — Piper low, Clef high).
   ///
-  /// Stationary either way (Trello card NcVPjPZ5, reversing an earlier
-  /// design where Clef bobbed continuously) — the idle motion moved to the
-  /// instruments instead, see [_buildInstrumentSlot]. A character that
-  /// never moves reads more clearly as "the one waiting to receive," and
-  /// leaves motion as a signal that means one thing (an instrument you can
-  /// interact with) rather than two.
-  ///
-  /// Home position mirrors Piper's exactly (flush with the screen's edge,
-  /// `fit: BoxFit.contain`) — see [_buildPiper]'s doc comment for why the
-  /// old `-homeShift` push past the edge is gone. It used to be there to
-  /// compensate for Clef's home size being noticeably smaller than
-  /// Piper's; now that they share [homeHeight] (Trello card "Scale the
-  /// waiting character up at the screen edge for depth"), that
-  /// compensation is not only unneeded but wrong — pushing a
-  /// Piper-sized Clef past the edge would clip her the same way it once
-  /// clipped Piper.
-  Widget _buildClef(
-    double homeHeight,
-    double targetHeight,
-    bool isTarget,
-    double homeLift,
-    double centerLift, {
-    required bool celebrating,
+  /// **Prominence follows the task.** The target is drawn larger than the
+  /// one standing by ([HighLowLayout.targetHeight] vs `waitingHeight`), and
+  /// both stand on the same ground line as the stumps. Both are stationary:
+  /// the only motion is the speaking cue ([SpeakingPulse] + mouth frames),
+  /// the target's [hovering] lean-in while an instrument is over the drop
+  /// zone, and her celebration.
+  Widget _buildCharacter({
+    required HighLowLayout layout,
+    required bool isPiper,
+    required bool isTarget,
+    required CharacterPose pose,
     required bool hovering,
     required bool speaking,
     required bool dimmed,
@@ -1008,168 +970,40 @@ class _HighLowScreenState extends State<HighLowScreen> {
     required bool sparkling,
     required int sparkleLevel,
   }) {
+    final art = isPiper ? CharacterArt.piper : CharacterArt.clef;
+    final height = isTarget ? layout.targetHeight : layout.waitingHeight;
+
+    final sprite = AnimatedOpacity(
+      opacity: dimmed ? _dimmedOpacity : 1.0,
+      duration: AppAnimations.fast,
+      child: SpeakingPulse.builder(
+        speaking: speaking,
+        line: speakingLineName,
+        generation: speakingGeneration,
+        builder: (context, amplitude, mouth) =>
+            CharacterSprite(art: art, pose: pose, mouth: mouth, height: height),
+      ),
+    );
+
     if (!isTarget) {
       return Positioned(
-        right: 0,
-        bottom: homeLift,
+        bottom: layout.characterLift,
+        left: isPiper ? layout.leftEdgeX : null,
+        right: isPiper ? null : layout.screen.width - layout.rightEdgeX,
         child: Stack(
           clipBehavior: Clip.none,
           children: [
-            AnimatedOpacity(
-              opacity: dimmed ? _dimmedOpacity : 1.0,
-              duration: AppAnimations.fast,
-              child: SpeakingPulse.builder(
-                speaking: speaking,
-                line: speakingLineName,
-                generation: speakingGeneration,
-                builder: _clefSprite(homeHeight),
-              ),
-            ),
-            if (sparkling) _buildCharacterSparkle(homeHeight, sparkleLevel),
+            sprite,
+            if (sparkling) _buildCharacterSparkle(height, sparkleLevel),
           ],
         ),
       );
     }
 
-    return _buildTargetCharacter(
-      characterBuilder: _clefSprite(targetHeight),
-      lift: centerLift,
-      size: targetHeight,
-      celebrating: celebrating,
-      hovering: hovering,
-      speaking: speaking,
-      dimmed: dimmed,
-      speakingLineName: speakingLineName,
-      speakingGeneration: speakingGeneration,
-      sparkling: sparkling,
-      sparkleLevel: sparkleLevel,
-    );
-  }
-
-  /// Clef drawn from her registered mouth frames at [height], the mouth
-  /// following the same envelope tick as the speaking pulse. She has no
-  /// separate idle sprite: the closed frame *is* her resting pose, so
-  /// starting to speak changes only the mouth, never swaps the art.
-  MouthSpriteBuilder _clefSprite(double height) =>
-      (context, amplitude, mouth) => MouthSprite(
-        frames: clefMouthFrameAssets,
-        frame: mouth,
-        height: height,
-      );
-
-  /// Piper: fixed far-left at [homeHeight], unless she's this round's fixed
-  /// drop target ([isTarget] — Piper owns the low pole, Trello card 101),
-  /// in which case she's centered at [targetHeight] instead — see
-  /// [_buildClef] for why that's a distinct, smaller size rather than
-  /// [homeHeight] reused. Stationary either way, same as Clef — see
-  /// [_buildClef]'s doc comment for why the idle motion moved to the
-  /// instruments instead (Trello card NcVPjPZ5).
-  ///
-  /// Sits flush with the screen's left edge (Trello card "Separate the
-  /// stumps from the background art" — an earlier `-homeShift` push past
-  /// the edge cropped Piper in half). Clef's home position now mirrors
-  /// this exactly — see [_buildClef]'s doc comment.
-  Widget _buildPiper(
-    double homeHeight,
-    double targetHeight,
-    bool isTarget,
-    double homeLift,
-    double centerLift, {
-    required bool celebrating,
-    required bool hovering,
-    required bool speaking,
-    required bool dimmed,
-    required String? speakingLineName,
-    required int speakingGeneration,
-    required bool sparkling,
-    required int sparkleLevel,
-  }) {
-    if (!isTarget) {
-      final piperImage = Image.asset(
-        'assets/images/characters/Piper_Encouraging.png',
-        height: homeHeight,
-        fit: BoxFit.contain,
-      );
-      return Positioned(
-        left: 0,
-        bottom: homeLift,
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            AnimatedOpacity(
-              opacity: dimmed ? _dimmedOpacity : 1.0,
-              duration: AppAnimations.fast,
-              child: SpeakingPulse(
-                speaking: speaking,
-                line: speakingLineName,
-                generation: speakingGeneration,
-                child: piperImage.animate().fade(
-                  duration: AppAnimations.medium,
-                ),
-              ),
-            ),
-            if (sparkling) _buildCharacterSparkle(homeHeight, sparkleLevel),
-          ],
-        ),
-      );
-    }
-
-    final piperImage = Image.asset(
-      'assets/images/characters/Piper_Encouraging.png',
-      height: targetHeight,
-      fit: BoxFit.contain,
-    );
-    return _buildTargetCharacter(
-      characterImage: piperImage,
-      lift: centerLift,
-      size: targetHeight,
-      celebrating: celebrating,
-      hovering: hovering,
-      speaking: speaking,
-      dimmed: dimmed,
-      speakingLineName: speakingLineName,
-      speakingGeneration: speakingGeneration,
-      sparkling: sparkling,
-      sparkleLevel: sparkleLevel,
-    );
-  }
-
-  /// A character standing centered as this round's fixed drop target —
-  /// shared by [_buildClef] and [_buildPiper] (Trello card 101: either can
-  /// own this round's target pole). [lift] raises it off the very bottom
-  /// edge to the same stump-top line the instruments sit on (Trello card
-  /// S1v6sbrK).
-  ///
-  /// Never moves — both because she's the fixed anchor the *instrument*
-  /// travels to since 2026-09's A2 reversal (Trello, "reverse the A2 drag
-  /// interaction"; see [_buildInstrumentSlot]'s own celebration), and
-  /// because Trello card NcVPjPZ5 made every character stationary,
-  /// centered or at the edges, moving idle motion onto the instruments
-  /// instead. All she needs is a little liveliness of her own:
-  /// [hovering] scales her up slightly while a dragged instrument is over
-  /// the drop zone (Trello — "you're about to drop here"), and
-  /// [celebrating] adds the same pulse-plus-[DriftingNotes] burst used
-  /// elsewhere for "something good just happened" (already used for "this
-  /// instrument is sounding" and for the pre-reversal dragged character —
-  /// reused again rather than inventing a third celebration effect).
-  Widget _buildTargetCharacter({
-    Widget? characterImage,
-    MouthSpriteBuilder? characterBuilder,
-    required double lift,
-    required double size,
-    required bool celebrating,
-    required bool hovering,
-    required bool speaking,
-    required bool dimmed,
-    required String? speakingLineName,
-    required int speakingGeneration,
-    required bool sparkling,
-    required int sparkleLevel,
-  }) {
     return Positioned(
       left: 0,
       right: 0,
-      bottom: lift,
+      bottom: layout.characterLift,
       child: Align(
         alignment: Alignment.bottomCenter,
         child: Stack(
@@ -1177,32 +1011,19 @@ class _HighLowScreenState extends State<HighLowScreen> {
           alignment: Alignment.center,
           children: [
             AnimatedScale(
-              scale: (celebrating || hovering) ? 1.08 : 1.0,
+              scale: (pose == CharacterPose.celebrating || hovering)
+                  ? 1.08
+                  : 1.0,
               duration: AppAnimations.fast,
-              child: AnimatedOpacity(
-                opacity: dimmed ? _dimmedOpacity : 1.0,
-                duration: AppAnimations.fast,
-                child: characterBuilder != null
-                    ? SpeakingPulse.builder(
-                        speaking: speaking,
-                        line: speakingLineName,
-                        generation: speakingGeneration,
-                        builder: characterBuilder,
-                      )
-                    : SpeakingPulse(
-                        speaking: speaking,
-                        line: speakingLineName,
-                        generation: speakingGeneration,
-                        child: characterImage!,
-                      ),
-              ),
+              alignment: Alignment.bottomCenter,
+              child: sprite,
             ),
-            if (celebrating)
+            if (pose == CharacterPose.celebrating)
               Positioned(
-                top: -size * 0.15,
-                child: DriftingNotes(size: size, active: true),
+                top: -height * 0.15,
+                child: DriftingNotes(size: height, active: true),
               ),
-            if (sparkling) _buildCharacterSparkle(size, sparkleLevel),
+            if (sparkling) _buildCharacterSparkle(height, sparkleLevel),
           ],
         ),
       ),

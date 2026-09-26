@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
@@ -5,6 +7,9 @@ import 'package:ear_trainer/app/config.dart';
 import 'package:ear_trainer/app/state/dev_settings_state.dart';
 import 'package:ear_trainer/games/high_low/ordering/ordering_screen.dart';
 import 'package:ear_trainer/games/high_low/screens/high_low_screen.dart';
+import 'package:ear_trainer/games/high_low/services/prompt_generator.dart';
+import 'package:ear_trainer/games/high_low/state/high_low_game_state.dart';
+import 'package:ear_trainer/games/high_low/widgets/character_art.dart';
 import 'package:ear_trainer/ui/components/progress_dots.dart';
 
 void main() {
@@ -351,24 +356,22 @@ void main() {
       devToolsEnabled = false;
     });
 
-    /// Every Piper/Clef `Image` currently mounted, by its rendered height
-    /// — home and centered-target are the same widget type at different
-    /// declared heights, so this is how the two are told apart without
-    /// depending on exact screen-height arithmetic: home heights for Piper
-    /// and Clef are always equal to each other, so any *difference*
-    /// between the two on screen at once can only mean one of them is
-    /// centered at the (distinctly smaller) target size.
+    /// The rendered height of each Piper/Clef sprite currently mounted,
+    /// measured on their mouth frames (a sprite also carries its two pose
+    /// images, which are drawn a little taller). Home and centred-target
+    /// are the same widget at different sizes, so this is how the two are
+    /// told apart without depending on exact screen arithmetic.
     Set<double?> characterImageHeights(WidgetTester tester) {
       final finder = find.byWidgetPredicate((w) {
         if (w is! Image) return false;
         final image = w.image;
         return image is AssetImage &&
-            (image.assetName.contains('clef_mouth') ||
-                image.assetName.contains('Piper_Encouraging.png'));
+            (image.assetName.contains('clef_mouth_0') ||
+                image.assetName.contains('piper_mouth_0'));
       });
       return {
         for (final element in finder.evaluate())
-          (element.widget as Image).height,
+          (element.widget as Image).height?.roundToDouble(),
       };
     }
 
@@ -421,13 +424,13 @@ void main() {
       (tester) async {
         await startAt(tester, 'A1 · Participate');
 
-        expect(
-          characterImageHeights(tester),
-          hasLength(2),
-          reason:
-              'two distinct heights means one character has switched to '
-              'the smaller centered-target size while the other stays home',
-        );
+        final heights = characterImageHeights(tester);
+        expect(heights, hasLength(2), reason: 'target and waiting differ');
+
+        // Prominence follows the task: the centred drop target is the
+        // larger of the two, clearly.
+        final sorted = heights.map((h) => h!).toList()..sort();
+        expect(sorted.last, greaterThan(sorted.first * 1.25));
       },
     );
   });
@@ -571,9 +574,7 @@ void main() {
         await tester.pump(Duration.zero);
 
         expect(
-          tester
-              .widget<ProgressDots>(find.byType(ProgressDots))
-              .completedCount,
+          tester.widget<ProgressDots>(find.byType(ProgressDots)).completedCount,
           1,
           reason: 'tapping the earned arrow resolves the round as complete',
         );
@@ -820,5 +821,243 @@ void main() {
         },
       );
     }
+  });
+
+  group('poses, prominence and the layout pass (Cooper, on device)', () {
+    /// Asset names of every character image currently showing (opacity 1).
+    Set<String> showing(WidgetTester tester) {
+      final result = <String>{};
+      for (final o
+          in find
+              .descendant(
+                of: find.byType(CharacterSprite),
+                matching: find.byType(Opacity),
+              )
+              .evaluate()) {
+        if ((o.widget as Opacity).opacity != 1.0) continue;
+        final image =
+            find
+                    .descendant(
+                      of: find.byWidget(o.widget),
+                      matching: find.byType(Image),
+                    )
+                    .evaluate()
+                    .single
+                    .widget
+                as Image;
+        result.add((image.image as AssetImage).assetName.split('/').last);
+      }
+      return result;
+    }
+
+    /// A round whose answer is known: seeded generator, Trigger, blocked.
+    Future<HighLowGameState> pumpKnownRound(WidgetTester tester) async {
+      tester.view.physicalSize = roomyViewport;
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+      final state = HighLowGameState(
+        totalPrompts: 3,
+        generator: PromptGenerator(random: Random(1)),
+      );
+      await tester.pumpWidget(
+        MaterialApp(home: HighLowScreen(gameState: state)),
+      );
+      await tester.pump();
+      for (var i = 0; i < 4; i++) {
+        await tester.pump(const Duration(milliseconds: 1200));
+      }
+      await tester.pump(Duration.zero);
+      // Same real-decode wait as pumpAndFinishIntro: a hit test against a
+      // not-yet-sized image box always misses, so a drag would never start.
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 50)),
+      );
+      await tester.pump();
+      return state;
+    }
+
+    Future<void> dragSide(WidgetTester tester, int side) async {
+      final start = tester.getCenter(find.byType(Draggable<int>).at(side));
+      final end = tester.getCenter(find.byType(DragTarget<int>));
+      final gesture = await tester.startGesture(start);
+      await tester.pump(const Duration(milliseconds: 20));
+      for (var i = 1; i <= 8; i++) {
+        await gesture.moveTo(Offset.lerp(start, end, i / 8)!);
+        await tester.pump(const Duration(milliseconds: 20));
+      }
+      await gesture.up();
+      await tester.pump();
+      await tester.pump(Duration.zero);
+    }
+
+    testWidgets('a wrong drop makes the drop target think — and only the '
+        'target changes pose', (tester) async {
+      final state = await pumpKnownRound(tester);
+      await dragSide(tester, 1 - state.currentPrompt!.targetSide);
+
+      final shown = showing(tester);
+      expect(shown.where((n) => n.endsWith('thinking.png')).length, 1);
+      expect(shown.where((n) => n.endsWith('celebration.png')), isEmpty);
+      expect(
+        shown.where((n) => n.contains('_mouth_')).length,
+        1,
+        reason: 'the one standing by just speaks',
+      );
+      state.dispose();
+    });
+
+    testWidgets('a correct drop makes the drop target celebrate — the payoff '
+        'moment — and only the target changes pose', (tester) async {
+      final state = await pumpKnownRound(tester);
+      await dragSide(tester, state.currentPrompt!.targetSide);
+
+      final shown = showing(tester);
+      expect(shown.where((n) => n.endsWith('celebration.png')).length, 1);
+      expect(shown.where((n) => n.endsWith('thinking.png')), isEmpty);
+      expect(shown.where((n) => n.contains('_mouth_')).length, 1);
+      state.dispose();
+    });
+
+    testWidgets('the celebrating character is painted in front of the '
+        'instrument that lands on it — otherwise the payoff pose is hidden '
+        '(caught in an offscreen render: the piano covered Clef)', (
+      tester,
+    ) async {
+      final state = await pumpKnownRound(tester);
+      final side = state.currentPrompt!.targetSide;
+      final instrument = side == 0
+          ? state.leftInstrument.leftAssetPath
+          : state.rightInstrument.rightAssetPath;
+      await dragSide(tester, side);
+      await tester.pump(const Duration(milliseconds: 600));
+
+      final order = tester.allElements.toList();
+      final instrumentAt = order.indexWhere(
+        (e) =>
+            e.widget is Image &&
+            ((e.widget as Image).image as AssetImage).assetName == instrument,
+      );
+      final celebrationAt = order.indexWhere((e) {
+        final w = e.widget;
+        return w is Opacity &&
+            w.opacity == 1.0 &&
+            find
+                .descendant(
+                  of: find.byWidget(w),
+                  matching: find.byWidgetPredicate(
+                    (x) =>
+                        x is Image &&
+                        (x.image as AssetImage).assetName.endsWith(
+                          'celebration.png',
+                        ),
+                  ),
+                )
+                .evaluate()
+                .isNotEmpty;
+      });
+      expect(instrumentAt, isNonNegative);
+      expect(celebrationAt, isNonNegative);
+      expect(celebrationAt, greaterThan(instrumentAt));
+      state.dispose();
+    });
+
+    testWidgets('after a wrong drop she goes back to speaking, and a right '
+        'one can follow it', (tester) async {
+      final state = await pumpKnownRound(tester);
+      final right = state.currentPrompt!.targetSide;
+      await dragSide(tester, 1 - right);
+      await dragSide(tester, right);
+
+      expect(
+        showing(tester).where((n) => n.endsWith('celebration.png')).length,
+        1,
+      );
+      state.dispose();
+    });
+
+    testWidgets('Piper has her own mouth frames — the stopgap sheet — and '
+        'Clef has hers', (tester) async {
+      await pumpAndFinishIntro(tester, viewport: roomyViewport);
+      final names = {
+        for (final e in find.byType(Image).evaluate())
+          if ((e.widget as Image).image is AssetImage)
+            ((e.widget as Image).image as AssetImage).assetName.split('/').last,
+      };
+      expect(names, containsAll(['piper_mouth_0.png', 'clef_mouth_0.png']));
+    });
+
+    testWidgets('on a notched phone no character crosses the safe area — '
+        'Clef\'s right hand used to run off the screen', (tester) async {
+      tester.view.physicalSize = roomyViewport;
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+      await tester.pumpWidget(
+        MaterialApp(
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(
+              context,
+            ).copyWith(padding: const EdgeInsets.symmetric(horizontal: 47)),
+            child: child!,
+          ),
+          home: const HighLowScreen(),
+        ),
+      );
+      await tester.pump();
+      for (var i = 0; i < 4; i++) {
+        await tester.pump(const Duration(milliseconds: 1200));
+      }
+      await tester.pump(Duration.zero);
+
+      for (final name in ['clef_mouth_0.png', 'piper_mouth_0.png']) {
+        final rect = tester.getRect(
+          find.byWidgetPredicate(
+            (w) =>
+                w is Image &&
+                w.image is AssetImage &&
+                (w.image as AssetImage).assetName.endsWith(name),
+          ),
+        );
+        expect(rect.left, greaterThanOrEqualTo(47 - 0.5), reason: name);
+        expect(
+          rect.right,
+          lessThanOrEqualTo(roomyViewport.width - 47 + 0.5),
+          reason: name,
+        );
+      }
+    });
+
+    testWidgets('Listen Again is bottom-left; progress and Skip share the '
+        'bottom-right corner; the centre of the screen is clear of controls', (
+      tester,
+    ) async {
+      await pumpAndFinishIntro(tester, viewport: roomyViewport);
+      final size = tester.getSize(find.byType(MaterialApp));
+
+      final listen = tester.getRect(find.text('Listen Again'));
+      final dots = tester.getRect(find.byType(ProgressDots));
+      final skip = tester.getRect(find.byTooltip('Skip'));
+
+      expect(listen.center.dx, lessThan(size.width * 0.3));
+      expect(listen.center.dy, greaterThan(size.height * 0.7));
+      expect(dots.left, greaterThan(size.width * 0.4));
+      expect(skip.right, greaterThan(size.width * 0.85));
+      expect(skip.center.dy, greaterThan(size.height * 0.7));
+      expect(dots.right, lessThanOrEqualTo(skip.left));
+
+      final centre = Rect.fromCenter(
+        center: size.center(Offset.zero),
+        width: size.width * 0.16,
+        height: size.height * 0.5,
+      );
+      for (final r in [listen, dots, skip]) {
+        expect(r.overlaps(centre), isFalse);
+      }
+    });
   });
 }

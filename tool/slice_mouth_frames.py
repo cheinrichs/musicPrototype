@@ -17,6 +17,21 @@ Usage:
     python3 tool/slice_mouth_frames.py SHEET.png OUT_DIR --prefix clef_mouth
     python3 tool/slice_mouth_frames.py --self-test
 
+Options for sheets that aren't clean (any character, not one special case):
+    --crop-bottom PX   trim PX rows off the sheet's bottom first, for a sheet
+                       with caption plates ("Closed", "Open") baked in below
+                       the frames.
+    --alpha-floor N    zero any alpha below N, to remove a faint soft halo
+                       around the figure.
+    --despeckle        remove pieces not connected to the main figure, e.g.
+                       fur from the neighbouring frame that spilled across
+                       the cut between two tiles.
+    --stopgap          write the frames even if registration is worse than
+                       MAX_DRIFT_PX (still prints the drift). For a
+                       deliberate stand-in sheet whose frames are known not
+                       to line up, while proper ones are made: replacing it
+                       later is just running this again on the new sheet.
+
 Requires Pillow and numpy. Outputs OUT_DIR/<prefix>_0.png (closed),
 _1.png (open), _2.png (wide). Prints the shift applied to each frame and the
 post-registration body overlap so a bad sheet is caught, not shipped.
@@ -88,6 +103,48 @@ def best_shift(reference: np.ndarray, moving: np.ndarray) -> tuple[int, int, flo
             if iou > best[2]:
                 best = (dx, dy, float(iou))
     return best
+
+
+def despeckle(frame: Image.Image, keep_fraction: float = 0.05) -> Image.Image:
+    """Erase every connected piece of the figure smaller than keep_fraction
+    of the largest piece — stray slivers that belong to a neighbouring tile."""
+    from collections import deque
+
+    arr = np.array(frame.convert("RGBA"))
+    solid = arr[:, :, 3] > ALPHA_THRESHOLD
+    h, w = solid.shape
+    label = np.zeros((h, w), dtype=np.int32)
+    sizes: list[int] = [0]
+    for y0 in range(h):
+        for x0 in range(w):
+            if not solid[y0, x0] or label[y0, x0]:
+                continue
+            idx = len(sizes)
+            sizes.append(0)
+            queue = deque([(y0, x0)])
+            label[y0, x0] = idx
+            while queue:
+                y, x = queue.popleft()
+                sizes[idx] += 1
+                for dy in (-1, 0, 1):
+                    for dx in (-1, 0, 1):
+                        ny, nx = y + dy, x + dx
+                        if 0 <= ny < h and 0 <= nx < w and solid[ny, nx] and not label[ny, nx]:
+                            label[ny, nx] = idx
+                            queue.append((ny, nx))
+    if len(sizes) <= 2:
+        return frame
+    keep = {i for i, n in enumerate(sizes) if i and n >= keep_fraction * max(sizes)}
+    drop = solid & ~np.isin(label, list(keep))
+    # Also clear the faint anti-aliased fringe around dropped pieces.
+    fringe = drop.copy()
+    for _ in range(2):
+        grown = fringe.copy()
+        grown[1:, :] |= fringe[:-1, :]; grown[:-1, :] |= fringe[1:, :]
+        grown[:, 1:] |= fringe[:, :-1]; grown[:, :-1] |= fringe[:, 1:]
+        fringe = grown & (arr[:, :, 3] > 0) & ~np.isin(label, list(keep))
+    arr[drop | fringe, 3] = 0
+    return Image.fromarray(arr)
 
 
 def register(frames: list[Image.Image]) -> tuple[list[Image.Image], list[tuple[int, int, float]]]:
@@ -190,7 +247,15 @@ def self_test() -> None:
     registered, _ = register(split_thirds(Image.fromarray(body)))
     assert len({f.size for f in registered}) == 1
 
-    print("self-test passed (registration, shared canvas, odd-width split)")
+    # Despeckle removes a detached sliver but keeps the figure.
+    fig = np.zeros((200, 200, 4), dtype=np.uint8)
+    fig[20:180, 60:140, 3] = 255      # the figure
+    fig[90:110, 190:198, 3] = 255     # a stray sliver from a neighbour
+    cleaned = np.array(despeckle(Image.fromarray(fig)))
+    assert cleaned[100, 100, 3] == 255, "figure must survive"
+    assert cleaned[100, 194, 3] == 0, "detached sliver must go"
+
+    print("self-test passed (registration, shared canvas, odd-width split, despeckle)")
 
 
 def main() -> None:
@@ -199,6 +264,10 @@ def main() -> None:
     ap.add_argument("out_dir", nargs="?")
     ap.add_argument("--prefix", default="mouth")
     ap.add_argument("--self-test", action="store_true")
+    ap.add_argument("--crop-bottom", type=int, default=0)
+    ap.add_argument("--alpha-floor", type=int, default=0)
+    ap.add_argument("--stopgap", action="store_true")
+    ap.add_argument("--despeckle", action="store_true")
     args = ap.parse_args()
 
     if args.self_test:
@@ -207,7 +276,16 @@ def main() -> None:
     if not args.sheet or not args.out_dir:
         ap.error("SHEET and OUT_DIR are required")
 
-    frames = split_thirds(Image.open(args.sheet))
+    sheet = Image.open(args.sheet).convert("RGBA")
+    if args.crop_bottom:
+        sheet = sheet.crop((0, 0, sheet.size[0], sheet.size[1] - args.crop_bottom))
+    if args.alpha_floor:
+        arr = np.array(sheet)
+        arr[arr[:, :, 3] < args.alpha_floor, 3] = 0
+        sheet = Image.fromarray(arr)
+    frames = split_thirds(sheet)
+    if args.despeckle:
+        frames = [despeckle(f) for f in frames]
     registered, shifts = register(frames)
     overlap = registered_overlap(registered)
     drift = registration_drift(registered)
@@ -222,7 +300,9 @@ def main() -> None:
           f"(limit {MAX_DRIFT_PX}px); body-mask IoU {overlap:.4f} (informational)")
     if drift > MAX_DRIFT_PX:
         print(f"WARNING: body drifts {drift:.1f}px between frames — this sheet is not properly registered", file=sys.stderr)
-        sys.exit(1)
+        if not args.stopgap:
+            sys.exit(1)
+        print("--stopgap: written anyway; replace this sheet when proper frames exist", file=sys.stderr)
 
 
 if __name__ == "__main__":

@@ -23,17 +23,26 @@ class ProgressDots extends StatelessWidget {
   /// was; see the class doc for why.
   final int completedCount;
 
+  /// A small, static version for a corner of the screen: smaller dots and
+  /// padding, and the current dot holds still instead of pulsing forever.
+  /// Progress is passive information; the full-size pulsing version is
+  /// for screens where it is the focus.
+  final bool compact;
+
   const ProgressDots({
     super.key,
     required this.totalDots,
     required this.currentIndex,
     this.completedCount = 0,
+    this.compact = false,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+      padding: compact
+          ? const EdgeInsets.symmetric(horizontal: 9, vertical: 5)
+          : const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
       decoration: BoxDecoration(
         gradient: AppColors.cardGradient,
         borderRadius: BorderRadius.circular(AppSpacing.radiusRound),
@@ -66,7 +75,7 @@ class ProgressDots extends StatelessWidget {
 
     Color fill;
     Color border;
-    double size = 15;
+    double size = compact ? 10 : 15;
 
     if (isCompleted) {
       fill = AppColors.gold;
@@ -74,7 +83,7 @@ class ProgressDots extends StatelessWidget {
     } else if (isCurrent) {
       fill = AppColors.gold;
       border = AppColors.goldDeep;
-      size = 19;
+      size = compact ? 13 : 19;
     } else {
       fill = const Color(0xFFB9C7A4);
       border = AppColors.sage;
@@ -101,7 +110,7 @@ class ProgressDots extends StatelessWidget {
     );
 
     // Animate the current dot with a pulse
-    if (isCurrent) {
+    if (isCurrent && !compact) {
       dot = dot
           .animate(onPlay: (c) => c.repeat(reverse: true))
           .scale(

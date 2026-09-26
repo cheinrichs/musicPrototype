@@ -193,4 +193,21 @@ void main() {
       }
     });
   });
+
+  group('floatFraction (Cooper, on device: bells should hang slightly above '
+      'the stump, not sit embedded in it)', () {
+    test('bells float, by a visible but modest fraction of their size', () {
+      expect(
+        HighLowInstrument.bells.floatFraction,
+        inInclusiveRange(0.05, 0.2),
+      );
+    });
+
+    test('every other instrument stands on the stump', () {
+      for (final instrument in HighLowInstrument.values) {
+        if (instrument == HighLowInstrument.bells) continue;
+        expect(instrument.floatFraction, 0.0, reason: instrument.name);
+      }
+    });
+  });
 }

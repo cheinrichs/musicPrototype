@@ -4,8 +4,9 @@ import '../../../ui/theme/theme.dart';
 import 'high_low_caption.dart';
 
 /// Close (left), the round's caption (center, see [HighLowCaption]), and
-/// the child's skip control plus (dev builds only) the report button
-/// (right) — extracted from `HighLowScreen._buildHeader` (Trello, "Split
+/// (dev builds only) the report button (right). Skip is no longer here: it
+/// moved to the bottom-right corner beside the progress dots (see
+/// `HighLowFooter`) — extracted from `HighLowScreen._buildHeader` (Trello, "Split
 /// Skip into two controls: escape and move-on" and its sibling cards land
 /// a lot of change on this screen at once; this extraction is a pure move
 /// with no behavior change, landed on its own first).
@@ -32,9 +33,6 @@ class HighLowHeader extends StatelessWidget {
   final VoidCallback? onReportTap;
   final bool sharingReport;
 
-  final bool skipEnabled;
-  final VoidCallback? onSkip;
-
   const HighLowHeader({
     super.key,
     required this.onClose,
@@ -42,8 +40,6 @@ class HighLowHeader extends StatelessWidget {
     this.reportButtonKey,
     this.onReportTap,
     this.sharingReport = false,
-    required this.skipEnabled,
-    required this.onSkip,
   });
 
   @override
@@ -83,9 +79,7 @@ class HighLowHeader extends StatelessWidget {
                     ),
                 ],
               ),
-              const SizedBox(width: AppSpacing.sm),
             ],
-            HighLowSkipPill(enabled: skipEnabled, onTap: onSkip),
           ],
         ),
       ],
@@ -93,8 +87,9 @@ class HighLowHeader extends StatelessWidget {
   }
 }
 
-/// The child's escape control — a parchment pill in the header's top-right
-/// corner, opposite the close X (Trello card "Move Skip back to the top
+/// The escape control — a parchment pill, now in the bottom-right corner
+/// beside the (separate, non-interactive) progress dots. Was the header's
+/// top-right corner, opposite the close X (Trello card "Move Skip back to the top
 /// right as an icon-plus-text pill"). Available from the very start of
 /// every round, at every stage, and never gated on game phase — a child
 /// who wants out should be able to get out, same as before (Trello card
@@ -113,7 +108,11 @@ class HighLowSkipPill extends StatelessWidget {
   final bool enabled;
   final VoidCallback? onTap;
 
-  const HighLowSkipPill({super.key, required this.enabled, required this.onTap});
+  const HighLowSkipPill({
+    super.key,
+    required this.enabled,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {

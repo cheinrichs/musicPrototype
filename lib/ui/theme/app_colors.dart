@@ -13,6 +13,10 @@ class AppColors {
 
   // ---- Canonical Lumi palette (named on the character sheets) ----
   static const Color ink = Color(0xFF2B2620);
+
+  /// Warm dark brown for text on the cream plaques over the meadow scene —
+  /// there is no true black anywhere else in that scene.
+  static const Color inkBrown = Color(0xFF4A3524);
   static const Color warmGray = Color(0xFF6E665A);
   static const Color ivory = Color(0xFFF3E9CE);
   static const Color ivoryDeep = Color(0xFFE7D7B0);

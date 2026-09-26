@@ -19,6 +19,14 @@ const clefMouthFrameAssets = [
   'assets/images/characters/clef/clef_mouth_2.png',
 ];
 
+/// Piper's three mouth frames — a stopgap cut from the rejected sheet; see
+/// `CharacterArt.piper`.
+const piperMouthFrameAssets = [
+  'assets/images/characters/piper/piper_mouth_0.png',
+  'assets/images/characters/piper/piper_mouth_1.png',
+  'assets/images/characters/piper/piper_mouth_2.png',
+];
+
 // Each frame is entered above one threshold and only left below a lower
 // one, so a loudness envelope hovering around a boundary holds a frame
 // instead of fluttering between two at the envelope's own 30ms rate.
@@ -43,42 +51,5 @@ MouthFrame nextMouthFrame(MouthFrame current, double amplitude) {
       if (amplitude < _closeBelow) return MouthFrame.closed;
       if (amplitude < _openFromWideBelow) return MouthFrame.open;
       return MouthFrame.wide;
-  }
-}
-
-/// A character drawn from stacked mouth [frames], showing only [frame].
-///
-/// All frames stay mounted (the hidden ones at zero opacity) rather than
-/// swapping one `Image` for another, so each is decoded before it is first
-/// needed — a swap-on-demand would flash empty for a frame the first time a
-/// new mouth shape appeared.
-class MouthSprite extends StatelessWidget {
-  final List<String> frames;
-  final MouthFrame frame;
-  final double height;
-
-  const MouthSprite({
-    super.key,
-    required this.frames,
-    required this.frame,
-    required this.height,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Stack(
-      children: [
-        for (var i = 0; i < frames.length; i++)
-          Opacity(
-            opacity: i == frame.index ? 1.0 : 0.0,
-            child: Image.asset(
-              frames[i],
-              height: height,
-              fit: BoxFit.contain,
-              gaplessPlayback: true,
-            ),
-          ),
-      ],
-    );
   }
 }

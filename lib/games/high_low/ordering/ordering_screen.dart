@@ -11,9 +11,10 @@ import '../../../models/game_status.dart';
 import '../../../models/musical_skill.dart';
 import '../../../ui/components/drifting_notes.dart';
 import '../../../ui/components/game_screen_layout.dart';
-import '../../../ui/components/progress_dots.dart';
 import '../../../ui/theme/theme.dart';
 import '../widgets/high_low_header.dart';
+import '../widgets/character_art.dart';
+import '../widgets/high_low_footer.dart';
 import '../widgets/mouth_frames.dart';
 import '../widgets/retry_settle.dart';
 import 'ordering_game_state.dart';
@@ -186,14 +187,15 @@ class _OrderingScreenState extends State<OrderingScreen> {
       header: HighLowHeader(
         onClose: () => context.go(AppRoutes.home),
         captionText: OrderingScreen.caption,
-        skipEnabled: _state.status != GameStatus.completed,
-        onSkip: _state.escape,
       ),
       body: const SizedBox.shrink(),
-      footer: ProgressDots(
+      footer: HighLowFooter(
+        leading: _buildReplay(),
         totalDots: _state.totalPrompts,
         currentIndex: _state.currentPromptIndex,
         completedCount: _state.results.length,
+        skipEnabled: _state.status != GameStatus.completed,
+        onSkip: _state.escape,
       ),
       scrollableBody: false,
     );
@@ -223,11 +225,6 @@ class _OrderingScreenState extends State<OrderingScreen> {
         for (final slot in round.activeSlots) _buildSlot(layout, slot),
         for (var i = 0; i < n; i++) _buildGhost(layout, i),
         for (var i = 0; i < n; i++) _buildInstrument(layout, i),
-        Positioned(
-          right: AppSpacing.md,
-          top: screen.height * 0.26,
-          child: _buildReplay(),
-        ),
       ],
     );
   }
@@ -261,9 +258,13 @@ class _OrderingScreenState extends State<OrderingScreen> {
       top: feet.dy - h,
       height: h,
       child: Center(
-        child: MouthSprite(
-          frames: clefMouthFrameAssets,
-          frame: MouthFrame.closed,
+        child: CharacterSprite(
+          art: CharacterArt.clef,
+          // She celebrates when the round comes out right.
+          pose: _state.status == GameStatus.showingFeedback
+              ? CharacterPose.celebrating
+              : CharacterPose.speaking,
+          mouth: MouthFrame.closed,
           height: h,
         ),
       ),
@@ -324,6 +325,11 @@ class _OrderingScreenState extends State<OrderingScreen> {
   double _scaleOf(int note) =>
       _state.round!.notes[note].instrument.displaySizeScale;
 
+  /// How far this instrument hovers above whatever it stands on, as a
+  /// fraction of its size (bells hang from their ring and float).
+  double _floatOf(int note) =>
+      _state.round!.notes[note].instrument.floatFraction;
+
   /// A greyed ghost left on a stump while its instrument is away, so the
   /// layout never reflows and small children can find where it lives.
   Widget _buildGhost(OrderingLayout layout, int note) {
@@ -332,7 +338,7 @@ class _OrderingScreenState extends State<OrderingScreen> {
     final size = layout.stumpInstrumentSize * _scaleOf(note);
     return Positioned(
       left: feet.dx - size / 2,
-      top: feet.dy - size,
+      top: feet.dy - size - _floatOf(note) * size,
       width: size,
       height: size,
       child: IgnorePointer(
@@ -467,7 +473,7 @@ class _OrderingScreenState extends State<OrderingScreen> {
     return Positioned(
       key: ValueKey('instrument-$note'),
       left: feet.dx - size / 2,
-      top: feet.dy - size,
+      top: feet.dy - size - _floatOf(note) * size,
       child: body,
     );
   }

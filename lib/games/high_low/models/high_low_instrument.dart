@@ -93,6 +93,11 @@ enum HighLowInstrument {
     // transparent padding to trim, so there was no per-asset fix; see
     // [displaySizeScale]'s own doc for why this lives here instead).
     displaySizeScale: 0.5,
+    // Cooper, on device: "they should float above them" — a handbell hangs
+    // from its ring, so it hovers slightly proud of the stump instead of
+    // sitting embedded in the surface. A fraction of its own (already
+    // halved) size.
+    floatFraction: 0.12,
   ),
   cello('Cello', 'cello', 'cello', 60, 83),
   flute('Flute', 'flute', 'flute', 60, 83),
@@ -172,6 +177,7 @@ enum HighLowInstrument {
     this.highestSampleMidi, {
     this.missingMidis = const {},
     this.displaySizeScale = 1.0,
+    this.floatFraction = 0.0,
   });
 
   final String _assetBaseName;
@@ -215,6 +221,13 @@ enum HighLowInstrument {
   /// transforms on top of the base size) keep working unchanged — this is
   /// the base they multiply, not a replacement for them.
   final double displaySizeScale;
+
+  /// How far the instrument hovers above its stump's surface, as a fraction
+  /// of its own rendered size. 0 for everything that rests on the stump;
+  /// [bells] hang and float. Applied where the instrument is placed, not by
+  /// editing the asset, so the depth and playing-grows scaling still
+  /// multiply on top of it.
+  final double floatFraction;
 
   /// Every real MIDI note this instrument actually has a sample for,
   /// ascending — [lowestSampleMidi]..[highestSampleMidi] with

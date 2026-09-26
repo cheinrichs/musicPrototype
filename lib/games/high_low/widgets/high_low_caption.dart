@@ -25,13 +25,40 @@ class HighLowCaption extends StatelessWidget {
           duration: AppAnimations.medium,
           child: text == null
               ? const SizedBox.shrink(key: ValueKey('caption-empty'))
-              : Text(
-                  text!,
+              : DecoratedBox(
                   key: ValueKey('caption-$text'),
-                  style: AppTypography.heading3,
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+                  // The same cream plaque as the close button, Listen Again
+                  // and Skip. Bare text on the scenery read as pasted onto
+                  // a painting, and was only legible because it happened to
+                  // sit over pale sky — over the hills or a tree it would
+                  // vanish, and the audience is a watching adult.
+                  decoration: BoxDecoration(
+                    gradient: AppColors.cardGradient,
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusRound),
+                    border: Border.all(color: AppColors.cardEdge, width: 1.5),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: AppColors.shadow,
+                        blurRadius: 8,
+                        offset: Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.md,
+                      vertical: AppSpacing.xs,
+                    ),
+                    child: Text(
+                      text!,
+                      style: AppTypography.heading3.copyWith(
+                        color: AppColors.inkBrown,
+                      ),
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
                 ),
         ),
       ),
