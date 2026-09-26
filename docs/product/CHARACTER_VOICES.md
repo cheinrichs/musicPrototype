@@ -41,6 +41,7 @@ Both characters sit on the same tonal foundation, which comes from the project-w
 - **One voice across every age band.** The tone doesn't ladder — only the vocabulary does. Word choice and sentence length vary by band; personality, warmth and silliness do not.
 - **Reference is Bluey's Bandit.** He talks to a six-year-old and a four-year-old completely differently but is plainly the same person doing it, and never talks down to the younger one. Crash Bandicoot is a secondary reference for physical comedy and attitude.
 - **Describe the answer, not the attempt.** When a child gets something wrong, point at the answer rather than delivering a verdict on the child. "That's not it," "that's the low one," "ooh, nearly" — never "nope," "wrong one," "that's a no."
+  The same rule governs marks, not just words: a correct placement gets a persistent tick, a wrong one gets nothing (no cross, no red) — see `LEARNING_ARCHITECTURE.md`, "Mark what's right; never mark what's wrong."
 - Humour doesn't arrive at 8+, it grows up — slapstick at the youngest, wordplay at the oldest.
 
 And the negative constraints, which matter as much:

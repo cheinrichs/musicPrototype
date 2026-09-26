@@ -19,13 +19,21 @@ enum AgencyStage {
 
   /// A2 — the child must initiate or choose a response to advance, but a
   /// wrong attempt is always a gentle retry, never a failure state.
-  trigger;
+  trigger,
+
+  /// A4 — the child arranges the sounds themselves (High/Low: drag each
+  /// instrument onto a platform in pitch order) rather than choosing one.
+  /// Named for what High/Low asks at this stage; the curriculum's own A3
+  /// ("Timed") isn't modeled here, and `docs/product/HIGH_LOW_TIERS.md` puts
+  /// High/Low's ordering at A4.
+  order;
 
   /// Short curriculum code, as used in docs/curriculum/agency.csv.
   String get code => switch (this) {
     AgencyStage.observe => 'A0',
     AgencyStage.participate => 'A1',
     AgencyStage.trigger => 'A2',
+    AgencyStage.order => 'A4',
   };
 
   /// Human-readable label, e.g. for the dev toggle.
@@ -33,5 +41,6 @@ enum AgencyStage {
     AgencyStage.observe => 'Observe',
     AgencyStage.participate => 'Participate',
     AgencyStage.trigger => 'Trigger',
+    AgencyStage.order => 'Order',
   };
 }

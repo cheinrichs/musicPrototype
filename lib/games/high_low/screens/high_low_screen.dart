@@ -10,6 +10,7 @@ import '../../../app/state/dev_settings_state.dart';
 import '../../../app/state/progress_state.dart';
 import '../../../app/state/skill_state.dart';
 import '../../../models/agency_stage.dart';
+import '../../../models/concept_tier.dart';
 import '../../../models/musical_skill.dart';
 import '../../../models/game_status.dart';
 import '../../../ui/components/dev_setup_overlay.dart';
@@ -22,6 +23,7 @@ import '../models/high_low_instrument.dart';
 import '../models/round_report.dart';
 import '../services/round_report_service.dart';
 import '../state/high_low_game_state.dart';
+import '../ordering/ordering_screen.dart';
 import '../widgets/high_low_header.dart';
 import '../widgets/mouth_frames.dart';
 import '../widgets/retry_settle.dart';
@@ -70,6 +72,11 @@ class _HighLowScreenState extends State<HighLowScreen> {
   /// plain placeholder instead of a broken or cramped two-slot layout
   /// trying to represent a third note it has nowhere to put.
   bool _threeNoteTierNotBuilt = false;
+
+  /// Set when the dev gate picks A4: ordering is its own screen with its
+  /// own state (see [OrderingScreen]), so this one hands off entirely
+  /// rather than running [_gameState] for it.
+  ConceptTier? _orderingTier;
 
   /// Whether a dragged instrument is currently hovering over the drop
   /// zone, for the centered character's little "you're about to drop
@@ -168,6 +175,13 @@ class _HighLowScreenState extends State<HighLowScreen> {
 
   void _startFromDevGate() {
     final devSettings = context.read<DevSettingsState>();
+    if (devSettings.agencyStage == AgencyStage.order) {
+      setState(() {
+        _showDevGate = false;
+        _orderingTier = devSettings.conceptTier;
+      });
+      return;
+    }
     _gameState
       ..agencyStage = devSettings.agencyStage
       ..conceptTier = devSettings.conceptTier
@@ -281,6 +295,10 @@ class _HighLowScreenState extends State<HighLowScreen> {
       // unless devToolsEnabled, so a public App Store build never shows
       // this.
       return Scaffold(body: DevSetupOverlay(onStart: _startFromDevGate));
+    }
+
+    if (_orderingTier != null) {
+      return OrderingScreen(tier: _orderingTier!);
     }
 
     if (_threeNoteTierNotBuilt) {

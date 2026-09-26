@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:ear_trainer/app/config.dart';
 import 'package:ear_trainer/app/state/dev_settings_state.dart';
+import 'package:ear_trainer/games/high_low/ordering/ordering_screen.dart';
 import 'package:ear_trainer/games/high_low/screens/high_low_screen.dart';
 import 'package:ear_trainer/ui/components/progress_dots.dart';
 
@@ -772,5 +773,52 @@ void main() {
         expect(find.textContaining("aren't built yet"), findsNothing);
       },
     );
+  });
+
+  group('A4 hands off to the ordering screen', () {
+    tearDown(() {
+      devToolsEnabled = false;
+    });
+
+    for (final chip in ['T1', 'T5']) {
+      testWidgets(
+        'picking A4 with $chip in the dev gate opens ordering — including a '
+        'three-note tier, which the placeholder no longer covers here',
+        (tester) async {
+          devToolsEnabled = true;
+          tester.view.physicalSize = roomyViewport;
+          tester.view.devicePixelRatio = 1.0;
+          addTearDown(() {
+            tester.view.resetPhysicalSize();
+            tester.view.resetDevicePixelRatio();
+          });
+
+          await tester.pumpWidget(
+            MaterialApp(
+              home: ChangeNotifierProvider(
+                create: (_) => DevSettingsState(),
+                child: const HighLowScreen(),
+              ),
+            ),
+          );
+          await tester.pump();
+          await tester.tap(find.text('A4 · Order'));
+          await tester.pump();
+          await tester.tap(find.text(chip));
+          await tester.pump();
+          await tester.tap(find.text('Start'));
+          await tester.pump();
+          await tester.pump(Duration.zero);
+          await tester.pump(Duration.zero);
+
+          expect(find.byType(OrderingScreen), findsOneWidget);
+          expect(find.textContaining('not built'), findsNothing);
+
+          // Unmount so the screen's opening playback timers are cancelled
+          // with it rather than left pending.
+          await tester.pumpWidget(const SizedBox());
+        },
+      );
+    }
   });
 }

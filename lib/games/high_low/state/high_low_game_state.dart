@@ -366,7 +366,10 @@ class HighLowGameState extends ChangeNotifier {
         isHigh
             ? 'Let them tap both and find the higher one.'
             : 'Let them tap both and find the lower one.',
-      AgencyStage.trigger =>
+      // A4 ordering has its own state and screen (OrderingGameState); this
+      // one is never run at that stage, so it shares Trigger's wording
+      // only to stay exhaustive.
+      AgencyStage.trigger || AgencyStage.order =>
         isHigh
             ? 'Help them drag the higher instrument to Clef.'
             : 'Help them drag the lower instrument to Piper.',
@@ -549,7 +552,7 @@ class HighLowGameState extends ChangeNotifier {
         prompt?.targetDirection == PitchDirection.higher
             ? VoiceLine.listenForHigh
             : VoiceLine.listenForLow,
-      AgencyStage.trigger =>
+      AgencyStage.trigger || AgencyStage.order =>
         prompt?.targetDirection == PitchDirection.higher
             ? VoiceLine.giveMeHigh
             : VoiceLine.giveMeLow,

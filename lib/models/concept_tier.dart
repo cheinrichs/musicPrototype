@@ -126,11 +126,12 @@ enum ConceptTier {
   /// - **A1** gives a weak signal (does she tap the target) with no
   ///   failure state, so tier may creep, but stops short of the three-note
   ///   tiers ([t5] onward).
-  /// - **A2** gives a real answer, so every tier is reachable.
+  /// - **A2** gives a real answer, so every tier is reachable — and so is
+  ///   every tier at **A4**, which asks for more than A2 does.
   bool isReachableAt(AgencyStage stage) => switch (stage) {
     AgencyStage.observe => this == ConceptTier.t1,
     AgencyStage.participate => noteCount == 2,
-    AgencyStage.trigger => true,
+    AgencyStage.trigger || AgencyStage.order => true,
   };
 
   /// The highest tier reachable at [stage].

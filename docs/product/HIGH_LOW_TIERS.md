@@ -189,6 +189,62 @@ This needs the per-round tracking log to enforce — something has to know what 
 
 ---
 
+## Ordering at A4
+
+Decided 2026-09-26 (Cooper). Built as `OrderingScreen` / `OrderingGameState`; reached from the dev
+gate at A4, at any tier. Each round the child hears the notes, then drags each instrument from its
+stump onto a platform of the tree, **highest at the top under Clef** down to the lowest at the bottom.
+
+**The mechanic**
+
+- **An instrument sounds as it lands** — the sound follows the visible action.
+- **Nothing is evaluated until every platform in play is filled.** No confirm button; a four-year-old
+  shouldn't have to find one. Lifting an instrument off before the check cancels it.
+- **On evaluation, a green tick appears on each correct instrument and stays.** Wrong ones **travel
+  back to their stumps with the existing settle-wobble** (`RetrySettle` — the same widget a wrong drag
+  uses at A2, reused as-is, not a second wobble that could drift out of step), and their platforms are
+  empty again. Correct ones are locked; the child places the returned ones again until the round is right.
+- **Ticks on correct placements only. Nothing at all on wrong ones** — no cross, no red, no colour
+  change. This is "describe the answer, not the attempt" expressed in marks; see
+  `LEARNING_ARCHITECTURE.md`, "Mark what's right; never mark what's wrong." The slot has four states
+  (empty, hovering, filled, confirmed) and deliberately no "wrong" one.
+- **The layout never reflows.** An instrument's stump is fixed for the round (its note index); when it
+  leaves, a greyed ghost stays on the stump. Small children re-find things by position.
+- **No per-attempt praise line.** The tick does that job, and does it better because it persists.
+
+**Only three outcomes exist for three notes.** With every slot filled, exactly two correct is
+unreachable — if two are in their right places the third has nowhere else to go — so a first check
+scores 3, 1 (the other two swapped) or 0 (a three-cycle). Two notes score 2 or 0. This is asserted
+across every permutation in the tests; a two-tick state would mean the checker is wrong.
+
+**Two-note rounds** (A4 × T1–T4) use the same tree with the **top two** platforms in play, so the
+ordering still reads down from Clef and the bottom step stays unoccupied. *(An interpretation — the
+card says "one slot empty" without saying which; it is one line in `OrderingRound.activeSlots`.)*
+
+**Replays:** three are offered per round (shown as three pips that fill as they are used). More are
+never refused; the count used is what is recorded, per the signal-not-constraint principle above.
+
+**Slot styling is a single swappable decision** (`orderingSlotStyle`). Default is a soft dark
+depression with a shadow and a "?" (the "?" is a literacy symbol, acceptable here because nobody
+reaches A4 ordering at two or three); a grey flat placeholder is built alongside for comparison. The
+tree's platforms are ovals, so the slot is an oval sized to the platform's flat top.
+
+**Geometry — measured, not read off the card.** The card's 16% / 35% / 55% / 73% are the platforms'
+*top edges*. An instrument's feet belong on the middle of each flat top face, measured from
+`OrderingTree.png` at **0.182 / 0.369 / 0.558 / 0.735** of its height (Clef on the first, the three
+drop slots below), horizontally at ~0.52 of its width. The tree is sized so Clef clears the header and
+the bottom platform clears the progress dots; the header is about 20% of the screen height (measured
+on a render, not assumed).
+
+**Not built here**
+- **Panel 2, the T5–T8 selection screen** (three instruments, drag the highest to the character) —
+  still behind the placeholder: at A2 the centred drop-target character and the centre-back pedestal
+  both want the middle, and that is an open question.
+- **The rotating nudge pool** for a child who stalls — it belongs to the shared nudge-pool card and needs
+  recordings; the tick says which was right but can't help someone stuck.
+- **A spoken intro cue** for ordering — no recording exists. The hint for the adult is a caption, always
+  visible rather than triggered by a mistake, and optional for v1.
+
 ## What this replaces
 
 The Pitch Awareness row of `docs/curriculum/difficulty_tiers.csv` should be updated to match. Specifically:

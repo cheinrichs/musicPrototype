@@ -101,6 +101,21 @@ is a wording rule for every game and every age band, not a copy decision for one
 real example: "Ooh, that's a no" was drafted for the 8+ nudge and rejected for exactly this
 reason.)
 
+**Mark what's right; never mark what's wrong.** The same rule, in symbols instead of words.
+Wherever a game evaluates a placement or a choice, it shows a persistent positive mark (the
+green tick on a correctly placed instrument in High/Low's A4 ordering, which stays on screen
+where a voice line would evaporate) and shows **nothing at all** on a wrong one: no cross, no
+red or rose outline, no change of colour, no marker of any kind. A wrong placement simply goes
+home — in High/Low, back to its stump with the same settle-wobble a wrong drag uses at A2 —
+and its place is empty and asking again, not marked. Treat this as a rule, not a styling
+choice: the obvious instinct when building an evaluated screen is to add a red cross for
+symmetry, and that instinct is exactly what undoes "describe the answer, not the attempt". It
+goes further than some reference apps do (which wiggle and outline a wrong answer): a red
+outline was considered and explicitly rejected. `AppColors.incorrect` exists in the theme for
+non-evaluative uses and must never be applied to an attempt. A tick is a learned symbol,
+acceptable at A4 ordering because nobody reaches it at two or three; the wording rule above
+still governs everything spoken or captioned around it.
+
 Current presentation bands — vocabulary and complexity only; tone is constant (see above):
 - **2–3:** concrete, symbolic, minimal language, strong visual metaphors
 - **4–5:** simple words, short instructions, icons + light labels
