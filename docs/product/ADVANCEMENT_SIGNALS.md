@@ -133,9 +133,9 @@ The tier ladder starts where evidence does:
 - **A1 gives a weak signal** — does she tap the target — with no failure state, so
   tier *may* creep, but it stops short of T5 (High/Low's three-note tier — see
   `HIGH_LOW_TIERS.md`). This bound exists on its own evidentiary merits, not to dodge
-  a layout problem, but it also happens to be exactly what keeps A1's centered
-  narrator character and the three-note ordering screen's centre-back pedestal from
-  ever wanting the screen's middle at the same time.
+  a layout problem. (It used to also keep A1's centred narrator and the three-note
+  ordering screen's centre-back pedestal from wanting the screen's middle at once;
+  that conflict is gone now that both characters live on the tree.)
 - **A2 gives a real answer** (a drop can be wrong), and tier moves properly.
 
 This doesn't resolve the mastery algorithm or promotion thresholds themselves — see

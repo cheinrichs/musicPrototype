@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ear_trainer/games/high_low/widgets/high_low_caption.dart';
-import 'package:ear_trainer/games/high_low/widgets/high_low_footer.dart';
+import 'package:ear_trainer/games/high_low/widgets/high_low_header.dart';
 import 'package:ear_trainer/ui/components/progress_dots.dart';
 import 'package:ear_trainer/ui/theme/theme.dart';
 
 Widget host(Widget child) => MaterialApp(
   home: Scaffold(
-    body: Align(alignment: Alignment.bottomCenter, child: child),
+    body: Align(alignment: Alignment.topCenter, child: child),
   ),
 );
 
@@ -64,112 +64,180 @@ void main() {
     });
   });
 
-  group('footer', () {
-    Widget footer({VoidCallback? onSkip, bool skipEnabled = true}) => host(
-      HighLowFooter(
-        leading: const Text('LISTEN'),
-        totalDots: 5,
-        currentIndex: 1,
-        completedCount: 1,
-        skipEnabled: skipEnabled,
-        onSkip: onSkip,
-      ),
-    );
+  group('plate is a switch, not a layout', () {
+    testWidgets('turning the plate off changes nothing about size or '
+        'position, only whether it is painted — so it can be flipped '
+        'without relayout', (tester) async {
+      Future<Rect> caption(bool plate) async {
+        await tester.pumpWidget(
+          host(HighLowCaption(text: 'Let them explore freely.', plate: plate)),
+        );
+        await tester.pump(AppAnimations.medium);
+        return tester.getRect(find.byType(HighLowCaption));
+      }
 
-    testWidgets('Listen Again sits at the left; progress and Skip share the '
-        'bottom-right corner, in that order, flush to the right edge', (
-      tester,
-    ) async {
-      await tester.pumpWidget(footer());
-      await tester.pump(Duration.zero);
-      final row = tester.getRect(find.byType(HighLowFooter));
-      final listen = tester.getRect(find.text('LISTEN'));
-      final dots = tester.getRect(find.byType(ProgressDots));
-      final skip = tester.getRect(find.byTooltip('Skip'));
-
-      expect(listen.left, closeTo(row.left, 1.0), reason: 'left corner');
-      expect(listen.right, lessThanOrEqualTo(dots.left));
-      expect(dots.right, lessThanOrEqualTo(skip.left));
-      expect(skip.right, closeTo(row.right, 1.0), reason: 'right corner');
-    });
-
-    testWidgets('progress and Skip are two separate objects — progress is '
-        'passive and never merged into the adult\'s control', (tester) async {
-      await tester.pumpWidget(footer());
-      await tester.pump(Duration.zero);
-      final dots = tester.getRect(find.byType(ProgressDots));
-      final skip = tester.getRect(find.byTooltip('Skip'));
-      expect(dots.overlaps(skip), isFalse);
+      final on = await caption(true);
+      final textOn = tester.getRect(find.text('Let them explore freely.'));
+      final off = await caption(false);
+      final textOff = tester.getRect(find.text('Let them explore freely.'));
+      expect(off, on);
+      expect(textOff, textOn);
       expect(
         find.descendant(
-          of: find.byTooltip('Skip'),
-          matching: find.byType(ProgressDots),
+          of: find.byType(HighLowCaption),
+          matching: find.byWidgetPredicate(
+            (w) =>
+                w is DecoratedBox &&
+                (w.decoration as BoxDecoration).gradient != null,
+          ),
         ),
         findsNothing,
+        reason: 'no plate painted when off',
       );
     });
 
-    testWidgets('a child poking the progress dots does nothing: they are '
-        'non-interactive, and only Skip skips', (tester) async {
-      var skips = 0;
-      await tester.pumpWidget(footer(onSkip: () => skips++));
-      await tester.pump(Duration.zero);
-
-      await tester.tap(find.byType(ProgressDots), warnIfMissed: false);
-      await tester.pump();
-      expect(skips, 0);
-
-      // The dots are wrapped so they cannot even take a touch.
-      expect(
-        find.ancestor(
-          of: find.byType(ProgressDots),
-          matching: find.byType(IgnorePointer),
+    testWidgets('a two-line caption is not clipped by its own plate', (
+      tester,
+    ) async {
+      tester.view.physicalSize = const Size(500, 300);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+      await tester.pumpWidget(
+        host(
+          const HighLowCaption(
+            text: 'Help them drag the higher instrument to Clef, please.',
+          ),
         ),
-        findsWidgets,
       );
-
-      await tester.tap(find.byTooltip('Skip'));
-      await tester.pump();
-      expect(skips, 1);
-    });
-
-    testWidgets('progress is small, next to a Skip that is not smaller than '
-        'it is quiet — the dots must not outweigh the control', (tester) async {
-      await tester.pumpWidget(footer());
-      await tester.pump(Duration.zero);
-      final dots = tester.getSize(find.byType(ProgressDots));
-      expect(dots.height, lessThanOrEqualTo(30));
-    });
-
-    testWidgets('the compact dots hold still — nothing loops on the corner of '
-        'the screen', (tester) async {
-      await tester.pumpWidget(footer());
-      await tester.pump(Duration.zero);
-      await tester.pump(const Duration(seconds: 2));
-      expect(tester.hasRunningAnimations, isFalse);
+      await tester.pump(AppAnimations.medium);
+      final box = tester.getRect(find.byType(HighLowCaption));
+      final plate = tester.getRect(
+        find
+            .descendant(
+              of: find.byType(HighLowCaption),
+              matching: find.byType(DecoratedBox),
+            )
+            .first,
+      );
+      expect(plate.top, greaterThanOrEqualTo(box.top));
+      expect(plate.bottom, lessThanOrEqualTo(box.bottom));
     });
   });
 
-  testWidgets('a crowded row never overflows: the left side scales down to '
-      'the room the corner leaves', (tester) async {
-    tester.view.physicalSize = const Size(640, 200);
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(() {
-      tester.view.resetPhysicalSize();
-      tester.view.resetDevicePixelRatio();
-    });
-    await tester.pumpWidget(
-      host(
-        HighLowFooter(
-          leading: const SizedBox(width: 600, height: 40, child: Text('WIDE')),
-          totalDots: 5,
-          currentIndex: 0,
-          completedCount: 0,
-          skipEnabled: true,
-          onSkip: () {},
+  group('header', () {
+    Widget header({
+      String? caption = 'Help them drag the higher instrument to Clef.',
+      bool report = false,
+      VoidCallback? onSkip,
+      bool skipEnabled = true,
+    }) => host(
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: HighLowHeader(
+          onClose: () {},
+          captionText: caption,
+          skipEnabled: skipEnabled,
+          onSkip: onSkip,
+          reportButtonKey: report ? GlobalKey() : null,
+          onReportTap: report ? () {} : null,
+          below: const Text('LISTEN'),
         ),
       ),
     );
-    expect(tester.takeException(), isNull);
+
+    for (final report in [false, true]) {
+      testWidgets('the caption is centred on the SCREEN — with the dev '
+          'report button ${report ? 'shown' : 'hidden'} (it used to sit '
+          'well left of centre)', (tester) async {
+        tester.view.physicalSize = const Size(844, 390);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(() {
+          tester.view.resetPhysicalSize();
+          tester.view.resetDevicePixelRatio();
+        });
+        await tester.pumpWidget(header(report: report));
+        await tester.pump(AppAnimations.medium);
+        final caption = tester.getRect(
+          find
+              .descendant(
+                of: find.byType(HighLowCaption),
+                matching: find.byType(DecoratedBox),
+              )
+              .first,
+        );
+        expect(caption.center.dx, closeTo(844 / 2, 1.0));
+      });
+    }
+
+    testWidgets('close is top-left, Skip is top-right, and Listen Again sits '
+        'directly beneath the caption, centred', (tester) async {
+      tester.view.physicalSize = const Size(844, 390);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+      await tester.pumpWidget(header());
+      await tester.pump(AppAnimations.medium);
+      final close = tester.getRect(find.byTooltip('Close'));
+      final skip = tester.getRect(find.byTooltip('Skip'));
+      final caption = tester.getRect(find.byType(HighLowCaption));
+      final listen = tester.getRect(find.text('LISTEN'));
+      expect(close.left, lessThan(80));
+      expect(skip.right, greaterThan(844 - 80));
+      expect(listen.center.dx, closeTo(844 / 2, 1.0));
+      expect(listen.top, greaterThanOrEqualTo(caption.bottom - 0.5));
+    });
+
+    testWidgets('Skip is a small pill: the icon and the word, no subtitle — '
+        'and there is no progress indicator anywhere in the header', (
+      tester,
+    ) async {
+      await tester.pumpWidget(header());
+      await tester.pump(AppAnimations.medium);
+      final skip = tester.getSize(find.byTooltip('Skip'));
+      expect(skip.height, lessThanOrEqualTo(44), reason: 'was far too big');
+      expect(find.text('Skip'), findsOneWidget);
+      expect(find.text('I want something new'), findsNothing);
+      expect(find.byType(ProgressDots), findsNothing);
+    });
+
+    testWidgets('Skip looks like a quiet cream pill, nothing like the '
+        'child\'s big bright arrow — the two must not converge into a '
+        'matched pair', (tester) async {
+      await tester.pumpWidget(header());
+      await tester.pump(AppAnimations.medium);
+      final skipBox = tester
+          .widgetList<Container>(
+            find.descendant(
+              of: find.byTooltip('Skip'),
+              matching: find.byType(Container),
+            ),
+          )
+          .map((c) => c.decoration)
+          .whereType<BoxDecoration>()
+          .first;
+      expect(skipBox.gradient, AppColors.cardGradient);
+      expect(skipBox.gradient, isNot(AppColors.ctaGradient));
+      expect(skipBox.shape, BoxShape.rectangle, reason: 'a pill, not a circle');
+    });
+
+    testWidgets('Skip works, and a disabled Skip does nothing', (tester) async {
+      var skips = 0;
+      await tester.pumpWidget(header(onSkip: () => skips++));
+      await tester.pump(AppAnimations.medium);
+      await tester.tap(find.byTooltip('Skip'));
+      expect(skips, 1);
+
+      await tester.pumpWidget(
+        header(onSkip: () => skips++, skipEnabled: false),
+      );
+      await tester.pump(AppAnimations.medium);
+      await tester.tap(find.byTooltip('Skip'), warnIfMissed: false);
+      expect(skips, 1);
+    });
   });
 }

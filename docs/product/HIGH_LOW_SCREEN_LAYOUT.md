@@ -1,51 +1,109 @@
 # High/Low — Screen Layout, Character Art and Poses
 
 The rules behind the play screen's composition. The numbers live in
-`lib/games/high_low/models/high_low_layout.dart` (pure geometry, tested at real
+`lib/games/high_low/models/scene_layout.dart` (pure geometry, tested at real
 viewports); this file is the reasoning, so a change to one is a change to both.
-Tier and agency rules are in `HIGH_LOW_TIERS.md`; the design rules that
-recur in Cooper's feedback are summarised at the end.
+Tier and agency rules are in `HIGH_LOW_TIERS.md`.
 
-## One composition, built for three instruments
+## One scene for every level
 
-The layout is designed once for three instruments. The two-instrument screen is
-that same composition with one instrument removed — nothing is re-flowed between
-them, because small children find things again by position.
+Decided 2026-09-26 (Cooper: "let's try the tree version at all levels and
+agency and we'll see if it works"). Two instruments (A0–A2), three instruments
+and the A4 ordering screen are the **same composition with more or fewer things
+in it**:
 
-## Prominence follows the task
+- **Instruments on stumps, at the left.**
+- **The tree at the right**, with both characters on it: **Clef on the top
+  platform, Piper on the bottom one.**
+- **Caption centred at the top; Listen Again directly beneath it, centred.**
+- **Close top-left, Skip top-right.** Nothing along the bottom.
 
-The character the child is asked to drag to (the *target*) is the prominent one.
-The one waiting at the edge recedes to `waitingRatio` (0.68) of the target's
-height. Depth from standing at the screen's edge is a secondary effect and must
-never outrank the task. Where nothing is being asked (A0, observe) the two are
-the same size. `high_low_layout_test.dart` checks target > waiting and that the
-ratio stays below 0.85, so a later "just make her bigger" edit fails loudly.
+Why: agency is an independent axis, so the scene must not rearrange each time a
+child moves up a level; only the task changes. It also removes the centre
+character, which was the root of a run of patches (Clef oversized, the arrow
+colliding with a character, the A0-versus-A1 centre contest, Listen Again
+shuffling sideways).
 
-Sizes come from the screen height; edge characters are kept inside the safe area
-including their speaking pulse (Clef's right hand was running off the screen).
+This is an experiment to be judged on a device. If A0/A1 turn out to be worse
+for it, an alternate two-instrument arrangement for the lower levels is an
+acceptable outcome — it just costs the consistency argument.
+
+### Invariants (tested in `scene_layout_test.dart` / `high_low_screen_test.dart`)
+
+1. **Clef's platform is above Piper's.** Clef owns high, Piper owns low, so the
+   scene restates the concept every round at no cost, most valuably at A0/A1
+   where high and low are introduced. Where a character stands tells the child
+   which *pole* is being asked about — never which instrument sounded higher.
+2. **The instruments do not lose prominence.** At A0/A1 tapping them is the
+   whole activity. They stay at half the screen height (0.50 H), far larger than
+   the characters, and the tree may not squeeze them.
+3. **The tree is present at every level; its slots are drawn only where
+   something can be placed** — the A4 ordering screen. On the play screens
+   (A0–A2) the tree is scenery and character seating, with no receptacles: an
+   empty slot on a screen where nothing can be placed is a false affordance a
+   small child will spend real time failing at. At A2 the drop target is the
+   character on her perch (the existing lean-in cue), not a slot.
+   **Known weakness:** the tree art has four platforms baked in, so the two
+   middle platforms are visible, empty, wooden discs at A0/A1/A2. They are not
+   marked as receptacles (no "?"), but they can still look like places to put
+   things; they cannot be hidden without a different tree image.
+4. **The layout never reflows.** Stump positions depend only on the index and
+   the count, never on what has been picked up. A vacated stump shows a greyed
+   ghost on the ordering screen.
+5. **Both characters are the same size**, and stay put. Being this round's
+   target changes pose and the drop lean-in, not size or place.
+   *Superseded:* "prominence follows the task" (target larger than the one
+   standing by) — it was a size that changed per round, which this composition
+   cannot do without rearranging the scene.
 
 ## Where things sit
 
-- Centre of the screen: clear of controls. It holds the target character
-  (A1 and up) or the earned arrow (A0).
-- Bottom-left: Listen Again, plus the status line.
-- Bottom-right: progress and Skip, side by side but **separate objects**.
-  Progress is small, colourful and non-interactive (small children poke it;
-  it ignores pointers). Skip is the adult's quiet control. Never merge them.
-- Top: close (left), caption plaque (centre), dev report button (right).
+- Ground line (stump surface): 0.16 H up from the bottom. The tree's top
+  platform's feet are at 0.355 H; the bottom platform is a little below the
+  stumps' line. The tree is centred about 0.78 W across, pulled in if the
+  right-hand platform would touch a notch.
+- Instruments: packed left to right from the safe-area edge, pitch at most 1.12
+  boxes, so two instruments look like two and a free column remains before the
+  tree.
+- **The A0 earned arrow** sits in that free column, level with the middle of the
+  instruments. It is big, bright and gradient-filled; Skip is small, cream and
+  quiet. With the old "I want something new" subtitle gone, that difference in
+  how they *look* is what tells a child's control from an adult's — do not let
+  the two converge into a matched pair.
+- On a correct drop the instrument slides to the target's perch and shrinks to
+  the size an instrument has on the tree, and the target is painted **in front
+  of** it, so the celebration pose is never hidden by the thing it celebrates.
+  (Found in an offscreen render: the piano covered Clef.)
 - Bells are drawn at half size and hang slightly above their stump
-  (`HighLowInstrument.floatFraction`, 0.12 of the drawn size) rather than
-  embedded in it. 0.12 is a guess to be checked on a device.
-- On a correct drop the instrument slides to the target. The target is painted
-  *in front of* the instrument, so the celebration pose is never hidden by the
-  thing it is celebrating. At rest nothing overlaps.
+  (`HighLowInstrument.floatFraction`, 0.12); the number is a guess to check on a
+  device.
+- A drop that lands exactly on a header control (Listen Again, Skip, Close) is
+  taken by that control, not by the scene. Aim the tree, not the middle.
 
-## Caption plaque
+## Header
 
-The prompt caption sits on the same cream plaque as every other control, with
-warm dark brown text (`AppColors.inkBrown`), not black. This also removes a
-legibility bug where black text sat directly on non-sky backgrounds. No plaque is
-drawn when there is no caption.
+`HighLowHeader` reserves the same width on both sides of the caption
+(`sideWidth`), so the caption is centred on the *screen*. It used to sit well
+left of centre because the right-hand side was narrower than the left.
+
+- **Skip** is a small cream pill: the icon and the word, nothing else. It was
+  far too large, with a subtitle; Cooper is fine losing the text for now.
+- **Caption plate** is a switch (`HighLowCaption.defaultPlate`), not a layout:
+  on or off, the padding is identical, so flipping it moves nothing. On = the
+  cream plaque with warm dark brown text; off = white text with a soft shadow.
+  Cooper is undecided (most concept art has none; the newest concept uses a tan
+  banner). The case for the plate is legibility — the caption now sits over
+  trees and hills, and a caption whose audience is the watching adult is
+  worthless if it vanishes. On by default.
+
+## The progress indicator is gone (a decision, not a deletion)
+
+Cooper: "it's only 5 rounds and it's always 5 rounds." It told the child nothing.
+**Bring it back if round counts stop being fixed** — adaptive lengths, or A1
+completing on taps rather than a round count — because it then becomes
+meaningful again. If it returns it must stay a separate, small, non-interactive
+object, never merged with Skip (progress is colourful and small children poke
+it; Skip is the adult's quiet control).
 
 ## Poses
 
@@ -58,13 +116,20 @@ scale so they never jump in size (`character_art.dart`):
 | celebrating | on a correct drop |
 | thinking | on a wrong drop, and on the idle nudge |
 
-Only *speaking* has mouth frames; the others are single images. The one standing
-by always just speaks. Thinking on a wrong drop is not a failure mark — it
-describes the character, not a verdict on the child (see "describe the answer,
-not the attempt").
+Only *speaking* has mouth frames; the others are single images. The one who is
+not the target just speaks. Thinking on a wrong drop is not a failure mark — it
+describes the character, not a verdict on the child ("describe the answer, not
+the attempt").
 
-All five layers per character stay mounted and are toggled by opacity, so a pose
-change never waits on an image decode.
+**The non-speaking character is never made transparent.** It was dimmed to 55%
+while the scale pulse was the only speaking cue. Removed (Cooper: "i don't like
+that"): reduced opacity already means *unavailable*, which is wrong for a
+character who is present and simply not talking — it makes them look as if they
+are leaving; and the mouth animation now carries the cue the dimming covered.
+If de-emphasis is ever wanted, alpha is the wrong channel — a small drop in
+saturation or contrast keeps a character solid. Don't build that until someone
+asks. Until Piper's real mouth frames land her cue is the pulse alone and reads
+weaker than Clef's; the answer to that is her frames, not the dimming.
 
 ## Art pipeline
 
@@ -99,17 +164,21 @@ Replacing them is a file swap, not a code change:
 
 There is no Piper-specific code path to remove.
 
-## Open: three-instrument formation for the selection screen
+## Simulator screenshots without tapping
 
-At T5–T8 three notes are played and the child must pick from three. The target
-character (centred) and a centre-back pedestal both want the middle of the
-screen. Recommendation: in three-instrument rounds the target stands at an
-edge, at target size, and the middle-back position belongs to the pedestal.
-Not built until confirmed.
+`tool/screenshot_main.dart` is a separate entry point that opens one scene
+directly (A0, A0 with the arrow, A1, A2, a correct or wrong A2 drop, the
+ordering screen with two or three instruments). Write the scene name into
+`/tmp/hl_scene`, build with
+`flutter build ios --simulator --debug -t tool/screenshot_main.dart`, install,
+`xcrun simctl launch`, then `xcrun simctl io <udid> screenshot` (the framebuffer
+is portrait; rotate 90° clockwise to read it). Nothing in the app imports it.
 
 ## Design rules this leans on
 
-Prominence follows the task; ticks on correct only and nothing on wrong; motion
-means one thing (who is sounding) and there are no idle loops; a sound and a
-visible event go together; layout does not reflow; progress and Skip are
-separate; chrome is on cream plaques with warm brown, no true black in the scene.
+Prominence follows the task *for what the child acts on* (the instruments);
+ticks on correct only and nothing on wrong; motion means one thing (who is
+sounding) and there are no idle loops; a sound and a visible event go together;
+the layout does not reflow; progress and Skip are separate objects; transparency
+never means "not the speaker"; chrome is on cream plaques with warm brown, no
+true black in the scene.

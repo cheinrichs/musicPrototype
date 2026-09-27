@@ -9,7 +9,10 @@ import 'package:ear_trainer/games/high_low/ordering/ordering_screen.dart';
 import 'package:ear_trainer/games/high_low/screens/high_low_screen.dart';
 import 'package:ear_trainer/games/high_low/services/prompt_generator.dart';
 import 'package:ear_trainer/games/high_low/state/high_low_game_state.dart';
+import 'package:ear_trainer/games/high_low/ordering/ordering_slot.dart';
 import 'package:ear_trainer/games/high_low/widgets/character_art.dart';
+import 'package:ear_trainer/games/high_low/widgets/high_low_caption.dart';
+import 'package:ear_trainer/models/agency_stage.dart';
 import 'package:ear_trainer/ui/components/progress_dots.dart';
 
 void main() {
@@ -19,6 +22,19 @@ void main() {
   // iPhone 14 landscape — a roomier, more typical viewport, so the drag
   // path is proven to reach the scene at more than just the tight extreme.
   const roomyViewport = Size(844, 390);
+
+  /// The state behind the screen [pumpAndFinishIntro] mounted — tests read
+  /// progress (rounds completed, current round) from it directly now that the
+  /// on-screen progress indicator is gone.
+  late HighLowGameState screenState;
+
+  /// A point on the tree, where the target character stands — clear of every
+  /// control. (The middle of the screen now holds Listen Again, which would
+  /// swallow a drop that landed exactly on it.)
+  Offset onTheTree(WidgetTester tester) {
+    final size = tester.view.physicalSize / tester.view.devicePixelRatio;
+    return Offset(size.width * 0.78, size.height * 0.5);
+  }
 
   Future<void> pumpAndFinishIntro(
     WidgetTester tester, {
@@ -33,7 +49,11 @@ void main() {
       tester.view.devicePixelRatio = originalRatio;
     });
 
-    await tester.pumpWidget(const MaterialApp(home: HighLowScreen()));
+    final state = HighLowGameState();
+    screenState = state;
+    await tester.pumpWidget(
+      MaterialApp(home: HighLowScreen(gameState: state, ownsGameState: true)),
+    );
 
     // Advance past the postFrameCallback that starts the game and both
     // 2300ms note-ring waits the intro holds — one between the two notes,
@@ -141,7 +161,11 @@ void main() {
       tester.view.devicePixelRatio = originalRatio;
     });
 
-    await tester.pumpWidget(const MaterialApp(home: HighLowScreen()));
+    final state = HighLowGameState();
+    screenState = state;
+    await tester.pumpWidget(
+      MaterialApp(home: HighLowScreen(gameState: state, ownsGameState: true)),
+    );
     await tester.pump(); // still mid-intro here — no time has advanced
 
     final skipPill = find.byTooltip('Skip');
@@ -159,7 +183,7 @@ void main() {
     await tester.pump(Duration.zero);
 
     expect(
-      tester.widget<ProgressDots>(find.byType(ProgressDots)).currentIndex,
+      screenState.currentPromptIndex,
       1,
       reason:
           'a tiring child needs Move On to work even mid-intro, not just '
@@ -215,7 +239,7 @@ void main() {
 
       Future<void> dragOnto(Finder instrument) async {
         final start = tester.getCenter(instrument);
-        final end = tester.getCenter(target);
+        final end = onTheTree(tester);
         final gesture = await tester.startGesture(start);
         await tester.pump(const Duration(milliseconds: 20));
         const steps = 10;
@@ -234,9 +258,7 @@ void main() {
 
       await dragOnto(instruments.at(0));
 
-      var completedCount = tester
-          .widget<ProgressDots>(find.byType(ProgressDots))
-          .completedCount;
+      var completedCount = screenState.results.length;
 
       if (completedCount == 0) {
         // First instrument was wrong — a gentle retry, not a failure state
@@ -244,9 +266,7 @@ void main() {
         // live and a second drop is accepted immediately. The other
         // instrument is then guaranteed correct.
         await dragOnto(instruments.at(1));
-        completedCount = tester
-            .widget<ProgressDots>(find.byType(ProgressDots))
-            .completedCount;
+        completedCount = screenState.results.length;
       }
 
       expect(tester.takeException(), isNull);
@@ -327,17 +347,13 @@ void main() {
       }
 
       await dragToCorner(0);
-      var completedCount = tester
-          .widget<ProgressDots>(find.byType(ProgressDots))
-          .completedCount;
+      var completedCount = screenState.results.length;
 
       if (completedCount == 0) {
         // Same "wrong instrument retries immediately" reasoning as the
         // drag test above — one of the two is guaranteed correct.
         await dragToCorner(1);
-        completedCount = tester
-            .widget<ProgressDots>(find.byType(ProgressDots))
-            .completedCount;
+        completedCount = screenState.results.length;
       }
 
       expect(tester.takeException(), isNull);
@@ -351,29 +367,20 @@ void main() {
     },
   );
 
-  group('the centered target character (revises Trello card 1SpHq2la)', () {
+  group('both characters live on the tree, at every agency level', () {
     tearDown(() {
       devToolsEnabled = false;
     });
 
-    /// The rendered height of each Piper/Clef sprite currently mounted,
-    /// measured on their mouth frames (a sprite also carries its two pose
-    /// images, which are drawn a little taller). Home and centred-target
-    /// are the same widget at different sizes, so this is how the two are
-    /// told apart without depending on exact screen arithmetic.
-    Set<double?> characterImageHeights(WidgetTester tester) {
-      final finder = find.byWidgetPredicate((w) {
-        if (w is! Image) return false;
-        final image = w.image;
-        return image is AssetImage &&
-            (image.assetName.contains('clef_mouth_0') ||
-                image.assetName.contains('piper_mouth_0'));
-      });
-      return {
-        for (final element in finder.evaluate())
-          (element.widget as Image).height?.roundToDouble(),
-      };
-    }
+    /// The rendered rect of each character's resting (mouth) frame.
+    Rect frameRect(WidgetTester tester, String name) => tester.getRect(
+      find.byWidgetPredicate(
+        (w) =>
+            w is Image &&
+            w.image is AssetImage &&
+            (w.image as AssetImage).assetName.endsWith(name),
+      ),
+    );
 
     Future<void> startAt(WidgetTester tester, String agencyChip) async {
       devToolsEnabled = true;
@@ -400,40 +407,58 @@ void main() {
       await tester.pump(Duration.zero);
     }
 
-    testWidgets(
-      'at Observe (A0), neither Piper nor Clef is centered — both sit at '
-      'the same home size, and the middle is left for the earned arrow, '
-      'not a narrator (Cooper: "we\'re not asking them to listen for a '
-      'high or low note at A0")',
-      (tester) async {
-        await startAt(tester, 'A0 · Observe');
+    for (final chip in ['A0 · Observe', 'A1 · Participate', 'A2 · Trigger']) {
+      testWidgets('$chip: Clef is on the tree ABOVE Piper, both the same size '
+          '(there is no centre character to compete with the middle, and no '
+          'size that changes with the task)', (tester) async {
+        await startAt(tester, chip);
 
-        expect(
-          characterImageHeights(tester),
-          hasLength(1),
-          reason:
-              'one shared height means neither character has switched to '
-              'the smaller centered-target size',
-        );
-      },
-    );
+        final clef = frameRect(tester, 'clef_mouth_0.png');
+        final piper = frameRect(tester, 'piper_mouth_0.png');
+        expect(clef.center.dy, lessThan(piper.center.dy));
+        expect(clef.height.roundToDouble(), piper.height.roundToDouble());
+        // both on the right of the frame, on the tree, not the centre
+        for (final r in [clef, piper]) {
+          expect(r.center.dx, greaterThan(roomyViewport.width * 0.65));
+        }
+      });
 
-    testWidgets(
-      'at Participate (A1), the target-pole character is centered as a '
-      'listening cue — the one case this behavior still applies to',
-      (tester) async {
-        await startAt(tester, 'A1 · Participate');
-
-        final heights = characterImageHeights(tester);
-        expect(heights, hasLength(2), reason: 'target and waiting differ');
-
-        // Prominence follows the task: the centred drop target is the
-        // larger of the two, clearly.
-        final sorted = heights.map((h) => h!).toList()..sort();
-        expect(sorted.last, greaterThan(sorted.first * 1.25));
-      },
-    );
+      testWidgets('$chip: the tree shows NO empty slots — nothing can be '
+          'placed on it, and an empty receptacle is a false affordance a '
+          'two-year-old would spend real time failing at', (tester) async {
+        await startAt(tester, chip);
+        expect(find.byType(OrderingSlot), findsNothing);
+        expect(find.text('?'), findsNothing);
+      });
+    }
   });
+
+  testWidgets(
+    'the character who is not speaking is never made transparent — reduced '
+    'opacity reads as "unavailable", which is wrong for a character who is '
+    'simply present and not the one talking (Cooper: "i don\'t like that"). '
+    'Dimming was an opacity wrapper around the sprite, so no such wrapper '
+    'may exist at all (speaking cannot be observed here: with no audio a '
+    'spoken line finishes before the next frame)',
+    (tester) async {
+      await pumpAndFinishIntro(tester, viewport: roomyViewport);
+
+      expect(find.byType(CharacterSprite), findsNWidgets(2));
+      for (final sprite in find.byType(CharacterSprite).evaluate()) {
+        final wrappers = find.ancestor(
+          of: find.byWidget(sprite.widget),
+          matching: find.byWidgetPredicate(
+            (w) => w is Opacity || w is AnimatedOpacity,
+          ),
+        );
+        expect(
+          wrappers,
+          findsNothing,
+          reason: 'nothing may fade a character as a whole',
+        );
+      }
+    },
+  );
 
   group('a tap or a short accidental drag never answers at Trigger '
       '(Trello card L00pxs7q)', () {
@@ -451,7 +476,7 @@ void main() {
 
         expect(tester.takeException(), isNull);
         expect(
-          tester.widget<ProgressDots>(find.byType(ProgressDots)).completedCount,
+          screenState.results.length,
           0,
           reason: 'a tap is exploration — only a drag answers at Trigger',
         );
@@ -480,7 +505,7 @@ void main() {
 
         expect(tester.takeException(), isNull);
         expect(
-          tester.widget<ProgressDots>(find.byType(ProgressDots)).completedCount,
+          screenState.results.length,
           0,
           reason:
               'one of the two instruments is the correct one — a 30px slide '
@@ -499,7 +524,6 @@ void main() {
       'appears only once both instruments have been tapped, never on a '
       'timer, and resolves the round when tapped',
       (tester) async {
-        devToolsEnabled = true;
         tester.view.physicalSize = roomyViewport;
         tester.view.devicePixelRatio = 1.0;
         addTearDown(() {
@@ -507,20 +531,14 @@ void main() {
           tester.view.resetDevicePixelRatio();
         });
 
+        // Observe (A0) — the earned arrow only ever appears there.
+        final state = HighLowGameState(agencyStage: AgencyStage.observe);
+        screenState = state;
         await tester.pumpWidget(
           MaterialApp(
-            home: ChangeNotifierProvider(
-              create: (_) => DevSettingsState(),
-              child: const HighLowScreen(),
-            ),
+            home: HighLowScreen(gameState: state, ownsGameState: true),
           ),
         );
-        await tester.pump();
-
-        // Pick Observe (A0) — the earned arrow only ever appears there.
-        await tester.tap(find.text('A0 · Observe'));
-        await tester.pump();
-        await tester.tap(find.text('Start'));
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 1200));
         await tester.pump(const Duration(milliseconds: 1200));
@@ -574,7 +592,7 @@ void main() {
         await tester.pump(Duration.zero);
 
         expect(
-          tester.widget<ProgressDots>(find.byType(ProgressDots)).completedCount,
+          screenState.results.length,
           1,
           reason: 'tapping the earned arrow resolves the round as complete',
         );
@@ -881,7 +899,7 @@ void main() {
 
     Future<void> dragSide(WidgetTester tester, int side) async {
       final start = tester.getCenter(find.byType(Draggable<int>).at(side));
-      final end = tester.getCenter(find.byType(DragTarget<int>));
+      final end = onTheTree(tester);
       final gesture = await tester.startGesture(start);
       await tester.pump(const Duration(milliseconds: 20));
       for (var i = 1; i <= 8; i++) {
@@ -1032,31 +1050,43 @@ void main() {
       }
     });
 
-    testWidgets('Listen Again is bottom-left; progress and Skip share the '
-        'bottom-right corner; the centre of the screen is clear of controls', (
-      tester,
-    ) async {
+    testWidgets('the layout: close top-left, Skip top-right (small), the '
+        'caption centred with Listen Again directly beneath it, no progress '
+        'indicator, and nothing along the bottom', (tester) async {
       await pumpAndFinishIntro(tester, viewport: roomyViewport);
-      final size = tester.getSize(find.byType(MaterialApp));
+      final size = roomyViewport;
 
-      final listen = tester.getRect(find.text('Listen Again'));
-      final dots = tester.getRect(find.byType(ProgressDots));
+      final close = tester.getRect(find.byTooltip('Close'));
       final skip = tester.getRect(find.byTooltip('Skip'));
+      final listen = tester.getRect(find.text('Listen Again'));
+      final caption = tester.getRect(find.byType(HighLowCaption));
 
-      expect(listen.center.dx, lessThan(size.width * 0.3));
-      expect(listen.center.dy, greaterThan(size.height * 0.7));
-      expect(dots.left, greaterThan(size.width * 0.4));
-      expect(skip.right, greaterThan(size.width * 0.85));
-      expect(skip.center.dy, greaterThan(size.height * 0.7));
-      expect(dots.right, lessThanOrEqualTo(skip.left));
-
-      final centre = Rect.fromCenter(
-        center: size.center(Offset.zero),
-        width: size.width * 0.16,
-        height: size.height * 0.5,
+      expect(close.left, lessThan(size.width * 0.1));
+      expect(close.center.dy, lessThan(size.height * 0.25));
+      expect(skip.right, greaterThan(size.width * 0.9));
+      expect(skip.center.dy, lessThan(size.height * 0.25));
+      expect(skip.height, lessThanOrEqualTo(44));
+      expect(caption.center.dx, closeTo(size.width / 2, 1.0));
+      expect(listen.top, greaterThanOrEqualTo(caption.bottom - 0.5));
+      expect(listen.center.dx, closeTo(size.width / 2, 40));
+      expect(
+        find.byType(ProgressDots),
+        findsNothing,
+        reason:
+            'always five rounds, so it told the child nothing; see '
+            'docs/product/HIGH_LOW_SCREEN_LAYOUT.md for what would bring it back',
       );
-      for (final r in [listen, dots, skip]) {
-        expect(r.overlaps(centre), isFalse);
+      expect(find.text('I want something new'), findsNothing);
+
+      // Nothing interactive along the bottom edge.
+      final bottomBand = Rect.fromLTWH(
+        0,
+        size.height * 0.88,
+        size.width,
+        size.height * 0.12,
+      );
+      for (final r in [close, skip, listen]) {
+        expect(r.overlaps(bottomBand), isFalse);
       }
     });
   });

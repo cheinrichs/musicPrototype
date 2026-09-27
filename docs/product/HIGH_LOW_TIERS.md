@@ -55,6 +55,18 @@ This is consistent with the judgement that a near-semitone discrimination is an 
 
 ### Three notes gets its own layout, deliberately unlike the two-note one
 
+> **SUPERSEDED 2026-09-26.** Cooper's concept sheet shows two-instrument,
+> three-instrument and ordering as one composition (instruments on stumps at the
+> left, the tree at the right with both characters on it), and he confirmed it:
+> "let's try the tree version at all levels and agency." The reasoning below
+> (a *visibly different* layout signals a different mechanic) was his call on
+> 2026-09-25 and may be worth revisiting if children treat the three-note tier as
+> "the same thing again" on device. What replaces it, and why the centre-back
+> pedestal conflict below no longer exists (there is no centre character), is in
+> `HIGH_LOW_SCREEN_LAYOUT.md`. The **levelling** rule still holds, by construction:
+> every stump shares one ground line. The history is kept because the signal it
+> was after has not gone away.
+
 Decided 2026-09-25. An earlier concept-art brief asked for the three-instrument
 layout to be the same composition as the two-instrument one with a third instrument
 added. Cooper reversed that after seeing the art: *"having the three instrument
@@ -238,8 +250,9 @@ on a render, not assumed).
 
 **Not built here**
 - **Panel 2, the T5–T8 selection screen** (three instruments, drag the highest to the character) —
-  still behind the placeholder: at A2 the centred drop-target character and the centre-back pedestal
-  both want the middle, and that is an open question.
+  still behind the placeholder, but no longer blocked on layout: with both characters on the tree there
+  is no centred character to compete with anything (see `HIGH_LOW_SCREEN_LAYOUT.md`). `SceneLayout`
+  already places three stumps.
 - **The rotating nudge pool** for a child who stalls — it belongs to the shared nudge-pool card and needs
   recordings; the tick says which was right but can't help someone stuck.
 - **A spoken intro cue** for ordering — no recording exists. The hint for the adult is a caption, always

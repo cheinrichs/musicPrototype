@@ -14,7 +14,6 @@ import '../../../ui/components/game_screen_layout.dart';
 import '../../../ui/theme/theme.dart';
 import '../widgets/high_low_header.dart';
 import '../widgets/character_art.dart';
-import '../widgets/high_low_footer.dart';
 import '../widgets/mouth_frames.dart';
 import '../widgets/retry_settle.dart';
 import 'ordering_game_state.dart';
@@ -162,7 +161,8 @@ class _OrderingScreenState extends State<OrderingScreen> {
             fit: BoxFit.cover,
           ),
           LayoutBuilder(
-            builder: (context, constraints) => _buildScene(constraints.biggest),
+            builder: (context, constraints) =>
+                _buildScene(constraints.biggest, MediaQuery.paddingOf(context)),
           ),
           IgnorePointer(
             child: Align(
@@ -187,26 +187,25 @@ class _OrderingScreenState extends State<OrderingScreen> {
       header: HighLowHeader(
         onClose: () => context.go(AppRoutes.home),
         captionText: OrderingScreen.caption,
-      ),
-      body: const SizedBox.shrink(),
-      footer: HighLowFooter(
-        leading: _buildReplay(),
-        totalDots: _state.totalPrompts,
-        currentIndex: _state.currentPromptIndex,
-        completedCount: _state.results.length,
         skipEnabled: _state.status != GameStatus.completed,
         onSkip: _state.escape,
+        below: _buildReplay(),
       ),
+      body: const SizedBox.shrink(),
       scrollableBody: false,
     );
   }
 
   // ---- scene ----
 
-  Widget _buildScene(Size screen) {
+  Widget _buildScene(Size screen, EdgeInsets insets) {
     final round = _state.round;
     if (round == null) return const SizedBox.shrink();
-    final layout = OrderingLayout(screen, noteCount: round.notes.length);
+    final layout = OrderingLayout(
+      screen,
+      insets: insets,
+      noteCount: round.notes.length,
+    );
     final n = round.notes.length;
 
     return Stack(
@@ -317,9 +316,11 @@ class _OrderingScreenState extends State<OrderingScreen> {
 
   String _assetFor(OrderingLayout layout, int note) {
     final instrument = _state.round!.notes[note].instrument;
-    return layout.stumpFeet(note).dx < layout.screen.width / 2
-        ? instrument.leftAssetPath
-        : instrument.rightAssetPath;
+    // Same variants as before: the last note wears the right-hand art, the
+    // rest the left-hand art (two notes: one each).
+    return note == layout.noteCount - 1
+        ? instrument.rightAssetPath
+        : instrument.leftAssetPath;
   }
 
   double _scaleOf(int note) =>
@@ -497,7 +498,7 @@ class _OrderingScreenState extends State<OrderingScreen> {
 
   Widget _buildReplay() {
     final used = _state.replaysUsed;
-    return Column(
+    return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Semantics(
@@ -506,8 +507,8 @@ class _OrderingScreenState extends State<OrderingScreen> {
           child: GestureDetector(
             onTap: _state.replay,
             child: Container(
-              width: 44,
-              height: 44,
+              width: 40,
+              height: 40,
               decoration: const BoxDecoration(
                 color: AppColors.paper,
                 shape: BoxShape.circle,
@@ -523,7 +524,7 @@ class _OrderingScreenState extends State<OrderingScreen> {
             ),
           ),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(width: AppSpacing.sm),
         // Three offered; the pips fill as they're used. Past three, replays
         // still work — the count is the signal, not a cap.
         Row(

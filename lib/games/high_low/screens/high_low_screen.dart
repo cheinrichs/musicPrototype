@@ -23,9 +23,8 @@ import '../models/round_report.dart';
 import '../services/round_report_service.dart';
 import '../state/high_low_game_state.dart';
 import '../ordering/ordering_screen.dart';
-import '../models/high_low_layout.dart';
+import '../models/scene_layout.dart';
 import '../widgets/character_art.dart';
-import '../widgets/high_low_footer.dart';
 import '../widgets/high_low_header.dart';
 import '../widgets/retry_settle.dart';
 import '../widgets/speaking_pulse.dart';
@@ -56,7 +55,12 @@ class HighLowScreen extends StatefulWidget {
   /// makes and disposes its own.
   final HighLowGameState? gameState;
 
-  const HighLowScreen({super.key, this.gameState});
+  /// Whether the screen disposes an injected [gameState] along with itself
+  /// (a screen always disposes one it made). For tests that also want to
+  /// read the state, so its pending timers die with the tree.
+  final bool ownsGameState;
+
+  const HighLowScreen({super.key, this.gameState, this.ownsGameState = false});
 
   @override
   State<HighLowScreen> createState() => _HighLowScreenState();
@@ -123,7 +127,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
   @override
   void initState() {
     super.initState();
-    _ownsGameState = widget.gameState == null;
+    _ownsGameState = widget.gameState == null || widget.ownsGameState;
     _gameState = widget.gameState ?? HighLowGameState();
     _gameState.addListener(_onGameStateChanged);
     _confettiController = ConfettiController(
@@ -358,19 +362,17 @@ class _HighLowScreenState extends State<HighLowScreen> {
                   ? null
                   : _onReportRound,
               sharingReport: _sharingReport,
-            ),
-            // The middle is clear: Listen Again and the status line are
-            // bottom-left, and progress and Skip share the bottom-right
-            // corner (kept as two separate objects — see [HighLowFooter]).
-            body: const SizedBox.shrink(),
-            footer: HighLowFooter(
-              leading: _buildBottomLeft(),
-              totalDots: _gameState.totalPrompts,
-              currentIndex: _gameState.currentPromptIndex,
-              completedCount: _gameState.results.length,
+              // Skip top-right, Listen Again centred under the caption; no
+              // progress indicator (it is always five rounds, so it told
+              // the child nothing — see docs/product/HIGH_LOW_SCREEN_LAYOUT.md
+              // for what would bring it back).
               skipEnabled: _gameState.status != GameStatus.completed,
               onSkip: _gameState.escape,
+              below: _buildListenAgainButton(),
             ),
+            // The middle holds only the caption and Listen Again (both in the
+            // header); the scene is the background.
+            body: const SizedBox.shrink(),
             // The body is empty, so GameScreenLayout's scroll-fallback isn't
             // needed here, and worse, actively broke the drag-to-answer
             // interaction: a Scrollable hit-tests its whole viewport, not
@@ -409,23 +411,6 @@ class _HighLowScreenState extends State<HighLowScreen> {
           ),
         ],
       ),
-    );
-  }
-
-  /// Listen Again and the round's status line, bottom-left — the corner
-  /// opposite progress and Skip, leaving the centre of the screen clear.
-  Widget _buildBottomLeft() {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        _buildListenAgainButton(),
-        const SizedBox(width: AppSpacing.sm),
-        Padding(
-          padding: const EdgeInsets.only(bottom: 4),
-          child: _buildStatusText(),
-        ),
-      ],
     );
   }
 
@@ -511,21 +496,25 @@ class _HighLowScreenState extends State<HighLowScreen> {
     }
   }
 
+  /// Listen Again, centred under the caption: the round button with its label
+  /// beside it (not below — a label underneath reached down into the tips of
+  /// tall instruments).
   Widget _buildListenAgainButton() {
     final canReplay =
         _gameState.status != GameStatus.completed &&
         _gameState.status != GameStatus.showingFeedback;
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        GestureDetector(
-          onTap: canReplay ? _gameState.replay : null,
-          child: AnimatedOpacity(
-            opacity: canReplay ? 1 : 0.5,
-            duration: AppAnimations.fast,
-            child: Container(
-              width: 48,
-              height: 48,
+    return GestureDetector(
+      onTap: canReplay ? _gameState.replay : null,
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedOpacity(
+        opacity: canReplay ? 1 : 0.5,
+        duration: AppAnimations.fast,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 40,
               decoration: BoxDecoration(
                 gradient: AppColors.cardGradient,
                 shape: BoxShape.circle,
@@ -541,68 +530,47 @@ class _HighLowScreenState extends State<HighLowScreen> {
               child: const Icon(
                 Icons.volume_up_rounded,
                 color: AppColors.secondary,
-                size: 24,
+                size: 22,
               ),
             ),
-          ),
+            const SizedBox(width: AppSpacing.sm),
+            Text('Listen Again', style: AppTypography.label),
+          ],
         ),
-        const SizedBox(height: 2),
-        Text('Listen Again', style: AppTypography.label),
-      ],
+      ),
     );
   }
 
-  /// The stumps' instruments, flanked by Piper and Clef further out —
-  /// composed straight into [GameScreenLayout]'s full-bleed `background`
-  /// layer (Trello card 56), sized and positioned directly off
-  /// `MediaQuery.size` rather than off whatever width/height the caption
-  /// and controls above happen to leave in the body's flex layout. That
-  /// distinction matters: this used to live inside the body's
-  /// budget-constrained `FittedBox`, which scales its child down evenly
-  /// around its *center* to make it fit — on a roomy screen that shrink
-  /// was mild and this looked fine, but on a short one it shrank hard
-  /// enough that the scene's own "ground" drifted noticeably up and away
-  /// from the background's own art, leaving instruments visibly floating
-  /// above it and pulling Piper/Clef in over the stumps instead of
-  /// outside them. Sizing and positioning here directly off the real
-  /// screen makes the scene invariant to that shrink entirely.
+  /// The scene: two instruments on stumps at the left, and the tree at the
+  /// right with Clef on its top platform and Piper on its bottom one — the
+  /// same composition as the three-instrument and ordering screens (see
+  /// [SceneLayout]). Nothing on the tree is a receptacle here: at A0/A1 there
+  /// is nothing to place, and even at A2 the drop target is the character,
+  /// so drawing empty slots would only invite a drag that does nothing.
   ///
-  /// The stumps themselves ([_buildStump]) are painted here too, not in
-  /// the background art (Trello card "Separate the stumps from the
-  /// background art"): `MeadowWidescreen.png` is stump-free scenery, and
-  /// each stump prop shares [groundY] — the exact same anchor coordinate
-  /// used to place the instrument standing on it. Every past "instrument
-  /// floating off its stump" bug (the FittedBox drift above, the original
-  /// scene anchoring, the floating cellos) came from the stump living in
-  /// painted artwork while the instrument was placed by a number measured
-  /// off that art — a number that goes stale the moment the viewport
-  /// changes. Sharing one coordinate instead of matching two independent
-  /// measurements makes that whole bug class impossible by construction.
+  /// Composed straight into [GameScreenLayout]'s full-bleed `background`
+  /// layer (Trello card 56), sized and positioned directly off
+  /// `MediaQuery.size` rather than off whatever room the header leaves in the
+  /// body's flex layout: sizing here directly off the real screen makes the
+  /// scene invariant to any shrink the header or body needs to do.
+  ///
+  /// The stumps themselves ([_buildStump]) are painted here too, not in the
+  /// background art (Trello card "Separate the stumps from the background
+  /// art"): each stump prop shares the layout's ground line with the
+  /// instrument standing on it. Every past "instrument floating off its
+  /// stump" bug came from the stump living in painted artwork while the
+  /// instrument was placed by a number measured off that art — a number that
+  /// goes stale the moment the viewport changes. Sharing one coordinate makes
+  /// that whole bug class impossible by construction.
   Widget _buildScene(BuildContext context) {
     final size = MediaQuery.of(context).size;
-    final screenWidth = size.width;
-    // Proportions of screen height, per the concept art (Trello card 56).
-    // Instruments stay put on the stumps (Trello card S1v6sbrK — "in the
-    // right place, don't move them"); Piper and Clef are doubled (Trello
-    // card OCv6kVmd) from their original roughly-a-third/roughly-a-fifth
-    // sizing.
-    // All sizes and positions come from [HighLowLayout] (pure geometry, so
-    // its rules are tested at real screen sizes): the drop target is the
-    // prominent character, the one standing by recedes, and nothing runs
-    // off the edge on a notched phone.
-    final insets = MediaQuery.paddingOf(context);
-    final prompt = _gameState.currentPrompt;
-    final centerTargetCharacter =
-        prompt != null && _gameState.agencyStage != AgencyStage.observe;
-    final layout = HighLowLayout(
+    final layout = SceneLayout(
       size,
-      insets: insets,
-      hasTarget: centerTargetCharacter,
+      insets: MediaQuery.paddingOf(context),
+      noteCount: 2,
     );
-    final charSize = layout.instrumentSize;
     final groundY = layout.groundY;
-    final leftAnchorX = layout.instrumentAnchorX(0);
-    final rightAnchorX = layout.instrumentAnchorX(1);
+    final charSize = layout.instrumentSize;
     // Per-instrument multiplier on the shared [charSize] (Trello, Cooper on
     // device: "the bells art should be like 50% as large") — see
     // [HighLowInstrument.displaySizeScale]'s doc for why this lives on the
@@ -612,60 +580,39 @@ class _HighLowScreenState extends State<HighLowScreen> {
         charSize * _gameState.rightInstrument.displaySizeScale;
     // Bells hang from their ring, so they float slightly proud of the stump
     // instead of sinking into it (Cooper, on device).
-    final leftFeetLift = layout.instrumentFeetLift(
-      size: leftCharSize,
-      floatFraction: _gameState.leftInstrument.floatFraction,
-    );
-    final rightFeetLift = layout.instrumentFeetLift(
-      size: rightCharSize,
-      floatFraction: _gameState.rightInstrument.floatFraction,
-    );
+    final leftFeetLift = leftCharSize * _gameState.leftInstrument.floatFraction;
+    final rightFeetLift =
+        rightCharSize * _gameState.rightInstrument.floatFraction;
     final isTrigger = _gameState.agencyStage == AgencyStage.trigger;
     // Whichever character owns this round's target pole (Piper is low,
-    // Clef is high — Trello card 101) stays centered at Participate and
-    // Trigger: in Trigger she's the fixed drop target the child feeds
-    // instruments to; in Participate she has nothing to receive, but
-    // stands centered anyway as a visual cue for which pole the child is
-    // listening for, alongside the caption/narration.
-    //
-    // Not at Observe, though — this revises Trello card 1SpHq2la ("add
-    // piper or clef appropriately to the middle on A0 and A1"), which
-    // Cooper walked back after seeing it running: "my reasoning for having
-    // the character in the middle for A0 is flawed because we're not
-    // asking them to listen for a high or low note at A0." Observe has no
-    // pole to cue — the characters just narrate — so a centered character
-    // there has nothing to do, and the middle is needed for the earned
-    // arrow instead (Trello card xpAkja5b), which only ever appears at
-    // Observe. The two therefore never compete for the center: Observe
-    // shows the arrow and no character, Participate/Trigger show the
-    // character and no arrow.
-    final piperIsTarget =
-        centerTargetCharacter && _gameState.targetCharacterIsPiper;
-    final clefIsTarget =
-        centerTargetCharacter && !_gameState.targetCharacterIsPiper;
-    // A correct drop slides the dragged instrument onto the centered
-    // character instead of springing back to its stump (Trello —
-    // "celebrate a correct drop"; see [_buildInstrumentSlot]).
+    // Clef is high — Trello card 101) is this round's target at Participate
+    // and Trigger: in Trigger she's what the child feeds instruments to; in
+    // Participate she has nothing to receive but is the cue for which pole
+    // the child is listening for. Not at Observe: there the characters just
+    // narrate and nobody is asked anything. Both stay on their perches
+    // throughout — being the target changes their pose and the drop lean-in,
+    // never their size or place.
+    final prompt = _gameState.currentPrompt;
+    final hasTarget =
+        prompt != null && _gameState.agencyStage != AgencyStage.observe;
+    final piperIsTarget = hasTarget && _gameState.targetCharacterIsPiper;
+    final clefIsTarget = hasTarget && !_gameState.targetCharacterIsPiper;
+    // A correct drop slides the dragged instrument onto the target's perch
+    // instead of springing back to its stump (Trello — "celebrate a correct
+    // drop"; see [_buildInstrumentSlot]).
     final celebrating = _gameState.dragFeedback == DragFeedback.correct;
 
     // "The talker moves" (Trello card PIm7xE6n) — whichever of Piper/Clef
-    // is currently speaking, home or centered, regardless of which one
-    // happens to be this round's target (Observe's per-note narration is
-    // about which *note* just sounded, not which pole this round is
-    // asking about). And the transient "found it" character sparkle
-    // (Trello card RqdPFKLf) — the two are mutually exclusive per
-    // character by construction (see [HighLowGameState.speakingIsPiper]'s
-    // doc comment), but each is independently false/false/true/true here
-    // since only one of Piper/Clef can be speaking or sparkling at once.
+    // is currently speaking, regardless of which one happens to be this
+    // round's target (Observe's per-note narration is about which *note*
+    // just sounded, not which pole this round is asking about). And the
+    // transient "found it" character sparkle (Trello card RqdPFKLf) — the
+    // two are mutually exclusive per character by construction (see
+    // [HighLowGameState.speakingIsPiper]'s doc comment).
     final piperSpeaking = _gameState.speakingIsPiper == true;
     final clefSpeaking = _gameState.speakingIsPiper == false;
-    // Absence cue (Cooper: pair the speaking pulse with dimming whoever
-    // *isn't* talking) — cheap, adds no new motion to a screen about to
-    // have plenty, and keeps the speaker unambiguous even on a glance.
-    // Neither is dimmed while nobody's speaking.
-    final anyoneSpeaking = _gameState.speakingIsPiper != null;
-    final piperDimmed = anyoneSpeaking && !piperSpeaking;
-    final clefDimmed = anyoneSpeaking && !clefSpeaking;
+    // The character who isn't speaking is NOT dimmed — see the class doc on
+    // [_buildCharacter] for why that was tried and removed.
     final speakingLineName = _gameState.speakingLine?.name;
     final speakingGeneration = _gameState.speakingGeneration;
     final piperSparkling = _gameState.characterSparkleIsPiper == true;
@@ -673,16 +620,18 @@ class _HighLowScreenState extends State<HighLowScreen> {
     // How many cumulative correct taps Participate has banked (0-5) —
     // scales the sparkle's visual intensity so each tap reads as *more*
     // than the last (Cooper: "a flat sparkle is a reward; an escalating
-    // one is a promise"). Only meaningful while sparkling; unused
-    // otherwise.
+    // one is a promise"). Only meaningful while sparkling.
     final sparkleLevel = _gameState.correctTapProgress;
 
     // Trello card NcVPjPZ5 — Cooper: "the pianos should not get the
     // stumps, they look weird sitting on top of a stump." A piano's own
-    // art already reads as freestanding furniture, not something that
-    // rests on a tree stump the way a guitar or a violin does.
+    // art already reads as freestanding furniture.
     final leftIsPiano = _gameState.leftInstrument == HighLowInstrument.piano;
     final rightIsPiano = _gameState.rightInstrument == HighLowInstrument.piano;
+
+    final targetPerch = layout.perchOf(
+      isPiper: _gameState.targetCharacterIsPiper,
+    );
 
     return Stack(
       clipBehavior: Clip.none,
@@ -692,7 +641,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
             assetPath: 'assets/images/backgrounds/props/StumpA.png',
             naturalWidth: 1512,
             naturalHeight: 794,
-            centerX: leftAnchorX,
+            centerX: layout.stumpAnchorX(0),
             charSize: charSize,
             groundY: groundY,
           ),
@@ -701,23 +650,30 @@ class _HighLowScreenState extends State<HighLowScreen> {
             assetPath: 'assets/images/backgrounds/props/StumpB.png',
             naturalWidth: 1506,
             naturalHeight: 781,
-            centerX: rightAnchorX,
+            centerX: layout.stumpAnchorX(1),
             charSize: charSize,
             groundY: groundY,
           ),
-        // Instruments first, characters over them: a correct drop slides
-        // the instrument onto the centred character, and painting it on
-        // top hid the celebration pose entirely once the characters were
-        // sized below the instruments (found in an offscreen render, not
-        // on device). At rest nothing overlaps (see [HighLowLayout]), so
-        // the order only shows during that landing — the character stands
-        // in front of the instrument it was just handed.
+        Positioned.fromRect(
+          rect: layout.treeRect,
+          child: Image.asset(
+            'assets/images/backgrounds/props/OrderingTree.png',
+            fit: BoxFit.fill,
+          ),
+        ),
+        // Instruments before characters: a correct drop slides the
+        // instrument onto the target's perch, and painting it on top would
+        // hide the celebration pose. At rest nothing overlaps (see
+        // [SceneLayout]), so the order only shows during that landing — the
+        // character stands in front of the instrument it was just handed.
         _buildInstrumentSlot(
           side: 0,
           assetPath: _gameState.leftInstrument.leftAssetPath,
           instrumentName: _gameState.leftInstrument.name,
-          anchorX: leftAnchorX,
-          screenWidth: screenWidth,
+          anchorX: layout.stumpAnchorX(0),
+          landing: targetPerch,
+          layout: layout,
+          screenHeight: size.height,
           charSize: leftCharSize,
           groundY: groundY + leftFeetLift,
           isTrigger: isTrigger,
@@ -729,8 +685,10 @@ class _HighLowScreenState extends State<HighLowScreen> {
           side: 1,
           assetPath: _gameState.rightInstrument.rightAssetPath,
           instrumentName: _gameState.rightInstrument.name,
-          anchorX: rightAnchorX,
-          screenWidth: screenWidth,
+          anchorX: layout.stumpAnchorX(1),
+          landing: targetPerch,
+          layout: layout,
+          screenHeight: size.height,
           charSize: rightCharSize,
           groundY: groundY + rightFeetLift,
           isTrigger: isTrigger,
@@ -745,7 +703,6 @@ class _HighLowScreenState extends State<HighLowScreen> {
           pose: _poseFor(isTarget: piperIsTarget, celebrating: celebrating),
           hovering: _dragHovering && piperIsTarget,
           speaking: piperSpeaking,
-          dimmed: piperDimmed,
           speakingLineName: speakingLineName,
           speakingGeneration: speakingGeneration,
           sparkling: piperSparkling,
@@ -758,57 +715,40 @@ class _HighLowScreenState extends State<HighLowScreen> {
           pose: _poseFor(isTarget: clefIsTarget, celebrating: celebrating),
           hovering: _dragHovering && clefIsTarget,
           speaking: clefSpeaking,
-          dimmed: clefDimmed,
           speakingLineName: speakingLineName,
           speakingGeneration: speakingGeneration,
           sparkling: clefSparkling,
           sparkleLevel: sparkleLevel,
         ),
-        // One drop zone spanning the whole scene, not two per-instrument
-        // halves (Trello — "forgiving drop targets," now applied to the
-        // character-as-target instead of the instruments): there's only
-        // one place to drop any more — onto the centered character — so
-        // the most generous possible hitbox is the entire play area; which
-        // instrument was dragged (not where it landed) is what
-        // [HighLowGameState.dropInstrument] judges. Painted before the
-        // earned arrow below (on top of the stumps/Piper/Clef/
-        // instruments, but under the arrow) so it isn't occluded by those
-        // images' full rectangular bounds — DragTarget defaults to
-        // HitTestBehavior.translucent, so sitting on top like this doesn't
-        // block the instruments' own tap-to-explore (or drag-start)
-        // underneath.
+        // One drop zone spanning the whole scene, not per-instrument halves
+        // (Trello — "forgiving drop targets"): there's only one place to
+        // drop any more — onto the target character — so the most generous
+        // possible hitbox is the entire play area; which instrument was
+        // dragged (not where it landed) is what [HighLowGameState.dropInstrument]
+        // judges. Painted before the earned arrow below (on top of the
+        // stumps/tree/characters/instruments, but under the arrow).
+        // DragTarget defaults to HitTestBehavior.translucent, so sitting on
+        // top like this doesn't block the instruments' own tap-to-explore (or
+        // drag-start) underneath.
         if (isTrigger) _buildDropZone([leftCharSize, rightCharSize]),
-        // The child's earned arrow (Trello card xpAkja5b, "Two controls:
-        // the adult's persistent skip, and the child's earned arrow") —
-        // Observe only, below the centered target character, visible
-        // only once [HighLowGameState.showArrow] says the child has
-        // earned it (both instruments tapped this round — never a
-        // timer). Not built until then — conditionally mounted, not just
-        // hidden, so it can't be hit-tested a moment early. Painted last
-        // (on top of the drop zone above, though Observe never renders
-        // that zone anyway since it's Trigger-only).
+        // The child's earned arrow (Trello card xpAkja5b) — Observe only,
+        // in the free column between the instruments and the tree, visible
+        // only once [HighLowGameState.showArrow] says the child has earned
+        // it (both instruments tapped this round — never a timer). Not built
+        // until then — conditionally mounted, not just hidden, so it can't be
+        // hit-tested a moment early. Painted last.
         if (_gameState.showArrow)
           Positioned(
-            left: 0,
-            right: 0,
-            // groundY itself, not a fraction of it: the footer's own
-            // parchment pill (ProgressDots) lives in a *separate* overlay
-            // painted on top of this whole background layer (see
-            // GameScreenLayout — header/body/footer stack above
-            // `background` regardless of z-order chosen within it), so no
-            // amount of paint-order juggling in here keeps this control
-            // clear of it. groundY comfortably clears the footer's own
-            // occupied height on the tightest viewport this screen
-            // supports; a smaller fraction measured, on a widget test, as
-            // sitting directly underneath the footer's pill and silently
-            // eating the tap (found originally tuning the old move-on
-            // control, which sat in this same spot).
-            bottom: groundY,
-            child: Center(child: _buildEarnedArrow()),
+            left: layout.arrowCentre.dx - _arrowSize / 2,
+            top: layout.arrowCentre.dy - _arrowSize / 2,
+            child: _buildEarnedArrow(),
           ),
       ],
     );
   }
+
+  /// Diameter of the child's earned arrow.
+  static const double _arrowSize = 72;
 
   /// The child's earned arrow — big and bright, the opposite visual
   /// language from the quiet, adult-facing controls elsewhere in this
@@ -828,8 +768,8 @@ class _HighLowScreenState extends State<HighLowScreen> {
         onTap: _gameState.tapArrow,
         child:
             Container(
-              width: 72,
-              height: 72,
+              width: _arrowSize,
+              height: _arrowSize,
               decoration: const BoxDecoration(
                 gradient: AppColors.ctaGradient,
                 shape: BoxShape.circle,
@@ -925,13 +865,6 @@ class _HighLowScreenState extends State<HighLowScreen> {
   /// grass; above it is the disc an instrument stands on.
   static const double _stumpSurfaceFraction = 0.37;
 
-  /// Opacity for whichever character *isn't* speaking, while the other one
-  /// is (Cooper: pair the speaking pulse with dimming the non-speaker) —
-  /// quiet, cheap, and adds no new motion; makes the speaker unambiguous
-  /// even on a glance. Neither character is dimmed while nobody's
-  /// speaking — see [_buildScene]'s `anyoneSpeaking` computation.
-  static const double _dimmedOpacity = 0.55;
-
   /// Which pose the character shows. Only the drop target changes pose —
   /// the one standing by just speaks. A correct drop celebrates; a wrong
   /// drop, and the idle nudge (Participate's secondary caption), show her
@@ -947,63 +880,57 @@ class _HighLowScreenState extends State<HighLowScreen> {
     return CharacterPose.speaking;
   }
 
-  /// Piper or Clef, either standing by at her edge or centred as this
-  /// round's drop target (Trello card 101: whoever owns the pole is the
-  /// target — Piper low, Clef high).
+  /// Piper or Clef, standing on her perch on the tree (Clef high, Piper low —
+  /// see [SceneLayout]). Both are the same size and stay put; being this
+  /// round's target ([isTarget]: the one whose pole the child is asked about,
+  /// Trello card 101 — Piper low, Clef high) changes her pose and gives the
+  /// drop lean-in while an instrument hovers over the drop zone ([hovering]),
+  /// never her size or place: a size that changed per round would rearrange
+  /// the scene. The only other motion is the speaking cue ([SpeakingPulse] +
+  /// mouth frames) and her celebration.
   ///
-  /// **Prominence follows the task.** The target is drawn larger than the
-  /// one standing by ([HighLowLayout.targetHeight] vs `waitingHeight`), and
-  /// both stand on the same ground line as the stumps. Both are stationary:
-  /// the only motion is the speaking cue ([SpeakingPulse] + mouth frames),
-  /// the target's [hovering] lean-in while an instrument is over the drop
-  /// zone, and her celebration.
+  /// **The character who isn't speaking is never made transparent.** It was
+  /// dimmed to 55% for a while as insurance while the scale pulse was the only
+  /// speaking cue. Removed (Cooper: "i don't like that"): reduced opacity
+  /// already means *unavailable* (a greyed control), which is wrong for a
+  /// character who is present and simply not the one talking — it makes them
+  /// look like they are leaving; and the mouth animation now carries the cue
+  /// the dimming was covering. If de-emphasis is ever wanted, alpha is the
+  /// wrong channel — a small drop in saturation or contrast keeps a character
+  /// solid. Don't build that until someone asks. Until Piper's real mouth
+  /// frames land her cue is the pulse alone and reads weaker than Clef's;
+  /// the answer to that is her frames, not the dimming.
   Widget _buildCharacter({
-    required HighLowLayout layout,
+    required SceneLayout layout,
     required bool isPiper,
     required bool isTarget,
     required CharacterPose pose,
     required bool hovering,
     required bool speaking,
-    required bool dimmed,
     required String? speakingLineName,
     required int speakingGeneration,
     required bool sparkling,
     required int sparkleLevel,
   }) {
     final art = isPiper ? CharacterArt.piper : CharacterArt.clef;
-    final height = isTarget ? layout.targetHeight : layout.waitingHeight;
+    final height = layout.characterHeight;
+    final feet = layout.perchOf(isPiper: isPiper);
 
-    final sprite = AnimatedOpacity(
-      opacity: dimmed ? _dimmedOpacity : 1.0,
-      duration: AppAnimations.fast,
-      child: SpeakingPulse.builder(
-        speaking: speaking,
-        line: speakingLineName,
-        generation: speakingGeneration,
-        builder: (context, amplitude, mouth) =>
-            CharacterSprite(art: art, pose: pose, mouth: mouth, height: height),
-      ),
+    final sprite = SpeakingPulse.builder(
+      speaking: speaking,
+      line: speakingLineName,
+      generation: speakingGeneration,
+      builder: (context, amplitude, mouth) =>
+          CharacterSprite(art: art, pose: pose, mouth: mouth, height: height),
     );
 
-    if (!isTarget) {
-      return Positioned(
-        bottom: layout.characterLift,
-        left: isPiper ? layout.leftEdgeX : null,
-        right: isPiper ? null : layout.screen.width - layout.rightEdgeX,
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            sprite,
-            if (sparkling) _buildCharacterSparkle(height, sparkleLevel),
-          ],
-        ),
-      );
-    }
-
+    // A box wide enough for any pose, centred on the perch, feet on the
+    // platform; the sprite is bottom-centre in it.
+    final boxWidth = height * 2;
     return Positioned(
-      left: 0,
-      right: 0,
-      bottom: layout.characterLift,
+      left: feet.dx - boxWidth / 2,
+      width: boxWidth,
+      bottom: layout.screen.height - feet.dy,
       child: Align(
         alignment: Alignment.bottomCenter,
         child: Stack(
@@ -1011,7 +938,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
           alignment: Alignment.center,
           children: [
             AnimatedScale(
-              scale: (pose == CharacterPose.celebrating || hovering)
+              scale: isTarget && (pose == CharacterPose.celebrating || hovering)
                   ? 1.08
                   : 1.0,
               duration: AppAnimations.fast,
@@ -1110,7 +1037,9 @@ class _HighLowScreenState extends State<HighLowScreen> {
     required String assetPath,
     required String instrumentName,
     required double anchorX,
-    required double screenWidth,
+    required Offset landing,
+    required SceneLayout layout,
+    required double screenHeight,
     required double charSize,
     required double groundY,
     required bool isTrigger,
@@ -1123,9 +1052,11 @@ class _HighLowScreenState extends State<HighLowScreen> {
     // the character") — Participate's five-cumulative-correct-taps
     // resolution has no drag concept to visually echo, so it only pulses
     // below.
-    final targetLeft = (celebratingThis && isTrigger)
-        ? screenWidth / 2 - charSize / 2
+    final travelling = celebratingThis && isTrigger;
+    final targetLeft = travelling
+        ? landing.dx - charSize / 2
         : anchorX - charSize / 2;
+    final targetBottom = travelling ? screenHeight - landing.dy : groundY;
 
     Widget button = _InstrumentButton(
       key: ValueKey('$side-$instrumentName'),
@@ -1186,8 +1117,16 @@ class _HighLowScreenState extends State<HighLowScreen> {
       duration: const Duration(milliseconds: 500),
       curve: Curves.easeOutBack,
       left: targetLeft,
-      bottom: groundY,
-      child: button,
+      bottom: targetBottom,
+      // On the target's perch it shrinks to the size an instrument has on the
+      // tree (as on the ordering screen), about its feet.
+      child: AnimatedScale(
+        scale: travelling ? layout.placedSize / charSize : 1.0,
+        duration: const Duration(milliseconds: 500),
+        curve: Curves.easeOutBack,
+        alignment: Alignment.bottomCenter,
+        child: button,
+      ),
     );
   }
 
@@ -1199,30 +1138,6 @@ class _HighLowScreenState extends State<HighLowScreen> {
     return _gameState.dragFeedback == DragFeedback.correct
         ? _CharacterFeedback.correct
         : _CharacterFeedback.retry;
-  }
-
-  Widget _buildStatusText() {
-    String text;
-    switch (_gameState.status) {
-      case GameStatus.notStarted:
-        text = 'Get ready...';
-      case GameStatus.playing:
-        text = 'Listen carefully...';
-      case GameStatus.awaitingInput:
-        text = '';
-      case GameStatus.showingFeedback:
-        text = _gameState.dragFeedback == DragFeedback.correct
-            ? 'Great job!'
-            : '';
-      case GameStatus.completed:
-        text = 'Well done!';
-    }
-
-    return Text(text, style: AppTypography.bodyMedium)
-        .animate(
-          key: ValueKey('${_gameState.status}-${_gameState.dragFeedback}'),
-        )
-        .fade(duration: AppAnimations.fast);
   }
 }
 

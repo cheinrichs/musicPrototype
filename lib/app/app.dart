@@ -22,13 +22,15 @@ class EarTrainerApp extends StatelessWidget {
       child: MaterialApp.router(
         title: 'Ear Trainer',
         debugShowCheckedModeBanner: false,
-        theme: _buildTheme(),
+        theme: buildTheme(),
         routerConfig: appRouter,
       ),
     );
   }
 
-  ThemeData _buildTheme() {
+  /// The app's theme. Public so `tool/screenshot_main.dart` (which opens a
+  /// single screen for simulator screenshots) can share it.
+  static ThemeData buildTheme() {
     return ThemeData(
       useMaterial3: true,
       colorScheme: ColorScheme.fromSeed(
