@@ -49,19 +49,23 @@ void main() {
       expect(color.r + color.g + color.b, lessThan(1.2), reason: 'still dark');
     });
 
-    testWidgets('no caption means no plaque: nothing empty floating there', (
-      tester,
-    ) async {
-      await tester.pumpWidget(host(const HighLowCaption(text: null)));
-      await tester.pump(AppAnimations.medium);
-      expect(
-        find.descendant(
-          of: find.byType(HighLowCaption),
-          matching: find.byType(DecoratedBox),
-        ),
-        findsNothing,
-      );
-    });
+    testWidgets(
+      'the game name shows even with no round instruction yet (briefly, '
+      'before the intro finishes) — it is constant, not round-specific, so '
+      'the plate never disappears',
+      (tester) async {
+        await tester.pumpWidget(host(const HighLowCaption(text: null)));
+        await tester.pump(AppAnimations.medium);
+        expect(find.text(HighLowCaption.gameName), findsOneWidget);
+        expect(
+          find.descendant(
+            of: find.byType(HighLowCaption),
+            matching: find.byType(DecoratedBox),
+          ),
+          findsWidgets,
+        );
+      },
+    );
   });
 
   group('plate is a switch, not a layout', () {

@@ -347,13 +347,13 @@ void main() {
         expect(
           state.targetCharacterIsPiper,
           isFalse,
-          reason: 'Clef owns the high pole, so she is the one centered',
+          reason: 'Clef owns the high pole, so she is the one asking',
         );
-        expect(
-          state.captionText,
-          contains('Clef'),
-          reason: 'the caption names whichever character owns this pole',
-        );
+        // The caption is a slot-on-the-tree instruction, not a character's
+        // name, since 2026-09-27 (see HighLowGameState.captionText's doc
+        // comment) — it still agrees with the pole, just via direction
+        // wording rather than naming Clef/Piper.
+        expect(state.captionText, contains('higher'));
 
         // ...then a "lower" target — this is the branch the reported bug
         // (Trello card 101) was actually in: Piper spoke while Clef stayed
@@ -365,9 +365,9 @@ void main() {
         expect(
           state.targetCharacterIsPiper,
           isTrue,
-          reason: 'Piper owns the low pole, so she is the one centered',
+          reason: 'Piper owns the low pole, so she is the one asking',
         );
-        expect(state.captionText, contains('Piper'));
+        expect(state.captionText, contains('lower'));
         state.dispose();
       },
     );
@@ -414,29 +414,26 @@ void main() {
       expect(state.status, GameStatus.completed);
     });
 
-    testWidgets(
-      'escape is available at every stage, from the very start, and '
-      'never gated on anything the child has or hasn\'t done (Trello '
-      'card xpAkja5b, "the adult\'s persistent skip")',
-      (tester) async {
-        for (final stage in AgencyStage.values) {
-          final state = HighLowGameState(totalPrompts: 2, agencyStage: stage);
-          state.startGame();
-          await tester.pump();
-          expect(state.status, isNot(GameStatus.completed));
+    testWidgets('escape is available at every stage, from the very start, and '
+        'never gated on anything the child has or hasn\'t done (Trello '
+        'card xpAkja5b, "the adult\'s persistent skip")', (tester) async {
+      for (final stage in AgencyStage.values) {
+        final state = HighLowGameState(totalPrompts: 2, agencyStage: stage);
+        state.startGame();
+        await tester.pump();
+        expect(state.status, isNot(GameStatus.completed));
 
-          state.escape();
-          await tester.pump();
+        state.escape();
+        await tester.pump();
 
-          expect(
-            state.currentPromptIndex,
-            1,
-            reason: '$stage: escape advances immediately, no criterion',
-          );
-          state.dispose();
-        }
-      },
-    );
+        expect(
+          state.currentPromptIndex,
+          1,
+          reason: '$stage: escape advances immediately, no criterion',
+        );
+        state.dispose();
+      }
+    });
   });
 
   group('HighLowGameState — the earned arrow (Trello card xpAkja5b)', () {
@@ -561,7 +558,8 @@ void main() {
       expect(
         state.correctCount,
         0,
-        reason: 'not earned yet, and the method guards against being '
+        reason:
+            'not earned yet, and the method guards against being '
             'called anyway',
       );
       state.dispose();
@@ -601,9 +599,7 @@ void main() {
       },
     );
 
-    testWidgets('Participate names the pole (higher/lower)', (
-      tester,
-    ) async {
+    testWidgets('Participate names the pole (higher/lower)', (tester) async {
       final state = HighLowGameState(
         totalPrompts: 3,
         agencyStage: AgencyStage.participate,
@@ -648,43 +644,43 @@ void main() {
 
   group('HighLowGameState — Participate\'s cumulative sparkle (Trello card '
       'RqdPFKLf)', () {
-    testWidgets(
-      'a correct tap sparkles the owning character and adds to the '
-      'cumulative count; a wrong tap adds nothing but is never a failure',
-      (tester) async {
-        final state = HighLowGameState(
-          totalPrompts: 1,
-          agencyStage: AgencyStage.participate,
-        );
-        state.startGame();
-        await tester.pump();
-        await tester.pump(const Duration(milliseconds: 4700));
+    testWidgets('a correct tap sparkles the owning character and adds to the '
+        'cumulative count; a wrong tap adds nothing but is never a failure', (
+      tester,
+    ) async {
+      final state = HighLowGameState(
+        totalPrompts: 1,
+        agencyStage: AgencyStage.participate,
+      );
+      state.startGame();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 4700));
 
-        final targetSide = state.currentPrompt!.targetSide;
-        final wrongSide = 1 - targetSide;
+      final targetSide = state.currentPrompt!.targetSide;
+      final wrongSide = 1 - targetSide;
 
-        state.tapInstrument(targetSide);
-        await tester.pump();
-        expect(
-          state.characterSparkleIsPiper,
-          state.targetCharacterIsPiper,
-          reason: 'the owning character sparkles on a correct tap',
-        );
-        expect(state.correctTapProgress, 1);
+      state.tapInstrument(targetSide);
+      await tester.pump();
+      expect(
+        state.characterSparkleIsPiper,
+        state.targetCharacterIsPiper,
+        reason: 'the owning character sparkles on a correct tap',
+      );
+      expect(state.correctTapProgress, 1);
 
-        state.tapInstrument(wrongSide);
-        await tester.pump();
-        expect(state.status, GameStatus.awaitingInput);
-        expect(state.correctCount, 0, reason: 'a wrong tap is never a failure');
-        expect(
-          state.correctTapProgress,
-          1,
-          reason: 'a wrong tap adds nothing, but must never subtract either '
-              '— the sparkle must never go backwards',
-        );
-        state.dispose();
-      },
-    );
+      state.tapInstrument(wrongSide);
+      await tester.pump();
+      expect(state.status, GameStatus.awaitingInput);
+      expect(state.correctCount, 0, reason: 'a wrong tap is never a failure');
+      expect(
+        state.correctTapProgress,
+        1,
+        reason:
+            'a wrong tap adds nothing, but must never subtract either '
+            '— the sparkle must never go backwards',
+      );
+      state.dispose();
+    });
 
     testWidgets(
       'the count is cumulative, not consecutive — wrong taps in between '
@@ -722,7 +718,11 @@ void main() {
         state.tapInstrument(targetSide);
         await tester.pump();
 
-        expect(state.correctCount, 1, reason: 'the fifth correct tap resolves it');
+        expect(
+          state.correctCount,
+          1,
+          reason: 'the fifth correct tap resolves it',
+        );
         expect(state.dragFeedback, DragFeedback.correct);
         expect(
           state.confettiTrigger,
@@ -737,7 +737,8 @@ void main() {
         expect(
           state.instrumentation.single.wrongTapCount,
           1,
-          reason: 'the one wrong tap is still logged, even though it '
+          reason:
+              'the one wrong tap is still logged, even though it '
               'never counted against the gate',
         );
 
@@ -828,19 +829,22 @@ void main() {
         expect(
           state.speakingIsPiper,
           isFalse,
-          reason: 'Round 1 (blocked order) targets "higher", Clef\'s pole, '
+          reason:
+              'Round 1 (blocked order) targets "higher", Clef\'s pole, '
               'so Clef speaks the "give me the high one" prompt',
         );
         expect(
           state.speakingLine,
           isNotNull,
-          reason: 'the speaking-pulse widget needs a line to look up its '
+          reason:
+              'the speaking-pulse widget needs a line to look up its '
               'envelope by',
         );
         expect(
           state.speakingGeneration,
           greaterThan(generationBeforeSpeaking),
-          reason: 'bumped so the speaking-pulse widget can tell a new line '
+          reason:
+              'bumped so the speaking-pulse widget can tell a new line '
               'started even when the same character keeps speaking',
         );
 

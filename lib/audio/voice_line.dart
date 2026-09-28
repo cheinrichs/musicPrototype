@@ -101,19 +101,35 @@ enum VoiceLine {
   listenForLow,
 
   /// Trigger (A2) round prompt when the target is the higher one — the
-  /// 2-3-band phrasing ("Give me the high one!"). Clef owns the high
-  /// pole (Trello card 101), so this is Clef speaking in the first
-  /// person, asking to be handed the correct instrument — Clef stays
-  /// centered as the fixed drop target; the child drags an instrument to
-  /// her, not the other way around (renamed 2026-09 from `putMeOnHigh`
-  /// when the drag direction reversed). 4-5 asks rather than instructs —
-  /// see [giveMeHigh45].
+  /// 2-3-band phrasing ("Give me the high one!"), from when Clef herself
+  /// was the fixed drop target the child dragged an instrument to (renamed
+  /// 2026-09 from `putMeOnHigh` when the drag direction reversed).
+  ///
+  /// **The mechanic has since moved on again, and this recording hasn't
+  /// caught up** (2026-09-27): the drop target is now a slot on the tree
+  /// near Clef, not Clef herself, so "give me" is no longer quite accurate
+  /// — the wanted line is something like "pop the high one up here by me"
+  /// or "bring the high one up to my branch" (Cooper), which keeps the same
+  /// favour-for-a-friend warmth this line had (losing that social exchange
+  /// was the one real cost of moving the target off the character; the
+  /// celebration pose now carries the "pleased afterwards" half of it — see
+  /// `docs/product/HIGH_LOW_SCREEN_LAYOUT.md`). Still the active, spoken
+  /// line at the one Trigger call site until a re-record exists: no
+  /// synthesized/placeholder audio was made for the new wording, and
+  /// silence would be a worse interim than a slightly dated but still warm
+  /// line. The caption (a separate, adult-facing string — see
+  /// `HighLowGameState.captionText`) already describes the round correctly
+  /// either way.
   giveMeHigh,
 
   /// Trigger (A2) round prompt when the target is the lower one — the
-  /// 2-3-band phrasing ("Give me the low one."). Piper owns the low pole
-  /// (Trello card 101) — see [giveMeHigh]'s doc comment (renamed 2026-09
-  /// from `putMeOnLow`).
+  /// 2-3-band phrasing ("Give me the low one."). See [giveMeHigh]'s doc
+  /// comment — same history, same interim status. Piper no longer stands on
+  /// the tree herself (she's beside it, on the ground — see
+  /// `docs/product/HIGH_LOW_SCREEN_LAYOUT.md`), but the low slot is still
+  /// near the tree's base, close to where she now stands, so a future
+  /// "bring the low one down here by me" would still hold together
+  /// spatially.
   giveMeLow,
 
   /// Trigger (A2) gentle retry after a wrong drop, when Clef is the

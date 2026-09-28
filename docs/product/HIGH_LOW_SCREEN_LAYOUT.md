@@ -8,14 +8,16 @@ Tier and agency rules are in `HIGH_LOW_TIERS.md`.
 ## One scene for every level
 
 Decided 2026-09-26 (Cooper: "let's try the tree version at all levels and
-agency and we'll see if it works"). Two instruments (A0–A2), three instruments
-and the A4 ordering screen are the **same composition with more or fewer things
-in it**:
+agency and we'll see if it works"), refined 2026-09-27. Two instruments
+(A0–A2), three instruments and the A4 ordering screen are the **same
+composition with more or fewer things in it**:
 
 - **Instruments on stumps, at the left.**
-- **The tree at the right**, with both characters on it: **Clef on the top
-  platform, Piper on the bottom one.**
-- **Caption centred at the top; Listen Again directly beneath it, centred.**
+- **The tree at the right**, with **Clef on its top platform**.
+- **Piper stands beside the tree, on the ground, at foreground scale** — not
+  perched on a lower platform (see "Piper is off the tree" below).
+- **The game's name and the round instruction, centred at the top; Listen
+  Again directly beneath them** (see "The caption" below).
 - **Close top-left, Skip top-right.** Nothing along the bottom.
 
 Why: agency is an independent axis, so the scene must not rearrange each time a
@@ -28,33 +30,117 @@ This is an experiment to be judged on a device. If A0/A1 turn out to be worse
 for it, an alternate two-instrument arrangement for the lower levels is an
 acceptable outcome — it just costs the consistency argument.
 
+## The drop target is a slot on the tree, not a character
+
+Decided 2026-09-27 (Cooper: "if we're using the tree visually in the 2
+instrument setup, we should change the voice lines to be 'Bring the high one to
+the tree' and have a slot for it on the tree available"). This superseded the
+"drag the instrument to Clef/Piper" mechanic build 69 shipped with.
+
+**Why it's worth the churn.** Dragging to Clef means "high" only because the
+child has *learned* Clef means high — a symbol standing in for the concept.
+Dragging to a slot near the top of the tree means high because it is
+physically up there. The action becomes the concept instead of a convention
+that requires instruction — the same reason the A4 ordering tree works at all.
+It also dissolves the target-prominence problem outright: nobody needs to be
+the biggest thing on screen for this to work, so the "Clef is oversized"
+tuning problem stops existing rather than being solved.
+
+**One slot, not two, for a two-instrument round** — two slots would quietly
+become a two-item ordering task, a harder and different thing to ask.
+
+**Which platform holds the slot** (`SceneLayout.slotPlatformFor`):
+- **High** → the platform right under Clef (index 1) — physically the "up
+  here by me" spot.
+- **Low** → the tree's bottom-most platform (index 3) — the widest top/bottom
+  contrast the three free platforms allow, and closest to the ground, where
+  Piper now stands.
+
+**Slots render only where something can be placed.** None at A0/A1 (nothing is
+draggable there — an empty slot would be a false affordance a small child
+would spend real time failing at); exactly one at A2; all three (besides
+Clef's own) at A4. Reuses the A4 ordering screen's own slot widget
+(`OrderingSlot`/`SlotState`) — empty, hovering, or gone once this round is
+answered correctly (the landed, ticked instrument shows in its place, so
+nothing doubles up the same information).
+
+**A miss is a real miss.** The slot's hitbox is generous — wider than the
+platform's own face, matching the A4 ordering screen's slots — but it is no
+longer the *entire screen*. A release outside it does nothing at all: no
+wrongness recorded, and no spring-back animation is needed, because the
+instrument never visually left its stump during the drag (its
+`childWhenDragging` stays dimmed in place; only a floating copy follows the
+finger). This is a real behaviour change from build 69, where any release
+anywhere on screen counted as an answer.
+
+## The celebration is the social payoff — it must fire reliably
+
+The voice line still asks a favour ("pop the high one up here by me" —
+see "Voice lines" below), so the character being visibly pleased afterwards is
+what makes it read as one, not just a correctness mark (the tree slot now
+carries "correct" durably via its tick). This makes the celebration pose more
+important than it looked before this change: it is carrying the exchange's
+whole social payoff. `_poseFor`'s celebrating branch and the "fires every
+time" tests must keep working for every correct placement, including after a
+preceding wrong attempt.
+
+**Which character asks is not an enforced rule.** Clef narrates high rounds
+and Piper narrates low ones because that is who is naturally positioned to —
+not because of a designed, protected binding. See `CHARACTER_VOICES.md` for
+why that was walked back, and for the one thing that *does* still matter on
+its own merits regardless: Clef's voice stays audibly higher than Piper's.
+
+**The cost, recorded rather than quietly lost:** High/Low no longer has a
+character as the literal recipient of the correct instrument — some of the
+original "handing something to a friend" warmth is gone. Keeping the voice
+lines personal ("by me", not "to the tree") and making the celebration matter
+more is how most of it is recovered, not eliminated.
+
+## Piper is off the tree
+
+Decided 2026-09-27, after Cooper saw the first tree build on device: Piper
+used to perch on a lower platform, which rendered her tiny against the tree's
+own perspective. "Just have her standing beside the tree on the right at her
+proper scale. She should probably stand so her head reaches the 3rd tree
+platform, her feet could be cut off on the frame and I think that's okay."
+
+- She stands on the ground, anchored to the screen's right edge
+  (`SceneLayout.piperRightInset`), not centred on anything — she is no longer
+  on a platform.
+- Her height (`SceneLayout.piperHeight`) is a clearly larger, "foreground"
+  scale — deliberately not Clef's `characterHeight`. **A guess to check on a
+  real device**, the same spirit as the bells' `floatFraction` elsewhere in
+  this scene.
+- The one hard constraint is her head reaching the tree's third platform
+  (Cooper's own words); her feet may fall below the visible frame as a
+  consequence, and that is the accepted look, not a bug — the background
+  layer's default clip crops her there, the same way it always clipped
+  anything positioned past the screen edge.
+- Every other frame of hers — pulse, poses, sparkle, the "never dimmed"
+  rule — is identical to Clef's; only her position and scale are different
+  (see `HighLowScreen._buildPiper` vs `_buildClef`, which share one inner
+  `_characterCore` builder).
+
+This also frees her old platform for a slot (see above) — a second, unplanned
+benefit of the move.
+
 ### Invariants (tested in `scene_layout_test.dart` / `high_low_screen_test.dart`)
 
-1. **Clef's platform is above Piper's.** Clef owns high, Piper owns low, so the
-   scene restates the concept every round at no cost, most valuably at A0/A1
-   where high and low are introduced. Where a character stands tells the child
-   which *pole* is being asked about — never which instrument sounded higher.
-2. **The instruments do not lose prominence.** At A0/A1 tapping them is the
-   whole activity. They stay at half the screen height (0.50 H), far larger than
-   the characters, and the tree may not squeeze them.
-3. **The tree is present at every level; its slots are drawn only where
-   something can be placed** — the A4 ordering screen. On the play screens
-   (A0–A2) the tree is scenery and character seating, with no receptacles: an
-   empty slot on a screen where nothing can be placed is a false affordance a
-   small child will spend real time failing at. At A2 the drop target is the
-   character on her perch (the existing lean-in cue), not a slot.
-   **Known weakness:** the tree art has four platforms baked in, so the two
-   middle platforms are visible, empty, wooden discs at A0/A1/A2. They are not
-   marked as receptacles (no "?"), but they can still look like places to put
-   things; they cannot be hidden without a different tree image.
-4. **The layout never reflows.** Stump positions depend only on the index and
-   the count, never on what has been picked up. A vacated stump shows a greyed
-   ghost on the ordering screen.
-5. **Both characters are the same size**, and stay put. Being this round's
-   target changes pose and the drop lean-in, not size or place.
-   *Superseded:* "prominence follows the task" (target larger than the one
-   standing by) — it was a size that changed per round, which this composition
-   cannot do without rearranging the scene.
+1. **Clef stays on the tree; the tree stands in the right of the frame.**
+2. **Piper is clearly larger than Clef**, and her head reaches the tree's
+   third platform.
+3. **The instruments do not lose prominence.** At A0/A1 tapping them is the
+   whole activity. They stay at half the screen height (0.50 H), far larger
+   than Clef, and the tree may not squeeze them.
+4. **Exactly one slot platform per round, never Clef's own.**
+5. **The layout never reflows.** Stump positions depend only on the index and
+   the count, never on what has been picked up. A vacated stump shows a
+   greyed ghost on the ordering screen.
+6. *Superseded, 2026-09-27:* "both characters are the same size" and
+   "prominence follows the task" (the target character larger than the one
+   standing by) — both were about a centre character that no longer exists;
+   see `HIGH_LOW_TIERS.md`'s own superseded-decision note for the parallel
+   case on the three-note layout.
 
 ## Where things sit
 
@@ -70,17 +156,40 @@ acceptable outcome — it just costs the consistency argument.
   quiet. With the old "I want something new" subtitle gone, that difference in
   how they *look* is what tells a child's control from an adult's — do not let
   the two converge into a matched pair.
-- On a correct drop the instrument slides to the target's perch and shrinks to
-  the size an instrument has on the tree, and the target is painted **in front
-  of** it, so the celebration pose is never hidden by the thing it celebrates.
-  (Found in an offscreen render: the piano covered Clef.)
+- On a correct drop the instrument slides to the slot and shrinks to the size
+  an instrument has on the tree, and the asking character is painted **in
+  front of** it, so the celebration pose is never hidden by the thing it
+  celebrates. (Found in an offscreen render: the piano covered Clef.)
 - Bells are drawn at half size and hang slightly above their stump
   (`HighLowInstrument.floatFraction`, 0.12); the number is a guess to check on a
   device.
 - A drop that lands exactly on a header control (Listen Again, Skip, Close) is
-  taken by that control, not by the scene. Aim the tree, not the middle.
+  taken by that control, not by the scene. Aim the tree slot, not the middle.
 
-## Header
+## The caption
+
+Decided 2026-09-27 (Cooper: "game name large, parent instruction smaller
+beneath it, both inside the tan bubble"). This game's name is **"High vs
+Low"**.
+
+**Both lines are adult-facing.** The child can't read either one — the name
+is orientation for whoever's sitting alongside, not a heading for the player,
+same audience as the instruction beneath it.
+
+**The name is constant; only the instruction changes per round**, so only the
+instruction crossfades between rounds — the plate and the name never rebuild
+for that (`HighLowCaption`). The instruction's own wording changed too, now
+that the target is a slot rather than a character: "Help them drag the higher
+instrument up the tree," not "...to Clef." The caption is a separate string
+from the voice line and has a different audience (the watching adult, not the
+child) — it doesn't need the voice line's social "by me" framing, just an
+accurate instruction. Don't let one drive the other's wording.
+
+**Grows taller, never wider.** A second line was the reason for this
+restructure; solving it by growing the bubble sideways instead would crowd the
+close button on one side and Skip on the other. `HighLowHeader` reserves a
+fixed width on each side regardless of what the caption contains — it only
+ever asks for more *height*.
 
 `HighLowHeader` reserves the same width on both sides of the caption
 (`sideWidth`), so the caption is centred on the *screen*. It used to sit well
@@ -110,26 +219,40 @@ it; Skip is the adult's quiet control).
 Each character has three poses, drawn by one `CharacterSprite` at one shared
 scale so they never jump in size (`character_art.dart`):
 
-| Pose | When (target character only) |
+| Pose | When (the asking character only) |
 | --- | --- |
 | speaking (mouth frames: closed / open / wide) | resting, and whenever it is talking |
 | celebrating | on a correct drop |
 | thinking | on a wrong drop, and on the idle nudge |
 
-Only *speaking* has mouth frames; the others are single images. The one who is
-not the target just speaks. Thinking on a wrong drop is not a failure mark — it
-describes the character, not a verdict on the child ("describe the answer, not
-the attempt").
+Only *speaking* has mouth frames; the others are single images. The character
+who isn't asking about this round's pole just speaks. Thinking on a wrong drop
+is not a failure mark — it describes the character, not a verdict on the child
+("describe the answer, not the attempt").
 
-**The non-speaking character is never made transparent.** It was dimmed to 55%
-while the scale pulse was the only speaking cue. Removed (Cooper: "i don't like
-that"): reduced opacity already means *unavailable*, which is wrong for a
-character who is present and simply not talking — it makes them look as if they
-are leaving; and the mouth animation now carries the cue the dimming covered.
-If de-emphasis is ever wanted, alpha is the wrong channel — a small drop in
-saturation or contrast keeps a character solid. Don't build that until someone
-asks. Until Piper's real mouth frames land her cue is the pulse alone and reads
-weaker than Clef's; the answer to that is her frames, not the dimming.
+**Neither character is ever made transparent.** Non-speaker dimming (55%
+opacity) was tried and removed (Cooper: "i don't like that"): reduced opacity
+already means *unavailable*, which is wrong for a character who is present and
+simply not talking — it makes them look as if they are leaving; and the mouth
+animation now carries the cue the dimming covered. If de-emphasis is ever
+wanted, alpha is the wrong channel — a small drop in saturation or contrast
+keeps a character solid. Don't build that until someone asks. Until Piper's
+real mouth frames land her cue is the pulse alone and reads weaker than
+Clef's; the answer to that is her frames, not the dimming.
+
+## Voice lines
+
+`giveMeHigh`/`giveMeLow` are the recorded audio still spoken at Trigger, but
+the mechanic has moved on twice since they were written (first the drag
+direction reversed; now the target is a slot, not a character), so "give me"
+is dated: the wanted wording is something like "pop the high one up here by
+me" or "bring the high one up to my branch" (Cooper) — see each enum value's
+doc comment in `lib/audio/voice_line.dart`. No re-record has been made yet, so
+the old, still-warm line keeps playing rather than going silent; this is a
+known, documented gap, not something quietly fixed by a rename. When new
+audio exists, only the enum's *content*/asset needs to change — nothing in
+`HighLowGameState` selects lines by name in a way that would need updating
+again.
 
 ## Art pipeline
 
@@ -164,6 +287,23 @@ Replacing them is a file swap, not a code change:
 
 There is no Piper-specific code path to remove.
 
+## A3 and the three-note screen
+
+**A3 ("Timed") is not a separate screen, and is correctly absent from the dev
+agency picker.** `AgencyStage` never modelled it — its own doc comment says
+so — because it is silent speed tracking layered on A2, not a visible
+difference: nothing changes on screen, the app would just measure whether a
+child is getting faster at the same task. There is nothing to pick.
+
+**The three-instrument (T5–T8) selection screen's only remaining blocker was
+layout**, and that blocker is gone: with no centre character to compete with
+anything, there is no more "the target character and the centre-back pedestal
+both want the middle" conflict (see `HIGH_LOW_TIERS.md`'s superseded-decision
+note). `SceneLayout` already places three stumps and can already pick a slot
+platform for any pole. The tier and prompt generator have been ready for a
+while (`HighLowScreen._buildThreeNoteNotBuiltPlaceholder`'s own text says so);
+this is next.
+
 ## Simulator screenshots without tapping
 
 `tool/screenshot_main.dart` is a separate entry point that opens one scene
@@ -181,4 +321,4 @@ ticks on correct only and nothing on wrong; motion means one thing (who is
 sounding) and there are no idle loops; a sound and a visible event go together;
 the layout does not reflow; progress and Skip are separate objects; transparency
 never means "not the speaker"; chrome is on cream plaques with warm brown, no
-true black in the scene.
+true black in the scene; a miss is silent, never a wrong answer.

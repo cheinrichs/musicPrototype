@@ -249,10 +249,10 @@ the bottom platform clears the progress dots; the header is about 20% of the scr
 on a render, not assumed).
 
 **Not built here**
-- **Panel 2, the T5–T8 selection screen** (three instruments, drag the highest to the character) —
-  still behind the placeholder, but no longer blocked on layout: with both characters on the tree there
-  is no centred character to compete with anything (see `HIGH_LOW_SCREEN_LAYOUT.md`). `SceneLayout`
-  already places three stumps.
+- **Panel 2, the T5–T8 selection screen** (three instruments, drag the highest up the tree to a slot) —
+  still behind the placeholder, but no longer blocked on layout: with no centre character there is
+  nothing left to compete for the middle (see `HIGH_LOW_SCREEN_LAYOUT.md`). `SceneLayout` already
+  places three stumps and can already pick a slot platform for any pole.
 - **The rotating nudge pool** for a child who stalls — it belongs to the shared nudge-pool card and needs
   recordings; the tick says which was right but can't help someone stuck.
 - **A spoken intro cue** for ordering — no recording exists. The hint for the adult is a caption, always

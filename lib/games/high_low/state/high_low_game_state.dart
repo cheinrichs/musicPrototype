@@ -63,24 +63,24 @@ enum DragFeedback { none, correct, retry }
 ///   [tapInstrument]'s doc comment for why the gate stays generous on
 ///   purpose).
 /// - Trigger (A2): same auto-play/cut-short/free-tap as Participate, plus
-///   the centered character stays put as the round's drop target, and
-///   two draggable instruments the child drags to her, so the character
-///   speaking the prompt is always the one the child is asked to feed the
-///   right instrument to. (Reversed 2026-09 from an earlier design where
-///   the child dragged the character onto a fixed instrument — Trello,
-///   "reverse the A2 drag interaction": this matters for planned A4,
-///   ordering, where instruments are what get dragged into slots, so
-///   A2-A4 now share one verb instead of switching mid-ladder.) A wrong
-///   drop gets a gentle retry (fresh listen, no failure state); a correct
-///   drop is recorded and auto-advances.
+///   one drop target and two draggable instruments the child drags to it.
+///   The target is a **slot on the tree** (2026-09-27), not a character:
+///   dragging to a slot near the top of the tree means "high" because it
+///   is physically up there, rather than because a character has taught the
+///   child that convention — this is what makes A2-A4 one mechanic, the
+///   same action done more times, rather than a symbol (Trello, "reverse
+///   the A2 drag interaction" — the instruments are what get dragged; see
+///   `docs/product/HIGH_LOW_SCREEN_LAYOUT.md` for the full reasoning and
+///   for why the character-as-target design this replaced existed first).
+///   A wrong drop gets a gentle retry (fresh listen, no failure state); a
+///   correct drop is recorded and auto-advances.
 ///
-/// At every stage, whichever of Piper/Clef owns the round's target pole
-/// (Piper is low, Clef is high; see [targetCharacterIsPiper] and Trello
-/// card 101) stands centered as a second visual cue for what to listen
-/// for, alongside the caption (Trello card 1SpHq2la) — a fixed, parent-
-/// facing string (see [captionText]'s doc comment), not a transcript of
-/// whichever line is currently playing. Only Trigger makes her an
-/// interactive drop target — see [canDrop].
+/// At every stage, whichever of Piper/Clef owns the round's pole (Piper is
+/// low, Clef is high; see [targetCharacterIsPiper] and Trello card 101) is
+/// the one asking, alongside the caption (Trello card 1SpHq2la) — a fixed,
+/// parent-facing string (see [captionText]'s doc comment), not a transcript
+/// of whichever line is currently playing. Only Trigger makes the slot near
+/// her an interactive drop target — see [canDrop].
 class HighLowGameState extends ChangeNotifier {
   /// How long each note of the intro pair rings (and its instrument
   /// wiggles/glows) before the sequence moves on — see the two call sites
@@ -369,10 +369,17 @@ class HighLowGameState extends ChangeNotifier {
       // A4 ordering has its own state and screen (OrderingGameState); this
       // one is never run at that stage, so it shares Trigger's wording
       // only to stay exhaustive.
+      //
+      // 2026-09-27: the drop target became a slot on the tree, not a
+      // character (see docs/product/HIGH_LOW_SCREEN_LAYOUT.md) — "to Clef"/
+      // "to Piper" would now describe the wrong mechanic. The caption is a
+      // separate string from the voice line and has a different audience
+      // (the watching adult, not the child), so it doesn't need the voice
+      // line's social "by me" framing — just an accurate instruction.
       AgencyStage.trigger || AgencyStage.order =>
         isHigh
-            ? 'Help them drag the higher instrument to Clef.'
-            : 'Help them drag the lower instrument to Piper.',
+            ? 'Help them drag the higher instrument up the tree.'
+            : 'Help them drag the lower instrument up the tree.',
     };
   }
 
@@ -401,30 +408,30 @@ class HighLowGameState extends ChangeNotifier {
         : 'Encourage them to keep tapping the lower one.';
   }
 
-  /// Whether the child can drag an instrument onto the centered character
-  /// right now. Deliberately not gated on [_status] beyond "not finished" —
-  /// a child's drop must always override whatever's currently happening on
-  /// screen (a retry's replay, its voice line) rather than being locked
-  /// out behind an animation or a sound (Trello card jmuMDPcT). The one
-  /// exception is once this round has already been answered correctly
-  /// ([DragFeedback.correct]): that guard lives in [dropInstrument] itself,
-  /// to avoid double-recording a result while the advance-to-next-round
-  /// delay is still pending.
+  /// Whether the child can drag an instrument onto the tree slot right now.
+  /// Deliberately not gated on [_status] beyond "not finished" — a child's
+  /// drop must always override whatever's currently happening on screen (a
+  /// retry's replay, its voice line) rather than being locked out behind an
+  /// animation or a sound (Trello card jmuMDPcT). The one exception is once
+  /// this round has already been answered correctly ([DragFeedback.correct]):
+  /// that guard lives in [dropInstrument] itself, to avoid double-recording
+  /// a result while the advance-to-next-round delay is still pending.
   bool get canDrop =>
       agencyStage == AgencyStage.trigger && _status != GameStatus.completed;
 
-  /// Which character stays centered this round — Piper owns the low
-  /// pole, Clef owns the high pole (Trello card 101), so this always
-  /// agrees with [captionText]'s first-person line ("give me the ...")
-  /// in Trigger. Meaningful at every stage, not just Trigger: Observe and
-  /// Participate also center this same character as a second visual cue
-  /// for what to listen for (Trello card 1SpHq2la), even though only
-  /// Trigger makes her an interactive drop target — see [canDrop] and
-  /// `HighLowScreen._buildDropZone` for the stage gate on that part.
-  /// Named for the character, not for dragging, since 2026-09's reversal
-  /// made the character the stationary target and the instruments the
-  /// dragged objects (see the class doc) — this getter's old name,
-  /// `draggedIsPiper`, read backwards once that flipped.
+  /// Which character owns this round's pole — Piper the low one, Clef the
+  /// high one (Trello card 101). This is who is *asking* (her voice line,
+  /// her pose), not a drop target: the target is a slot on the tree near
+  /// her, not a character (2026-09-27 — see the class doc and
+  /// `docs/product/HIGH_LOW_SCREEN_LAYOUT.md`). Meaningful at every stage,
+  /// not just Trigger: Observe and Participate also use this to pick who
+  /// narrates/asks, even though only Trigger makes the slot an interactive
+  /// drop target — see [canDrop] and `HighLowScreen._buildTreeSlot` for the
+  /// stage gate on that part. Named for the character, not for dragging,
+  /// since 2026-09's reversal made the character (then the target, now the
+  /// asker) stationary and the instruments the dragged objects (see the
+  /// class doc) — this getter's old name, `draggedIsPiper`, read backwards
+  /// once that flipped.
   bool get targetCharacterIsPiper =>
       currentPrompt?.targetDirection == PitchDirection.lower;
 

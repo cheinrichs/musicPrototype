@@ -11,22 +11,28 @@ import '../widgets/character_art.dart';
 /// independent axis; "only the task should change"):
 ///
 /// - the instruments stand on stumps in a band on the **left**;
-/// - the **tree** stands on the right, and **both characters live on it** —
-///   Clef on the top platform, Piper on the bottom one;
+/// - the **tree** stands on the right; **Clef lives on its top platform**;
+/// - **Piper stands beside the tree, on the ground, at foreground scale**
+///   (2026-09-27: she used to perch on a lower platform, which rendered her
+///   tiny against the tree's perspective — Cooper, on device: "have her
+///   standing beside the tree ... at her proper scale");
 /// - the middle holds only the caption and Listen Again (header widgets).
 ///
-/// **Clef's platform is above Piper's — an invariant, not an accident of the
-/// sketch.** Clef owns high and Piper owns low, so the scene restates the
-/// concept every round at no cost. Where a character stands tells the child
-/// which *pole* is being asked about, never which instrument sounded higher.
-/// (`scene_layout_test.dart` checks it.)
+/// **The drop target is a slot on the tree, not a character** (2026-09-27,
+/// superseding the "drag to Clef/Piper" mechanic). Dragging to a slot near
+/// the top of the tree means *high* because it is physically up there — the
+/// action becomes the concept, rather than a symbol (a character) standing
+/// in for it. A slot near Clef's platform is the high end; a slot near the
+/// tree's base — where Piper now also stands — is the low end. See
+/// `HighLowScreen._buildTreeSlot` for which platform each pole uses.
 ///
 /// **The tree's platforms are receptacles only where something can be
-/// placed.** The tree is present at every level as scenery and character
-/// seating; empty slots are drawn only on the A4 ordering screen, because an
-/// empty slot on a screen where nothing can be placed is a false affordance a
-/// small child will spend real time failing at. (`OrderingScreen` draws them;
-/// this class only knows where the platforms are.)
+/// placed.** The tree is present at every level as scenery (Clef's perch,
+/// and — once a round is answerable — a slot); an empty slot on a screen
+/// where nothing can be placed is a false affordance a small child will
+/// spend real time failing at. (`OrderingScreen` and `HighLowScreen` each
+/// draw their own slots at the levels where they apply; this class only
+/// knows where the platforms are.)
 class SceneLayout {
   /// Natural proportions of `OrderingTree.png` (1024 x 1536).
   static const treeAspect = 1024 / 1536;
@@ -106,19 +112,56 @@ class SceneLayout {
   /// Clef's feet: the top platform — high.
   Offset get clefPerch => platform(0);
 
-  /// Piper's feet: the bottom platform — low.
-  Offset get piperPerch => platform(platformCentreY.length - 1);
-
-  /// Both characters are the same size: the one being asked about is shown by
-  /// the drop lean-in and the caption, not by size (a size that changed per
-  /// round would rearrange the scene).
+  /// Clef's size, on his platform.
   double get characterHeight => screen.height * 0.24;
-
-  Offset perchOf({required bool isPiper}) => isPiper ? piperPerch : clefPerch;
 
   /// Drawn width of a character sprite of [art] at [height].
   double spriteWidth(CharacterArt art, double height) =>
       art.frameSize.width * height / art.frameSize.height;
+
+  /// Piper's height, standing beside the tree — a clearly larger,
+  /// "foreground" scale, deliberately not [characterHeight]: the whole
+  /// point is that she reads as closer to the viewer than anything on the
+  /// tree. A guess to check on a real device, in the same spirit as
+  /// [HighLowInstrument.floatFraction] elsewhere in this scene.
+  double get piperHeight => screen.height * 0.60;
+
+  /// Piper's head should reach the tree's third platform (Cooper's own
+  /// words) — the one hard constraint; [piperHeight] is otherwise a free
+  /// choice, and if it pushes her feet below the visible frame that is the
+  /// accepted look, not a bug (see the class doc).
+  double get _piperHeadY => platform(2).dy;
+
+  /// Where Piper's feet sit, straight down from [_piperHeadY] by
+  /// [piperHeight] — may land below the bottom of the screen; the
+  /// background layer clips there (Positioned's `bottom` goes negative).
+  double get piperFeetY => _piperHeadY + piperHeight;
+
+  /// Piper's `Positioned.right` inset: the device's own side inset plus a
+  /// margin, the same convention used everywhere else in this scene — she
+  /// stands beside the tree (which is itself biased right) without needing
+  /// exact art-edge math.
+  double get piperRightInset => insets.right + _margin;
+
+  // ---- the tree slot (2026-09-27: the drop target — see the class doc) ----
+
+  /// Which platform holds the slot for a high-pole round — the one right
+  /// under Clef, so "the high one" lands close to whoever asked for it.
+  static const int highSlotPlatform = 1;
+
+  /// Which platform holds the slot for a low-pole round — the tree's
+  /// bottom-most, both for the widest top/bottom contrast the three empty
+  /// platforms allow and because it is nearest the ground, where Piper now
+  /// stands.
+  static const int lowSlotPlatform = 3;
+
+  /// The platform this round's slot sits on.
+  int slotPlatformFor({required bool isPiperTarget}) =>
+      isPiperTarget ? lowSlotPlatform : highSlotPlatform;
+
+  /// A slot's footprint on its platform — shared with [OrderingLayout],
+  /// which places three of these instead of one.
+  Size get slotSize => Size(platformWidth * treeWidth, treeHeight * 0.06);
 
   // ---- the instruments ----
 

@@ -25,19 +25,6 @@ void main() {
         instrumentFraction: 0.36,
       );
 
-      test('Clef stands ABOVE Piper, on the same tree — Clef owns high, Piper '
-          'owns low, so the scene restates the concept every round. An '
-          'invariant, not an accident of the sketch', () {
-        final l = two();
-        expect(l.clefPerch.dy, lessThan(l.piperPerch.dy));
-        expect(l.clefPerch.dx, l.piperPerch.dx);
-        expect(
-          l.piperPerch.dy - l.clefPerch.dy,
-          greaterThan(size.height * 0.3),
-          reason: 'clearly high and clearly low, not adjacent branches',
-        );
-      });
-
       test(
         'the tree stands in the right of the frame, inside the safe area',
         () {
@@ -51,26 +38,44 @@ void main() {
         },
       );
 
-      test('both characters are the same size and stay fully on screen, '
-          'even at the peak of the speaking pulse', () {
+      test('Clef stays fully on screen, even at the peak of the speaking '
+          'pulse', () {
         final l = two();
-        for (final art in [CharacterArt.clef, CharacterArt.piper]) {
-          for (final perch in [l.clefPerch, l.piperPerch]) {
-            final w = l.spriteWidth(art, l.characterHeight);
-            final grown = w * (1 + SpeakingPulse.maxScaleDelta);
-            expect(
-              perch.dx + grown / 2,
-              lessThanOrEqualTo(size.width - insets.right),
-            );
-            expect(perch.dx - grown / 2, greaterThanOrEqualTo(insets.left));
-          }
-        }
+        final w = l.spriteWidth(CharacterArt.clef, l.characterHeight);
+        final grown = w * (1 + SpeakingPulse.maxScaleDelta);
+        expect(
+          l.clefPerch.dx + grown / 2,
+          lessThanOrEqualTo(size.width - insets.right),
+        );
+        expect(l.clefPerch.dx - grown / 2, greaterThanOrEqualTo(insets.left));
         expect(l.clefPerch.dy - l.characterHeight, greaterThan(0));
+      });
+
+      test('Piper stands beside the tree, at a clearly larger scale than Clef '
+          '(2026-09-27: she used to perch on a lower platform and rendered '
+          'tiny against the tree\'s perspective — Cooper: "have her standing '
+          'beside the tree ... at her proper scale")', () {
+        final l = two();
+        expect(l.piperHeight, greaterThan(l.characterHeight * 1.5));
+      });
+
+      test('Piper\'s head reaches the tree\'s third platform — Cooper\'s own '
+          'instruction, and the only hard constraint on her position', () {
+        final l = two();
+        final headY = l.piperFeetY - l.piperHeight;
+        expect(headY, closeTo(l.platform(2).dy, 0.5));
+      });
+
+      test('Piper is anchored to the right edge of the frame, inside the '
+          'device\'s own safe-area inset (her feet may still run below the '
+          'visible frame — that is accepted, not a bug)', () {
+        final l = two();
+        expect(l.piperRightInset, greaterThanOrEqualTo(insets.right));
       });
 
       test('INSTRUMENTS KEEP THEIR PROMINENCE: at A0/A1 the instruments are '
           'the whole activity, so the tree must not squeeze them — they stay '
-          'at half the screen height, and far bigger than the characters', () {
+          'at half the screen height, and far bigger than Clef', () {
         final l = two();
         expect(l.instrumentSize, greaterThanOrEqualTo(size.height * 0.5));
         expect(l.instrumentSize, greaterThan(l.characterHeight * 1.8));
@@ -124,7 +129,7 @@ void main() {
         final b = three();
         expect(a.treeRect, b.treeRect);
         expect(a.clefPerch, b.clefPerch);
-        expect(a.piperPerch, b.piperPerch);
+        expect(a.piperFeetY, b.piperFeetY);
         // The first stump is in the same place; how far the others are
         // spaced may tighten on a narrow screen (a third instrument needs
         // room), but they only ever get closer, never rearranged.
@@ -137,10 +142,10 @@ void main() {
         final l = two();
         final groundLine = size.height - l.groundY;
         expect(
-          (l.piperPerch.dy - groundLine).abs(),
+          (l.platform(3).dy - groundLine).abs(),
           lessThan(size.height * 0.05),
         );
-        expect(l.piperPerch.dy, lessThan(size.height));
+        expect(l.platform(3).dy, lessThan(size.height));
       });
 
       test('placed instruments fit the gap between platforms', () {
@@ -149,6 +154,35 @@ void main() {
           l.placedSize,
           lessThanOrEqualTo(l.platform(2).dy - l.platform(1).dy),
         );
+      });
+
+      group('the tree slot (2026-09-27: the drop target, not a character)', () {
+        test('the high slot sits right under Clef; the low slot sits at '
+            'the tree\'s base — the widest top/bottom contrast the three '
+            'free platforms allow', () {
+          final l = two();
+          expect(l.slotPlatformFor(isPiperTarget: false), 1);
+          expect(l.slotPlatformFor(isPiperTarget: true), 3);
+          expect(
+            l.slotPlatformFor(isPiperTarget: false),
+            lessThan(l.slotPlatformFor(isPiperTarget: true)),
+          );
+        });
+
+        test('exactly one slot platform per round, never Clef\'s own '
+            '(platform 0) — one slot for two instruments, not two, or it '
+            'quietly becomes an ordering task', () {
+          final l = two();
+          for (final isPiperTarget in [true, false]) {
+            expect(l.slotPlatformFor(isPiperTarget: isPiperTarget), isNot(0));
+          }
+        });
+
+        test('the slot footprint fits its platform\'s face', () {
+          final l = two();
+          expect(l.slotSize.width, lessThanOrEqualTo(l.treeWidth));
+          expect(l.slotSize.height, greaterThan(0));
+        });
       });
     });
   }

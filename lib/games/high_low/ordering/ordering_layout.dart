@@ -6,8 +6,9 @@ import '../models/scene_layout.dart';
 /// right with Clef on its top platform) plus the drop slots on the platforms
 /// below her.
 ///
-/// Slots exist only here. On the play screens the same tree is scenery and
-/// seating for the characters, with no receptacles drawn — see
+/// All three slots stay visible here (nothing to hide — every platform but
+/// Clef's is a receptacle at A4). On the play screens the same tree carries
+/// at most one slot, and only once a round is answerable — see
 /// [SceneLayout]'s class doc.
 class OrderingLayout extends SceneLayout {
   const OrderingLayout(super.screen, {super.insets, required super.noteCount})
@@ -19,9 +20,6 @@ class OrderingLayout extends SceneLayout {
 
   /// Where Clef's feet go, on the top platform.
   Offset get clefFeet => clefPerch;
-
-  Size get slotSize =>
-      Size(SceneLayout.platformWidth * treeWidth, treeHeight * 0.06);
 
   /// Clef marks the high end from the top platform, the same size as on the
   /// play screens.

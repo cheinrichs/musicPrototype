@@ -28,14 +28,6 @@ void main() {
   /// on-screen progress indicator is gone.
   late HighLowGameState screenState;
 
-  /// A point on the tree, where the target character stands — clear of every
-  /// control. (The middle of the screen now holds Listen Again, which would
-  /// swallow a drop that landed exactly on it.)
-  Offset onTheTree(WidgetTester tester) {
-    final size = tester.view.physicalSize / tester.view.devicePixelRatio;
-    return Offset(size.width * 0.78, size.height * 0.5);
-  }
-
   Future<void> pumpAndFinishIntro(
     WidgetTester tester, {
     Size viewport = tightViewport,
@@ -109,33 +101,31 @@ void main() {
 
   testWidgets(
     'defaults to Trigger: round 1 is always a "higher" target (blocked '
-    'order), so both instruments are draggable and a caption naming Clef '
-    'is shown once the intro finishes (Trello card 101 — Clef owns the '
-    'high pole, so she is the one centered and spoken for; Trello, '
-    '"reverse the A2 drag interaction" — the instruments are what get '
-    'dragged, not Clef herself)',
+    'order), so both instruments are draggable and a caption asking for '
+    'the higher one is shown once the intro finishes (Trello card 101 — '
+    'Clef owns the high pole; Trello, "reverse the A2 drag interaction" — '
+    'the instruments are what get dragged, not a character)',
     (tester) async {
       await pumpAndFinishIntro(tester);
 
       expect(tester.takeException(), isNull);
       expect(find.byType(Draggable<int>), findsNWidgets(2));
-      expect(find.textContaining('Clef'), findsOneWidget);
+      expect(find.textContaining('higher'), findsOneWidget);
     },
   );
 
   testWidgets('the caption never renders flush against the close button — '
       'regression test for Trello card hIKjobsB, found driving the '
       'simulator: a long Trigger caption ("Help them drag the higher '
-      'instrument to Clef.") needs nearly the full width Expanded gives it, '
-      'and with no explicit margin its own left edge landed exactly on the '
-      'close button\'s right edge — no true overlap, but no breathing room '
-      'either, which reads as the caption running underneath the button', (
-    tester,
-  ) async {
+      'instrument up the tree.") needs nearly the full width Expanded gives '
+      'it, and with no explicit margin its own left edge landed exactly on '
+      'the close button\'s right edge — no true overlap, but no breathing '
+      'room either, which reads as the caption running underneath the '
+      'button', (tester) async {
     await pumpAndFinishIntro(tester, viewport: tightViewport);
 
     final closeRect = tester.getRect(find.byTooltip('Close'));
-    final captionRect = tester.getRect(find.textContaining('Clef'));
+    final captionRect = tester.getRect(find.textContaining('higher'));
 
     expect(
       captionRect.left,
@@ -213,15 +203,13 @@ void main() {
       expect(
         find.byType(DragTarget<int>).hitTestable(),
         findsOneWidget,
-        reason:
-            'the single, screen-spanning drop target must be reachable '
-            'by touch',
+        reason: 'the one tree slot must be reachable by touch',
       );
     });
   }
 
   testWidgets(
-    'dragging an instrument onto the character and releasing completes a '
+    'dragging an instrument onto the tree slot and releasing completes a '
     'round — proves the touch actually lands on the DragTarget end-to-end, '
     "not just that the widgets are hit-testable in isolation. The round's "
     "target side is unseeded/random, so this drags one instrument and, if "
@@ -239,7 +227,7 @@ void main() {
 
       Future<void> dragOnto(Finder instrument) async {
         final start = tester.getCenter(instrument);
-        final end = onTheTree(tester);
+        final end = tester.getCenter(target);
         final gesture = await tester.startGesture(start);
         await tester.pump(const Duration(milliseconds: 20));
         const steps = 10;
@@ -279,90 +267,72 @@ void main() {
   );
 
   testWidgets(
-    'the single drop target spans the entire play area, not a small box '
-    "hugging the centered character — a four-year-old's aim is imprecise, "
-    'so the hitbox needs to be substantially bigger than what it visually '
-    'sits on top of (Trello — "forgiving drop targets," now applied to the '
-    'character-as-target instead of the instruments)',
+    'the tree slot\'s hitbox is generous — wider than the platform\'s own '
+    'face, matching the A4 ordering screen\'s slots, so a four-year-old\'s '
+    'imprecise aim still lands it — but it is no longer the *whole play '
+    'area* now that the target is a positioned slot rather than a '
+    'screen-spanning zone (2026-09-27, superseding "forgiving drop '
+    'targets" — a slot the child can genuinely miss is the point: a miss '
+    'must not silently count)',
     (tester) async {
       await pumpAndFinishIntro(tester, viewport: roomyViewport);
 
       final target = find.byType(DragTarget<int>);
       expect(target, findsOneWidget);
-
       final targetSize = tester.getSize(target);
 
-      // The centered character is a fraction of screen height (see
-      // _buildScene's clefHeight/piperHeight) — a drop target that's
-      // merely as big as her would match that; this asserts it's
-      // dramatically bigger in both dimensions, since it's meant to span
-      // the whole scene.
       expect(
         targetSize.width,
-        closeTo(roomyViewport.width, 1.0),
-        reason: 'the drop target should span the full play-area width',
+        lessThan(roomyViewport.width * 0.5),
+        reason: 'not the whole screen any more',
       );
       expect(
         targetSize.height,
-        closeTo(roomyViewport.height, 1.0),
-        reason: 'the drop target should span the full play-area height',
+        lessThan(roomyViewport.height * 0.5),
+        reason: 'not the whole screen any more',
       );
+      expect(targetSize.width, greaterThan(20));
+      expect(targetSize.height, greaterThan(20));
     },
   );
 
   testWidgets(
-    'a drop anywhere on screen completes the round, even far from both the '
-    "centered character and the dragged instrument's own small silhouette "
-    '— proves the enlarged target actually accepts a forgiving drop '
-    'end-to-end, not just that it measures big (Trello — "forgiving drop '
-    'targets")',
+    'a drop that misses the slot does nothing — no wrongness recorded, the '
+    'instrument simply stays where it was, and the round is not resolved '
+    '(2026-09-27: now that the target is one positioned slot rather than '
+    'the whole screen, a genuine miss is possible, and must not silently '
+    'count the way any old screen-spanning drop used to)',
     (tester) async {
       await pumpAndFinishIntro(tester, viewport: roomyViewport);
 
       final instruments = find.byType(Draggable<int>);
-      final target = find.byType(DragTarget<int>);
       expect(instruments, findsNWidgets(2));
-      expect(target, findsOneWidget);
 
-      // Drop near the very top corner of the screen — as far from the
-      // centered character and the ground-level instrument as this play
-      // area gets.
-      Future<void> dragToCorner(int instrumentIndex) async {
-        final targetRect = tester.getRect(target);
-        final end = Offset(
-          instrumentIndex == 0 ? targetRect.left + 4 : targetRect.right - 4,
-          targetRect.top + 4,
-        );
-        final start = tester.getCenter(instruments.at(instrumentIndex));
-        final gesture = await tester.startGesture(start);
+      // Top-left corner: far from the slot (which sits up near the tree,
+      // on the right) and far from the stumps too.
+      const end = Offset(20, 20);
+      final start = tester.getCenter(instruments.at(0));
+      final gesture = await tester.startGesture(start);
+      await tester.pump(const Duration(milliseconds: 20));
+      const steps = 10;
+      for (var i = 1; i <= steps; i++) {
+        await gesture.moveTo(Offset.lerp(start, end, i / steps)!);
         await tester.pump(const Duration(milliseconds: 20));
-        const steps = 10;
-        for (var i = 1; i <= steps; i++) {
-          await gesture.moveTo(Offset.lerp(start, end, i / steps)!);
-          await tester.pump(const Duration(milliseconds: 20));
-        }
-        await gesture.up();
-        await tester.pump();
-        await tester.pump(Duration.zero);
       }
-
-      await dragToCorner(0);
-      var completedCount = screenState.results.length;
-
-      if (completedCount == 0) {
-        // Same "wrong instrument retries immediately" reasoning as the
-        // drag test above — one of the two is guaranteed correct.
-        await dragToCorner(1);
-        completedCount = screenState.results.length;
-      }
+      await gesture.up();
+      await tester.pump();
+      await tester.pump(Duration.zero);
 
       expect(tester.takeException(), isNull);
       expect(
-        completedCount,
-        1,
-        reason:
-            'a drop far from the character and the instrument\'s own '
-            'silhouette, but still on screen, must still register',
+        screenState.results.length,
+        0,
+        reason: 'a miss must not be recorded as an attempt at all',
+      );
+      expect(
+        screenState.dragFeedback,
+        DragFeedback.none,
+        reason: 'a miss is not a wrong answer — nothing marks it',
       );
     },
   );
@@ -391,6 +361,13 @@ void main() {
         tester.view.resetDevicePixelRatio();
       });
 
+      // A fresh element tree each call: reusing the same MaterialApp shape
+      // across two calls in one test (see the "NO tree slot" test, which
+      // calls this twice) would let Flutter reconcile it as an update to
+      // the SAME State rather than a new screen, so `_showDevGate` (already
+      // false from the first call) would stay false and the dev gate would
+      // never reappear.
+      await tester.pumpWidget(const SizedBox());
       await tester.pumpWidget(
         MaterialApp(
           home: ChangeNotifierProvider(
@@ -408,29 +385,52 @@ void main() {
     }
 
     for (final chip in ['A0 · Observe', 'A1 · Participate', 'A2 · Trigger']) {
-      testWidgets('$chip: Clef is on the tree ABOVE Piper, both the same size '
-          '(there is no centre character to compete with the middle, and no '
-          'size that changes with the task)', (tester) async {
-        await startAt(tester, chip);
+      testWidgets(
+        '$chip: Clef is on the tree; Piper stands beside it on the ground, '
+        'clearly bigger (2026-09-27: she used to perch on a lower platform '
+        'and rendered tiny — Cooper: "have her standing beside the tree ... '
+        'at her proper scale"). Neither changes size with the task — there '
+        'is no centre character to compete with the middle',
+        (tester) async {
+          await startAt(tester, chip);
 
-        final clef = frameRect(tester, 'clef_mouth_0.png');
-        final piper = frameRect(tester, 'piper_mouth_0.png');
-        expect(clef.center.dy, lessThan(piper.center.dy));
-        expect(clef.height.roundToDouble(), piper.height.roundToDouble());
-        // both on the right of the frame, on the tree, not the centre
-        for (final r in [clef, piper]) {
-          expect(r.center.dx, greaterThan(roomyViewport.width * 0.65));
-        }
-      });
-
-      testWidgets('$chip: the tree shows NO empty slots — nothing can be '
-          'placed on it, and an empty receptacle is a false affordance a '
-          'two-year-old would spend real time failing at', (tester) async {
-        await startAt(tester, chip);
-        expect(find.byType(OrderingSlot), findsNothing);
-        expect(find.text('?'), findsNothing);
-      });
+          final clef = frameRect(tester, 'clef_mouth_0.png');
+          final piper = frameRect(tester, 'piper_mouth_0.png');
+          expect(
+            piper.height,
+            greaterThan(clef.height * 1.5),
+            reason: 'foreground scale, not the tree\'s perch size',
+          );
+          // both on the right of the frame — Clef on the tree, Piper beside
+          // it — not the centre.
+          for (final r in [clef, piper]) {
+            expect(r.center.dx, greaterThan(roomyViewport.width * 0.5));
+          }
+        },
+      );
     }
+
+    testWidgets(
+      'A0 · Observe and A1 · Participate show NO tree slot — nothing can be '
+      'placed at either stage, and an empty receptacle is a false '
+      'affordance a two-year-old would spend real time failing at',
+      (tester) async {
+        for (final chip in ['A0 · Observe', 'A1 · Participate']) {
+          await startAt(tester, chip);
+          expect(find.byType(OrderingSlot), findsNothing, reason: chip);
+          expect(find.text('?'), findsNothing, reason: chip);
+        }
+      },
+    );
+
+    testWidgets(
+      'A2 · Trigger shows exactly one tree slot — the drop target, now that '
+      'something can actually be placed',
+      (tester) async {
+        await startAt(tester, 'A2 · Trigger');
+        expect(find.byType(OrderingSlot), findsOneWidget);
+      },
+    );
   });
 
   testWidgets(
@@ -899,7 +899,7 @@ void main() {
 
     Future<void> dragSide(WidgetTester tester, int side) async {
       final start = tester.getCenter(find.byType(Draggable<int>).at(side));
-      final end = onTheTree(tester);
+      final end = tester.getCenter(find.byType(DragTarget<int>));
       final gesture = await tester.startGesture(start);
       await tester.pump(const Duration(milliseconds: 20));
       for (var i = 1; i <= 8; i++) {

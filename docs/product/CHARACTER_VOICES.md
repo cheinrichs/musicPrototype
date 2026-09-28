@@ -26,11 +26,13 @@ Brighter, higher, quicker, bouncier. Impish. The one who gets excited first, and
 
 Not subtly. This is deliberate design, not flavour.
 
-The entire game is about pitch height, and the two characters own opposite poles. When a child hears *"give me the high one"* in a high voice and *"give me the low one"* in a low one, the voice itself becomes a second representation of the concept being taught. That's the project's existing principle — sound should cause a visually analogous event; visuals are a second representation of musical structure, not decoration — applied to speech.
+The entire game is about pitch height, and the two characters own opposite poles. When a child hears Clef ask in a high voice and Piper ask in a low one, the voice itself becomes a second representation of the concept being taught. That's the project's existing principle — sound should cause a visually analogous event; visuals are a second representation of musical structure, not decoration — applied to speech.
 
 It can't become a crutch. The voice tells her *which* one to go looking for, not which instrument is higher, so it cannot be used to shortcut the answer.
 
 If the generation tooling changes, **preserve the pitch relationship first.** Everything else about these voices is negotiable; this isn't.
+
+**Which character asks about which pole is not a rule to protect** (2026-09-27, Cooper: "I think we're placing too much importance on this. I don't think it truly matters that much"). An earlier draft of this document was about to add a designed, enforced character-to-pole binding (with Loud/Soft's randomised-asker rule as the explicit counter-example) — that got walked back before it was written. A child hears a loud low note and a soft high note within a minute of playing; direct sensory evidence beats any association picked up from which character happens to ask, and now that the tree and its slots carry the high/low concept (see `HIGH_LOW_SCREEN_LAYOUT.md`), the characters are asking questions rather than being the answer, so there is far less to bind to in the first place. In practice Clef will keep asking about high and Piper about low, simply because that's who is naturally positioned to — Clef lives on the tree, Piper stands at its low end — not because of any enforced mapping. No randomisation machinery, no special-casing: whoever asks is whatever reads naturally.
 
 ---
 
