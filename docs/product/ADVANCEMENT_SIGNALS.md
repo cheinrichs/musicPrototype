@@ -9,6 +9,18 @@ It complements `LEARNING_ARCHITECTURE.md`, which defines the axes (Skill, Concep
 Tier, Agency Level, Age/UI Presentation). This doc is about **movement along those
 axes** — not what the axes are.
 
+> **UPDATED 2026-09-27 (Trello card 168, "Agency is capability, not
+> difficulty").** Agency is now three named capability levels — Observe,
+> Explore, Drag — not the curriculum's old A0–A4 ladder. A3 ("Timed") is
+> confirmed gone; ordering is a separate skill, not an agency level. Below,
+> read "A0/A1/A2" as "Observe/Explore/Drag" and "A4" as "the ordering
+> skill." **The signals themselves are being substantially reworked** by
+> two further queued cards — agency's second axis (does the child attend
+> before acting, not just what they can physically do) and the
+> capability-based advancement/demotion criteria between Observe, Explore
+> and Drag — so treat the specific signals below as the reasoning that led
+> here, not yet the current rules. Update this notice once those land.
+
 ---
 
 ## Purpose
@@ -116,27 +128,28 @@ Used for A0→A1 in High/Low: complete one stage.
 
 Decided 2026-09-25.
 
-**Tier does not advance at A0.** At A0 the child produces no answer — High/Low's
-Observe completion criterion is coverage (tap each instrument), not correctness — so
-there is no evidence of discrimination to advance on. Advancing tier there isn't
-advancement, it's a playlist silently getting harder with nobody checking, and it's
-why the step from A0 to A1 was landing like a cliff.
+**Tier does not advance at Observe.** At Observe the child produces no answer —
+High/Low's Observe completion criterion is coverage (tap each instrument), not
+correctness — so there is no evidence of discrimination to advance on. Advancing
+tier there isn't advancement, it's a playlist silently getting harder with nobody
+checking, and it's why the step from Observe to Explore was landing like a cliff.
 
-At A0, vary the *surface* instead of the difficulty: different instruments and
+At Observe, vary the *surface* instead of the difficulty: different instruments and
 different notes, same interval band. That keeps a child who lives in Observe for a
 while from getting the same two instruments forever, without pretending progress
 happened.
 
 The tier ladder starts where evidence does:
 
-- **A0 holds at T1.** No answer, no evidence, no movement.
-- **A1 gives a weak signal** — does she tap the target — with no failure state, so
-  tier *may* creep, but it stops short of T5 (High/Low's three-note tier — see
+- **Observe holds at T1.** No answer, no evidence, no movement.
+- **Explore gives a weak signal** — does she tap the target — with no failure state,
+  so tier *may* creep, but it stops short of T5 (High/Low's three-note tier — see
   `HIGH_LOW_TIERS.md`). This bound exists on its own evidentiary merits, not to dodge
-  a layout problem. (It used to also keep A1's centred narrator and the three-note
-  ordering screen's centre-back pedestal from wanting the screen's middle at once;
-  that conflict is gone now that both characters live on the tree.)
-- **A2 gives a real answer** (a drop can be wrong), and tier moves properly.
+  a layout problem. (It used to also keep Explore's centred narrator and the
+  three-note ordering screen's centre-back pedestal from wanting the screen's middle
+  at once; that conflict is gone now that both characters live on the tree, and
+  ordering left the agency ladder entirely.)
+- **Drag gives a real answer** (a drop can be wrong), and tier moves properly.
 
 This doesn't resolve the mastery algorithm or promotion thresholds themselves — see
 Open Questions below — only the *bound* on how far tier can reach before agency has

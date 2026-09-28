@@ -384,7 +384,7 @@ void main() {
       await tester.pump(Duration.zero);
     }
 
-    for (final chip in ['A0 · Observe', 'A1 · Participate', 'A2 · Trigger']) {
+    for (final chip in ['A0 · Observe', 'A1 · Explore', 'A2 · Drag']) {
       testWidgets(
         '$chip: Clef is on the tree; Piper stands beside it on the ground, '
         'clearly bigger (2026-09-27: she used to perch on a lower platform '
@@ -411,11 +411,11 @@ void main() {
     }
 
     testWidgets(
-      'A0 · Observe and A1 · Participate show NO tree slot — nothing can be '
+      'A0 · Observe and A1 · Explore show NO tree slot — nothing can be '
       'placed at either stage, and an empty receptacle is a false '
       'affordance a two-year-old would spend real time failing at',
       (tester) async {
-        for (final chip in ['A0 · Observe', 'A1 · Participate']) {
+        for (final chip in ['A0 · Observe', 'A1 · Explore']) {
           await startAt(tester, chip);
           expect(find.byType(OrderingSlot), findsNothing, reason: chip);
           expect(find.text('?'), findsNothing, reason: chip);
@@ -424,10 +424,10 @@ void main() {
     );
 
     testWidgets(
-      'A2 · Trigger shows exactly one tree slot — the drop target, now that '
+      'A2 · Drag shows exactly one tree slot — the drop target, now that '
       'something can actually be placed',
       (tester) async {
-        await startAt(tester, 'A2 · Trigger');
+        await startAt(tester, 'A2 · Drag');
         expect(find.byType(OrderingSlot), findsOneWidget);
       },
     );
@@ -794,50 +794,50 @@ void main() {
     );
   });
 
-  group('A4 hands off to the ordering screen', () {
+  group('the ordering skill hands off to the ordering screen', () {
     tearDown(() {
       devToolsEnabled = false;
     });
 
     for (final chip in ['T1', 'T5']) {
-      testWidgets(
-        'picking A4 with $chip in the dev gate opens ordering — including a '
-        'three-note tier, which the placeholder no longer covers here',
-        (tester) async {
-          devToolsEnabled = true;
-          tester.view.physicalSize = roomyViewport;
-          tester.view.devicePixelRatio = 1.0;
-          addTearDown(() {
-            tester.view.resetPhysicalSize();
-            tester.view.resetDevicePixelRatio();
-          });
+      testWidgets('picking the Ordering skill with $chip in the dev gate opens '
+          'ordering — including a three-note tier, which the placeholder no '
+          'longer covers here. Ordering is a separate skill, not a fourth '
+          'AgencyStage (Trello card 168), so it is its own toggle rather than '
+          'a chip in the Agency row', (tester) async {
+        devToolsEnabled = true;
+        tester.view.physicalSize = roomyViewport;
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(() {
+          tester.view.resetPhysicalSize();
+          tester.view.resetDevicePixelRatio();
+        });
 
-          await tester.pumpWidget(
-            MaterialApp(
-              home: ChangeNotifierProvider(
-                create: (_) => DevSettingsState(),
-                child: const HighLowScreen(),
-              ),
+        await tester.pumpWidget(
+          MaterialApp(
+            home: ChangeNotifierProvider(
+              create: (_) => DevSettingsState(),
+              child: const HighLowScreen(),
             ),
-          );
-          await tester.pump();
-          await tester.tap(find.text('A4 · Order'));
-          await tester.pump();
-          await tester.tap(find.text(chip));
-          await tester.pump();
-          await tester.tap(find.text('Start'));
-          await tester.pump();
-          await tester.pump(Duration.zero);
-          await tester.pump(Duration.zero);
+          ),
+        );
+        await tester.pump();
+        await tester.tap(find.text('Ordering'));
+        await tester.pump();
+        await tester.tap(find.text(chip));
+        await tester.pump();
+        await tester.tap(find.text('Start'));
+        await tester.pump();
+        await tester.pump(Duration.zero);
+        await tester.pump(Duration.zero);
 
-          expect(find.byType(OrderingScreen), findsOneWidget);
-          expect(find.textContaining('not built'), findsNothing);
+        expect(find.byType(OrderingScreen), findsOneWidget);
+        expect(find.textContaining('not built'), findsNothing);
 
-          // Unmount so the screen's opening playback timers are cancelled
-          // with it rather than left pending.
-          await tester.pumpWidget(const SizedBox());
-        },
-      );
+        // Unmount so the screen's opening playback timers are cancelled
+        // with it rather than left pending.
+        await tester.pumpWidget(const SizedBox());
+      });
     }
   });
 

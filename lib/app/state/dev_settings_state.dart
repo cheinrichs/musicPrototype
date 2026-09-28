@@ -16,13 +16,26 @@ import '../../models/round_order.dart';
 /// other than these defaults, which are chosen to match the production
 /// experience.
 class DevSettingsState extends ChangeNotifier {
-  AgencyStage _agencyStage = AgencyStage.trigger;
+  AgencyStage _agencyStage = AgencyStage.drag;
   ConceptTier _conceptTier = ConceptTier.t1;
   RoundOrder _roundOrder = RoundOrder.blocked;
+
+  /// Whether the dev gate should hand off to the A4 ordering screen instead
+  /// of the normal pairwise game. Orthogonal to [agencyStage] since
+  /// 2026-09-27 (Trello card 168, "Agency is capability, not difficulty"):
+  /// ordering is a separate *skill* built on drag capability, not a further
+  /// agency stage, so it can no longer be selected by picking a fourth
+  /// [AgencyStage] value the way `AgencyStage.order` once was. This is a
+  /// dev-tool convenience standing in for a real skill-selection UI that
+  /// doesn't exist yet — production would only ever offer ordering once a
+  /// child already has drag capability, but this toggle doesn't enforce
+  /// that itself.
+  bool _orderingSelected = false;
 
   AgencyStage get agencyStage => _agencyStage;
   ConceptTier get conceptTier => _conceptTier;
   RoundOrder get roundOrder => _roundOrder;
+  bool get orderingSelected => _orderingSelected;
 
   /// Lowering agency brings the tier down with it: the product cannot
   /// reach a tier its agency stage hasn't earned (see
@@ -43,6 +56,11 @@ class DevSettingsState extends ChangeNotifier {
 
   void setRoundOrder(RoundOrder order) {
     _roundOrder = order;
+    notifyListeners();
+  }
+
+  void setOrderingSelected(bool selected) {
+    _orderingSelected = selected;
     notifyListeners();
   }
 }

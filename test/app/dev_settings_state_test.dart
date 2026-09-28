@@ -9,7 +9,7 @@ void main() {
       final settings = DevSettingsState()..setConceptTier(ConceptTier.t8);
       expect(settings.conceptTier, ConceptTier.t8);
 
-      settings.setAgencyStage(AgencyStage.participate);
+      settings.setAgencyStage(AgencyStage.explore);
       expect(settings.conceptTier, ConceptTier.t4);
 
       settings.setAgencyStage(AgencyStage.observe);
@@ -18,7 +18,7 @@ void main() {
 
     test('an unreachable tier cannot be chosen at a low agency stage', () {
       final settings = DevSettingsState()
-        ..setAgencyStage(AgencyStage.participate)
+        ..setAgencyStage(AgencyStage.explore)
         ..setConceptTier(ConceptTier.t5);
       expect(settings.conceptTier, ConceptTier.t1, reason: 'unchanged');
 
@@ -30,7 +30,7 @@ void main() {
       final settings = DevSettingsState()
         ..setConceptTier(ConceptTier.t8)
         ..setAgencyStage(AgencyStage.observe)
-        ..setAgencyStage(AgencyStage.trigger);
+        ..setAgencyStage(AgencyStage.drag);
       expect(settings.conceptTier, ConceptTier.t1);
     });
   });

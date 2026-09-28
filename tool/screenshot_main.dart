@@ -73,8 +73,8 @@ void main() async {
     final stage = scene.startsWith('a0')
         ? AgencyStage.observe
         : scene.startsWith('a1')
-        ? AgencyStage.participate
-        : AgencyStage.trigger;
+        ? AgencyStage.explore
+        : AgencyStage.drag;
     final state = HighLowGameState(agencyStage: stage);
     screen = HighLowScreen(gameState: state);
     // Act once the round is ready for it (the intro takes several seconds).

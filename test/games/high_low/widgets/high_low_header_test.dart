@@ -66,7 +66,7 @@ void main() {
       );
       higherState.startGame();
       captions.add(higherState.captionText!);
-      if (stage == AgencyStage.participate) {
+      if (stage == AgencyStage.explore) {
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 4700));
         await tester.pump(const Duration(seconds: 6));
@@ -82,7 +82,7 @@ void main() {
       lowerState.startGame();
       lowerState.escape();
       captions.add(lowerState.captionText!);
-      if (stage == AgencyStage.participate) {
+      if (stage == AgencyStage.explore) {
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 4700));
         await tester.pump(const Duration(seconds: 6));
@@ -94,33 +94,32 @@ void main() {
     return captions;
   }
 
-  testWidgets(
-    'no caption exceeds the character budget, at any stage or pole '
-    '(Cooper, driving the simulator: "\'Find the …\' tells them nothing")',
-    (tester) async {
-      final captions = await allCaptions(tester);
-      expect(
-        captions.toSet(),
-        hasLength(7),
-        reason:
-            '5 distinct primary captions (Observe\'s two poles collapse '
-            'to one string by design, plus Participate\'s 2 and '
-            'Trigger\'s 2) + 2 secondary (Participate only) = 7 distinct '
-            'captions expected — a length mismatch means this test '
-            'itself needs updating alongside the copy, not that a '
-            'caption is missing',
-      );
+  testWidgets('no caption exceeds the character budget, at any stage or pole '
+      '(Cooper, driving the simulator: "\'Find the …\' tells them nothing")', (
+    tester,
+  ) async {
+    final captions = await allCaptions(tester);
+    expect(
+      captions.toSet(),
+      hasLength(7),
+      reason:
+          '5 distinct primary captions (Observe\'s two poles collapse '
+          'to one string by design, plus Participate\'s 2 and '
+          'Trigger\'s 2) + 2 secondary (Participate only) = 7 distinct '
+          'captions expected — a length mismatch means this test '
+          'itself needs updating alongside the copy, not that a '
+          'caption is missing',
+    );
 
-      for (final caption in captions) {
-        expect(
-          caption.length,
-          lessThanOrEqualTo(maxCaptionLength),
-          reason:
-              'caption is ${caption.length} characters, over the '
-              '$maxCaptionLength budget — shorten it, don\'t grow the '
-              'caption block: "$caption"',
-        );
-      }
-    },
-  );
+    for (final caption in captions) {
+      expect(
+        caption.length,
+        lessThanOrEqualTo(maxCaptionLength),
+        reason:
+            'caption is ${caption.length} characters, over the '
+            '$maxCaptionLength budget — shorten it, don\'t grow the '
+            'caption block: "$caption"',
+      );
+    }
+  });
 }

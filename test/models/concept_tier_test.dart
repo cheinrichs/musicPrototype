@@ -116,7 +116,7 @@ void main() {
         'needs A2', () {
       for (final tier in ConceptTier.values) {
         expect(
-          tier.isReachableAt(AgencyStage.participate),
+          tier.isReachableAt(AgencyStage.explore),
           tier.noteCount == 2,
           reason: '$tier at A1',
         );
@@ -125,7 +125,7 @@ void main() {
 
     test('A2 reaches every tier', () {
       for (final tier in ConceptTier.values) {
-        expect(tier.isReachableAt(AgencyStage.trigger), isTrue);
+        expect(tier.isReachableAt(AgencyStage.drag), isTrue);
       }
     });
 
@@ -133,10 +133,10 @@ void main() {
         'that is reachable, and leaves a reachable one alone', () {
       expect(ConceptTier.t8.clampedTo(AgencyStage.observe), ConceptTier.t1);
       expect(ConceptTier.t3.clampedTo(AgencyStage.observe), ConceptTier.t1);
-      expect(ConceptTier.t8.clampedTo(AgencyStage.participate), ConceptTier.t4);
-      expect(ConceptTier.t5.clampedTo(AgencyStage.participate), ConceptTier.t4);
-      expect(ConceptTier.t3.clampedTo(AgencyStage.participate), ConceptTier.t3);
-      expect(ConceptTier.t8.clampedTo(AgencyStage.trigger), ConceptTier.t8);
+      expect(ConceptTier.t8.clampedTo(AgencyStage.explore), ConceptTier.t4);
+      expect(ConceptTier.t5.clampedTo(AgencyStage.explore), ConceptTier.t4);
+      expect(ConceptTier.t3.clampedTo(AgencyStage.explore), ConceptTier.t3);
+      expect(ConceptTier.t8.clampedTo(AgencyStage.drag), ConceptTier.t8);
     });
   });
 }

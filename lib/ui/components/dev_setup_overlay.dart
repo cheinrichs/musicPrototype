@@ -92,6 +92,17 @@ class DevSetupOverlay extends StatelessWidget {
                     selected: devSettings.roundOrder,
                     onSelected: devSettings.setRoundOrder,
                   ),
+                  const SizedBox(height: AppSpacing.xs),
+                  // Ordering is a separate skill, not a fourth AgencyStage
+                  // (Trello card 168) — this toggle stands in for a real
+                  // skill picker that doesn't exist yet.
+                  _SettingRow<bool>(
+                    title: 'Skill',
+                    values: const [false, true],
+                    labelOf: (o) => o ? 'Ordering' : 'Pairwise',
+                    selected: devSettings.orderingSelected,
+                    onSelected: devSettings.setOrderingSelected,
+                  ),
                   const SizedBox(height: AppSpacing.sm),
                   SizedBox(
                     height: 40,

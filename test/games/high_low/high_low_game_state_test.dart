@@ -100,7 +100,7 @@ void main() {
     ) async {
       final state = HighLowGameState(
         totalPrompts: 3,
-        agencyStage: AgencyStage.participate,
+        agencyStage: AgencyStage.explore,
       );
       // Disposed explicitly at the end — see the matching comment on the
       // Observe "a tap never cuts the intro" test above (awaitingInput
@@ -124,7 +124,7 @@ void main() {
       (tester) async {
         final state = HighLowGameState(
           totalPrompts: 1,
-          agencyStage: AgencyStage.participate,
+          agencyStage: AgencyStage.explore,
         );
         addTearDown(state.dispose);
         state.startGame();
@@ -146,7 +146,7 @@ void main() {
       (tester) async {
         final state = HighLowGameState(
           totalPrompts: 3,
-          agencyStage: AgencyStage.participate,
+          agencyStage: AgencyStage.explore,
           roundOrder: RoundOrder.blocked,
         );
         state.startGame();
@@ -177,7 +177,7 @@ void main() {
       (tester) async {
         final state = HighLowGameState(
           totalPrompts: 2,
-          agencyStage: AgencyStage.trigger,
+          agencyStage: AgencyStage.drag,
           conceptTier: ConceptTier.t1,
         );
         // Disposed explicitly at the end of this test (it starts a new
@@ -217,7 +217,7 @@ void main() {
       (tester) async {
         final state = HighLowGameState(
           totalPrompts: 2,
-          agencyStage: AgencyStage.trigger,
+          agencyStage: AgencyStage.drag,
           conceptTier: ConceptTier.t1,
         );
         state.startGame();
@@ -256,7 +256,7 @@ void main() {
         '(Trello card jmuMDPcT)', (tester) async {
       final state = HighLowGameState(
         totalPrompts: 2,
-        agencyStage: AgencyStage.trigger,
+        agencyStage: AgencyStage.drag,
         conceptTier: ConceptTier.t1,
       );
       // Disposed explicitly at the end (the overriding correct drop below
@@ -306,7 +306,7 @@ void main() {
     ) async {
       final state = HighLowGameState(
         totalPrompts: 1,
-        agencyStage: AgencyStage.trigger,
+        agencyStage: AgencyStage.drag,
       );
       // Disposed explicitly at the end — see the matching comment on the
       // Observe "a tap never cuts the intro" test above.
@@ -333,7 +333,7 @@ void main() {
       (tester) async {
         final state = HighLowGameState(
           totalPrompts: 5,
-          agencyStage: AgencyStage.trigger,
+          agencyStage: AgencyStage.drag,
         );
         // Disposed explicitly at the end (escape below starts a new
         // round's intro along the way) rather than via addTearDown — see
@@ -379,7 +379,7 @@ void main() {
     ) async {
       final state = HighLowGameState(
         totalPrompts: 2,
-        agencyStage: AgencyStage.trigger,
+        agencyStage: AgencyStage.drag,
       );
       // Disposed explicitly at the end of this test (it starts a new
       // round's intro along the way) rather than via addTearDown.
@@ -500,7 +500,7 @@ void main() {
     );
 
     testWidgets('never appears outside Observe', (tester) async {
-      for (final stage in [AgencyStage.participate, AgencyStage.trigger]) {
+      for (final stage in [AgencyStage.explore, AgencyStage.drag]) {
         final state = HighLowGameState(totalPrompts: 1, agencyStage: stage);
         state.startGame();
         await tester.pump();
@@ -602,7 +602,7 @@ void main() {
     testWidgets('Participate names the pole (higher/lower)', (tester) async {
       final state = HighLowGameState(
         totalPrompts: 3,
-        agencyStage: AgencyStage.participate,
+        agencyStage: AgencyStage.explore,
         roundOrder: RoundOrder.blocked,
       );
       // Disposed explicitly at the end — see the matching comment on the
@@ -626,7 +626,7 @@ void main() {
       (tester) async {
         final state = HighLowGameState(
           totalPrompts: 1,
-          agencyStage: AgencyStage.participate,
+          agencyStage: AgencyStage.explore,
         );
         addTearDown(state.dispose);
         state.startGame();
@@ -650,7 +650,7 @@ void main() {
     ) async {
       final state = HighLowGameState(
         totalPrompts: 1,
-        agencyStage: AgencyStage.participate,
+        agencyStage: AgencyStage.explore,
       );
       state.startGame();
       await tester.pump();
@@ -689,7 +689,7 @@ void main() {
       (tester) async {
         final state = HighLowGameState(
           totalPrompts: 2,
-          agencyStage: AgencyStage.participate,
+          agencyStage: AgencyStage.explore,
         );
         state.startGame();
         await tester.pump();
@@ -749,7 +749,7 @@ void main() {
     );
 
     testWidgets('never applies at Observe or Trigger', (tester) async {
-      for (final stage in [AgencyStage.observe, AgencyStage.trigger]) {
+      for (final stage in [AgencyStage.observe, AgencyStage.drag]) {
         final state = HighLowGameState(totalPrompts: 1, agencyStage: stage);
         state.startGame();
         await tester.pump();
@@ -776,7 +776,7 @@ void main() {
     ) async {
       final state = HighLowGameState(
         totalPrompts: 1,
-        agencyStage: AgencyStage.trigger,
+        agencyStage: AgencyStage.drag,
       );
       // Disposed explicitly at the end — see the matching comment on the
       // Observe "a tap never cuts the intro" test above.
@@ -810,7 +810,7 @@ void main() {
           // asserting against an unseeded random draw — passed locally by
           // chance, failed on CI when the draw came up "lower" instead.
           totalPrompts: 3,
-          agencyStage: AgencyStage.trigger,
+          agencyStage: AgencyStage.drag,
           roundOrder: RoundOrder.blocked,
         );
         // Disposed explicitly at the end — see the matching comment on
@@ -870,7 +870,7 @@ void main() {
       (tester) async {
         final state = HighLowGameState(
           totalPrompts: 3,
-          agencyStage: AgencyStage.participate,
+          agencyStage: AgencyStage.explore,
         );
         state.startGame();
         await tester.pump();
@@ -915,7 +915,7 @@ void main() {
       'a three-note tier requested below A2 plays as the highest tier that '
       'agency can reach, and never generates a third note',
       (tester) async {
-        for (final stage in [AgencyStage.observe, AgencyStage.participate]) {
+        for (final stage in [AgencyStage.observe, AgencyStage.explore]) {
           final state = HighLowGameState(
             totalPrompts: 3,
             agencyStage: stage,
@@ -939,7 +939,7 @@ void main() {
     ) async {
       final state = HighLowGameState(
         totalPrompts: 3,
-        agencyStage: AgencyStage.trigger,
+        agencyStage: AgencyStage.drag,
         conceptTier: ConceptTier.t5,
       );
       expect(state.conceptTier, ConceptTier.t5);

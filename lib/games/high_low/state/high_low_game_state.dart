@@ -53,7 +53,7 @@ enum DragFeedback { none, correct, retry }
 ///   exploring are the *same action* here, so the criterion is coverage:
 ///   once both instruments have been tapped at least once, the earned
 ///   arrow appears (see [showArrow]).
-/// - Participate (A1): a constant prompt ("Listen for the high one"), the
+/// - Explore (A1): a constant prompt ("Listen for the high one"), the
 ///   pair auto-plays but a tap cuts it short, then free tapping
 ///   continues. A correct tap sparkles the owning character, escalating
 ///   with each one (Cooper: "a flat sparkle is a reward; an escalating
@@ -62,25 +62,28 @@ enum DragFeedback { none, correct, retry }
 ///   nothing to that count but never subtracts either (see
 ///   [tapInstrument]'s doc comment for why the gate stays generous on
 ///   purpose).
-/// - Trigger (A2): same auto-play/cut-short/free-tap as Participate, plus
+/// - Drag (A2): same auto-play/cut-short/free-tap as Explore, plus
 ///   one drop target and two draggable instruments the child drags to it.
 ///   The target is a **slot on the tree** (2026-09-27), not a character:
 ///   dragging to a slot near the top of the tree means "high" because it
 ///   is physically up there, rather than because a character has taught the
-///   child that convention — this is what makes A2-A4 one mechanic, the
-///   same action done more times, rather than a symbol (Trello, "reverse
-///   the A2 drag interaction" — the instruments are what get dragged; see
-///   `docs/product/HIGH_LOW_SCREEN_LAYOUT.md` for the full reasoning and
-///   for why the character-as-target design this replaced existed first).
-///   A wrong drop gets a gentle retry (fresh listen, no failure state); a
-///   correct drop is recorded and auto-advances.
+///   child that convention. A wrong drop gets a gentle retry (fresh listen,
+///   no failure state); a correct drop is recorded and auto-advances. (Note:
+///   ordering, on its own screen, is a separate *skill* built on this same
+///   drag capability, not a further agency stage — Trello card 168.)
 ///
 /// At every stage, whichever of Piper/Clef owns the round's pole (Piper is
 /// low, Clef is high; see [targetCharacterIsPiper] and Trello card 101) is
 /// the one asking, alongside the caption (Trello card 1SpHq2la) — a fixed,
 /// parent-facing string (see [captionText]'s doc comment), not a transcript
-/// of whichever line is currently playing. Only Trigger makes the slot near
+/// of whichever line is currently playing. Only Drag makes the slot near
 /// her an interactive drop target — see [canDrop].
+///
+/// **Agency names, 2026-09-27:** this class's own prose comments below
+/// still say "Participate"/"Trigger" in many places from before the rename
+/// to `AgencyStage.explore`/`.drag` (Trello card 168 — "Agency is
+/// capability, not difficulty") — read them as the same stages under their
+/// old names rather than assuming a mismatch.
 class HighLowGameState extends ChangeNotifier {
   /// How long each note of the intro pair rings (and its instrument
   /// wiggles/glows) before the sequence moves on — see the two call sites
@@ -231,7 +234,7 @@ class HighLowGameState extends ChangeNotifier {
     PromptGenerator? generator,
     RoundSequencer? sequencer,
     this.totalPrompts = 5,
-    this.agencyStage = AgencyStage.trigger,
+    this.agencyStage = AgencyStage.drag,
     ConceptTier conceptTier = ConceptTier.t1,
     this.roundOrder = RoundOrder.blocked,
   }) : requestedTier = conceptTier,
@@ -362,21 +365,17 @@ class HighLowGameState extends ChangeNotifier {
     final isHigh = prompt.targetDirection == PitchDirection.higher;
     return switch (agencyStage) {
       AgencyStage.observe => 'Let them explore freely.',
-      AgencyStage.participate =>
+      AgencyStage.explore =>
         isHigh
             ? 'Let them tap both and find the higher one.'
             : 'Let them tap both and find the lower one.',
-      // A4 ordering has its own state and screen (OrderingGameState); this
-      // one is never run at that stage, so it shares Trigger's wording
-      // only to stay exhaustive.
-      //
       // 2026-09-27: the drop target became a slot on the tree, not a
       // character (see docs/product/HIGH_LOW_SCREEN_LAYOUT.md) — "to Clef"/
       // "to Piper" would now describe the wrong mechanic. The caption is a
       // separate string from the voice line and has a different audience
       // (the watching adult, not the child), so it doesn't need the voice
       // line's social "by me" framing — just an accurate instruction.
-      AgencyStage.trigger || AgencyStage.order =>
+      AgencyStage.drag =>
         isHigh
             ? 'Help them drag the higher instrument up the tree.'
             : 'Help them drag the lower instrument up the tree.',
@@ -397,7 +396,7 @@ class HighLowGameState extends ChangeNotifier {
   /// struggling while they're doing fine.
   String? get secondaryCaptionText {
     if (!_nudgeVisible ||
-        agencyStage != AgencyStage.participate ||
+        agencyStage != AgencyStage.explore ||
         _status != GameStatus.awaitingInput) {
       return null;
     }
@@ -417,7 +416,7 @@ class HighLowGameState extends ChangeNotifier {
   /// that guard lives in [dropInstrument] itself, to avoid double-recording
   /// a result while the advance-to-next-round delay is still pending.
   bool get canDrop =>
-      agencyStage == AgencyStage.trigger && _status != GameStatus.completed;
+      agencyStage == AgencyStage.drag && _status != GameStatus.completed;
 
   /// Which character owns this round's pole — Piper the low one, Clef the
   /// high one (Trello card 101). This is who is *asking* (her voice line,
@@ -555,11 +554,11 @@ class HighLowGameState extends ChangeNotifier {
     final prompt = currentPrompt;
     _activeCaption = switch (agencyStage) {
       AgencyStage.observe => null, // narrated live as each note plays
-      AgencyStage.participate =>
+      AgencyStage.explore =>
         prompt?.targetDirection == PitchDirection.higher
             ? VoiceLine.listenForHigh
             : VoiceLine.listenForLow,
-      AgencyStage.trigger || AgencyStage.order =>
+      AgencyStage.drag =>
         prompt?.targetDirection == PitchDirection.higher
             ? VoiceLine.giveMeHigh
             : VoiceLine.giveMeLow,
@@ -650,7 +649,7 @@ class HighLowGameState extends ChangeNotifier {
     if (token != _roundToken) return;
     _introPlaying = false;
     _playingIndex = null;
-    _hintVisible = agencyStage == AgencyStage.participate;
+    _hintVisible = agencyStage == AgencyStage.explore;
     _status = GameStatus.awaitingInput;
 
     // Fresh 6-second window every time a round becomes actionable — the
@@ -662,7 +661,7 @@ class HighLowGameState extends ChangeNotifier {
     // so nothing schedules the timer at those stages at all now.
     _nudgeVisible = false;
     _cancelNudgeTimer();
-    if (agencyStage == AgencyStage.participate) {
+    if (agencyStage == AgencyStage.explore) {
       _nudgeTimer = Timer(const Duration(seconds: 6), () {
         if (token != _roundToken) return;
         _nudgeVisible = true;
@@ -739,7 +738,7 @@ class HighLowGameState extends ChangeNotifier {
           unawaited(_audio.playVoiceLine(VoiceLine.tapTheArrowWhenReady));
         }
       }
-    } else if (agencyStage == AgencyStage.participate) {
+    } else if (agencyStage == AgencyStage.explore) {
       // A repeated correct tap is an answer, not noise — a child who
       // knows it has no other way to show it (Trello card RqdPFKLf).
       // Cumulative, not consecutive: a wrong tap adds nothing but must

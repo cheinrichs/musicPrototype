@@ -2,7 +2,18 @@
 
 Decided 2026-09-02/03. This supersedes the Pitch Awareness row of `docs/curriculum/difficulty_tiers.csv`, which predates several of these decisions.
 
-This document covers the **concept tier** axis for High/Low only. Agency (A0–A4), skill, and age presentation remain separate axes as described in `LEARNING_ARCHITECTURE.md`.
+This document covers the **concept tier** axis for High/Low only. Agency, skill, and age presentation remain separate axes as described in `LEARNING_ARCHITECTURE.md`.
+
+> **UPDATED 2026-09-27 (Trello card 168, "Agency is capability, not
+> difficulty").** Agency is now three named capability levels —
+> **Observe, Explore, Drag** — not the curriculum's old A0–A4 ladder.
+> A3 ("Timed") was never built and is confirmed gone for good: timing is
+> telemetry, not a capability. **Ordering is no longer an agency level at
+> all** — it's a separate skill built on Drag capability, taught by
+> whichever games support it. Wherever this document still says "A2" or
+> "A4" below, read it as "Drag capability" and "the ordering skill"
+> respectively — the reasoning is unchanged, only the axis it was
+> mistakenly folded into.
 
 ---
 
@@ -33,7 +44,7 @@ Eight tiers, a complete 2×2×2 across three independent properties: **interval 
 
 Each new demand is introduced **on its own with everything else relaxed**, then hardened by narrowing the interval, then eventually combined. The interval widens back to 7–12 at T3, T5 and T7 — every point where something new arrives.
 
-**Not every tier is reachable at every agency level.** Decided 2026-09-25, see `ADVANCEMENT_SIGNALS.md` for the full reasoning: A0 holds at T1 (no answer, no evidence, no movement); A1 can creep but stops short of T5; T5+ (three notes) requires A2. This is also why the three-note ordering screen only ever needs to build its A2+ layout — A1 never reaches a tier that has a third note to order.
+**Not every tier is reachable at every agency level.** Decided 2026-09-25, restated in capability terms 2026-09-27 — see `ADVANCEMENT_SIGNALS.md` for the full reasoning: **Observe** holds at T1 (no answer, no evidence, no movement); **Explore** can creep but stops short of T5; T5+ (three notes) requires **Drag** capability. This is also why the three-note ordering screen only ever needs to build its Drag-capable layout — Explore never reaches a tier that has a third note to order.
 
 ### On features switching off
 
@@ -105,16 +116,16 @@ shorter pedestal. Whichever is chosen, keep the rule above: the three surface li
 
 ### Why three notes is a tier, not an agency level
 
-Earlier framing put three notes at A4 with ordering. Separating them is better and solves the jump problem:
+Earlier framing put three notes at A4 with ordering. Separating them is better and solves the jump problem — and is now settled twice over: ordering itself moved out of agency entirely on 2026-09-27 (Trello card 168), so this was never really an agency-level question to begin with.
 
 - **Tier** introduces the third note at T5, asked as *"give me the highest one."* Still selection.
-- **Agency A4** later asks her to *arrange* them. By then three notes is familiar and the only new thing is the ordering operation.
+- **The ordering skill**, once a child has Drag capability, later asks her to *arrange* them. By then three notes is familiar and the only new thing is the ordering operation.
 
 Item count is a demand on what she can hold. Ordering is a demand on what she can do with it.
 
 ### Replays
 
-Three replays at both A3 and A4. Do not drop to zero when the third note arrives — that would tax memory load and scaffolding in the same step, and a single missed hearing would burn a round the child understood perfectly. Let the *count* of replays used be the signal rather than the constraint.
+Three replays, both for Drag-capability rounds and for the ordering skill. Do not drop to zero when the third note arrives — that would tax memory load and scaffolding in the same step, and a single missed hearing would burn a round the child understood perfectly. Let the *count* of replays used be the signal rather than the constraint.
 
 ---
 
@@ -201,10 +212,13 @@ This needs the per-round tracking log to enforce — something has to know what 
 
 ---
 
-## Ordering at A4
+## Ordering — a skill built on Drag capability, not an agency level
 
-Decided 2026-09-26 (Cooper). Built as `OrderingScreen` / `OrderingGameState`; reached from the dev
-gate at A4, at any tier. Each round the child hears the notes, then drags each instrument from its
+Decided 2026-09-26 (Cooper); moved out of the agency ladder entirely 2026-09-27 (Trello card 168 —
+see the notice at the top of this document). Built as `OrderingScreen` / `OrderingGameState`; reached
+from the dev gate via its own "Skill: Ordering" toggle, at any tier, independent of the `AgencyStage`
+picker (ordering needs Drag capability to attempt at all, but is no longer selected *as* an agency
+level). Each round the child hears the notes, then drags each instrument from its
 stump onto a platform of the tree, **highest at the top under Clef** down to the lowest at the bottom.
 
 **The mechanic**
@@ -229,7 +243,7 @@ unreachable — if two are in their right places the third has nowhere else to g
 scores 3, 1 (the other two swapped) or 0 (a three-cycle). Two notes score 2 or 0. This is asserted
 across every permutation in the tests; a two-tick state would mean the checker is wrong.
 
-**Two-note rounds** (A4 × T1–T4) use the same tree with the **top two** platforms in play, so the
+**Two-note rounds** (ordering × T1–T4) use the same tree with the **top two** platforms in play, so the
 ordering still reads down from Clef and the bottom step stays unoccupied. *(An interpretation — the
 card says "one slot empty" without saying which; it is one line in `OrderingRound.activeSlots`.)*
 
@@ -238,7 +252,7 @@ never refused; the count used is what is recorded, per the signal-not-constraint
 
 **Slot styling is a single swappable decision** (`orderingSlotStyle`). Default is a soft dark
 depression with a shadow and a "?" (the "?" is a literacy symbol, acceptable here because nobody
-reaches A4 ordering at two or three); a grey flat placeholder is built alongside for comparison. The
+reaches the ordering skill at two or three); a grey flat placeholder is built alongside for comparison. The
 tree's platforms are ovals, so the slot is an oval sized to the platform's flat top.
 
 **Geometry — measured, not read off the card.** The card's 16% / 35% / 55% / 73% are the platforms'

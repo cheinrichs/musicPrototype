@@ -48,9 +48,10 @@ import 'agency_stage.dart';
 /// the highest" (selection among three) rather than "which one is higher
 /// (of two)". This is deliberately not "give me the low one" for three
 /// notes; the spec only ever asks for the highest. Ordering three notes
-/// (arranging them, not just picking the highest) stays a separate,
-/// later agency-axis capability (A4), not folded in here — see the spec
-/// doc's "Why three notes is a tier, not an agency level".
+/// (arranging them, not just picking the highest) is a separate SKILL, not
+/// an agency level and not folded in here (settled 2026-09-27 — see
+/// `docs/product/HIGH_LOW_TIERS.md`) — see the spec doc's "Why three notes
+/// is a tier, not an agency level".
 ///
 /// Three-note tiers (T5–T8) are modeled and generated here, and
 /// [PromptGenerator] produces genuinely valid three-note prompts for
@@ -117,21 +118,20 @@ enum ConceptTier {
   };
 
   /// Whether a child at [stage] can be shown this tier (decided
-  /// 2026-09-25 — see `docs/product/ADVANCEMENT_SIGNALS.md`, "Which tiers
-  /// are reachable at which agency level"). Tier only advances on evidence
-  /// of discrimination, and agency decides how much evidence a round
-  /// produces:
+  /// 2026-09-25, simplified 2026-09-27 once ordering left the agency ladder
+  /// — see `docs/product/ADVANCEMENT_SIGNALS.md`, "Which tiers are
+  /// reachable at which agency level"). Tier only advances on evidence of
+  /// discrimination, and agency decides how much evidence a round produces:
   ///
-  /// - **A0** produces no answer at all, so it holds at [t1].
-  /// - **A1** gives a weak signal (does she tap the target) with no
+  /// - **Observe** produces no answer at all, so it holds at [t1].
+  /// - **Explore** gives a weak signal (does she tap the target) with no
   ///   failure state, so tier may creep, but stops short of the three-note
   ///   tiers ([t5] onward).
-  /// - **A2** gives a real answer, so every tier is reachable — and so is
-  ///   every tier at **A4**, which asks for more than A2 does.
+  /// - **Drag** gives a real answer, so every tier is reachable.
   bool isReachableAt(AgencyStage stage) => switch (stage) {
     AgencyStage.observe => this == ConceptTier.t1,
-    AgencyStage.participate => noteCount == 2,
-    AgencyStage.trigger || AgencyStage.order => true,
+    AgencyStage.explore => noteCount == 2,
+    AgencyStage.drag => true,
   };
 
   /// The highest tier reachable at [stage].

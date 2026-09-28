@@ -38,8 +38,8 @@ import '../widgets/speaking_pulse.dart';
 /// [SceneLayout]'s class doc — one scene at every agency level, 2026-09-26,
 /// extended 2026-09-27 to a slot on the tree as the drop target). The
 /// screen's behavior is entirely driven by [HighLowGameState.agencyStage]
-/// (Trello card 91): Observe and Participate resolve via repeated correct
-/// taps (Trello card RqdPFKLf), Trigger asks the child to drag the correct
+/// (Trello card 91): Observe and Explore resolve via repeated correct
+/// taps (Trello card RqdPFKLf), Drag asks the child to drag the correct
 /// instrument up to a slot on the tree, near whichever of Piper/Clef owns
 /// that round's pole (Trello card 101). (Reversed 2026-09 from an earlier
 /// design where the *character* was dragged onto a fixed instrument, then
@@ -188,7 +188,10 @@ class _HighLowScreenState extends State<HighLowScreen> {
 
   void _startFromDevGate() {
     final devSettings = context.read<DevSettingsState>();
-    if (devSettings.agencyStage == AgencyStage.order) {
+    // Ordering is a separate skill (Trello card 168), selected by its own
+    // toggle rather than a fourth AgencyStage value the way `.order` used
+    // to work — see [DevSettingsState.orderingSelected].
+    if (devSettings.orderingSelected) {
       setState(() {
         _showDevGate = false;
         _orderingTier = devSettings.conceptTier;
@@ -433,7 +436,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
     setState(() => _sharingReport = true);
     try {
       final buildInfo = await BuildInfo.current();
-      final respondsToDrops = _gameState.agencyStage == AgencyStage.trigger;
+      final respondsToDrops = _gameState.agencyStage == AgencyStage.drag;
       final report = RoundReport(
         capturedAt: DateTime.now(),
         build: buildInfo,
@@ -574,7 +577,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
     final leftFeetLift = leftCharSize * _gameState.leftInstrument.floatFraction;
     final rightFeetLift =
         rightCharSize * _gameState.rightInstrument.floatFraction;
-    final isTrigger = _gameState.agencyStage == AgencyStage.trigger;
+    final isTrigger = _gameState.agencyStage == AgencyStage.drag;
     // Whichever character owns this round's pole (Piper is low, Clef is
     // high — Trello card 101) is the one asking at Participate and Trigger:
     // in Trigger, the tree slot near her is where the correct instrument

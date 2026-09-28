@@ -25,7 +25,7 @@ void main() {
       );
 
       expect(find.text('Dev: agency setup'), findsOneWidget);
-      expect(devSettings.agencyStage, AgencyStage.trigger);
+      expect(devSettings.agencyStage, AgencyStage.drag);
 
       await tester.tap(find.text('A0 · Observe'));
       await tester.pump();
@@ -104,26 +104,31 @@ void main() {
         ),
       );
 
-      bool enabled(String label) => tester
-          .widget<ChoiceChip>(find.widgetWithText(ChoiceChip, label))
-          .onSelected != null;
+      bool enabled(String label) =>
+          tester
+              .widget<ChoiceChip>(find.widgetWithText(ChoiceChip, label))
+              .onSelected !=
+          null;
 
       for (final t in ['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8']) {
         expect(enabled(t), isTrue, reason: '$t at the default (A2)');
       }
 
-      await tester.tap(find.text('A1 · Participate'));
+      await tester.tap(find.text('A1 · Explore'));
       await tester.pump();
-      expect([for (final t in ['T1', 'T2', 'T3', 'T4']) enabled(t)],
-          everyElement(isTrue));
-      expect([for (final t in ['T5', 'T6', 'T7', 'T8']) enabled(t)],
-          everyElement(isFalse));
+      expect([
+        for (final t in ['T1', 'T2', 'T3', 'T4']) enabled(t),
+      ], everyElement(isTrue));
+      expect([
+        for (final t in ['T5', 'T6', 'T7', 'T8']) enabled(t),
+      ], everyElement(isFalse));
 
       await tester.tap(find.text('A0 · Observe'));
       await tester.pump();
       expect(enabled('T1'), isTrue);
-      expect([for (final t in ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8']) enabled(t)],
-          everyElement(isFalse));
+      expect([
+        for (final t in ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8']) enabled(t),
+      ], everyElement(isFalse));
     },
   );
 }
