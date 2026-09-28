@@ -193,9 +193,12 @@ class HighLowGameState extends ChangeNotifier {
   /// exploration and only a drag/drop commits.
   int _correctTapCumulative = 0;
 
-  /// Wrong taps this round, Participate only — logged (see
-  /// [RoundInstrumentation.wrongTapCount]) but never subtracted from
-  /// [_correctTapCumulative]; assessment signal, not a gate.
+  /// Wrong *responses* this round — wrong taps at Explore (never
+  /// subtracted from [_correctTapCumulative]; assessment signal, not a
+  /// gate) and, since Trello card 172 ("advancement and demotion"), wrong
+  /// drags at Drag too (many failed drags is a demotion signal — "a drag
+  /// that never reaches a target is motor difficulty, exactly what agency
+  /// measures"). See [RoundInstrumentation.wrongTapCount].
   int _wrongTapCount = 0;
 
   /// Bumped every time the fifth cumulative correct tap fires the
@@ -397,7 +400,13 @@ class HighLowGameState extends ChangeNotifier {
     if (prompt == null) return null;
     final isHigh = prompt.targetDirection == PitchDirection.higher;
     return switch (agencyStage) {
-      AgencyStage.observe => 'Let them explore freely.',
+      // Not just "let them explore freely" (Trello card 172): a deliberate
+      // parent-facing cue naming exactly what the app is watching for, so
+      // Observe→Explore advancement is a collaboration with the adult
+      // rather than a silent detector — a screen can't tell an adult's
+      // finger from a child's, so it never tries to; it tells the adult
+      // what to encourage instead.
+      AgencyStage.observe => 'Encourage them to tap each instrument.',
       AgencyStage.explore =>
         isHigh
             ? 'Let them tap both and find the higher one.'
@@ -850,6 +859,7 @@ class HighLowGameState extends ChangeNotifier {
     if (side == prompt.targetSide) {
       _celebrateCorrect(side);
     } else {
+      _wrongTapCount++;
       final token = ++_roundToken;
       _lastDropSide = side;
       _cancelNudgeTimer();

@@ -172,6 +172,49 @@ caught up with it.
 
 ---
 
+## Agency advancement and demotion — built (Trello card 172)
+
+`AgencyAdvancement` (`lib/games/high_low/services/agency_advancement.dart`) evaluates
+a just-finished session's `RoundInstrumentation` against the child's current agency
+capability, and `HighLowScreen` writes any recommended change back to the active
+profile once a session completes.
+
+- **Observe → Explore**: enough recent rounds were completed (both instruments
+  tapped, the earned arrow reached) without being skipped. Observe's own completion
+  criterion already *is* this signal — nothing further to check per round. The
+  parent-facing cue this needs ("a screen cannot tell an adult's finger from a
+  child's... make the adult a deliberate collaborator") is Observe's own caption,
+  reworded to say exactly that: "Encourage them to tap each instrument."
+- **Explore → Drag**: enough recent rounds hit the correct (sparkling) instrument
+  with few enough wrong taps. Deliberately never reads `firstResponseCorrect` as
+  *positive* tier-like evidence here — agency moves on demonstrated capability, and
+  the sparkle confound (a child may be following the sparkle, not the sound) means
+  this can only ever produce an *agency* recommendation, never touch `ConceptTier`.
+- **Drag demotion**: many failed drags in a row (motor difficulty), or several
+  rounds answered before either note finished playing (no evidence existed — the
+  same signal the invalid-round rule above already computes, reused here as a
+  demotion pattern rather than invented separately).
+- **"A few rounds"** (the cards' own phrase, no number given) is 3 consecutive
+  qualifying rounds within the same session — a judgment call, documented in the
+  code as such, not a value handed down by any card.
+
+**Deliberately not built:**
+- **Explore → Observe demotion.** The card says to be cautious: Observe removes the
+  ability to interact, so making a bored, disengaged child *more* passive likely
+  makes it worse; try variety (new instruments/notes at the same level) first. A
+  stateless per-session evaluator has no way to know whether variety was already
+  tried, so it holds rather than guessing. Revisit once there's a way to track that.
+- **A persisted, profile-scoped tracking log that actually records *why*.** Every
+  `AgencyEvaluation` carries a `reason` string (the cross-cutting rule from cards
+  169/172), but nothing persists it yet — `HighLowScreen` only `debugPrint`s it.
+  Building the real log is its own, separate undertaking.
+- **Response-time-based demotion beyond the notes-heard proxy.** "Chance-level
+  accuracy with near-zero response times" is approximated by "answered before either
+  note finished" (a boolean already computed for the invalid-round rule), not by an
+  actual measured response time — no per-response timestamp exists yet.
+
+---
+
 ## Weaker options
 
 Named so they're dismissed deliberately:

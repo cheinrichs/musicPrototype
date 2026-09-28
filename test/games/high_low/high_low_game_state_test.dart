@@ -688,7 +688,7 @@ void main() {
         state.startGame();
         await tester.pump();
 
-        expect(state.captionText, 'Let them explore freely.');
+        expect(state.captionText, 'Encourage them to tap each instrument.');
         expect(state.captionText, isNot(contains('Clef')));
         expect(state.captionText, isNot(contains('Piper')));
 
@@ -696,7 +696,7 @@ void main() {
         await tester.pump();
         expect(
           state.captionText,
-          'Let them explore freely.',
+          'Encourage them to tap each instrument.',
           reason: 'the low-pole round gets the identical caption',
         );
         state.dispose();

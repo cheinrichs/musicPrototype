@@ -2,14 +2,19 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ear_trainer/app/config.dart';
+import 'package:ear_trainer/app/router.dart';
 import 'package:ear_trainer/app/state/dev_settings_state.dart';
 import 'package:ear_trainer/app/state/profile_state.dart';
+import 'package:ear_trainer/app/state/progress_state.dart';
+import 'package:ear_trainer/app/state/skill_state.dart';
 import 'package:ear_trainer/models/profile.dart';
 import 'package:ear_trainer/games/high_low/ordering/ordering_screen.dart';
 import 'package:ear_trainer/games/high_low/screens/high_low_screen.dart';
+import 'package:ear_trainer/games/high_low/services/agency_advancement.dart';
 import 'package:ear_trainer/games/high_low/services/prompt_generator.dart';
 import 'package:ear_trainer/games/high_low/state/high_low_game_state.dart';
 import 'package:ear_trainer/games/high_low/ordering/ordering_slot.dart';
@@ -1153,5 +1158,144 @@ void main() {
       expect(find.text('Dev: agency setup'), findsNothing);
       await tester.pumpWidget(const SizedBox());
     });
+  });
+
+  group('agency comes from the active profile, not a hard-coded default '
+      '(Trello card 172)', () {
+    tearDown(() => devToolsEnabled = false);
+
+    testWidgets(
+      'a fresh child profile with no override starts the game at Observe, '
+      'not Drag — proven via Observe\'s own caption, since the screen '
+      'exposes no other way to read its internal game state from outside',
+      (tester) async {
+        devToolsEnabled = false; // the real, public-build auto-start path
+        final profileState = ProfileState();
+        await profileState.load();
+        profileState.selectProfile(await profileState.addProfile('Davis'));
+
+        await tester.pumpWidget(
+          MultiProvider(
+            providers: [ChangeNotifierProvider.value(value: profileState)],
+            child: const MaterialApp(home: HighLowScreen()),
+          ),
+        );
+        await tester.pump();
+        await tester.pump(Duration.zero);
+
+        expect(
+          find.text('Encourage them to tap each instrument.'),
+          findsOneWidget,
+        );
+        await tester.pumpWidget(const SizedBox());
+      },
+    );
+
+    testWidgets(
+      'a profile with an existing override starts the game at that stage '
+      'instead',
+      (tester) async {
+        devToolsEnabled = false;
+        final profileState = ProfileState();
+        await profileState.load();
+        final davis = await profileState.addProfile('Davis');
+        await profileState.setAgencyOverride(davis, AgencyStage.drag);
+        profileState.selectProfile(
+          profileState.profiles.firstWhere((p) => p.id == davis.id),
+        );
+
+        await tester.pumpWidget(
+          MultiProvider(
+            providers: [ChangeNotifierProvider.value(value: profileState)],
+            child: const MaterialApp(home: HighLowScreen()),
+          ),
+        );
+        await tester.pump();
+        for (var i = 0; i < 4; i++) {
+          await tester.pump(const Duration(milliseconds: 1200));
+        }
+        await tester.pump(Duration.zero);
+
+        // Drag is the only stage with a drop target.
+        expect(find.byType(DragTarget<int>), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'completing enough Observe rounds writes Explore back to the active '
+      'profile, with a reason recorded (debugPrint, until a real tracking '
+      'log exists)',
+      (tester) async {
+        final profileState = ProfileState();
+        await profileState.load();
+        final davis = await profileState.addProfile('Davis');
+        profileState.selectProfile(davis);
+
+        final state = HighLowGameState(
+          totalPrompts: AgencyAdvancement.roundsRequired,
+          agencyStage: AgencyStage.observe,
+        );
+        final router = GoRouter(
+          initialLocation: AppRoutes.highLow,
+          routes: [
+            GoRoute(
+              path: AppRoutes.highLow,
+              builder: (context, _) =>
+                  HighLowScreen(gameState: state, ownsGameState: true),
+            ),
+            GoRoute(
+              path: AppRoutes.reward,
+              builder: (context, _) => const Scaffold(body: Text('REWARD')),
+            ),
+          ],
+        );
+        await tester.pumpWidget(
+          MultiProvider(
+            providers: [
+              ChangeNotifierProvider.value(value: profileState),
+              ChangeNotifierProvider(create: (_) => ProgressState()),
+              ChangeNotifierProvider(create: (_) => SkillState()),
+            ],
+            child: MaterialApp.router(routerConfig: router),
+          ),
+        );
+        await tester.pump();
+
+        // Complete every round directly on the game state — proving the
+        // write-back only needs to observe [HighLowGameState.status]/
+        // [HighLowGameState.instrumentation], not simulate every tap
+        // through the UI (already covered elsewhere for the interaction
+        // itself).
+        for (
+          var round = 0;
+          round < AgencyAdvancement.roundsRequired - 1;
+          round++
+        ) {
+          state.tapInstrument(0);
+          state.tapInstrument(1);
+          state.tapArrow();
+          await tester.pump();
+        }
+        // The last round completes the session, which both writes the
+        // agency change back (a real SharedPreferences save) and navigates
+        // to the reward screen (its own flutter_animate startup timer) —
+        // let both actually resolve before the test ends.
+        state.tapInstrument(0);
+        state.tapInstrument(1);
+        state.tapArrow();
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 50)),
+        );
+        await tester.pump();
+        await tester.pump(Duration.zero);
+
+        expect(
+          profileState.profiles
+              .firstWhere((p) => p.id == davis.id)
+              .agencyOverride,
+          AgencyStage.explore,
+        );
+      },
+    );
   });
 }

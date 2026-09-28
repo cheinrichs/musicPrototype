@@ -50,9 +50,13 @@ class RoundInstrumentation {
   /// Trigger's tapping stays pure exploration.
   final int correctTapCount;
 
-  /// Wrong taps this round, Participate (A1) only — logged purely for
-  /// assessment; the gate itself ([correctTapCount] reaching five) never
-  /// looks at this. Zero at every other stage.
+  /// Wrong *responses* this round — wrong taps at Participate (A1; logged
+  /// purely for assessment, the gate itself ([correctTapCount] reaching
+  /// five) never looks at this) and, since Trello card 172 ("advancement
+  /// and demotion"), wrong drags at Trigger (A2) too: "a drag that never
+  /// reaches a target is motor difficulty — exactly what agency measures",
+  /// one of Drag's own demotion signals (see `AgencyAdvancement`). Zero at
+  /// Observe.
   final int wrongTapCount;
 
   const RoundInstrumentation({

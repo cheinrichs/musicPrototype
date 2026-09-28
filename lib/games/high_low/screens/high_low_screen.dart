@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:confetti/confetti.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -20,6 +22,7 @@ import '../../../ui/components/game_screen_layout.dart';
 import '../../../ui/components/glow_wiggle_character.dart';
 import '../../../ui/theme/theme.dart';
 import '../models/high_low_instrument.dart';
+import '../services/agency_advancement.dart';
 import '../models/round_report.dart';
 import '../services/round_report_service.dart';
 import '../state/high_low_game_state.dart';
@@ -99,6 +102,54 @@ class _HighLowScreenState extends State<HighLowScreen> {
     }
   }
 
+  /// The [ProfileState] above this screen, or null when none is provided —
+  /// same reasoning as [_resolveCanUseDevTools]'s fallback. Used both to
+  /// start a session at the active profile's own agency capability (Trello
+  /// card 172) and, at session end, to write an [AgencyAdvancement] result
+  /// back to it.
+  ProfileState? _resolveProfileState() {
+    try {
+      return context.read<ProfileState>();
+    } on ProviderNotFoundException {
+      return null;
+    }
+  }
+
+  /// Runs [AgencyAdvancement] against the session that just finished and,
+  /// if it recommends a change, writes it back to the active profile
+  /// (Trello card 172). A no-op with no active profile — dev-gate sessions
+  /// and most widget tests never reach this at all, and a session with no
+  /// profile behind it has nowhere to persist a capability change to.
+  ///
+  /// The reason a change was made is only [debugPrint]ed for now — no
+  /// persisted, profile-scoped tracking log exists yet to receive it (its
+  /// own, separate undertaking). Printing it is better than silently
+  /// dropping it while that infrastructure doesn't exist, not a
+  /// substitute for it.
+  void _evaluateAgencyAdvancement() {
+    final profileState = _resolveProfileState();
+    final profile = profileState?.activeProfile;
+    if (profileState == null || profile == null) return;
+
+    final current = profile.agencyOverride ?? AgencyStage.observe;
+    final evaluation = AgencyAdvancement.evaluate(
+      current: current,
+      instrumentation: _gameState.instrumentation,
+    );
+    final next = switch (evaluation.change) {
+      AgencyChange.advance => current.next,
+      AgencyChange.demote => current.previous,
+      AgencyChange.hold => null,
+    };
+    if (next == null) return;
+
+    debugPrint(
+      'Agency ${evaluation.change.name}: ${profile.name} '
+      '${current.label} -> ${next.label} (${evaluation.reason})',
+    );
+    unawaited(profileState.setAgencyOverride(profile, next));
+  }
+
   /// True after the dev gate picks a [ConceptTier.noteCount] 3 tier
   /// (T5-T8) — those tiers are real in [ConceptTier]/[PromptGenerator]
   /// (Trello card "Rebuild the tier ladder as eight tiers (2x2x2)"), but
@@ -163,6 +214,17 @@ class _HighLowScreenState extends State<HighLowScreen> {
     );
 
     if (!_canUseDevTools) {
+      // The child's own agency capability, not a hard-coded default —
+      // Trello card 172. Only when this screen made its own game state:
+      // a caller that injects one (every test that wants a known stage)
+      // has already made that choice on purpose, and must not be
+      // overridden by whatever profile happens to be active. No profile
+      // at all (or none active) defaults to Observe, the least demanding
+      // level — "the youngest kids aren't going to be able to drag."
+      if (widget.gameState == null) {
+        final profile = _resolveProfileState()?.activeProfile;
+        _gameState.agencyStage = profile?.agencyOverride ?? AgencyStage.observe;
+      }
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _gameState.startGame();
       });
@@ -183,6 +245,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
       _confettiController.play();
     }
     if (_gameState.status == GameStatus.completed) {
+      _evaluateAgencyAdvancement();
       final progressState = context.read<ProgressState>();
       progressState.completeSession(
         gameType: 'high_low',

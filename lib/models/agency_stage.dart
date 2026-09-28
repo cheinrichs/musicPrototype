@@ -69,4 +69,14 @@ enum AgencyStage {
     AgencyStage.explore => 'Explore',
     AgencyStage.drag => 'Drag',
   };
+
+  /// One capability step up, or null at the top of the ladder ([drag]) —
+  /// used by `AgencyAdvancement` so a bounds check never needs repeating at
+  /// every call site.
+  AgencyStage? get next => index < AgencyStage.values.length - 1
+      ? AgencyStage.values[index + 1]
+      : null;
+
+  /// One capability step down, or null at the bottom ([observe]).
+  AgencyStage? get previous => index > 0 ? AgencyStage.values[index - 1] : null;
 }
