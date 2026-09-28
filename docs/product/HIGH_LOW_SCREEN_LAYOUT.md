@@ -322,3 +322,15 @@ sounding) and there are no idle loops; a sound and a visible event go together;
 the layout does not reflow; progress and Skip are separate objects; transparency
 never means "not the speaker"; chrome is on cream plaques with warm brown, no
 true black in the scene; a miss is silent, never a wrong answer.
+
+**Never block, never hide (Trello card 171, confirmed as a standing rule
+across the agency cards).** Drop targets are always visible and always
+draggable, narration is always interruptible, and touching anything always
+does something, at every agency level and every phase of a round. Bad or
+premature evidence is *detected and marked* (see
+`ADVANCEMENT_SIGNALS.md`'s invalid-round rule) — it is never prevented by
+gating the UI. An earlier suggestion to hold the drop targets until the
+prompt finished playing is explicitly withdrawn; nothing in this codebase
+ever implemented it (`HighLowGameState.canDrop` has never gated on intro
+state), so there was nothing to undo, but the rule is worth stating
+positively so it isn't reinvented later.

@@ -49,7 +49,22 @@ happened, not in building an accurate detector.**
 Does the child let the stimulus play through before acting? Evidence of listening
 rather than poking.
 
-This is the A0→A1 signal for High/Low.
+This is the Observe→Explore signal for High/Low.
+
+> ⚠️ **Refined 2026-09-27 (Trello card 171) — measure against the notes, not the
+> narration.** An earlier version of this signal invalidated any round answered
+> before "the prompt" finished, full stop. Too broad: a prompt has a spoken
+> narration *and* the instrument notes, and the pole is conveyed three ways —
+> which character speaks, that character's voice pitch, and (once the tree-slot
+> mechanic landed) the slot's position on the tree. The spoken sentence is the
+> slowest of the three. A child who interrupts it but still hears both notes has
+> read a faster channel, not skipped the evidence — that's the designed
+> redundancy working. **Only mark a round invalid when the answer lands before
+> both notes have finished playing** — see
+> `HighLowGameState._bothNotesHeard`/`RoundInstrumentation.notesHeardBeforeFirstResponse`.
+> Worth also watching for runs of implausibly fast answers as a pattern (random
+> dragging until something sticks looks like a sequence of near-zero response
+> times) — not yet built; there's no defined threshold or storage for it yet.
 
 ### 2. First-response accuracy
 

@@ -198,6 +198,11 @@ void main() {
         expect(state.instrumentation, hasLength(1));
         expect(state.instrumentation.single.waitedForPlaythrough, isTrue);
         expect(state.instrumentation.single.firstResponseCorrect, isTrue);
+        expect(
+          state.instrumentation.single.notesHeardBeforeFirstResponse,
+          isTrue,
+          reason: 'both notes had time to finish before this drop',
+        );
 
         await tester.pump(const Duration(milliseconds: 1300));
         expect(
@@ -211,6 +216,105 @@ void main() {
         state.dispose();
       },
     );
+
+    group('the invalid-round rule (Trello card 171): measured against the '
+        'NOTES, not the narration', () {
+      testWidgets('a drop landing before either note has even started is never '
+          'blocked (Trello: "i don\'t think i want to hide the drop targets '
+          'ever" — detect and mark, never prevent) but is marked as having '
+          'no evidence behind it', (tester) async {
+        final state = HighLowGameState(
+          totalPrompts: 2,
+          agencyStage: AgencyStage.drag,
+          conceptTier: ConceptTier.t1,
+        );
+        state.startGame();
+        await tester.pump();
+
+        final prompt = state.currentPrompt!;
+        expect(
+          state.canDrop,
+          isTrue,
+          reason: 'never gated on whether the prompt has played at all',
+        );
+        state.dropInstrument(prompt.targetSide);
+        await tester.pump();
+
+        expect(
+          state.dragFeedback,
+          DragFeedback.correct,
+          reason: 'the drop itself is not prevented or judged differently',
+        );
+        expect(state.instrumentation, hasLength(1));
+        expect(
+          state.instrumentation.single.notesHeardBeforeFirstResponse,
+          isFalse,
+          reason: 'no evidence existed yet — this is an invalid measurement',
+        );
+
+        await tester.pump(const Duration(milliseconds: 1300));
+        state.dispose();
+      });
+
+      testWidgets(
+        'a drop landing while the second note is still ringing is also '
+        'marked invalid — hearing only one of the two notes is not enough '
+        'evidence either',
+        (tester) async {
+          final state = HighLowGameState(
+            totalPrompts: 2,
+            agencyStage: AgencyStage.drag,
+            conceptTier: ConceptTier.t1,
+          );
+          state.startGame();
+          await tester.pump();
+          // Past the first note's ring-out, partway into the second's.
+          await tester.pump(const Duration(milliseconds: 2600));
+
+          final prompt = state.currentPrompt!;
+          state.dropInstrument(prompt.targetSide);
+          await tester.pump();
+
+          expect(
+            state.instrumentation.single.notesHeardBeforeFirstResponse,
+            isFalse,
+          );
+
+          await tester.pump(const Duration(milliseconds: 1300));
+          state.dispose();
+        },
+      );
+
+      testWidgets(
+        'a drop after both notes have fully rung out is marked valid, even '
+        'on a tier with a replay in between',
+        (tester) async {
+          final state = HighLowGameState(
+            totalPrompts: 2,
+            agencyStage: AgencyStage.drag,
+            conceptTier: ConceptTier.t1,
+          );
+          state.startGame();
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 4700));
+          state.replay();
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 4700));
+
+          final prompt = state.currentPrompt!;
+          state.dropInstrument(prompt.targetSide);
+          await tester.pump();
+
+          expect(
+            state.instrumentation.single.notesHeardBeforeFirstResponse,
+            isTrue,
+          );
+
+          await tester.pump(const Duration(milliseconds: 1300));
+          state.dispose();
+        },
+      );
+    });
 
     testWidgets(
       'a wrong drop is never a failure state — gentle retry, no score, no advance',

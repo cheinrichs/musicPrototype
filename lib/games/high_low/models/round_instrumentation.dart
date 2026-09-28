@@ -4,7 +4,11 @@
 class RoundInstrumentation {
   final int promptNumber;
 
-  /// False if a tap cut the intro playthrough short before it finished.
+  /// False if a tap cut the intro playthrough short before it finished —
+  /// the narration, not necessarily the notes (see
+  /// [notesHeardBeforeFirstResponse] for the narrower, evidentiary
+  /// question). Interrupting narration is not itself a problem — see that
+  /// field's doc comment.
   final bool waitedForPlaythrough;
 
   /// Whether the child's first tap/drag this round — made before any
@@ -12,6 +16,25 @@ class RoundInstrumentation {
   /// correct side. Null when the stage has no target to be right or wrong
   /// about (Observe), or when no such tap happened.
   final bool? firstResponseCorrect;
+
+  /// Whether both notes of the pair had already finished ringing out by
+  /// the time of the round's first response (Trello card 171, "the
+  /// invalid-round rule — measure against the notes, not the narration").
+  /// Null until a response has happened, same as [firstResponseCorrect].
+  ///
+  /// **False here means the round is an invalid measurement, not a wrong
+  /// answer** — there was no evidence available yet, whatever
+  /// [firstResponseCorrect] says. It must not feed tier advancement
+  /// (correct or wrong), though it still counts toward agency's own
+  /// capability signal (a fast wrong drag still demonstrates the child can
+  /// drag). A **false** on [waitedForPlaythrough] alongside a **true**
+  /// here is the expected, healthy case: the child skipped the narration
+  /// but still heard both notes — the pole is conveyed three ways (which
+  /// character speaks, that character's voice pitch, and the slot's
+  /// position on the tree), and the spoken sentence is the slowest of the
+  /// three, so interrupting it is the designed redundancy working, not
+  /// cheating.
+  final bool? notesHeardBeforeFirstResponse;
 
   /// How many times "Listen Again" was pressed this round.
   final int listenAgainCount;
@@ -36,6 +59,7 @@ class RoundInstrumentation {
     required this.promptNumber,
     required this.waitedForPlaythrough,
     required this.firstResponseCorrect,
+    this.notesHeardBeforeFirstResponse,
     required this.listenAgainCount,
     this.correctTapCount = 0,
     this.wrongTapCount = 0,

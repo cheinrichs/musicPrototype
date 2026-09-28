@@ -141,6 +141,39 @@ class HighLowGameState extends ChangeNotifier {
 
   bool _introPlaying = false;
 
+  /// Whether *both* notes of this round's pair have actually finished
+  /// ringing out — the narrower, correct half of the invalid-round rule
+  /// (Trello card 171, refining an earlier, too-broad version of itself).
+  /// An answer given before the **narration** finishes is not evidence of
+  /// anything wrong: the pole is conveyed three ways (which character
+  /// speaks, the pitch of that character's voice, and the slot's position
+  /// on the tree) and the spoken sentence is the slowest of the three, so a
+  /// child who interrupts it and goes straight to the instruments has read
+  /// a faster channel, not cheated. An answer given before *both notes*
+  /// have played, though, had no evidence available at all — see
+  /// [_firstResponseHeardBothNotes], which captures this at the moment of
+  /// the round's first response.
+  ///
+  /// Reset false at the top of every [_runIntro] call (a fresh round, a
+  /// retry's replay, or an explicit Listen Again all restart the pair) and
+  /// set true only at its natural tail, once the second note's own ring-out
+  /// wait has elapsed — never on the early-exit path [tapInstrument] takes
+  /// to cut the pair short, which is exactly the case this must stay false
+  /// for.
+  bool _bothNotesHeard = false;
+
+  /// Whether [_bothNotesHeard] was already true at the moment of this
+  /// round's first response (right or wrong) — null until a response has
+  /// happened. Captured once, at the same two sites and with the same
+  /// first-wins semantics as [_firstResponseCorrect], and threaded into
+  /// [RoundInstrumentation.notesHeardBeforeFirstResponse] so an answer with
+  /// no evidence behind it can be excluded from tier advancement without
+  /// being treated as a wrong answer (it may even have been marked
+  /// correct) or blocked from happening at all (Trello card 171: "i don't
+  /// think i want to hide the drop targets ever" — detect and mark, never
+  /// prevent).
+  bool? _firstResponseHeardBothNotes;
+
   /// Whether Participate's target-side instrument has started sparkling
   /// yet this round — used only to gate [_firstResponseCorrect] below to
   /// "before any hint existed"; no longer drives anything on screen
@@ -542,6 +575,7 @@ class HighLowGameState extends ChangeNotifier {
     _waitedForPlaythrough = true;
     _firstResponseSide = null;
     _firstResponseCorrect = null;
+    _firstResponseHeardBothNotes = null;
     _listenAgainCount = 0;
     _correctTapCumulative = 0;
     _wrongTapCount = 0;
@@ -592,6 +626,7 @@ class HighLowGameState extends ChangeNotifier {
     if (prompt == null) return;
 
     _introPlaying = true;
+    _bothNotesHeard = false;
     _cancelTapRingTimer();
     _playingIndex = 0;
     if (agencyStage == AgencyStage.observe) {
@@ -642,6 +677,7 @@ class HighLowGameState extends ChangeNotifier {
     await _delay(_noteRingDuration);
     if (token != _roundToken) return;
 
+    _bothNotesHeard = true;
     _finishIntro(token);
   }
 
@@ -712,6 +748,7 @@ class HighLowGameState extends ChangeNotifier {
         !hintWasVisible) {
       _firstResponseSide = side;
       _firstResponseCorrect = side == prompt.targetSide;
+      _firstResponseHeardBothNotes = _bothNotesHeard;
     }
 
     // Observe's per-note narration comes before the arrow-coverage check
@@ -808,6 +845,7 @@ class HighLowGameState extends ChangeNotifier {
 
     _firstResponseSide ??= side;
     _firstResponseCorrect ??= side == prompt.targetSide;
+    _firstResponseHeardBothNotes ??= _bothNotesHeard;
 
     if (side == prompt.targetSide) {
       _celebrateCorrect(side);
@@ -899,6 +937,7 @@ class HighLowGameState extends ChangeNotifier {
         promptNumber: prompt.promptNumber,
         waitedForPlaythrough: _waitedForPlaythrough,
         firstResponseCorrect: _firstResponseCorrect,
+        notesHeardBeforeFirstResponse: _firstResponseHeardBothNotes,
         listenAgainCount: _listenAgainCount,
         correctTapCount: _correctTapCumulative,
         wrongTapCount: _wrongTapCount,
