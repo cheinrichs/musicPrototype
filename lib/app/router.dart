@@ -1,6 +1,7 @@
 import 'package:go_router/go_router.dart';
 import '../ui/screens/credits_screen.dart';
 import '../ui/screens/main_shell.dart';
+import '../ui/screens/profile_picker_screen.dart';
 import '../ui/screens/songstone_home_screen.dart';
 import '../games/high_low/screens/high_low_screen.dart';
 import '../games/scale_direction/screens/scale_direction_screen.dart';
@@ -16,6 +17,7 @@ import '../ui/screens/skill_profile_screen.dart';
 
 /// App routes configuration
 class AppRoutes {
+  static const String profilePicker = '/profile';
   static const String landing = '/welcome';
   static const String home = '/';
   static const String highLow = '/high-low';
@@ -34,8 +36,14 @@ class AppRoutes {
 
 /// Create the app router
 final GoRouter appRouter = GoRouter(
-  initialLocation: AppRoutes.landing,
+  // "Pick a profile at launch" (Trello card 170) — the real first screen,
+  // ahead of the branded landing screen.
+  initialLocation: AppRoutes.profilePicker,
   routes: [
+    GoRoute(
+      path: AppRoutes.profilePicker,
+      builder: (context, state) => const ProfilePickerScreen(),
+    ),
     GoRoute(
       path: AppRoutes.landing,
       builder: (context, state) => const SongStoneHomeScreen(),

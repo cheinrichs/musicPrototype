@@ -3,8 +3,11 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ear_trainer/app/config.dart';
 import 'package:ear_trainer/app/state/dev_settings_state.dart';
+import 'package:ear_trainer/app/state/profile_state.dart';
+import 'package:ear_trainer/models/profile.dart';
 import 'package:ear_trainer/games/high_low/ordering/ordering_screen.dart';
 import 'package:ear_trainer/games/high_low/screens/high_low_screen.dart';
 import 'package:ear_trainer/games/high_low/services/prompt_generator.dart';
@@ -16,6 +19,13 @@ import 'package:ear_trainer/models/agency_stage.dart';
 import 'package:ear_trainer/ui/components/progress_dots.dart';
 
 void main() {
+  // Only the new "dev gate scoped to the adult profile" group below
+  // actually constructs a ProfileState; harmless for every other test in
+  // this file.
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+  });
+
   // iPhone SE in landscape — the tightest realistic viewport this screen
   // has to fit into.
   const tightViewport = Size(667, 375);
@@ -1088,6 +1098,60 @@ void main() {
       for (final r in [close, skip, listen]) {
         expect(r.overlaps(bottomBand), isFalse);
       }
+    });
+  });
+
+  group('the dev gate is scoped to the adult profile (Trello card 170: an '
+      'internal build a child is using must not show dev tools either)', () {
+    tearDown(() => devToolsEnabled = false);
+
+    Future<void> pumpWithProfile(WidgetTester tester, Profile? profile) async {
+      devToolsEnabled = true;
+      final profileState = ProfileState();
+      await profileState.load();
+      if (profile != null) profileState.selectProfile(profile);
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider.value(value: profileState),
+            ChangeNotifierProvider(create: (_) => DevSettingsState()),
+          ],
+          child: const MaterialApp(home: HighLowScreen()),
+        ),
+      );
+      await tester.pump();
+      // Flushes flutter_animate's zero-duration startup timer — see the
+      // matching comment on pumpAndFinishIntro above.
+      await tester.pump(Duration.zero);
+    }
+
+    testWidgets('shows for the adult profile', (tester) async {
+      await pumpWithProfile(
+        tester,
+        const Profile(id: 'p1', name: 'Cooper', isAdult: true),
+      );
+      expect(find.text('Dev: agency setup'), findsOneWidget);
+    });
+
+    testWidgets('does not show for a child profile — the game auto-starts '
+        'instead, same as a public build', (tester) async {
+      await pumpWithProfile(
+        tester,
+        const Profile(id: 'p2', name: 'Davis', isAdult: false),
+      );
+      expect(find.text('Dev: agency setup'), findsNothing);
+      // The game auto-started (correct) and its intro is now mid-flight
+      // with its own pending timers — unmount rather than leave the test
+      // to notice them as unfinished.
+      await tester.pumpWidget(const SizedBox());
+    });
+
+    testWidgets('does not show with no profile selected at all', (
+      tester,
+    ) async {
+      await pumpWithProfile(tester, null);
+      expect(find.text('Dev: agency setup'), findsNothing);
+      await tester.pumpWidget(const SizedBox());
     });
   });
 }

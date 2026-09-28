@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import '../../app/config.dart';
+import '../../app/state/profile_state.dart';
 import '../../app/state/skill_state.dart';
 import '../../models/musical_skill.dart';
 import '../theme/theme.dart';
@@ -63,7 +63,10 @@ class SkillProfileScreen extends StatelessWidget {
               style: AppTypography.heading2.copyWith(color: AppColors.primary),
             ),
           ),
-          if (devToolsEnabled) ...[
+          // Gated to the adult profile, not just an internal build (Trello
+          // card 170) — an internal build a child is using must not show
+          // dev tools either.
+          if (context.watch<ProfileState>().canUseDevTools) ...[
             IconButton(
               onPressed: () => context.read<SkillState>().seedRandom(),
               icon: const Icon(Icons.casino_rounded),

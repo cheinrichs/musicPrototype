@@ -1,11 +1,24 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Global progress state for tracking user achievements
+/// Progress state for tracking user achievements — scoped to whichever
+/// profile is active (Trello card 170, "local profiles"). [loadForProfile]
+/// is the real entry point once profiles exist; the parameterless [load]
+/// is a legacy/unscoped fallback kept only so a caller with no profile
+/// context yet (or a test) still gets a working, if globally-shared, store.
 class ProgressState extends ChangeNotifier {
-  static const String _totalSessionsKey = 'total_sessions';
-  static const String _highLowSessionsKey = 'high_low_sessions';
-  static const String _completedNodesKey = 'completed_nodes';
+  static const String _totalSessionsKeyBase = 'total_sessions';
+  static const String _highLowSessionsKeyBase = 'high_low_sessions';
+  static const String _completedNodesKeyBase = 'completed_nodes';
+
+  /// Which profile's data this instance currently holds — null means the
+  /// legacy, unscoped store. Included in every key via [_key] so switching
+  /// profiles (a fresh [loadForProfile] call) can never read or write
+  /// another child's data.
+  String? _profileId;
+
+  String _key(String base) =>
+      _profileId == null ? base : 'profile_${_profileId}_$base';
 
   int _totalSessions = 0;
   int _highLowSessions = 0;
@@ -21,15 +34,30 @@ class ProgressState extends ChangeNotifier {
   Set<String> get completedNodeIds => Set.unmodifiable(_completedNodeIds);
   bool get pendingPathReturn => _pendingPathReturn;
 
-  /// Load progress from local storage
+  /// Load progress from local storage, unscoped. See the class doc — prefer
+  /// [loadForProfile] once a profile is known.
   Future<void> load() async {
     if (_isLoaded) return;
+    await _loadInternal();
+  }
 
+  /// Load (or reload) progress scoped to [profileId] — the child whose data
+  /// this session should read and write from here on. Always re-reads, even
+  /// if already loaded, since switching the active profile mid-session
+  /// (picking a different child) must never leave the previous child's
+  /// counts sitting in memory.
+  Future<void> loadForProfile(String profileId) async {
+    _profileId = profileId;
+    _isLoaded = false;
+    await _loadInternal();
+  }
+
+  Future<void> _loadInternal() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      _totalSessions = prefs.getInt(_totalSessionsKey) ?? 0;
-      _highLowSessions = prefs.getInt(_highLowSessionsKey) ?? 0;
-      final savedNodes = prefs.getString(_completedNodesKey) ?? '';
+      _totalSessions = prefs.getInt(_key(_totalSessionsKeyBase)) ?? 0;
+      _highLowSessions = prefs.getInt(_key(_highLowSessionsKeyBase)) ?? 0;
+      final savedNodes = prefs.getString(_key(_completedNodesKeyBase)) ?? '';
       _completedNodeIds = savedNodes.isEmpty
           ? {}
           : savedNodes.split(',').toSet();
@@ -45,9 +73,12 @@ class ProgressState extends ChangeNotifier {
   Future<void> _save() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setInt(_totalSessionsKey, _totalSessions);
-      await prefs.setInt(_highLowSessionsKey, _highLowSessions);
-      await prefs.setString(_completedNodesKey, _completedNodeIds.join(','));
+      await prefs.setInt(_key(_totalSessionsKeyBase), _totalSessions);
+      await prefs.setInt(_key(_highLowSessionsKeyBase), _highLowSessions);
+      await prefs.setString(
+        _key(_completedNodesKeyBase),
+        _completedNodeIds.join(','),
+      );
     } catch (e) {
       // Silently fail - progress will be saved next time
     }

@@ -13,9 +13,23 @@ const int _maxLevel = 5;
 
 /// Tracks per-skill XP and derived levels for all 11 musical skill nodes.
 /// Intended for developer / parent visibility — not directly shown to kids.
+///
+/// Scoped to whichever profile is active (Trello card 170) — see
+/// [loadForProfile], the real entry point once profiles exist; the
+/// parameterless [load] is a legacy/unscoped fallback, same as
+/// [ProgressState]'s.
 class SkillState extends ChangeNotifier {
   final Map<MusicalSkill, int> _xp = {};
   bool _isLoaded = false;
+
+  /// Which profile's data this instance currently holds — null means the
+  /// legacy, unscoped store. See [ProgressState._profileId]'s doc comment;
+  /// same reasoning here.
+  String? _profileId;
+
+  String _key(MusicalSkill skill) => _profileId == null
+      ? 'skill_xp_${skill.name}'
+      : 'profile_${_profileId}_skill_xp_${skill.name}';
 
   bool get isLoaded => _isLoaded;
 
@@ -51,9 +65,25 @@ class SkillState extends ChangeNotifier {
     _save();
   }
 
-  /// Load XP values from local storage.
+  /// Load XP values from local storage, unscoped. See the class doc —
+  /// prefer [loadForProfile] once a profile is known.
   Future<void> load() async {
     if (_isLoaded) return;
+    await _loadInternal();
+  }
+
+  /// Load (or reload) XP scoped to [profileId]. Always re-reads, even if
+  /// already loaded — see [ProgressState.loadForProfile]'s doc comment for
+  /// why switching profiles mid-session must never leave stale data in
+  /// memory.
+  Future<void> loadForProfile(String profileId) async {
+    _profileId = profileId;
+    _isLoaded = false;
+    _xp.clear();
+    await _loadInternal();
+  }
+
+  Future<void> _loadInternal() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       for (final skill in MusicalSkill.values) {
@@ -100,8 +130,6 @@ class SkillState extends ChangeNotifier {
       }
     } catch (_) {}
   }
-
-  static String _key(MusicalSkill skill) => 'skill_xp_${skill.name}';
 
   static int _levelFromXp(int xp) {
     for (var i = _maxLevel; i >= 1; i--) {

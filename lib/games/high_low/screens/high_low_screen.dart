@@ -7,6 +7,7 @@ import '../../../app/build_info.dart';
 import '../../../app/config.dart';
 import '../../../app/router.dart';
 import '../../../app/state/dev_settings_state.dart';
+import '../../../app/state/profile_state.dart';
 import '../../../app/state/progress_state.dart';
 import '../../../app/state/skill_state.dart';
 import '../../../models/agency_stage.dart';
@@ -73,7 +74,30 @@ class HighLowScreen extends StatefulWidget {
 class _HighLowScreenState extends State<HighLowScreen> {
   late HighLowGameState _gameState;
   late final bool _ownsGameState;
-  bool _showDevGate = devToolsEnabled;
+
+  /// Whether the dev gate can show at all — an internal build ([devToolsEnabled])
+  /// AND the active profile being the adult's (Trello card 170: an internal
+  /// build a child is using must not show dev tools either). Computed once
+  /// in [initState], same lifecycle as [_ownsGameState].
+  late final bool _canUseDevTools;
+  late bool _showDevGate;
+
+  /// [ProfileState.canUseDevTools], falling back to the pre-profile
+  /// [devToolsEnabled] alone when no [ProfileState] is provided above this
+  /// screen — most widget tests construct [HighLowScreen] directly, without
+  /// the app's full provider stack, and don't care about profile gating at
+  /// all; forcing every one of them to also wire up a [ProfileState] would
+  /// be a lot of unrelated churn for no real safety gain, since the actual
+  /// app always provides one at its root (see `EarTrainerApp`). Tests that
+  /// DO care about the gating provide a [ProfileState] explicitly and get
+  /// the real value.
+  bool _resolveCanUseDevTools() {
+    try {
+      return context.read<ProfileState>().canUseDevTools;
+    } on ProviderNotFoundException {
+      return devToolsEnabled;
+    }
+  }
 
   /// True after the dev gate picks a [ConceptTier.noteCount] 3 tier
   /// (T5-T8) — those tiers are real in [ConceptTier]/[PromptGenerator]
@@ -129,6 +153,8 @@ class _HighLowScreenState extends State<HighLowScreen> {
   @override
   void initState() {
     super.initState();
+    _canUseDevTools = _resolveCanUseDevTools();
+    _showDevGate = _canUseDevTools;
     _ownsGameState = widget.gameState == null || widget.ownsGameState;
     _gameState = widget.gameState ?? HighLowGameState();
     _gameState.addListener(_onGameStateChanged);
@@ -136,7 +162,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
       duration: AppAnimations.confettiBurst,
     );
 
-    if (!devToolsEnabled) {
+    if (!_canUseDevTools) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _gameState.startGame();
       });
@@ -351,7 +377,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
               // [HighLowGameState.secondaryCaptionText]'s doc comment.
               captionText:
                   _gameState.secondaryCaptionText ?? _gameState.captionText,
-              reportButtonKey: devToolsEnabled ? _reportButtonKey : null,
+              reportButtonKey: _canUseDevTools ? _reportButtonKey : null,
               onReportTap: _gameState.currentPrompt == null
                   ? null
                   : _onReportRound,

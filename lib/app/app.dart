@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../ui/theme/theme.dart';
 import 'router.dart';
 import 'state/dev_settings_state.dart';
+import 'state/profile_state.dart';
 import 'state/progress_state.dart';
 import 'state/skill_state.dart';
 
@@ -15,8 +16,13 @@ class EarTrainerApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => ProgressState()..load()),
-        ChangeNotifierProvider(create: (_) => SkillState()..load()),
+        ChangeNotifierProvider(create: (_) => ProfileState()..load()),
+        // Not eagerly loaded (Trello card 170): there is no profile to scope
+        // to until [ProfilePickerScreen] picks one — see
+        // [ProgressState.loadForProfile]/[SkillState.loadForProfile], which
+        // it calls once a choice is made.
+        ChangeNotifierProvider(create: (_) => ProgressState()),
+        ChangeNotifierProvider(create: (_) => SkillState()),
         ChangeNotifierProvider(create: (_) => DevSettingsState()),
       ],
       child: MaterialApp.router(
