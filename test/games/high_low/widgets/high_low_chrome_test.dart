@@ -12,12 +12,62 @@ Widget host(Widget child) => MaterialApp(
 );
 
 void main() {
-  group('caption plaque', () {
-    testWidgets('sits on the same cream plaque as the rest of the chrome '
-        'instead of floating bare on the scenery — a caption over hills or '
-        'a tree would otherwise vanish into the background', (tester) async {
+  group('caption with no plate (the default, 2026-09-28)', () {
+    testWidgets('no plaque is painted behind the text — Cooper, on device: '
+        '"no tan bubble — plain text, legibility via colour choice, not a '
+        'plate"', (tester) async {
       await tester.pumpWidget(
         host(const HighLowCaption(text: 'Let them explore freely.')),
+      );
+      await tester.pump(AppAnimations.medium);
+
+      final plaque = tester
+          .widgetList<DecoratedBox>(
+            find.descendant(
+              of: find.byType(HighLowCaption),
+              matching: find.byType(DecoratedBox),
+            ),
+          )
+          .map((c) => c.decoration)
+          .whereType<BoxDecoration>()
+          .where((d) => d.gradient != null);
+      expect(plaque, isEmpty, reason: 'no plate by default');
+    });
+
+    testWidgets('the text is white with a dark shadow instead — legibility '
+        'over the meadow without a plaque behind it', (tester) async {
+      await tester.pumpWidget(
+        host(const HighLowCaption(text: 'Let them explore freely.')),
+      );
+      await tester.pump(AppAnimations.medium);
+
+      final text = tester.widget<Text>(find.text('Let them explore freely.'));
+      expect(text.style!.color, Colors.white);
+      expect(text.style!.shadows, isNotEmpty);
+    });
+
+    testWidgets(
+      'the game name shows even with no round instruction yet (briefly, '
+      'before the intro finishes) — it is constant, not round-specific',
+      (tester) async {
+        await tester.pumpWidget(host(const HighLowCaption(text: null)));
+        await tester.pump(AppAnimations.medium);
+        expect(find.text(HighLowCaption.gameName), findsOneWidget);
+      },
+    );
+  });
+
+  group('caption plaque (opt-in, plate: true)', () {
+    testWidgets('sits on a cream plaque instead of floating bare on the '
+        'scenery — a caption over hills or a tree would otherwise vanish '
+        'into the background', (tester) async {
+      await tester.pumpWidget(
+        host(
+          const HighLowCaption(
+            text: 'Let them explore freely.',
+            plate: true,
+          ),
+        ),
       );
       await tester.pump(AppAnimations.medium);
 
@@ -37,7 +87,12 @@ void main() {
     testWidgets('the text is a warm dark brown — there is no true black '
         'anywhere else in that scene', (tester) async {
       await tester.pumpWidget(
-        host(const HighLowCaption(text: 'Let them explore freely.')),
+        host(
+          const HighLowCaption(
+            text: 'Let them explore freely.',
+            plate: true,
+          ),
+        ),
       );
       await tester.pump(AppAnimations.medium);
 
@@ -54,7 +109,9 @@ void main() {
       'before the intro finishes) — it is constant, not round-specific, so '
       'the plate never disappears',
       (tester) async {
-        await tester.pumpWidget(host(const HighLowCaption(text: null)));
+        await tester.pumpWidget(
+          host(const HighLowCaption(text: null, plate: true)),
+        );
         await tester.pump(AppAnimations.medium);
         expect(find.text(HighLowCaption.gameName), findsOneWidget);
         expect(
@@ -132,9 +189,11 @@ void main() {
   });
 
   group('header', () {
+    // Matches GameScreenLayout's own real ancestor padding (AppSpacing.lg
+    // horizontal) — HighLowHeader cancels exactly this to land Close/Skip on
+    // the true edge, so the test harness must reproduce it, not a bare host.
     Widget header({
       String? caption = 'Help them drag the higher instrument to Clef.',
-      bool report = false,
       VoidCallback? onSkip,
       bool skipEnabled = true,
     }) => host(
@@ -145,39 +204,36 @@ void main() {
           captionText: caption,
           skipEnabled: skipEnabled,
           onSkip: onSkip,
-          reportButtonKey: report ? GlobalKey() : null,
-          onReportTap: report ? () {} : null,
           below: const Text('LISTEN'),
         ),
       ),
     );
 
-    for (final report in [false, true]) {
-      testWidgets('the caption is centred on the SCREEN — with the dev '
-          'report button ${report ? 'shown' : 'hidden'} (it used to sit '
-          'well left of centre)', (tester) async {
-        tester.view.physicalSize = const Size(844, 390);
-        tester.view.devicePixelRatio = 1.0;
-        addTearDown(() {
-          tester.view.resetPhysicalSize();
-          tester.view.resetDevicePixelRatio();
-        });
-        await tester.pumpWidget(header(report: report));
-        await tester.pump(AppAnimations.medium);
-        final caption = tester.getRect(
-          find
-              .descendant(
-                of: find.byType(HighLowCaption),
-                matching: find.byType(DecoratedBox),
-              )
-              .first,
-        );
-        expect(caption.center.dx, closeTo(844 / 2, 1.0));
+    testWidgets('the caption is centred on the SCREEN (it used to sit well '
+        'left of centre)', (tester) async {
+      tester.view.physicalSize = const Size(844, 390);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
       });
-    }
+      await tester.pumpWidget(header());
+      await tester.pump(AppAnimations.medium);
+      final caption = tester.getRect(
+        find
+            .descendant(
+              of: find.byType(HighLowCaption),
+              matching: find.byType(DecoratedBox),
+            )
+            .first,
+      );
+      expect(caption.center.dx, closeTo(844 / 2, 1.0));
+    });
 
-    testWidgets('close is top-left, Skip is top-right, and Listen Again sits '
-        'directly beneath the caption, centred', (tester) async {
+    testWidgets('close and Skip hug the true screen edges — the ancestor '
+        'padding every other screen keeps is cancelled for these two only '
+        '(Cooper, on device: "as far left/right as possible, at every '
+        'screen size")', (tester) async {
       tester.view.physicalSize = const Size(844, 390);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(() {
@@ -190,8 +246,10 @@ void main() {
       final skip = tester.getRect(find.byTooltip('Skip'));
       final caption = tester.getRect(find.byType(HighLowCaption));
       final listen = tester.getRect(find.text('LISTEN'));
-      expect(close.left, lessThan(80));
-      expect(skip.right, greaterThan(844 - 80));
+      // The host has no device inset, so "true edge" is x = 0 / x = 844,
+      // right up to the button's own bounds.
+      expect(close.left, closeTo(0, 1.0));
+      expect(skip.right, closeTo(844, 1.0));
       expect(listen.center.dx, closeTo(844 / 2, 1.0));
       expect(listen.top, greaterThanOrEqualTo(caption.bottom - 0.5));
     });

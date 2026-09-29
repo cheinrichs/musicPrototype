@@ -1065,9 +1065,10 @@ void main() {
       }
     });
 
-    testWidgets('the layout: close top-left, Skip top-right (small), the '
-        'caption centred with Listen Again directly beneath it, no progress '
-        'indicator, and nothing along the bottom', (tester) async {
+    testWidgets('the layout: close and Skip hug the true top corners, the '
+        'caption is centred, Listen Again sits below the stumps (not under '
+        'the caption — 2026-09-28, Cooper: "I like listen again below the '
+        'stumps"), and there is no progress indicator', (tester) async {
       await pumpAndFinishIntro(tester, viewport: roomyViewport);
       final size = roomyViewport;
 
@@ -1082,8 +1083,12 @@ void main() {
       expect(skip.center.dy, lessThan(size.height * 0.25));
       expect(skip.height, lessThanOrEqualTo(44));
       expect(caption.center.dx, closeTo(size.width / 2, 1.0));
-      expect(listen.top, greaterThanOrEqualTo(caption.bottom - 0.5));
-      expect(listen.center.dx, closeTo(size.width / 2, 40));
+      // Listen Again now lives in the scene, below the stumps on the left —
+      // no longer under the (screen-centred) caption, and no longer
+      // excluded from the bottom of the screen: that's exactly where it is
+      // now, by design.
+      expect(listen.top, greaterThan(caption.bottom));
+      expect(listen.center.dx, lessThan(size.width * 0.5));
       expect(
         find.byType(ProgressDots),
         findsNothing,
@@ -1093,14 +1098,17 @@ void main() {
       );
       expect(find.text('I want something new'), findsNothing);
 
-      // Nothing interactive along the bottom edge.
+      // Close and Skip stay out of the bottom band (still adult/escape
+      // controls, up top per the thumb-reach principle); Listen Again is
+      // deliberately excluded from this check now — it belongs low on
+      // screen, below the stumps.
       final bottomBand = Rect.fromLTWH(
         0,
         size.height * 0.88,
         size.width,
         size.height * 0.12,
       );
-      for (final r in [close, skip, listen]) {
+      for (final r in [close, skip]) {
         expect(r.overlaps(bottomBand), isFalse);
       }
     });

@@ -18,14 +18,46 @@ import 'high_low_caption.dart';
 /// The explicit gaps also guarantee a minimum margin either side, however
 /// wide the caption's own text needs to be (Trello card hIKjobsB: a long
 /// caption's text once ran flush against the close button).
+///
+/// **Close and Skip hug the true screen edges, at every screen size**
+/// (2026-09-28, Cooper, on device: "Close button as far left as possible,
+/// Skip as far right" — the stated principle behind it: "on a phone held in
+/// landscape, a small child's thumbs reach the bottom corners and very
+/// little else... keep adult and destructive controls up top where they
+/// can't be hit by accident," which argues for these two sitting hard
+/// against the top corners rather than drifting inward). This widget is
+/// always built inside [GameScreenLayout]'s own `SafeArea` +
+/// `EdgeInsets.symmetric(horizontal: AppSpacing.lg)` padding, so canceling
+/// that fixed inset with an equal, opposite [Transform.translate] on each
+/// side lands both controls flush against the safe-content edge — the
+/// notch/inset itself is already carved out by the ancestor `SafeArea`
+/// before this padding is applied, so this still respects a notch, it just
+/// removes the *extra* margin GameScreenLayout adds for every other screen.
+/// A translate (not a layout change) is deliberate: it moves the paint (and
+/// the hit-test region, which `RenderTransform` carries along) without
+/// touching how much width this row still reserves for [sideWidth] — the
+/// caption's own centering is unaffected.
+///
+/// **The dev-only report button no longer lives here** (2026-09-28 — it used
+/// to sit beside Skip). Cooper: "the report button only exists for dev
+/// testing and really only for my profile" — a control no child ever sees
+/// doesn't need to compete with Skip for top-right room, and per the
+/// thumb-reach principle above, [HighLowScreen] now renders it itself as its
+/// own bottom-left overlay instead.
 class HighLowHeader extends StatelessWidget {
   /// Width reserved on each side of the caption, the same in every build so
-  /// the caption is always centred. Wide enough for Skip; the dev-only report
-  /// button beside it scales the cluster down a little rather than taking
-  /// room from the caption (a wider column made the longest captions wrap to
-  /// a third line and ellipsize on an iPhone 17 — caught in a simulator
-  /// screenshot).
+  /// the caption is always centred. Wide enough for Skip on its own (the
+  /// dev-only report button that used to share this column is gone —
+  /// 2026-09-28); [FittedBox] below is still the safety net if a platform's
+  /// text scaling makes Skip wider than this regardless.
   static const double sideWidth = 120;
+
+  /// Cancels [GameScreenLayout]'s own horizontal padding so Close/Skip land
+  /// on the true safe-content edge instead of sitting inset by it — see the
+  /// class doc. Kept as its own named constant (rather than importing
+  /// `AppSpacing.lg` at the call site) so the one number this depends on is
+  /// obvious from here.
+  static const double _edgeCancel = AppSpacing.lg;
 
   final VoidCallback onClose;
   final String? captionText;
@@ -36,13 +68,6 @@ class HighLowHeader extends StatelessWidget {
   final bool skipEnabled;
   final VoidCallback? onSkip;
 
-  /// Dev-only "Report this round" button (Trello card on0EymSu) — gated
-  /// the same way as the dev gate, so a public App Store build never
-  /// shows it. Null hides it entirely.
-  final GlobalKey? reportButtonKey;
-  final VoidCallback? onReportTap;
-  final bool sharingReport;
-
   const HighLowHeader({
     super.key,
     required this.onClose,
@@ -50,9 +75,6 @@ class HighLowHeader extends StatelessWidget {
     required this.skipEnabled,
     required this.onSkip,
     this.below,
-    this.reportButtonKey,
-    this.onReportTap,
-    this.sharingReport = false,
   });
 
   @override
@@ -67,10 +89,13 @@ class HighLowHeader extends StatelessWidget {
               width: sideWidth,
               child: Align(
                 alignment: Alignment.centerLeft,
-                child: CircleIconButton(
-                  icon: Icons.close_rounded,
-                  tooltip: 'Close',
-                  onTap: onClose,
+                child: Transform.translate(
+                  offset: const Offset(-_edgeCancel, 0),
+                  child: CircleIconButton(
+                    icon: Icons.close_rounded,
+                    tooltip: 'Close',
+                    onTap: onClose,
+                  ),
                 ),
               ),
             ),
@@ -80,35 +105,9 @@ class HighLowHeader extends StatelessWidget {
               child: FittedBox(
                 fit: BoxFit.scaleDown,
                 alignment: Alignment.centerRight,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (reportButtonKey != null) ...[
-                      Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          CircleIconButton(
-                            key: reportButtonKey,
-                            icon: Icons.ios_share_rounded,
-                            tooltip: 'Report this round',
-                            onTap: sharingReport ? null : onReportTap,
-                          ),
-                          // Immediate acknowledgement that the tap landed — a
-                          // slow capture-and-share otherwise gives no
-                          // feedback at all until (or unless) the share sheet
-                          // finally appears.
-                          if (sharingReport)
-                            const SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            ),
-                        ],
-                      ),
-                      const SizedBox(width: AppSpacing.sm),
-                    ],
-                    HighLowSkipPill(enabled: skipEnabled, onTap: onSkip),
-                  ],
+                child: Transform.translate(
+                  offset: const Offset(_edgeCancel, 0),
+                  child: HighLowSkipPill(enabled: skipEnabled, onTap: onSkip),
                 ),
               ),
             ),

@@ -59,16 +59,21 @@ void main() {
         expect(l.piperHeight, greaterThan(l.characterHeight * 1.5));
       });
 
-      test('Piper\'s head reaches the tree\'s third platform — Cooper\'s own '
-          'instruction, and the only hard constraint on her position', () {
-        final l = two();
-        final headY = l.piperFeetY - l.piperHeight;
-        expect(headY, closeTo(l.platform(2).dy, 0.5));
-      });
+      test(
+        'Piper\'s feet are anchored to the bottom of the SCREEN, not to a '
+        'tree platform (2026-09-28, superseding the platform-anchored '
+        'version above — Cooper, on device: "Piper far too low... we '
+        'should only cut off her feet at most") — only a small, deliberate '
+        'sliver of her own height overflows the true bottom edge',
+        () {
+          final l = two();
+          expect(l.piperFeetY, greaterThan(size.height));
+          expect(l.piperFeetY - size.height, lessThan(l.piperHeight * 0.1));
+        },
+      );
 
       test('Piper is anchored to the right edge of the frame, inside the '
-          'device\'s own safe-area inset (her feet may still run below the '
-          'visible frame — that is accepted, not a bug)', () {
+          'device\'s own safe-area inset', () {
         final l = two();
         expect(l.piperRightInset, greaterThanOrEqualTo(insets.right));
       });

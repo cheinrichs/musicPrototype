@@ -191,13 +191,19 @@ void main() {
       tester.element(find.byType(OrderingScreen)).visitChildren(visit);
       expect(offenders, isEmpty);
 
-      // And they are home: at their own stump positions.
+      // And they are home: at their own stump positions — allowing for
+      // every instrument's own small float above the stump surface (Cooper,
+      // on device: "they read as embedded in the wood" — see
+      // [HighLowInstrument.floatFraction]), not just bells' larger one.
       final layout = OrderingLayout(viewport, noteCount: 3);
       for (final n in [1, 2]) {
         final feet = layout.stumpFeet(n);
+        final instrumentInstance = r.notes[n].instrument;
+        final size = layout.stumpInstrumentSize * instrumentInstance.displaySizeScale;
+        final lift = size * instrumentInstance.floatFraction;
         final box = tester.getRect(instrument(n));
         expect(box.bottomCenter.dx, closeTo(feet.dx, 1.0), reason: 'note $n');
-        expect(box.bottom, closeTo(feet.dy, 1.0), reason: 'note $n');
+        expect(box.bottom, closeTo(feet.dy - lift, 1.0), reason: 'note $n');
       }
       state.dispose();
     });

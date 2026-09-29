@@ -195,18 +195,31 @@ void main() {
   });
 
   group('floatFraction (Cooper, on device: bells should hang slightly above '
-      'the stump, not sit embedded in it)', () {
-    test('bells float, by a visible but modest fraction of their size', () {
+      'the stump, not sit embedded in it — later widened, 2026-09-28, to '
+      'every instrument reading as standing proud of its stump rather than '
+      'sunk into it)', () {
+    test('bells float clearly further than the shared default — they hang '
+        'from a ring rather than standing at all', () {
+      expect(
+        HighLowInstrument.bells.floatFraction,
+        greaterThan(HighLowInstrument.cello.floatFraction),
+      );
       expect(
         HighLowInstrument.bells.floatFraction,
         inInclusiveRange(0.05, 0.2),
       );
     });
 
-    test('every other instrument stands on the stump', () {
+    test('every other instrument still floats a small, modest amount — '
+        'proud of the stump, not embedded in it, but clearly less than '
+        'bells', () {
       for (final instrument in HighLowInstrument.values) {
         if (instrument == HighLowInstrument.bells) continue;
-        expect(instrument.floatFraction, 0.0, reason: instrument.name);
+        expect(
+          instrument.floatFraction,
+          inInclusiveRange(0.01, 0.1),
+          reason: instrument.name,
+        );
       }
     });
   });

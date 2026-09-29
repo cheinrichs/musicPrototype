@@ -177,7 +177,7 @@ enum HighLowInstrument {
     this.highestSampleMidi, {
     this.missingMidis = const {},
     this.displaySizeScale = 1.0,
-    this.floatFraction = 0.0,
+    this.floatFraction = _defaultFloatFraction,
   });
 
   final String _assetBaseName;
@@ -223,10 +223,17 @@ enum HighLowInstrument {
   final double displaySizeScale;
 
   /// How far the instrument hovers above its stump's surface, as a fraction
-  /// of its own rendered size. 0 for everything that rests on the stump;
-  /// [bells] hang and float. Applied where the instrument is placed, not by
+  /// of its own rendered size. A small default for everything (2026-09-28,
+  /// Cooper, on device: "all the instruments sit too low on their stumps —
+  /// they read as embedded in the wood rather than standing on it," the
+  /// same note the bells got earlier) — enough that every instrument reads
+  /// as *standing on* the stump rather than sunk into it, without a visible
+  /// stand prop, which would need new art that doesn't exist yet.
+  /// [bells] hang and float further, since they hang from a ring rather
+  /// than standing at all. Applied where the instrument is placed, not by
   /// editing the asset, so the depth and playing-grows scaling still
   /// multiply on top of it.
+  static const double _defaultFloatFraction = 0.06;
   final double floatFraction;
 
   /// Every real MIDI note this instrument actually has a sample for,

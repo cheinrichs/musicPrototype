@@ -122,20 +122,30 @@ class SceneLayout {
   /// Piper's height, standing beside the tree — a clearly larger,
   /// "foreground" scale, deliberately not [characterHeight]: the whole
   /// point is that she reads as closer to the viewer than anything on the
-  /// tree. A guess to check on a real device, in the same spirit as
-  /// [HighLowInstrument.floatFraction] elsewhere in this scene.
-  double get piperHeight => screen.height * 0.60;
+  /// tree.
+  ///
+  /// Trimmed slightly from an earlier 0.60 (2026-09-28, Cooper, on device:
+  /// "Piper far too low... she also needs to be a bit further right so as
+  /// to not block the tree") — a smaller height narrows her sprite's own
+  /// footprint too (width scales with height at a fixed aspect ratio),
+  /// which is what actually frees the tree from behind her; padding out
+  /// [piperRightInset] alone couldn't do that without pushing her past the
+  /// screen edge, since a right-edge anchor stays put while its own width
+  /// still reaches equally far left. Still meaningfully larger than
+  /// [characterHeight]: the foreground read survives the trim.
+  double get piperHeight => screen.height * 0.50;
 
-  /// Piper's head should reach the tree's third platform (Cooper's own
-  /// words) — the one hard constraint; [piperHeight] is otherwise a free
-  /// choice, and if it pushes her feet below the visible frame that is the
-  /// accepted look, not a bug (see the class doc).
-  double get _piperHeadY => platform(2).dy;
-
-  /// Where Piper's feet sit, straight down from [_piperHeadY] by
-  /// [piperHeight] — may land below the bottom of the screen; the
-  /// background layer clips there (Positioned's `bottom` goes negative).
-  double get piperFeetY => _piperHeadY + piperHeight;
+  /// Where Piper's feet sit. Anchored to the **bottom of the screen**, not
+  /// to a tree platform (2026-09-28, replacing an earlier version pinned to
+  /// the tree's third platform, which put her head so low that half her
+  /// body fell off the bottom of the frame — Cooper: "we should only cut
+  /// off her feet at most"). A small deliberate overflow past the true
+  /// bottom edge (a fraction of her own height) is what actually delivers
+  /// that: her ankles, not her knees, are what go offscreen. Check this
+  /// visually on a real device/simulator, per Cooper's own instruction —
+  /// this number is a starting guess like [HighLowInstrument.floatFraction]
+  /// elsewhere in this scene, not a derivation.
+  double get piperFeetY => screen.height + piperHeight * 0.05;
 
   /// Piper's `Positioned.right` inset: the device's own side inset plus a
   /// margin, the same convention used everywhere else in this scene — she
@@ -167,6 +177,28 @@ class SceneLayout {
 
   /// Distance from the bottom of the screen up to every stump's surface.
   double get groundY => screen.height * 0.16;
+
+  /// Where Listen Again sits, below the stumps rather than under the
+  /// caption (2026-09-28, Cooper: "I like listen again below the stumps —
+  /// I'd love to try to scale everything so that moving the stumps up
+  /// would fit"). **Tried moving the stumps up first** (raising [groundY])
+  /// and backed it out: the tree's bottom platform is fixed scenery, and
+  /// raising the stumps enough to matter broke the existing "one floor"
+  /// relationship between the stumps' ground line and that platform (see
+  /// the `scene_layout_test.dart` test of that name) — exactly the
+  /// "standing on a distant hillside" conflicting depth cue Cooper's own
+  /// instruction warned to check for. [groundY] already reserves a margin
+  /// below the stumps' feet before touching it at all; this fits Listen
+  /// Again into that existing margin instead; centred under the stump
+  /// band, two-thirds of the way down it toward the true bottom edge
+  /// (leaves room above for the button's own height without crowding the
+  /// stumps' feet). Still needs the same visual check in the simulator —
+  /// this reasoning is about why [groundY] itself didn't move, not proof
+  /// this fits.
+  Offset get listenAgainCenter => Offset(
+    (stumpAnchorX(0) + stumpAnchorX(noteCount - 1)) / 2,
+    screen.height - groundY * 0.35,
+  );
 
   double get instrumentSize => screen.height * instrumentFraction;
 

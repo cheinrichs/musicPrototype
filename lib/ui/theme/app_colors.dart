@@ -108,6 +108,22 @@ class AppColors {
   );
   static const Color ctaShadow = Color(0xFF3C5428);
 
+  /// High/Low's earned arrow only (2026-09-28, Cooper: "beautiful but not
+  /// catchy or bright enough for them to want to click it themselves" — the
+  /// green [ctaGradient] barely separates from the meadow it sits on).
+  /// Burnt orange gives it the contrast a green-on-green button can't:
+  /// [fox] (already Piper's colour, and already a warm neighbour of the
+  /// brass/gold elsewhere in this scene) over a deeper shade, staying clear
+  /// of true red so it never reads as a warning. A separate token from
+  /// [ctaGradient] on purpose — that gradient is still used elsewhere (the
+  /// reward screen), which this change isn't meant to touch.
+  static const LinearGradient earnedArrowGradient = LinearGradient(
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+    colors: [fox, Color(0xFFB5652A)],
+  );
+  static const Color earnedArrowShadow = Color(0xFF7A4519);
+
   static const LinearGradient cardGradient = LinearGradient(
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,

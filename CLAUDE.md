@@ -167,3 +167,14 @@ already configured project-wide (`.claude/settings.local.json` → `env.PATH`), 
 from the repo root (Claude Code's Bash tool already starts there) instead of `cd`-ing into
 it. If a task genuinely needs multiple steps, run them as separate Bash calls rather than
 one chained string — each one can then match the allowlist independently.
+
+### Checking CI status: use `gh`, not curl or WebFetch
+
+`gh` (the GitHub CLI) is installed (`brew install gh`, resolves via the `env.PATH` entry
+above) and authenticated under Cooper's account. For CI/Actions status, use it directly —
+`gh run list`, `gh run view <id>`, `gh run watch <id>`, `gh workflow list`, `gh workflow view
+<name>` — instead of `curl https://api.github.com/repos/...` or a WebFetch of the Actions
+page. Those fallbacks don't match the allowlist and trigger a manual approval prompt on
+every single check; the `gh run *` / `gh workflow list *` / `gh workflow view *` entries in
+`.claude/settings.local.json` exist specifically so `gh`-based polling doesn't prompt. Reach
+for curl/WebFetch on GitHub only for things `gh` genuinely can't do.

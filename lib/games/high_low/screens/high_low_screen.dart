@@ -16,6 +16,7 @@ import '../../../models/agency_stage.dart';
 import '../../../models/concept_tier.dart';
 import '../../../models/musical_skill.dart';
 import '../../../models/game_status.dart';
+import '../../../ui/components/circle_icon_button.dart';
 import '../../../ui/components/dev_setup_overlay.dart';
 import '../../../ui/components/drifting_notes.dart';
 import '../../../ui/components/game_screen_layout.dart';
@@ -440,18 +441,15 @@ class _HighLowScreenState extends State<HighLowScreen> {
               // [HighLowGameState.secondaryCaptionText]'s doc comment.
               captionText:
                   _gameState.secondaryCaptionText ?? _gameState.captionText,
-              reportButtonKey: _canUseDevTools ? _reportButtonKey : null,
-              onReportTap: _gameState.currentPrompt == null
-                  ? null
-                  : _onReportRound,
-              sharingReport: _sharingReport,
               // Skip top-right, Listen Again centred under the caption; no
               // progress indicator (it is always five rounds, so it told
               // the child nothing — see docs/product/HIGH_LOW_SCREEN_LAYOUT.md
               // for what would bring it back).
               skipEnabled: _gameState.status != GameStatus.completed,
               onSkip: _gameState.escape,
-              below: _buildListenAgainButton(),
+              // Listen Again no longer lives here — see [_buildScene], which
+              // places it below the stumps instead (2026-09-28, Cooper: "I
+              // like listen again below the stumps").
             ),
             // The middle holds only the caption and Listen Again (both in the
             // header); the scene is the background.
@@ -492,8 +490,57 @@ class _HighLowScreenState extends State<HighLowScreen> {
               ),
             ),
           ),
+          // The dev-only report button, bottom-left (2026-09-28, moved out
+          // of the header — Cooper: "the report button only exists for dev
+          // testing and really only for my profile"). Placed here rather
+          // than in [HighLowHeader] because it's genuinely dev-and-adult-only
+          // (see [_canUseDevTools]), unlike everything else in the header,
+          // which every child sees. Bottom-left follows the same thumb-reach
+          // principle as everywhere else in this pass ("keep adult and
+          // destructive controls up top where they can't be hit by
+          // accident") only loosely — this control is adult-only regardless
+          // of where it sits, since a child never has `_canUseDevTools`, so
+          // the corner it lives in is free to place for reachability by the
+          // adult holding the device, not dictated by that rule.
+          if (_canUseDevTools)
+            Positioned(
+              left: 0,
+              bottom: 0,
+              child: SafeArea(
+                minimum: const EdgeInsets.all(AppSpacing.sm),
+                child: _buildReportButton(),
+              ),
+            ),
         ],
       ),
+    );
+  }
+
+  /// The report button itself — see [_onReportRound]. Split out of the build
+  /// method above only because it now has its own `Positioned`/`SafeArea`
+  /// wrapper to place.
+  Widget _buildReportButton() {
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        CircleIconButton(
+          key: _reportButtonKey,
+          icon: Icons.ios_share_rounded,
+          tooltip: 'Report this round',
+          onTap: _sharingReport || _gameState.currentPrompt == null
+              ? null
+              : _onReportRound,
+        ),
+        // Immediate acknowledgement that the tap landed — a slow
+        // capture-and-share otherwise gives no feedback at all until (or
+        // unless) the share sheet finally appears.
+        if (_sharingReport)
+          const SizedBox(
+            width: 18,
+            height: 18,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          ),
+      ],
     );
   }
 
@@ -579,9 +626,11 @@ class _HighLowScreenState extends State<HighLowScreen> {
     }
   }
 
-  /// Listen Again, centred under the caption: the round button with its label
-  /// beside it (not below — a label underneath reached down into the tips of
-  /// tall instruments).
+  /// Listen Again: the round button with its label beside it (not below — a
+  /// label underneath reached down into the tips of tall instruments). Sits
+  /// below the stumps, in the scene layer — see [_buildScene]'s use of
+  /// [SceneLayout.listenAgainCenter] (2026-09-28, moved out from under the
+  /// caption per Cooper's feedback).
   Widget _buildListenAgainButton() {
     final canReplay =
         _gameState.status != GameStatus.completed &&
@@ -824,6 +873,19 @@ class _HighLowScreenState extends State<HighLowScreen> {
             top: layout.arrowCentre.dy - _arrowSize / 2,
             child: _buildEarnedArrow(),
           ),
+        // Listen Again, below the stumps rather than under the caption
+        // (2026-09-28 — see [SceneLayout.listenAgainCenter]'s doc). Centred
+        // via FractionalTranslation rather than measuring the button's own
+        // size up front, so it stays centred on [listenAgainCenter]
+        // regardless of how wide "Listen Again" ends up rendering.
+        Positioned(
+          left: layout.listenAgainCenter.dx,
+          top: layout.listenAgainCenter.dy,
+          child: FractionalTranslation(
+            translation: const Offset(-0.5, -0.5),
+            child: _buildListenAgainButton(),
+          ),
+        ),
       ],
     );
   }
@@ -852,11 +914,11 @@ class _HighLowScreenState extends State<HighLowScreen> {
               width: _arrowSize,
               height: _arrowSize,
               decoration: const BoxDecoration(
-                gradient: AppColors.ctaGradient,
+                gradient: AppColors.earnedArrowGradient,
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: AppColors.ctaShadow,
+                    color: AppColors.earnedArrowShadow,
                     blurRadius: 14,
                     offset: Offset(0, 6),
                   ),
@@ -1085,8 +1147,8 @@ class _HighLowScreenState extends State<HighLowScreen> {
 
   /// Piper, standing beside the tree on the ground — foreground scale,
   /// anchored to the screen's right edge rather than centred on anything
-  /// (she is no longer on a platform). Her feet may fall below the visible
-  /// frame; that is by design, not a bug — see [SceneLayout.piperHeight]'s
+  /// (she is no longer on a platform). Only a sliver at her ankles falls
+  /// below the visible frame, by design — see [SceneLayout.piperFeetY]'s
   /// doc comment.
   Widget _buildPiper({
     required SceneLayout layout,
