@@ -1053,4 +1053,83 @@ void main() {
       state.dispose();
     });
   });
+
+  group('HighLowGameState — Observe tap highlights and tap telemetry (Trello '
+      'card: persistent tap highlights, child-controlled advance)', () {
+    testWidgets('a tapped instrument stays highlighted for the whole round, '
+        'after the momentary playing ring has long since gone', (tester) async {
+      final state = HighLowGameState(
+        totalPrompts: 2,
+        agencyStage: AgencyStage.observe,
+      );
+      state.startGame();
+      await tester.pump();
+
+      expect(state.observeHighlightedSides, isEmpty);
+      state.tapInstrument(0);
+      await tester.pump(const Duration(seconds: 10));
+      expect(state.observeHighlightedSides, {0});
+      state.dispose();
+    });
+
+    testWidgets('the highlight is Observe-only — every other stage reports no '
+        'highlight at all', (tester) async {
+      final state = HighLowGameState(
+        totalPrompts: 1,
+        agencyStage: AgencyStage.explore,
+      );
+      state.startGame();
+      await tester.pump();
+      state.tapInstrument(0);
+      await tester.pump();
+      expect(state.observeHighlightedSides, isEmpty);
+      state.dispose();
+    });
+
+    testWidgets('the arrow records every tap in order, repeats included, on '
+        'the completed round', (tester) async {
+      final state = HighLowGameState(
+        totalPrompts: 2,
+        agencyStage: AgencyStage.observe,
+      );
+      state.startGame();
+      await tester.pump();
+      state.tapInstrument(1);
+      await tester.pump();
+      state.tapInstrument(0);
+      await tester.pump();
+      state.tapInstrument(1);
+      await tester.pump();
+      state.tapArrow();
+      await tester.pump();
+
+      expect(state.instrumentation.last.observeTapSequence, [1, 0, 1]);
+      state.dispose();
+    });
+
+    testWidgets('a new round starts with an empty sequence — one round\'s taps '
+        'never leak into the next', (tester) async {
+      final state = HighLowGameState(
+        totalPrompts: 3,
+        agencyStage: AgencyStage.observe,
+      );
+      state.startGame();
+      await tester.pump();
+      state.tapInstrument(0);
+      state.tapInstrument(1);
+      await tester.pump();
+      state.tapArrow();
+      await tester.pump();
+
+      state.tapInstrument(0);
+      await tester.pump();
+      state.tapInstrument(1);
+      await tester.pump();
+      state.tapArrow();
+      await tester.pump();
+
+      expect(state.instrumentation.last.observeTapSequence, [0, 1]);
+      state.dispose();
+    });
+  });
 }

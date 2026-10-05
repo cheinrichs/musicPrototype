@@ -216,6 +216,11 @@ class HighLowGameState extends ChangeNotifier {
   /// to answer, so any tap on a side satisfies it.
   final Set<int> _tappedSidesObserve = {};
 
+  /// Every Observe tap this round, in order, repeats included — recorded
+  /// onto [RoundInstrumentation.observeTapSequence] when the round ends by
+  /// the child's own arrow (2026-10-04).
+  final List<int> _observeTapSequence = [];
+
   /// Whether Observe's earned arrow is visible this round — see
   /// [showArrow]'s doc comment.
   bool _showArrow = false;
@@ -367,6 +372,16 @@ class HighLowGameState extends ChangeNotifier {
   /// but once you've had it, you decide when you're done. Always false
   /// outside Observe.
   bool get showArrow => agencyStage == AgencyStage.observe && _showArrow;
+
+  /// Which instruments have been tapped at least once this Observe round —
+  /// the persistent highlight's source of truth (2026-10-04, Trello card
+  /// "Observe: persistent tap highlights"). Stays set for the whole round,
+  /// never decays, never reflects the momentary [playingIndex] ring. Empty
+  /// at every other stage. The highlight's own look is a UI decision and
+  /// is not built yet — this is the state it will read.
+  Set<int> get observeHighlightedSides => agencyStage == AgencyStage.observe
+      ? Set.unmodifiable(_tappedSidesObserve)
+      : const {};
 
   /// Which side the dragged character was last dropped on (correct or
   /// not) — the UI uses this to know which instrument to animate for
@@ -589,6 +604,7 @@ class HighLowGameState extends ChangeNotifier {
     _correctTapCumulative = 0;
     _wrongTapCount = 0;
     _tappedSidesObserve.clear();
+    _observeTapSequence.clear();
     _showArrow = false;
     _nudgeVisible = false;
     _speakingIsPiper = null;
@@ -777,6 +793,7 @@ class HighLowGameState extends ChangeNotifier {
       // least once, the earned arrow appears and stays until tapped;
       // never re-hidden by a later tap.
       _tappedSidesObserve.add(side);
+      _observeTapSequence.add(side);
       if (!_showArrow && _tappedSidesObserve.length >= 2) {
         _showArrow = true;
         if (!_arrowCueSpoken) {
@@ -951,6 +968,7 @@ class HighLowGameState extends ChangeNotifier {
         listenAgainCount: _listenAgainCount,
         correctTapCount: _correctTapCumulative,
         wrongTapCount: _wrongTapCount,
+        observeTapSequence: List.unmodifiable(_observeTapSequence),
       ),
     );
   }
@@ -1058,6 +1076,7 @@ class HighLowGameState extends ChangeNotifier {
     _correctTapCumulative = 0;
     _wrongTapCount = 0;
     _tappedSidesObserve.clear();
+    _observeTapSequence.clear();
     _showArrow = false;
     _arrowCueSpoken = false;
     _nudgeVisible = false;

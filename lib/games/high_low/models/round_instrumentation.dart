@@ -59,6 +59,12 @@ class RoundInstrumentation {
   /// Observe.
   final int wrongTapCount;
 
+  /// Observe only (2026-10-04, Trello card "Observe: persistent tap
+  /// highlights..."): every instrument tap this round, in order, as side
+  /// indices (0 = left, 1 = right), repeats included — so "how many times"
+  /// and "in what order" are both recoverable. Empty at every other stage.
+  final List<int> observeTapSequence;
+
   const RoundInstrumentation({
     required this.promptNumber,
     required this.waitedForPlaythrough,
@@ -67,5 +73,6 @@ class RoundInstrumentation {
     required this.listenAgainCount,
     this.correctTapCount = 0,
     this.wrongTapCount = 0,
+    this.observeTapSequence = const [],
   });
 }
