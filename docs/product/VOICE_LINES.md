@@ -44,6 +44,8 @@ These are design rules. They are not checked by any code or test.
 - **Clef is never placed on the low one, and Piper never on the high one.** Clef owns high
   (the top of the tree); Piper owns low (beside the tree, on the ground). The first-person
   "give me" framing is retired along with the drag-to-character mechanic; see A2.
+- **Name the position, never the furniture.** No line calls a platform a branch, a shelf or
+  a step. See A2 for the reasoning.
 - **The "and…" pattern:** in A0 the two notes are narrated as one joined sentence, so each
   narration line has an "and…" variant for the second note.
 
@@ -111,6 +113,8 @@ were missing entirely.
 
 ## A2 — Drag
 
+*Carded rename: this level becomes **Decide**. Not yet made in code or here.*
+
 **Currently in the app, superseded by the tree mechanic (interim):**
 
 | Character | Line | Enum | Recorded | Wired | Problem |
@@ -127,12 +131,23 @@ doc comment).
 | Character | Line |
 |---|---|
 | Clef | "Put the high one up here on top." |
-| Clef | "Pop the high one up on the top branch." |
+| Clef | "Pop the high one up on top." |
 | Piper | "Put the low one down on the bottom." |
-| Piper | "Pop the low one down on the bottom branch." |
+| Piper | "Pop the low one down at the bottom." |
 
 Clef says "up here" and it's true — he sits in the tree. Piper's lines carry no "here", so
 they work from the left of the screen.
+
+**Never call the platforms branches.** Cooper, 2026-10-05: "Clef sits on a branch sometimes.
+the instruments don't ever go on branches they go on weird tree platform things. So best not
+to name them." The one thing in that scene that really is a branch is where Clef perches, so
+"put it on the top branch" points at the character rather than the slot.
+
+**The rule this generalises to: name the POSITION, never the furniture.** "Up on top", "down
+at the bottom" — and on the Loud or Quiet dial, "the big end", "the quiet end". The platforms
+have no good word; "platform" is clunky, "step" implies climbing, "shelf" implies indoors.
+Naming the position sidesteps it, and keeps sidestepping it for whatever apparatus a future
+game invents. **For variety within a character, vary the verb rather than the noun.**
 
 **A2 4-5 band** (recorded, not wired — the replacements above supersede these for 2-3 and
 the 4-5 wording is a question rather than an instruction):
@@ -204,7 +219,9 @@ the `isPiper` value on this member is bookkeeping and does not assign a speaker.
 
 ---
 
-# LOUD or SOFT
+# LOUD or QUIET
+
+*Carded rename from "Loud or Soft": "soft" also means texture to a small child. Not yet made in code.*
 
 Not yet recorded. A full draft inventory of roughly fifty lines exists separately and should
 be folded in here once agreed. There are no `VoiceLine` members for it.
