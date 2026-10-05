@@ -19,8 +19,13 @@ import 'package:ear_trainer/games/high_low/services/prompt_generator.dart';
 import 'package:ear_trainer/games/high_low/state/high_low_game_state.dart';
 import 'package:ear_trainer/games/high_low/ordering/ordering_slot.dart';
 import 'package:ear_trainer/games/high_low/widgets/character_art.dart';
+import 'package:ear_trainer/games/high_low/widgets/speaking_pulse.dart';
+import 'package:ear_trainer/audio/audio_controller.dart';
+import 'package:ear_trainer/audio/voice_line.dart';
+import 'package:ear_trainer/audio/sfx_type.dart';
 import 'package:ear_trainer/games/high_low/widgets/high_low_caption.dart';
 import 'package:ear_trainer/models/agency_stage.dart';
+import 'package:ear_trainer/models/round_order.dart';
 import 'package:ear_trainer/ui/components/progress_dots.dart';
 
 void main() {
@@ -1306,4 +1311,114 @@ void main() {
       },
     );
   });
+
+  group('speaking never moves a character (device bug, build 75: Piper and/or '
+      'Clef briefly jumping to the top-left corner while talking)', () {
+    // Settled-frame tests passed while this shipped, so this one samples
+    // every frame of the voice lines instead. Explore and Drag both speak
+    // from the round prompt, so both are covered; Observe only speaks on a
+    // tap, so it is not sampled here.
+    for (final stage in [AgencyStage.explore, AgencyStage.drag]) {
+      testWidgets('each character\'s feet stay put on every frame, at '
+          '${stage.label}', (tester) async {
+        tester.view.physicalSize = roomyViewport;
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(() {
+          tester.view.resetPhysicalSize();
+          tester.view.resetDevicePixelRatio();
+        });
+
+        // The real AudioController resolves a voice line instantly under
+        // test, so the speaking flag is set and cleared inside one pump and
+        // the pulse never runs. This fake holds each line for a real
+        // duration on the fake clock so the animation actually plays.
+        final state = HighLowGameState(
+          totalPrompts: 3,
+          agencyStage: stage,
+          roundOrder: RoundOrder.blocked,
+          audio: _LongVoiceAudio(),
+        );
+        await tester.pumpWidget(
+          MaterialApp(
+            home: HighLowScreen(gameState: state, ownsGameState: true),
+          ),
+        );
+        await tester.pump(Duration.zero);
+
+        Offset feetOf(CharacterArt art) => tester
+            .getRect(
+              find.byWidgetPredicate(
+                (w) => w is CharacterSprite && w.art == art,
+              ),
+            )
+            .bottomCenter;
+
+        final piperSamples = <Offset>[];
+        final clefSamples = <Offset>[];
+        var sawSpeaking = false;
+        for (var frame = 0; frame < 320; frame++) {
+          await tester.pump(const Duration(milliseconds: 16));
+          // Read off the widget that actually drives the pulse, so this
+          // checks what a child sees rather than the game state's flag.
+          if (find
+              .byWidgetPredicate((w) => w is SpeakingPulse && w.speaking)
+              .evaluate()
+              .isNotEmpty) {
+            sawSpeaking = true;
+          }
+          piperSamples.add(feetOf(CharacterArt.piper));
+          clefSamples.add(feetOf(CharacterArt.clef));
+        }
+        expect(sawSpeaking, isTrue, reason: 'the intro must actually speak');
+
+        for (final (name, samples) in [
+          ('Piper', piperSamples),
+          ('Clef', clefSamples),
+        ]) {
+          final settled = samples.last;
+          for (var i = 0; i < samples.length; i++) {
+            expect(
+              (samples[i] - settled).distance,
+              lessThan(2.0),
+              reason:
+                  '$name\'s feet jumped on frame $i to ${samples[i]} '
+                  '(settled at $settled)',
+            );
+          }
+          expect(
+            samples.every((o) => o.dx > roomyViewport.width * 0.5),
+            isTrue,
+            reason: '$name was sampled on the left half of the screen',
+          );
+        }
+        // Not disposed here: the screen owns it (ownsGameState: true).
+      });
+    }
+  });
 }
+
+/// Stands in for [AudioController] in the speaking regression test: voice
+/// lines take a real amount of time (on the fake clock), everything else is
+/// a no-op. Only the members the High/Low game state actually calls are
+/// overridden; the rest fall through to [noSuchMethod] as null.
+class _LongVoiceAudio implements AudioController {
+  @override
+  Future<void> playVoiceLineAndAwait(VoiceLine line) =>
+      Future<void>.delayed(const Duration(milliseconds: 1500));
+
+  @override
+  Future<void> playVoiceLine(VoiceLine line) => Future<void>.value();
+
+  @override
+  Future<void> playAssetForScale(String path) => Future<void>.value();
+
+  @override
+  Future<void> playSfx(SfxType sfx) => Future<void>.value();
+
+  @override
+  void stopCurrentNote() {}
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
+}
+
