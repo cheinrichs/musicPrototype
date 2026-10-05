@@ -65,6 +65,11 @@ class RoundInstrumentation {
   /// and "in what order" are both recoverable. Empty at every other stage.
   final List<int> observeTapSequence;
 
+  /// Observe only, with the flight on (see `HighLowGameState.observeFlight`):
+  /// the order the instruments flew to the tree, as side indices, lowest
+  /// pitch first. Empty when no flight ran.
+  final List<int> observeFlightOrder;
+
   const RoundInstrumentation({
     required this.promptNumber,
     required this.waitedForPlaythrough,
@@ -74,5 +79,6 @@ class RoundInstrumentation {
     this.correctTapCount = 0,
     this.wrongTapCount = 0,
     this.observeTapSequence = const [],
+    this.observeFlightOrder = const [],
   });
 }

@@ -221,6 +221,18 @@ class HighLowGameState extends ChangeNotifier {
   /// the child's own arrow (2026-10-04).
   final List<int> _observeTapSequence = [];
 
+  /// The order the instruments fly to the tree this Observe round: lowest
+  /// pitch first, so the last one the child watches is the highest rising to
+  /// the top (Trello card: "Fly them in PITCH ORDER"). Null until the arrow is
+  /// tapped with [observeFlight] on.
+  List<int>? _observeFlightPlan;
+
+  /// Index into [_observeFlightPlan] of the instrument flying now. Equal to the
+  /// plan's length once every instrument has landed.
+  int _observeFlightStep = 0;
+
+  Timer? _observeFlightTimer;
+
   /// Whether Observe's earned arrow is visible this round — see
   /// [showArrow]'s doc comment.
   bool _showArrow = false;
@@ -278,10 +290,18 @@ class HighLowGameState extends ChangeNotifier {
     this.agencyStage = AgencyStage.drag,
     ConceptTier conceptTier = ConceptTier.t1,
     this.roundOrder = RoundOrder.blocked,
+    this.observeFlight = false,
   }) : requestedTier = conceptTier,
        _audio = audio ?? AudioController.instance,
        _generator = generator ?? PromptGenerator(),
        _sequencer = sequencer ?? RoundSequencer();
+
+  /// Whether the earned arrow starts the Observe flight to the tree (see
+  /// [observeFlightPlan]). Off by default: until the flight has its visuals
+  /// and has been checked on a device, the arrow keeps its immediate advance,
+  /// so the live game's behaviour does not change ahead of that check. Tests
+  /// turn it on to exercise the state machine.
+  final bool observeFlight;
 
   // ---- Session-level getters ----
   GameStatus get status => _status;
@@ -383,6 +403,19 @@ class HighLowGameState extends ChangeNotifier {
       ? Set.unmodifiable(_tappedSidesObserve)
       : const {};
 
+  /// Sides in the order they fly to the tree after the arrow, lowest pitch
+  /// first — null when no flight is running. Side indices, as elsewhere.
+  List<int>? get observeFlightPlan => _observeFlightPlan == null
+      ? null
+      : List.unmodifiable(_observeFlightPlan!);
+
+  /// Index into [observeFlightPlan] of the instrument flying now.
+  int get observeFlightStep => _observeFlightStep;
+
+  /// Whether an Observe flight is running. The adult's skip still works
+  /// throughout, and a tap on an instrument still plays its note.
+  bool get isObserveFlying => _observeFlightPlan != null;
+
   /// Which side the dragged character was last dropped on (correct or
   /// not) — the UI uses this to know which instrument to animate for
   /// [dragFeedback].
@@ -434,8 +467,8 @@ class HighLowGameState extends ChangeNotifier {
       // line's social "by me" framing — just an accurate instruction.
       AgencyStage.drag =>
         isHigh
-            ? 'Help them drag the higher instrument up the tree.'
-            : 'Help them drag the lower instrument up the tree.',
+            ? 'Help them put the higher one up on top.'
+            : 'Help them put the lower one down at the bottom.',
     };
   }
 
@@ -592,6 +625,7 @@ class HighLowGameState extends ChangeNotifier {
     _cancelNudgeTimer();
     _cancelSparkleTimer();
     _cancelTapRingTimer();
+    _cancelObserveFlightTimer();
     _playingIndex = null;
     _dragFeedback = DragFeedback.none;
     _lastDropSide = null;
@@ -793,7 +827,7 @@ class HighLowGameState extends ChangeNotifier {
       // least once, the earned arrow appears and stays until tapped;
       // never re-hidden by a later tap.
       _tappedSidesObserve.add(side);
-      _observeTapSequence.add(side);
+      if (!isObserveFlying) _observeTapSequence.add(side);
       if (!_showArrow && _tappedSidesObserve.length >= 2) {
         _showArrow = true;
         if (!_arrowCueSpoken) {
@@ -955,7 +989,7 @@ class HighLowGameState extends ChangeNotifier {
     await _playCaptionThenIntro(token, _activeCaption!);
   }
 
-  void _recordRoundResult() {
+  void _recordRoundResult({List<int> observeFlightOrder = const []}) {
     final prompt = currentPrompt;
     if (prompt == null) return;
     _results.add(PromptResult(prompt: prompt, isCorrect: true));
@@ -969,6 +1003,7 @@ class HighLowGameState extends ChangeNotifier {
         correctTapCount: _correctTapCumulative,
         wrongTapCount: _wrongTapCount,
         observeTapSequence: List.unmodifiable(_observeTapSequence),
+        observeFlightOrder: observeFlightOrder,
       ),
     );
   }
@@ -1013,6 +1048,7 @@ class HighLowGameState extends ChangeNotifier {
     _cancelNudgeTimer();
     _cancelSparkleTimer();
     _cancelTapRingTimer();
+    _cancelObserveFlightTimer();
 
     // Skipped rounds aren't scored — nothing to record, this isn't an
     // answer of any kind.
@@ -1027,12 +1063,55 @@ class HighLowGameState extends ChangeNotifier {
   /// travel animation. Modelled on Duolingo ABC: the child decides when
   /// they're done, once they've done the thing that earns the choice.
   void tapArrow() {
-    if (!showArrow) return;
+    if (!showArrow || isObserveFlying) return;
     final prompt = currentPrompt;
     if (prompt == null) return;
     _audio.playSfx(SfxType.correct);
+    if (observeFlight) {
+      _startObserveFlight(prompt);
+      return;
+    }
     _recordRoundResult();
     _advanceOrComplete();
+  }
+
+  /// Seconds per instrument's flight, on the fake clock in tests. A guess, to be
+  /// set by feel once the flight is on a device.
+  static const observeFlightStepDuration = Duration(milliseconds: 900);
+
+  void _startObserveFlight(HighLowPrompt prompt) {
+    // Lowest pitch first. The sides' own midis come from the prompt; equal
+    // pitches cannot happen (the two notes are always different).
+    _observeFlightPlan = prompt.firstMidi <= prompt.secondMidi ? [0, 1] : [1, 0];
+    _observeFlightStep = 0;
+    _scheduleObserveFlightStep(_roundToken);
+    notifyListeners();
+  }
+
+  void _scheduleObserveFlightStep(int token) {
+    _observeFlightTimer?.cancel();
+    _observeFlightTimer = Timer(observeFlightStepDuration, () {
+      _observeFlightTimer = null;
+      if (token != _roundToken) return;
+      _observeFlightStep++;
+      if (_observeFlightStep < _observeFlightPlan!.length) {
+        _scheduleObserveFlightStep(token);
+        notifyListeners();
+        return;
+      }
+      // Every instrument has landed: now the round is recorded and advances,
+      // with the flight order on the record so it can be read back later.
+      _recordRoundResult(observeFlightOrder: List.unmodifiable(_observeFlightPlan!));
+      _observeFlightPlan = null;
+      _advanceOrComplete();
+    });
+  }
+
+  void _cancelObserveFlightTimer() {
+    _observeFlightTimer?.cancel();
+    _observeFlightTimer = null;
+    _observeFlightPlan = null;
+    _observeFlightStep = 0;
   }
 
   /// Advance to the next round, or finish the session on the last one —
@@ -1055,6 +1134,7 @@ class HighLowGameState extends ChangeNotifier {
     _cancelNudgeTimer();
     _cancelSparkleTimer();
     _cancelTapRingTimer();
+    _cancelObserveFlightTimer();
     _status = GameStatus.completed;
     _audio.playSfx(SfxType.reward);
     notifyListeners();
@@ -1067,6 +1147,7 @@ class HighLowGameState extends ChangeNotifier {
     _cancelNudgeTimer();
     _cancelSparkleTimer();
     _cancelTapRingTimer();
+    _cancelObserveFlightTimer();
     _status = GameStatus.notStarted;
     _prompts = [];
     _currentPromptIndex = 0;
@@ -1094,6 +1175,7 @@ class HighLowGameState extends ChangeNotifier {
     _cancelNudgeTimer();
     _cancelSparkleTimer();
     _cancelTapRingTimer();
+    _cancelObserveFlightTimer();
     super.dispose();
   }
 }

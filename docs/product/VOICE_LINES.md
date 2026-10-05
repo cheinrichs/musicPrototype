@@ -241,15 +241,16 @@ in a noisy room. Record everything at the same level and let performance carry i
 
 On-screen text, in `HighLowGameState.captionText` and `secondaryCaptionText`. A separate
 string with a different audience: the watching adult, who cannot rely on the child to read
-it. Captions are keyed by agency stage and pole only. They do not vary by age band or tier.
+it. Captions name a destination, never a direction of travel, so they match the voice lines (2026-10-05).
+Captions are keyed by agency stage and pole only. They do not vary by age band or tier.
 
 | Stage | Pole | Caption (as in the code) |
 |---|---|---|
 | Observe (A0) | both | "Encourage them to tap each instrument." |
 | Explore (A1) | higher | "Let them tap both and find the higher one." |
 | Explore (A1) | lower | "Let them tap both and find the lower one." |
-| Drag (A2) | higher | "Help them drag the higher instrument up the tree." |
-| Drag (A2) | lower | "Help them drag the lower instrument up the tree." |
+| Drag (A2) | higher | "Help them put the higher one up on top." |
+| Drag (A2) | lower | "Help them put the lower one down at the bottom." |
 
 **Secondary guidance** appears in Explore only, about six seconds into an unanswered round:
 

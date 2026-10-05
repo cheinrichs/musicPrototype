@@ -179,8 +179,9 @@ same audience as the instruction beneath it.
 **The name is constant; only the instruction changes per round**, so only the
 instruction crossfades between rounds — the plate and the name never rebuild
 for that (`HighLowCaption`). The instruction's own wording changed too, now
-that the target is a slot rather than a character: "Help them drag the higher
-instrument up the tree," not "...to Clef." The caption is a separate string
+that the target is a slot rather than a character: "Help them put the higher one
+up on top" (reworded 2026-10-05 from "drag ... up the tree", which named a direction
+of travel and was wrong for the lower pole), not "...to Clef." The caption is a separate string
 from the voice line and has a different audience (the watching adult, not the
 child) — it doesn't need the voice line's social "by me" framing, just an
 accurate instruction. Don't let one drive the other's wording.

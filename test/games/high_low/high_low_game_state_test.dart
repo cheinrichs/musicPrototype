@@ -1132,4 +1132,189 @@ void main() {
       state.dispose();
     });
   });
+
+  group('Drag captions name the destination, never the direction of travel '
+      '(2026-10-05: "up the tree" was backwards for the lower pole)', () {
+    testWidgets('the higher pole goes up on top; the lower goes down at the '
+        'bottom — no caption describes motion', (tester) async {
+      final state = HighLowGameState(
+        totalPrompts: 3,
+        agencyStage: AgencyStage.drag,
+        roundOrder: RoundOrder.blocked,
+      );
+      state.startGame();
+      await tester.pump();
+      expect(state.captionText, 'Help them put the higher one up on top.');
+      state.escape();
+      await tester.pump();
+      expect(
+        state.captionText,
+        'Help them put the lower one down at the bottom.',
+      );
+      for (final caption in [
+        'Help them put the higher one up on top.',
+        'Help them put the lower one down at the bottom.',
+      ]) {
+        expect(caption, isNot(contains('drag')));
+        expect(caption, isNot(contains('tree')));
+      }
+      state.dispose();
+    });
+  });
+
+  group('Observe flight to the tree — state machine only (Trello card: '
+      'instruments fly to the tree one at a time, lowest pitch first; the '
+      'visuals are not built, so this runs behind observeFlight: true)', () {
+    HighLowGameState flightState({int totalPrompts = 2}) => HighLowGameState(
+      totalPrompts: totalPrompts,
+      agencyStage: AgencyStage.observe,
+      roundOrder: RoundOrder.blocked,
+      observeFlight: true,
+    );
+
+    testWidgets('the arrow starts the flight and the round does NOT advance '
+        'until every instrument has landed', (tester) async {
+      final state = flightState();
+      state.startGame();
+      await tester.pump();
+      state.tapInstrument(0);
+      state.tapInstrument(1);
+      await tester.pump();
+
+      state.tapArrow();
+      expect(state.isObserveFlying, isTrue);
+      expect(state.currentPromptIndex, 0, reason: 'still in round one');
+
+      await tester.pump(HighLowGameState.observeFlightStepDuration);
+      expect(state.isObserveFlying, isTrue, reason: 'first instrument landed');
+      expect(state.observeFlightStep, 1);
+      expect(state.currentPromptIndex, 0);
+
+      await tester.pump(HighLowGameState.observeFlightStepDuration);
+      expect(state.isObserveFlying, isFalse, reason: 'both landed');
+      expect(state.currentPromptIndex, 1, reason: 'now advanced');
+      state.dispose();
+    });
+
+    testWidgets('the plan is lowest pitch first, so the highest is last and '
+        'rises to the top', (tester) async {
+      final state = flightState();
+      state.startGame();
+      await tester.pump();
+      state.tapInstrument(0);
+      state.tapInstrument(1);
+      await tester.pump();
+      final prompt = state.currentPrompt!;
+      state.tapArrow();
+
+      final expected = prompt.firstMidi <= prompt.secondMidi ? [0, 1] : [1, 0];
+      expect(state.observeFlightPlan, expected);
+      final lowest = prompt.firstMidi <= prompt.secondMidi ? 0 : 1;
+      expect(state.observeFlightPlan!.first, lowest);
+      expect(state.observeFlightPlan!.last, isNot(lowest));
+      state.dispose();
+    });
+
+    testWidgets('the record carries the flight order, and the tap sequence '
+        'stops at the arrow — taps during the flight are not logged', (
+      tester,
+    ) async {
+      final state = flightState();
+      state.startGame();
+      await tester.pump();
+      state.tapInstrument(0);
+      state.tapInstrument(1);
+      await tester.pump();
+      final plan = (state.currentPrompt!.firstMidi <=
+              state.currentPrompt!.secondMidi)
+          ? [0, 1]
+          : [1, 0];
+      state.tapArrow();
+      state.tapInstrument(0); // touching during the flight still plays
+      await tester.pump(HighLowGameState.observeFlightStepDuration);
+      await tester.pump(HighLowGameState.observeFlightStepDuration);
+
+      final record = state.instrumentation.last;
+      expect(record.observeFlightOrder, plan);
+      expect(record.observeTapSequence, [0, 1]);
+      state.dispose();
+    });
+
+    testWidgets('a second arrow tap during the flight does nothing — it '
+        'cannot skip a landing or advance twice', (tester) async {
+      final state = flightState(totalPrompts: 3);
+      state.startGame();
+      await tester.pump();
+      state.tapInstrument(0);
+      state.tapInstrument(1);
+      await tester.pump();
+      state.tapArrow();
+      state.tapArrow();
+      await tester.pump(HighLowGameState.observeFlightStepDuration);
+      expect(state.observeFlightStep, 1, reason: 'one landing, not two');
+      await tester.pump(HighLowGameState.observeFlightStepDuration);
+      expect(state.currentPromptIndex, 1, reason: 'advanced exactly once');
+      state.dispose();
+    });
+
+    testWidgets('the adult\'s skip mid-flight cancels it and advances once, '
+        'unrecorded — skipped rounds are still not logged (open question, '
+        'carded)', (tester) async {
+      final state = flightState(totalPrompts: 3);
+      state.startGame();
+      await tester.pump();
+      state.tapInstrument(0);
+      state.tapInstrument(1);
+      await tester.pump();
+      state.tapArrow();
+      await tester.pump(const Duration(milliseconds: 300));
+      final before = state.instrumentation.length;
+
+      state.escape();
+      expect(state.isObserveFlying, isFalse);
+      expect(state.currentPromptIndex, 1);
+      expect(state.instrumentation.length, before);
+
+      // The cancelled flight's timer must not fire into the next round.
+      await tester.pump(HighLowGameState.observeFlightStepDuration * 3);
+      expect(state.currentPromptIndex, 1);
+      state.dispose();
+    });
+
+    testWidgets('a new round starts with no flight running', (tester) async {
+      final state = flightState(totalPrompts: 3);
+      state.startGame();
+      await tester.pump();
+      state.tapInstrument(0);
+      state.tapInstrument(1);
+      await tester.pump();
+      state.tapArrow();
+      await tester.pump(HighLowGameState.observeFlightStepDuration * 2);
+      expect(state.currentPromptIndex, 1);
+      expect(state.isObserveFlying, isFalse);
+      expect(state.observeFlightPlan, isNull);
+      state.dispose();
+    });
+
+    testWidgets('with the flag off (the live default) the arrow advances at '
+        'once, exactly as before — nothing changes ahead of the device check',
+        (tester) async {
+      final state = HighLowGameState(
+        totalPrompts: 2,
+        agencyStage: AgencyStage.observe,
+        roundOrder: RoundOrder.blocked,
+      );
+      state.startGame();
+      await tester.pump();
+      state.tapInstrument(0);
+      state.tapInstrument(1);
+      await tester.pump();
+      state.tapArrow();
+      expect(state.isObserveFlying, isFalse);
+      expect(state.currentPromptIndex, 1);
+      expect(state.instrumentation.last.observeFlightOrder, isEmpty);
+      state.dispose();
+    });
+  });
 }
+
