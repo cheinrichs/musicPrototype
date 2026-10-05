@@ -21,7 +21,7 @@ import 'package:ear_trainer/games/high_low/ordering/ordering_slot.dart';
 import 'package:ear_trainer/games/high_low/widgets/character_art.dart';
 import 'package:ear_trainer/games/high_low/widgets/speaking_pulse.dart';
 import 'package:ear_trainer/audio/audio_controller.dart';
-import 'package:ear_trainer/audio/voice_line.dart';
+import 'package:ear_trainer/audio/spoken_line.dart';
 import 'package:ear_trainer/audio/sfx_type.dart';
 import 'package:ear_trainer/games/high_low/widgets/high_low_caption.dart';
 import 'package:ear_trainer/models/agency_stage.dart';
@@ -1403,11 +1403,11 @@ void main() {
 /// overridden; the rest fall through to [noSuchMethod] as null.
 class _LongVoiceAudio implements AudioController {
   @override
-  Future<void> playVoiceLineAndAwait(VoiceLine line) =>
+  Future<void> playVoiceLineAndAwait(SpokenLine line) =>
       Future<void>.delayed(const Duration(milliseconds: 1500));
 
   @override
-  Future<void> playVoiceLine(VoiceLine line) => Future<void>.value();
+  Future<void> playVoiceLine(SpokenLine line) => Future<void>.value();
 
   @override
   Future<void> playAssetForScale(String path) => Future<void>.value();

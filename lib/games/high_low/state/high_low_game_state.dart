@@ -2,7 +2,10 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../../../audio/audio_controller.dart';
 import '../../../audio/sfx_type.dart';
+import '../../../audio/shared_voice_line.dart';
+import '../../../audio/spoken_line.dart';
 import '../../../audio/voice_line.dart';
+import '../../shared/nudges.dart';
 import '../../../models/agency_stage.dart';
 import '../../../models/concept_tier.dart';
 import '../../../models/game_status.dart';
@@ -183,7 +186,7 @@ class HighLowGameState extends ChangeNotifier {
   bool _hintVisible = false;
   DragFeedback _dragFeedback = DragFeedback.none;
   int? _lastDropSide;
-  VoiceLine? _activeCaption;
+  SpokenLine? _activeCaption;
 
   /// Cumulative correct taps this round, Participate only (Trello card
   /// RqdPFKLf) — a wrong tap does *not* reset this (see
@@ -239,7 +242,7 @@ class HighLowGameState extends ChangeNotifier {
 
   /// Whether the arrow's first-time voice cue has already played this
   /// *session* (not reset per round, per "once per stone" — see
-  /// [VoiceLine.tapTheArrowWhenReady]'s doc comment).
+  /// [SharedVoiceLine.pressTheArrowWhenDone]'s doc comment).
   bool _arrowCueSpoken = false;
 
   /// Which of Piper/Clef is currently speaking a voice line, tied to real
@@ -247,7 +250,7 @@ class HighLowGameState extends ChangeNotifier {
   /// neither is. See [speakingIsPiper]'s doc comment for the interlock
   /// with [_characterSparkleIsPiper].
   bool? _speakingIsPiper;
-  VoiceLine? _speakingLine;
+  SpokenLine? _speakingLine;
   int _speakingGeneration = 0;
 
   /// Which of Piper/Clef should show the transient "found it" sparkle
@@ -291,7 +294,10 @@ class HighLowGameState extends ChangeNotifier {
     ConceptTier conceptTier = ConceptTier.t1,
     this.roundOrder = RoundOrder.blocked,
     this.observeFlight = false,
+    this.voiceOverrides = const {},
+    NudgePool? nudges,
   }) : requestedTier = conceptTier,
+       _nudges = nudges ?? NudgePool(),
        _audio = audio ?? AudioController.instance,
        _generator = generator ?? PromptGenerator(),
        _sequencer = sequencer ?? RoundSequencer();
@@ -302,6 +308,20 @@ class HighLowGameState extends ChangeNotifier {
   /// so the live game's behaviour does not change ahead of that check. Tests
   /// turn it on to exercise the state machine.
   final bool observeFlight;
+
+  /// Lines this game replaces in the app's shared set (Trello card 183): a
+  /// shared line plays unless this map names a replacement for it. Empty by
+  /// default — shared by default, overridden on purpose.
+  final Map<SharedVoiceLine, SpokenLine> voiceOverrides;
+
+  /// The shared nudge pool. Its no-repeat memory is per game session, so it
+  /// lives here rather than as a global.
+  final NudgePool _nudges;
+
+  /// Explore's five-tap run (Trello card 151). Reset at each round.
+  final FiveTapCounter _exploreTaps = FiveTapCounter();
+
+  SpokenLine _shared(SharedVoiceLine line) => voiceOverrides[line] ?? line;
 
   // ---- Session-level getters ----
   GameStatus get status => _status;
@@ -354,7 +374,7 @@ class HighLowGameState extends ChangeNotifier {
   /// listener can tell a *new* line starting from the same character
   /// speaking twice in a row, which needs its elapsed-time clock reset
   /// even though [speakingIsPiper] doesn't change.
-  VoiceLine? get speakingLine => _speakingLine;
+  SpokenLine? get speakingLine => _speakingLine;
 
   /// Bumped every time [_speak] starts a new line. See [speakingLine].
   int get speakingGeneration => _speakingGeneration;
@@ -590,7 +610,7 @@ class HighLowGameState extends ChangeNotifier {
   /// late completion can't clear a newer round's speaking state. Callers
   /// that don't need to block on the line finishing wrap this in
   /// `unawaited` themselves — the tracking still happens either way.
-  Future<void> _speak(int token, VoiceLine line) async {
+  Future<void> _speak(int token, SpokenLine line) async {
     _speakingIsPiper = line.isPiper;
     _speakingLine = line;
     _speakingGeneration++;
@@ -621,6 +641,7 @@ class HighLowGameState extends ChangeNotifier {
 
   void _startRound() {
     final token = ++_roundToken;
+    _exploreTaps.reset();
     _cancelPendingTimer();
     _cancelNudgeTimer();
     _cancelSparkleTimer();
@@ -671,7 +692,7 @@ class HighLowGameState extends ChangeNotifier {
   /// card KOuemvVs); [_runIntro]'s own per-note narration (Observe) doesn't
   /// go through here, since [_startRound] never sets a top-level
   /// [_activeCaption] for Observe.
-  Future<void> _playCaptionThenIntro(int token, VoiceLine caption) async {
+  Future<void> _playCaptionThenIntro(int token, SpokenLine caption) async {
     await _speak(token, caption);
     if (token != _roundToken) return;
     await _runIntro(token);
@@ -832,7 +853,9 @@ class HighLowGameState extends ChangeNotifier {
         _showArrow = true;
         if (!_arrowCueSpoken) {
           _arrowCueSpoken = true;
-          unawaited(_audio.playVoiceLine(VoiceLine.tapTheArrowWhenReady));
+          unawaited(
+            _audio.playVoiceLine(_shared(SharedVoiceLine.pressTheArrowWhenDone)),
+          );
         }
       }
     } else if (agencyStage == AgencyStage.explore) {
@@ -853,6 +876,18 @@ class HighLowGameState extends ChangeNotifier {
         }
       } else {
         _wrongTapCount++;
+      }
+      // The five-tap rule (Trello card 151): five consistent taps on one
+      // wrong option fire one gentle nudge. Every tap goes through the
+      // counter, so a correct tap in between breaks a wrong run. A single
+      // wrong tap gets nothing; five says the child really thinks it is that
+      // one, and that is what the nudge answers.
+      final fired = _exploreTaps.tap(side);
+      if (fired && side != prompt.targetSide) {
+        final nudge = _nudges.next(
+          targetCharacterIsPiper ? NudgeSpeaker.piper : NudgeSpeaker.clef,
+        );
+        unawaited(_speak(_roundToken, _shared(nudge)));
       }
     }
 
@@ -916,9 +951,15 @@ class HighLowGameState extends ChangeNotifier {
       _cancelNudgeTimer();
       _nudgeVisible = false;
       _dragFeedback = DragFeedback.retry;
-      _activeCaption = targetCharacterIsPiper
-          ? VoiceLine.tryAgainPiper
-          : VoiceLine.tryAgainClef;
+      // A wrong drop still gets the gentle retry, but the line comes from the
+      // shared rotating pool, so repeated misses do not hear the same line
+      // each time (Trello card 151). The five-tap rule for drops is not yet
+      // wired here — see the open question on Trello card 151.
+      _activeCaption = _shared(
+        _nudges.next(
+          targetCharacterIsPiper ? NudgeSpeaker.piper : NudgeSpeaker.clef,
+        ),
+      );
       _status = GameStatus.showingFeedback;
       notifyListeners();
 
@@ -973,7 +1014,7 @@ class HighLowGameState extends ChangeNotifier {
   Future<void> _playRetryThenIntro(
     int token,
     HighLowPrompt prompt,
-    VoiceLine retryLine,
+    SpokenLine retryLine,
   ) async {
     await Future.wait([
       _speak(token, retryLine),
@@ -1158,6 +1199,7 @@ class HighLowGameState extends ChangeNotifier {
     _wrongTapCount = 0;
     _tappedSidesObserve.clear();
     _observeTapSequence.clear();
+    _exploreTaps.reset();
     _showArrow = false;
     _arrowCueSpoken = false;
     _nudgeVisible = false;

@@ -19,11 +19,8 @@ void main() {
     test('every value resolves to a real, committed mp3 — guards against '
         'a typo in the enum name vs. the file build_voice_lines.py wrote '
         '(the two are independent strings; nothing else catches a '
-        'mismatch until the line silently no-ops on a real device) — '
-        'except tapTheArrowWhenReady, a deliberate hook for a line that '
-        "hasn't been recorded yet (see its doc comment)", () {
+        'mismatch until the line silently no-ops on a real device)', () {
       for (final line in VoiceLine.values) {
-        if (line == VoiceLine.tapTheArrowWhenReady) continue;
         final file = File(line.assetPath);
         expect(
           file.existsSync(),

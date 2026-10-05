@@ -175,12 +175,21 @@ so "low to high" and "high to low" describe the same ladder from opposite ends a
 instruments identically. Neither line counts the instruments, so both work unchanged for
 two- and three-instrument ordering.
 
-## Wrong-answer nudges
+## Wrong-answer nudges — shared
 
-Two pools, one per character. Lines belong to their character. **Avoid immediate repeats**
-rather than picking at random; track the last played per character and exclude it. The
-rotating pool itself is not built (Trello card KmufGcge). Today a round always plays the
-fixed 2-3/4-5 line.
+**Shared, not High/Low's** (Trello card 183). Two pools, one per character, in
+`SharedVoiceLine` (`lib/audio/shared_voice_line.dart`). Any game uses them. A game may replace
+one through its `voiceOverrides` map.
+
+**Rotation (built 2026-10-05, Trello card 151):** the line played last for a character is
+excluded from the next pick for that character. Random alone repeats too often to defeat the
+point. Implemented in `NudgePool` (`lib/games/shared/nudges.dart`).
+
+**When one fires (built 2026-10-05, Trello card 151):** five consistent taps on the same wrong
+option fire one nudge. One wrong tap gets nothing. The count is per option, so bouncing between
+two options never fires. A correct tap breaks a wrong run. Implemented in `FiveTapCounter`, and
+wired into Explore taps. **Not yet wired to Decide's wrong drops**, which still play a retry line
+on every wrong drop. See the open question on the card.
 
 | | Clef | Piper |
 |---|---|---|
@@ -196,15 +205,15 @@ are not candidates for the pool unless someone writes and records them.
 The pool design holds: these describe the answer rather than judging the attempt, and the
 Piper pool is deliberately shared across bands rather than a compromise.
 
-## Arrow cue
+## Arrow cue — shared
 
 | Character | Line | Enum | Recorded | Wired |
 |---|---|---|---|---|
-| System cue (not a character) | "Tap the arrow when you're ready." | `tapTheArrowWhenReady` | **no** | yes |
+| Piper | "Press the arrow when you're done!" | `SharedVoiceLine.pressTheArrowWhenDone` | **no** | yes (Observe) |
 
-Played once per session, the first time the earned arrow appears at A0. **It is wired but has
-no recording**, so it currently plays as a silent no-op. It is not spoken by either character;
-the `isPiper` value on this member is bookkeeping and does not assign a speaker.
+Shared across games (Trello card 183), in Piper's voice, decided 2026-10-05. It replaces the
+earlier unrecorded hook, "Tap the arrow when you're ready.", which is retired. **Wired but not
+recorded**, so it plays as a silent no-op until a take exists.
 
 ## Retired and naming
 
@@ -293,6 +302,15 @@ Changes made when this doc was first checked against the code:
 - **Marked as wired without a recording:** `tapTheArrowWhenReady`.
 - **Corrected status:** the A2 caption rewrite has landed; the "sparkles" caption is withdrawn.
 - **Open:** the low/lower caption contradiction.
+
+---
+
+## Shared lines — how they are owned
+
+- `SpokenLine` (`lib/audio/spoken_line.dart`) is what the audio controller and the speaking
+  indicator take. Both `VoiceLine` (game lines) and `SharedVoiceLine` (app lines) implement it.
+- Shared lines keep their asset names, so no audio files moved.
+- Shared by default, overridden on purpose: a game passes `voiceOverrides` to replace one.
 
 ---
 

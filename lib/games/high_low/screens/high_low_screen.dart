@@ -746,7 +746,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
     final clefSpeaking = _gameState.speakingIsPiper == false;
     // The character who isn't speaking is NOT dimmed — see the class doc on
     // [_buildCharacter] for why that was tried and removed.
-    final speakingLineName = _gameState.speakingLine?.name;
+    final speakingLineName = _gameState.speakingLine?.assetName;
     final speakingGeneration = _gameState.speakingGeneration;
     final piperSparkling = _gameState.characterSparkleIsPiper == true;
     final clefSparkling = _gameState.characterSparkleIsPiper == false;

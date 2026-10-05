@@ -5,6 +5,7 @@ import 'package:flutter_soloud/flutter_soloud.dart';
 import 'audio_session.dart';
 import 'note.dart';
 import 'sfx_type.dart';
+import 'spoken_line.dart';
 import 'single_voice.dart';
 import 'voice_line.dart';
 
@@ -292,7 +293,7 @@ class AudioController {
   /// melodies, which already no-ops silently when an asset is missing —
   /// callers pair this with an on-screen caption (see [VoiceLine]) so the
   /// moment still reads without audio.
-  Future<void> playVoiceLine(VoiceLine line) => playClip(line.assetPath);
+  Future<void> playVoiceLine(SpokenLine line) => playClip(line.assetPath);
 
   /// Play a spoken line and await its natural completion, so the caller can
   /// sequence something after it finishes speaking (Trello card KOuemvVs —
@@ -304,7 +305,7 @@ class AudioController {
   /// wedged in front of the notes (and would break tests that pump a
   /// fixed, much shorter duration), so this returns immediately instead
   /// when there's nothing to actually wait for.
-  Future<void> playVoiceLineAndAwait(VoiceLine line) async {
+  Future<void> playVoiceLineAndAwait(SpokenLine line) async {
     if (!_isInitialized || _isMuted) return;
 
     if (_currentClipHandle != null) {

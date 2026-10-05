@@ -1,3 +1,5 @@
+import 'spoken_line.dart';
+
 /// Spoken lines used by the agency-staged games (Trello card 91).
 /// [AudioController.playVoiceLine] silently no-ops on a missing asset
 /// (same fallback the Sound Playground uses for missing instrument
@@ -58,7 +60,7 @@
 /// lands in, sometimes one at a time) and format-converted from the
 /// 24kHz mono WAVs Cooper delivers to this project's standard
 /// mono/44.1kHz/64kbps CBR mp3.
-enum VoiceLine {
+enum VoiceLine implements SpokenLine {
   /// Piper, narrating the lower instrument in Observe (A0) — spoken as
   /// the first note of the pair. Canonical for both the 2-3 and 4-5
   /// bands as of 2026-09-07 ("That one sounds low.") — see the class doc.
@@ -132,18 +134,7 @@ enum VoiceLine {
   /// spatially.
   giveMeLow,
 
-  /// Trigger (A2) gentle retry after a wrong drop, when Clef is the
-  /// dragged character (i.e. the target was the high pole) — the
-  /// 2-3/4-5-shared line ("Ooh, nearly! Listen again."). One of the two
-  /// characters' four-line rotating nudge pools once Trello card
-  /// KmufGcge builds the rotation — see the class doc.
-  tryAgainClef,
 
-  /// Trigger (A2) gentle retry after a wrong drop, when Piper is the
-  /// dragged character (i.e. the target was the low pole) — the
-  /// 2-3/4-5-shared line ("Nearly! Have another listen."). See
-  /// [tryAgainClef]'s doc comment.
-  tryAgainPiper,
 
   // ---- 4-5 band: "asking rather than instructing" (genuinely new
   // wording from here down — the A0 pair above is shared, not repeated
@@ -167,14 +158,7 @@ enum VoiceLine {
   /// [giveMeHigh45] ("Can you give me the low one?").
   giveMeLow45,
 
-  /// 4-5's wrong-drop retry, Clef ("Ooh, so close! Let's hear that
-  /// again."). See [tryAgainClef]'s doc comment — one of Clef's four
-  /// pool candidates, not yet wired into a rotation.
-  tryAgainClef45,
 
-  /// 4-5's wrong-drop retry, Piper ("So close! Let's hear it again.").
-  /// See [tryAgainClef45].
-  tryAgainPiper45,
 
   // ---- 6-7 band: comparative form ("higher"/"lower" rather than
   // "high"/"low") and "note" rather than "pitch". Clef's A1, A2, and
@@ -210,39 +194,18 @@ enum VoiceLine {
   /// rather than asking to be handed something, unlike [giveMeLow]/
   /// [giveMeLow45]'s "give me the low one" framing at the younger bands.
   /// Clef's equivalent ("Which note is higher?") has no recording yet.
-  whichIsLower67,
+  whichIsLower67;
 
-  /// 6-7's wrong-drop retry, Piper ("Not that one — one more listen.").
-  /// See [tryAgainClef]'s doc comment. Clef's 6-7 nudge has no recording
-  /// yet.
-  tryAgainPiper67,
 
   // ---- 8+: see the class doc for why this is the only 8+-specific
   // line — everything else collapsed into its 6-7 equivalent. ----
 
-  /// 8+'s wrong-drop retry, Piper ("That's not it. Try again.") — one of
-  /// Piper's four pool candidates once Trello card KmufGcge builds the
-  /// rotation. No Clef 8+ nudge exists because Clef's 6-7 nudge itself
-  /// isn't recorded yet.
-  tryAgainPiper8plus,
 
-  /// Observe (A0)'s first-time arrow cue ("Tap the arrow when you're
-  /// ready.") — spoken once per session, the first time the earned arrow
-  /// appears (Trello card xpAkja5b, "Two controls: the adult's persistent
-  /// skip, and the child's earned arrow"). **No recording exists yet** —
-  /// unlike every other line above, this one is a genuine hook: it plays
-  /// through the same silent-no-op-on-missing-asset path every line here
-  /// already has (see the class doc), so nothing breaks before a real
-  /// take arrives. Not spoken by either character in the way the rest of
-  /// this enum is — it's a system-level nudge, not in-character dialogue
-  /// — so [isPiper]'s `true` here is arbitrary bookkeeping to satisfy the
-  /// exhaustive switch, not a real assignment; [HighLowGameState] never
-  /// routes this line through the speaking-indicator machinery that
-  /// getter serves. Excluded from
-  /// `test/audio/voice_line_test.dart`'s "every value resolves to a real,
-  /// committed mp3" check for the same reason.
-  tapTheArrowWhenReady;
 
+  @override
+  String get assetName => name;
+
+  @override
   String get assetPath => 'assets/audio/voice/$name.mp3';
 
   /// True if Piper speaks this line, false if Clef does — every line
@@ -261,6 +224,7 @@ enum VoiceLine {
   /// line") replaced it with six fixed captions keyed by stage and pole
   /// only, not by band or by individual line; see
   /// [HighLowGameState.captionText].
+  @override
   bool get isPiper => switch (this) {
     VoiceLine.piperSaysLow => true,
     VoiceLine.piperSaysLowSecond => true,
@@ -270,21 +234,14 @@ enum VoiceLine {
     VoiceLine.listenForLow => true,
     VoiceLine.giveMeHigh => false,
     VoiceLine.giveMeLow => true,
-    VoiceLine.tryAgainClef => false,
-    VoiceLine.tryAgainPiper => true,
     VoiceLine.listenForHigh45 => false,
     VoiceLine.listenForLow45 => true,
     VoiceLine.giveMeHigh45 => false,
     VoiceLine.giveMeLow45 => true,
-    VoiceLine.tryAgainClef45 => false,
-    VoiceLine.tryAgainPiper45 => true,
     VoiceLine.clefSaysHigher67 => false,
     VoiceLine.piperSaysLower67 => true,
     VoiceLine.piperSaysLower67Second => true,
     VoiceLine.listenForLower67 => true,
     VoiceLine.whichIsLower67 => true,
-    VoiceLine.tryAgainPiper67 => true,
-    VoiceLine.tryAgainPiper8plus => true,
-    VoiceLine.tapTheArrowWhenReady => true, // arbitrary — see its doc comment
   };
 }

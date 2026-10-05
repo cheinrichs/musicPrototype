@@ -1,4 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ear_trainer/audio/audio_controller.dart';
+import 'package:ear_trainer/audio/sfx_type.dart';
+import 'package:ear_trainer/audio/shared_voice_line.dart';
+import 'package:ear_trainer/audio/spoken_line.dart';
+import 'package:ear_trainer/audio/voice_line.dart';
+import 'package:ear_trainer/games/shared/nudges.dart';
 import 'package:ear_trainer/models/agency_stage.dart';
 import 'package:ear_trainer/models/concept_tier.dart';
 import 'package:ear_trainer/models/game_status.dart';
@@ -1316,5 +1322,148 @@ void main() {
       state.dispose();
     });
   });
+
+  group('shared lines and the five-tap rule, through the game state (Trello '
+      'cards 151 and 183)', () {
+    final nudgeNames = {
+      for (final l in [...NudgePool.clefLines, ...NudgePool.piperLines]) l.name,
+    };
+
+    HighLowGameState stateWith(
+      AgencyStage stage, {
+      Map<SharedVoiceLine, SpokenLine> overrides = const {},
+      _RecordingAudio? audio,
+    }) => HighLowGameState(
+      totalPrompts: 3,
+      agencyStage: stage,
+      roundOrder: RoundOrder.blocked,
+      audio: audio ?? _RecordingAudio(),
+      voiceOverrides: overrides,
+    );
+
+    testWidgets('Explore: five consistent taps on the wrong option play one '
+        'nudge from the speaking character\'s own pool', (tester) async {
+      final audio = _RecordingAudio();
+      final state = stateWith(AgencyStage.explore, audio: audio);
+      state.startGame();
+      await tester.pump();
+      final wrong = 1 - state.currentPrompt!.targetSide;
+
+      for (var i = 0; i < 5; i++) {
+        state.tapInstrument(wrong);
+      }
+      await tester.pump();
+
+      final nudges = audio.played.where(nudgeNames.contains).toList();
+      expect(nudges, hasLength(1));
+      final owner = state.targetCharacterIsPiper
+          ? NudgePool.piperLines
+          : NudgePool.clefLines;
+      expect(owner.map((l) => l.name), contains(nudges.single));
+      state.dispose();
+    });
+
+    testWidgets('Explore: four wrong taps, or wrong taps bounced between two '
+        'options, play nothing', (tester) async {
+      final audio = _RecordingAudio();
+      final state = stateWith(AgencyStage.explore, audio: audio);
+      state.startGame();
+      await tester.pump();
+      final wrong = 1 - state.currentPrompt!.targetSide;
+      final target = state.currentPrompt!.targetSide;
+
+      for (var i = 0; i < 4; i++) {
+        state.tapInstrument(wrong);
+      }
+      await tester.pump();
+      expect(audio.played.where(nudgeNames.contains), isEmpty);
+
+      for (var i = 0; i < 10; i++) {
+        state.tapInstrument(i.isEven ? target : wrong);
+      }
+      await tester.pump();
+      expect(audio.played.where(nudgeNames.contains), isEmpty);
+      state.dispose();
+    });
+
+    testWidgets('Decide: a wrong drop\'s retry line comes from the rotating '
+        'pool, owned by the asking character', (tester) async {
+      final audio = _RecordingAudio();
+      final state = stateWith(AgencyStage.decide, audio: audio);
+      state.startGame();
+      await tester.pump();
+      final wrong = 1 - state.currentPrompt!.targetSide;
+
+      state.dropInstrument(wrong);
+      await tester.pump();
+
+      final owner = state.targetCharacterIsPiper
+          ? NudgePool.piperLines
+          : NudgePool.clefLines;
+      expect(
+        audio.played.where(nudgeNames.contains).single,
+        isIn(owner.map((l) => l.name)),
+      );
+      state.dispose();
+    });
+
+    testWidgets('the arrow cue plays the shared line, and a game can replace '
+        'it through voiceOverrides', (tester) async {
+      final plain = _RecordingAudio();
+      final plainState = stateWith(AgencyStage.observe, audio: plain);
+      plainState.startGame();
+      await tester.pump();
+      plainState.tapInstrument(0);
+      plainState.tapInstrument(1);
+      await tester.pump();
+      expect(plain.played, contains('pressTheArrowWhenDone'));
+      plainState.dispose();
+
+      final overridden = _RecordingAudio();
+      final state = stateWith(
+        AgencyStage.observe,
+        audio: overridden,
+        overrides: {
+          SharedVoiceLine.pressTheArrowWhenDone: VoiceLine.clefSaysHigh,
+        },
+      );
+      state.startGame();
+      await tester.pump();
+      state.tapInstrument(0);
+      state.tapInstrument(1);
+      await tester.pump();
+      expect(overridden.played, contains('clefSaysHigh'));
+      expect(overridden.played, isNot(contains('pressTheArrowWhenDone')));
+      state.dispose();
+    });
+  });
+}
+
+/// Records the names of every line the game asks to play, and plays nothing.
+/// Lets a test check which line reached audio, not just that some sound did.
+class _RecordingAudio implements AudioController {
+  final List<String> played = [];
+
+  @override
+  Future<void> playVoiceLine(SpokenLine line) async {
+    played.add(line.assetName);
+  }
+
+  @override
+  Future<void> playVoiceLineAndAwait(SpokenLine line) async {
+    played.add(line.assetName);
+  }
+
+  @override
+  Future<void> playAssetForScale(String path) async {}
+
+  @override
+  Future<void> playSfx(SfxType sfx) async {}
+
+  @override
+  void stopCurrentNote() {}
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
 }
 
