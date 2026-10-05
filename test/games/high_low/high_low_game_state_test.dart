@@ -177,7 +177,7 @@ void main() {
       (tester) async {
         final state = HighLowGameState(
           totalPrompts: 2,
-          agencyStage: AgencyStage.drag,
+          agencyStage: AgencyStage.decide,
           conceptTier: ConceptTier.t1,
         );
         // Disposed explicitly at the end of this test (it starts a new
@@ -225,7 +225,7 @@ void main() {
           'no evidence behind it', (tester) async {
         final state = HighLowGameState(
           totalPrompts: 2,
-          agencyStage: AgencyStage.drag,
+          agencyStage: AgencyStage.decide,
           conceptTier: ConceptTier.t1,
         );
         state.startGame();
@@ -263,7 +263,7 @@ void main() {
         (tester) async {
           final state = HighLowGameState(
             totalPrompts: 2,
-            agencyStage: AgencyStage.drag,
+            agencyStage: AgencyStage.decide,
             conceptTier: ConceptTier.t1,
           );
           state.startGame();
@@ -291,7 +291,7 @@ void main() {
         (tester) async {
           final state = HighLowGameState(
             totalPrompts: 2,
-            agencyStage: AgencyStage.drag,
+            agencyStage: AgencyStage.decide,
             conceptTier: ConceptTier.t1,
           );
           state.startGame();
@@ -321,7 +321,7 @@ void main() {
       (tester) async {
         final state = HighLowGameState(
           totalPrompts: 2,
-          agencyStage: AgencyStage.drag,
+          agencyStage: AgencyStage.decide,
           conceptTier: ConceptTier.t1,
         );
         state.startGame();
@@ -360,7 +360,7 @@ void main() {
         '(Trello card jmuMDPcT)', (tester) async {
       final state = HighLowGameState(
         totalPrompts: 2,
-        agencyStage: AgencyStage.drag,
+        agencyStage: AgencyStage.decide,
         conceptTier: ConceptTier.t1,
       );
       // Disposed explicitly at the end (the overriding correct drop below
@@ -410,7 +410,7 @@ void main() {
     ) async {
       final state = HighLowGameState(
         totalPrompts: 1,
-        agencyStage: AgencyStage.drag,
+        agencyStage: AgencyStage.decide,
       );
       // Disposed explicitly at the end — see the matching comment on the
       // Observe "a tap never cuts the intro" test above.
@@ -437,7 +437,7 @@ void main() {
       (tester) async {
         final state = HighLowGameState(
           totalPrompts: 5,
-          agencyStage: AgencyStage.drag,
+          agencyStage: AgencyStage.decide,
         );
         // Disposed explicitly at the end (escape below starts a new
         // round's intro along the way) rather than via addTearDown — see
@@ -483,7 +483,7 @@ void main() {
     ) async {
       final state = HighLowGameState(
         totalPrompts: 2,
-        agencyStage: AgencyStage.drag,
+        agencyStage: AgencyStage.decide,
       );
       // Disposed explicitly at the end of this test (it starts a new
       // round's intro along the way) rather than via addTearDown.
@@ -604,7 +604,7 @@ void main() {
     );
 
     testWidgets('never appears outside Observe', (tester) async {
-      for (final stage in [AgencyStage.explore, AgencyStage.drag]) {
+      for (final stage in [AgencyStage.explore, AgencyStage.decide]) {
         final state = HighLowGameState(totalPrompts: 1, agencyStage: stage);
         state.startGame();
         await tester.pump();
@@ -853,7 +853,7 @@ void main() {
     );
 
     testWidgets('never applies at Observe or Trigger', (tester) async {
-      for (final stage in [AgencyStage.observe, AgencyStage.drag]) {
+      for (final stage in [AgencyStage.observe, AgencyStage.decide]) {
         final state = HighLowGameState(totalPrompts: 1, agencyStage: stage);
         state.startGame();
         await tester.pump();
@@ -880,7 +880,7 @@ void main() {
     ) async {
       final state = HighLowGameState(
         totalPrompts: 1,
-        agencyStage: AgencyStage.drag,
+        agencyStage: AgencyStage.decide,
       );
       // Disposed explicitly at the end — see the matching comment on the
       // Observe "a tap never cuts the intro" test above.
@@ -914,7 +914,7 @@ void main() {
           // asserting against an unseeded random draw — passed locally by
           // chance, failed on CI when the draw came up "lower" instead.
           totalPrompts: 3,
-          agencyStage: AgencyStage.drag,
+          agencyStage: AgencyStage.decide,
           roundOrder: RoundOrder.blocked,
         );
         // Disposed explicitly at the end — see the matching comment on
@@ -1043,7 +1043,7 @@ void main() {
     ) async {
       final state = HighLowGameState(
         totalPrompts: 3,
-        agencyStage: AgencyStage.drag,
+        agencyStage: AgencyStage.decide,
         conceptTier: ConceptTier.t5,
       );
       expect(state.conceptTier, ConceptTier.t5);
@@ -1139,7 +1139,7 @@ void main() {
         'bottom — no caption describes motion', (tester) async {
       final state = HighLowGameState(
         totalPrompts: 3,
-        agencyStage: AgencyStage.drag,
+        agencyStage: AgencyStage.decide,
         roundOrder: RoundOrder.blocked,
       );
       state.startGame();

@@ -69,6 +69,10 @@ class Profile {
   /// behalf; a parent never actually chose that value.
   static AgencyStage? _agencyStageByName(String? name) {
     if (name == null) return null;
+    // Renamed 2026-10-05 (Trello card 181, Drag → Decide). A value saved
+    // before the rename means the same stage, so it maps across explicitly
+    // rather than silently falling back to "not set".
+    if (name == 'drag') return AgencyStage.decide;
     for (final stage in AgencyStage.values) {
       if (stage.name == name) return stage;
     }

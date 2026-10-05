@@ -11,7 +11,7 @@ void main() {
       expect(AgencyStage.values, [
         AgencyStage.observe,
         AgencyStage.explore,
-        AgencyStage.drag,
+        AgencyStage.decide,
       ]);
     });
 
@@ -19,14 +19,14 @@ void main() {
         'unaffected by this enum\'s own names', () {
       expect(AgencyStage.observe.code, 'A0');
       expect(AgencyStage.explore.code, 'A1');
-      expect(AgencyStage.drag.code, 'A2');
+      expect(AgencyStage.decide.code, 'A2');
     });
 
     test('labels are the new, renamed-from-Participate/Trigger names, for '
         'the dev picker', () {
       expect(AgencyStage.observe.label, 'Observe');
       expect(AgencyStage.explore.label, 'Explore');
-      expect(AgencyStage.drag.label, 'Drag');
+      expect(AgencyStage.decide.label, 'Decide');
     });
   });
 }

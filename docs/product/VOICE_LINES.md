@@ -111,9 +111,9 @@ Corrections against the first version: Piper's line has no "Ooh," in the recordi
 (`listenForLow` is the take Cooper confirmed as usable earlier), and the 4-5 and 6-7 lines
 were missing entirely.
 
-## A2 — Drag
+## A2 — Decide
 
-*Carded rename: this level becomes **Decide**. Not yet made in code or here.*
+*Renamed from Drag 2026-10-05 (Trello card 181): this level is now **Decide** in code and here. "Drag" survives only where it means the motor capability.*
 
 **Currently in the app, superseded by the tree mechanic (interim):**
 
@@ -249,8 +249,8 @@ Captions are keyed by agency stage and pole only. They do not vary by age band o
 | Observe (A0) | both | "Encourage them to tap each instrument." |
 | Explore (A1) | higher | "Let them tap both and find the higher one." |
 | Explore (A1) | lower | "Let them tap both and find the lower one." |
-| Drag (A2) | higher | "Help them put the higher one up on top." |
-| Drag (A2) | lower | "Help them put the lower one down at the bottom." |
+| Decide (A2) | higher | "Help them put the higher one up on top." |
+| Decide (A2) | lower | "Help them put the lower one down at the bottom." |
 
 **Secondary guidance** appears in Explore only, about six seconds into an unanswered round:
 
@@ -259,7 +259,7 @@ Captions are keyed by agency stage and pole only. They do not vary by age band o
 | higher | "Encourage them to keep tapping the higher one." |
 | lower | "Encourage them to keep tapping the lower one." |
 
-Observe and Drag have no secondary caption. Their six-second nudges were removed along with
+Observe and Decide have no secondary caption. Their six-second nudges were removed along with
 the timed move-on control (Trello card xpAkja5b).
 
 **Corrections against the first version:**

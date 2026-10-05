@@ -30,7 +30,7 @@ void main() {
       final settings = DevSettingsState()
         ..setConceptTier(ConceptTier.t8)
         ..setAgencyStage(AgencyStage.observe)
-        ..setAgencyStage(AgencyStage.drag);
+        ..setAgencyStage(AgencyStage.decide);
       expect(settings.conceptTier, ConceptTier.t1);
     });
   });

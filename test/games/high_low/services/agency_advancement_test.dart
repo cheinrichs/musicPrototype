@@ -118,7 +118,7 @@ void main() {
       test('demotes to Explore after consecutive rounds with many failed '
           'drags — motor difficulty, not a wrong answer', () {
         final result = AgencyAdvancement.evaluate(
-          current: AgencyStage.drag,
+          current: AgencyStage.decide,
           instrumentation: List.generate(
             AgencyAdvancement.roundsRequired,
             (_) => dragRound(wrongTapCount: 5),
@@ -131,7 +131,7 @@ void main() {
           'either note finished — no evidence pattern, distinct from the '
           'failed-drags signal', () {
         final result = AgencyAdvancement.evaluate(
-          current: AgencyStage.drag,
+          current: AgencyStage.decide,
           instrumentation: List.generate(
             AgencyAdvancement.roundsRequired,
             (_) => dragRound(notesHeard: false, wrongTapCount: 0),
@@ -144,7 +144,7 @@ void main() {
           'even a wrong one now and then, is not a demotion signal '
           '(agency moves on capability, never accuracy)', () {
         final result = AgencyAdvancement.evaluate(
-          current: AgencyStage.drag,
+          current: AgencyStage.decide,
           instrumentation: List.generate(
             AgencyAdvancement.roundsRequired,
             (_) => dragRound(notesHeard: true, wrongTapCount: 0),
@@ -157,7 +157,7 @@ void main() {
         'never advances further from Drag — it is the top of the ladder',
         () {
           final result = AgencyAdvancement.evaluate(
-            current: AgencyStage.drag,
+            current: AgencyStage.decide,
             instrumentation: List.generate(
               AgencyAdvancement.roundsRequired,
               (_) => dragRound(),

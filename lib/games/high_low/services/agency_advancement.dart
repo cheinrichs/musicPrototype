@@ -89,9 +89,9 @@ class AgencyAdvancement {
       case AgencyStage.observe:
         return _observeToExplore(recent);
       case AgencyStage.explore:
-        return _exploreToDrag(recent) ?? AgencyEvaluation.hold;
-      case AgencyStage.drag:
-        return _dragDemotion(recent) ?? AgencyEvaluation.hold;
+        return _exploreToDecide(recent) ?? AgencyEvaluation.hold;
+      case AgencyStage.decide:
+        return _decideDemotion(recent) ?? AgencyEvaluation.hold;
     }
   }
 
@@ -110,7 +110,7 @@ class AgencyAdvancement {
     '(both instruments tapped) without being skipped',
   );
 
-  static AgencyEvaluation? _exploreToDrag(List<RoundInstrumentation> recent) {
+  static AgencyEvaluation? _exploreToDecide(List<RoundInstrumentation> recent) {
     final consistent = recent.every(
       (r) => r.wrongTapCount <= _exploreNoiseTolerance,
     );
@@ -123,11 +123,11 @@ class AgencyAdvancement {
     );
   }
 
-  static AgencyEvaluation? _dragDemotion(List<RoundInstrumentation> recent) {
+  static AgencyEvaluation? _decideDemotion(List<RoundInstrumentation> recent) {
     if (recent.every((r) => r.wrongTapCount >= _manyFailedDrags)) {
       return AgencyEvaluation(
         AgencyChange.demote,
-        '$roundsRequired consecutive Drag rounds each had '
+        '$roundsRequired consecutive Decide rounds each had '
         '$_manyFailedDrags or more failed drags — motor difficulty, not a '
         'wrong answer',
       );
@@ -135,7 +135,7 @@ class AgencyAdvancement {
     if (recent.every((r) => r.notesHeardBeforeFirstResponse == false)) {
       return AgencyEvaluation(
         AgencyChange.demote,
-        '$roundsRequired consecutive Drag rounds were answered before '
+        '$roundsRequired consecutive Decide rounds were answered before '
         'either note had finished playing — no evidence existed to act on, '
         'a pattern consistent with guessing rather than dragging',
       );

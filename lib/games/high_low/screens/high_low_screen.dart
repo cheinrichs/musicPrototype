@@ -572,7 +572,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
     setState(() => _sharingReport = true);
     try {
       final buildInfo = await BuildInfo.current();
-      final respondsToDrops = _gameState.agencyStage == AgencyStage.drag;
+      final respondsToDrops = _gameState.agencyStage == AgencyStage.decide;
       final report = RoundReport(
         capturedAt: DateTime.now(),
         build: buildInfo,
@@ -715,7 +715,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
     final leftFeetLift = leftCharSize * _gameState.leftInstrument.floatFraction;
     final rightFeetLift =
         rightCharSize * _gameState.rightInstrument.floatFraction;
-    final isTrigger = _gameState.agencyStage == AgencyStage.drag;
+    final isTrigger = _gameState.agencyStage == AgencyStage.decide;
     // Whichever character owns this round's pole (Piper is low, Clef is
     // high — Trello card 101) is the one asking at Participate and Trigger:
     // in Trigger, the tree slot near her is where the correct instrument

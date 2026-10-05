@@ -16,7 +16,7 @@ import '../../models/round_order.dart';
 /// other than these defaults, which are chosen to match the production
 /// experience.
 class DevSettingsState extends ChangeNotifier {
-  AgencyStage _agencyStage = AgencyStage.drag;
+  AgencyStage _agencyStage = AgencyStage.decide;
   ConceptTier _conceptTier = ConceptTier.t1;
   RoundOrder _roundOrder = RoundOrder.blocked;
 

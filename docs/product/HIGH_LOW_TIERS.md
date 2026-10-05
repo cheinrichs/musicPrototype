@@ -6,7 +6,7 @@ This document covers the **concept tier** axis for High/Low only. Agency, skill,
 
 > **UPDATED 2026-09-27 (Trello card 168, "Agency is capability, not
 > difficulty").** Agency is now three named capability levels —
-> **Observe, Explore, Drag** — not the curriculum's old A0–A4 ladder.
+> **Observe, Explore, Decide** — not the curriculum's old A0–A4 ladder.
 > A3 ("Timed") was never built and is confirmed gone for good: timing is
 > telemetry, not a capability. **Ordering is no longer an agency level at
 > all** — it's a separate skill built on Drag capability, taught by

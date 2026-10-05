@@ -125,7 +125,7 @@ void main() {
 
     test('A2 reaches every tier', () {
       for (final tier in ConceptTier.values) {
-        expect(tier.isReachableAt(AgencyStage.drag), isTrue);
+        expect(tier.isReachableAt(AgencyStage.decide), isTrue);
       }
     });
 
@@ -136,7 +136,7 @@ void main() {
       expect(ConceptTier.t8.clampedTo(AgencyStage.explore), ConceptTier.t4);
       expect(ConceptTier.t5.clampedTo(AgencyStage.explore), ConceptTier.t4);
       expect(ConceptTier.t3.clampedTo(AgencyStage.explore), ConceptTier.t3);
-      expect(ConceptTier.t8.clampedTo(AgencyStage.drag), ConceptTier.t8);
+      expect(ConceptTier.t8.clampedTo(AgencyStage.decide), ConceptTier.t8);
     });
   });
 }

@@ -19,7 +19,7 @@ void main() {
     required int leftMidi,
     required HighLowInstrument rightInstrument,
     required int rightMidi,
-    AgencyStage agencyStage = AgencyStage.drag,
+    AgencyStage agencyStage = AgencyStage.decide,
   }) {
     return RoundReport(
       capturedAt: DateTime.utc(2026, 9, 1, 12, 0, 0),
@@ -82,7 +82,7 @@ void main() {
 
     expect(json['build'], build.toJson());
     expect(json['session']['conceptTier'], 't3');
-    expect(json['session']['agencyStage'], 'drag');
+    expect(json['session']['agencyStage'], 'decide');
     expect(json['session']['ageBand'], kCurrentAgeBand);
     expect(json['round']['roundNumber'], 3);
     expect(json['round']['left']['instrument'], 'tuba');

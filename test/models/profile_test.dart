@@ -43,7 +43,7 @@ void main() {
         const profile = Profile(
           id: 'abc',
           name: 'Davis',
-          agencyOverride: AgencyStage.drag,
+          agencyOverride: AgencyStage.decide,
         );
         final cleared = profile.copyWith(clearAgencyOverride: true);
         expect(cleared.agencyOverride, isNull);
@@ -53,9 +53,9 @@ void main() {
         const profile = Profile(
           id: 'abc',
           name: 'Davis',
-          agencyOverride: AgencyStage.drag,
+          agencyOverride: AgencyStage.decide,
         );
-        expect(profile.copyWith(name: 'D').agencyOverride, AgencyStage.drag);
+        expect(profile.copyWith(name: 'D').agencyOverride, AgencyStage.decide);
       });
 
       test('passing a new agencyOverride replaces it', () {
@@ -65,8 +65,8 @@ void main() {
           agencyOverride: AgencyStage.observe,
         );
         expect(
-          profile.copyWith(agencyOverride: AgencyStage.drag).agencyOverride,
-          AgencyStage.drag,
+          profile.copyWith(agencyOverride: AgencyStage.decide).agencyOverride,
+          AgencyStage.decide,
         );
       });
 
@@ -78,4 +78,29 @@ void main() {
       });
     });
   });
+
+  group('a stored agency value from before the Drag → Decide rename '
+      '(Trello card 181)', () {
+    test('a saved "drag" still means the third stage, Decide — it must not '
+        'silently fall back to "not set"', () {
+      final profile = Profile.fromJson({
+        'id': 'p1',
+        'name': 'Davis',
+        'isAdult': false,
+        'agencyOverride': 'drag',
+      });
+      expect(profile.agencyOverride, AgencyStage.decide);
+    });
+
+    test('a current "decide" round-trips unchanged', () {
+      final profile = Profile.fromJson({
+        'id': 'p1',
+        'name': 'Davis',
+        'isAdult': false,
+        'agencyOverride': 'decide',
+      });
+      expect(profile.agencyOverride, AgencyStage.decide);
+    });
+  });
 }
+

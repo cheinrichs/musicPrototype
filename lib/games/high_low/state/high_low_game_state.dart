@@ -287,7 +287,7 @@ class HighLowGameState extends ChangeNotifier {
     PromptGenerator? generator,
     RoundSequencer? sequencer,
     this.totalPrompts = 5,
-    this.agencyStage = AgencyStage.drag,
+    this.agencyStage = AgencyStage.decide,
     ConceptTier conceptTier = ConceptTier.t1,
     this.roundOrder = RoundOrder.blocked,
     this.observeFlight = false,
@@ -465,7 +465,7 @@ class HighLowGameState extends ChangeNotifier {
       // separate string from the voice line and has a different audience
       // (the watching adult, not the child), so it doesn't need the voice
       // line's social "by me" framing — just an accurate instruction.
-      AgencyStage.drag =>
+      AgencyStage.decide =>
         isHigh
             ? 'Help them put the higher one up on top.'
             : 'Help them put the lower one down at the bottom.',
@@ -506,7 +506,7 @@ class HighLowGameState extends ChangeNotifier {
   /// that guard lives in [dropInstrument] itself, to avoid double-recording
   /// a result while the advance-to-next-round delay is still pending.
   bool get canDrop =>
-      agencyStage == AgencyStage.drag && _status != GameStatus.completed;
+      agencyStage == AgencyStage.decide && _status != GameStatus.completed;
 
   /// Which character owns this round's pole — Piper the low one, Clef the
   /// high one (Trello card 101). This is who is *asking* (her voice line,
@@ -651,7 +651,7 @@ class HighLowGameState extends ChangeNotifier {
         prompt?.targetDirection == PitchDirection.higher
             ? VoiceLine.listenForHigh
             : VoiceLine.listenForLow,
-      AgencyStage.drag =>
+      AgencyStage.decide =>
         prompt?.targetDirection == PitchDirection.higher
             ? VoiceLine.giveMeHigh
             : VoiceLine.giveMeLow,

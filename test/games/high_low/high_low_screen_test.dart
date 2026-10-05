@@ -404,7 +404,7 @@ void main() {
       await tester.pump(Duration.zero);
     }
 
-    for (final chip in ['A0 · Observe', 'A1 · Explore', 'A2 · Drag']) {
+    for (final chip in ['A0 · Observe', 'A1 · Explore', 'A2 · Decide']) {
       testWidgets(
         '$chip: Clef is on the tree; Piper stands beside it on the ground, '
         'clearly bigger (2026-09-27: she used to perch on a lower platform '
@@ -444,10 +444,10 @@ void main() {
     );
 
     testWidgets(
-      'A2 · Drag shows exactly one tree slot — the drop target, now that '
+      'A2 · Decide shows exactly one tree slot — the drop target, now that '
       'something can actually be placed',
       (tester) async {
-        await startAt(tester, 'A2 · Drag');
+        await startAt(tester, 'A2 · Decide');
         expect(find.byType(OrderingSlot), findsOneWidget);
       },
     );
@@ -1212,7 +1212,7 @@ void main() {
         final profileState = ProfileState();
         await profileState.load();
         final davis = await profileState.addProfile('Davis');
-        await profileState.setAgencyOverride(davis, AgencyStage.drag);
+        await profileState.setAgencyOverride(davis, AgencyStage.decide);
         profileState.selectProfile(
           profileState.profiles.firstWhere((p) => p.id == davis.id),
         );
@@ -1318,7 +1318,7 @@ void main() {
     // every frame of the voice lines instead. Explore and Drag both speak
     // from the round prompt, so both are covered; Observe only speaks on a
     // tap, so it is not sampled here.
-    for (final stage in [AgencyStage.explore, AgencyStage.drag]) {
+    for (final stage in [AgencyStage.explore, AgencyStage.decide]) {
       testWidgets('each character\'s feet stay put on every frame, at '
           '${stage.label}', (tester) async {
         tester.view.physicalSize = roomyViewport;

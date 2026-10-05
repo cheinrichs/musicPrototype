@@ -53,21 +53,21 @@ enum AgencyStage {
 
   /// The child must initiate or choose a response to advance, by dragging;
   /// a wrong attempt is always a gentle retry, never a failure state.
-  drag;
+  decide;
 
   /// Short curriculum code, as used in docs/curriculum/agency.csv — that
   /// sheet's own naming (A0/A1/A2), unaffected by this enum's names.
   String get code => switch (this) {
     AgencyStage.observe => 'A0',
     AgencyStage.explore => 'A1',
-    AgencyStage.drag => 'A2',
+    AgencyStage.decide => 'A2',
   };
 
   /// Human-readable label, e.g. for the dev toggle.
   String get label => switch (this) {
     AgencyStage.observe => 'Observe',
     AgencyStage.explore => 'Explore',
-    AgencyStage.drag => 'Drag',
+    AgencyStage.decide => 'Decide',
   };
 
   /// One capability step up, or null at the top of the ladder ([drag]) —

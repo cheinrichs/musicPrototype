@@ -25,7 +25,7 @@ void main() {
       );
 
       expect(find.text('Dev: agency setup'), findsOneWidget);
-      expect(devSettings.agencyStage, AgencyStage.drag);
+      expect(devSettings.agencyStage, AgencyStage.decide);
 
       await tester.tap(find.text('A0 · Observe'));
       await tester.pump();

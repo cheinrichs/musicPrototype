@@ -131,7 +131,7 @@ enum ConceptTier {
   bool isReachableAt(AgencyStage stage) => switch (stage) {
     AgencyStage.observe => this == ConceptTier.t1,
     AgencyStage.explore => noteCount == 2,
-    AgencyStage.drag => true,
+    AgencyStage.decide => true,
   };
 
   /// The highest tier reachable at [stage].

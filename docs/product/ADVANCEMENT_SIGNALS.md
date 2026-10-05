@@ -11,14 +11,14 @@ axes** — not what the axes are.
 
 > **UPDATED 2026-09-27 (Trello card 168, "Agency is capability, not
 > difficulty").** Agency is now three named capability levels — Observe,
-> Explore, Drag — not the curriculum's old A0–A4 ladder. A3 ("Timed") is
+> Explore, Decide — not the curriculum's old A0–A4 ladder. A3 ("Timed") is
 > confirmed gone; ordering is a separate skill, not an agency level. Below,
-> read "A0/A1/A2" as "Observe/Explore/Drag" and "A4" as "the ordering
+> read "A0/A1/A2" as "Observe/Explore/Decide" and "A4" as "the ordering
 > skill." **The signals themselves are being substantially reworked** by
 > two further queued cards — agency's second axis (does the child attend
 > before acting, not just what they can physically do) and the
 > capability-based advancement/demotion criteria between Observe, Explore
-> and Drag — so treat the specific signals below as the reasoning that led
+> and Decide — so treat the specific signals below as the reasoning that led
 > here, not yet the current rules. Update this notice once those land.
 
 ---
@@ -164,7 +164,7 @@ The tier ladder starts where evidence does:
   three-note ordering screen's centre-back pedestal from wanting the screen's middle
   at once; that conflict is gone now that both characters live on the tree, and
   ordering left the agency ladder entirely.)
-- **Drag gives a real answer** (a drop can be wrong), and tier moves properly.
+- **Decide gives a real answer** (a drop can be wrong), and tier moves properly.
 
 This doesn't resolve the mastery algorithm or promotion thresholds themselves — see
 Open Questions below — only the *bound* on how far tier can reach before agency has
@@ -185,12 +185,12 @@ profile once a session completes.
   parent-facing cue this needs ("a screen cannot tell an adult's finger from a
   child's... make the adult a deliberate collaborator") is Observe's own caption,
   reworded to say exactly that: "Encourage them to tap each instrument."
-- **Explore → Drag**: enough recent rounds hit the correct (sparkling) instrument
+- **Explore → Decide**: enough recent rounds hit the correct (sparkling) instrument
   with few enough wrong taps. Deliberately never reads `firstResponseCorrect` as
   *positive* tier-like evidence here — agency moves on demonstrated capability, and
   the sparkle confound (a child may be following the sparkle, not the sound) means
   this can only ever produce an *agency* recommendation, never touch `ConceptTier`.
-- **Drag demotion**: many failed drags in a row (motor difficulty), or several
+- **Decide demotion**: many failed drags in a row (motor difficulty), or several
   rounds answered before either note finished playing (no evidence existed — the
   same signal the invalid-round rule above already computes, reused here as a
   demotion pattern rather than invented separately).
