@@ -16,9 +16,9 @@ across instruments generally, and which direction any given file needs
 to move depends on its actual spectral/envelope shape.
 
 Beyond comfort, this matters because HighLowInstrument's samples are
-reused for a future Loud/Soft game (MVP scope) — if loudness happens to
+reused for a future Loud or Quiet game (MVP scope) — if loudness happens to
 correlate with pitch or instrument identity today, a child could use
-loudness as an unintended cue for a *pitch* game, and Loud/Soft would
+loudness as an unintended cue for a *pitch* game, and Loud or Quiet would
 inherit samples where volume isn't actually a controlled variable.
 
 Usage:

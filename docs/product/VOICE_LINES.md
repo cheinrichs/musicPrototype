@@ -230,7 +230,7 @@ recorded**, so it plays as a silent no-op until a take exists.
 
 # LOUD or QUIET
 
-*Carded rename from "Loud or Soft": "soft" also means texture to a small child. Not yet made in code.*
+*Renamed from Loud or Soft 2026-10-05 (Trello card 182): "soft" also means texture to a small child. "Quiet" is the word a three-year-old already owns. The game is not built yet, so the rename is in the docs only.*
 
 Not yet recorded. A full draft inventory of roughly fifty lines exists separately and should
 be folded in here once agreed. There are no `VoiceLine` members for it.
