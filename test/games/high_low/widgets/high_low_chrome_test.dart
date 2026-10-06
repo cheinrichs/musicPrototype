@@ -12,12 +12,35 @@ Widget host(Widget child) => MaterialApp(
 );
 
 void main() {
-  group('caption with no plate (the default, 2026-09-28)', () {
+  testWidgets('the plate is ON by default again (Trello card 187): with the '
+      'tree\'s canopy behind the caption, plain text does not read — and it '
+      'was already low-contrast against pale sky', (tester) async {
+    await tester.pumpWidget(
+      host(const HighLowCaption(text: 'Let them explore freely.')),
+    );
+    await tester.pump(AppAnimations.medium);
+    final plaque = tester
+        .widgetList<DecoratedBox>(
+          find.descendant(
+            of: find.byType(HighLowCaption),
+            matching: find.byType(DecoratedBox),
+          ),
+        )
+        .map((c) => c.decoration)
+        .whereType<BoxDecoration>()
+        .where((d) => d.gradient == AppColors.cardGradient);
+    expect(plaque, isNotEmpty);
+  });
+
+  group('caption with no plate (opt-out, plate: false — the 2026-09-28 '
+      'look, kept switchable)', () {
     testWidgets('no plaque is painted behind the text — Cooper, on device: '
         '"no tan bubble — plain text, legibility via colour choice, not a '
         'plate"', (tester) async {
       await tester.pumpWidget(
-        host(const HighLowCaption(text: 'Let them explore freely.')),
+        host(
+          const HighLowCaption(text: 'Let them explore freely.', plate: false),
+        ),
       );
       await tester.pump(AppAnimations.medium);
 
@@ -31,13 +54,15 @@ void main() {
           .map((c) => c.decoration)
           .whereType<BoxDecoration>()
           .where((d) => d.gradient != null);
-      expect(plaque, isEmpty, reason: 'no plate by default');
+      expect(plaque, isEmpty, reason: 'no plate when switched off');
     });
 
     testWidgets('the text is white with a dark shadow instead — legibility '
         'over the meadow without a plaque behind it', (tester) async {
       await tester.pumpWidget(
-        host(const HighLowCaption(text: 'Let them explore freely.')),
+        host(
+          const HighLowCaption(text: 'Let them explore freely.', plate: false),
+        ),
       );
       await tester.pump(AppAnimations.medium);
 
@@ -50,14 +75,16 @@ void main() {
       'the game name shows even with no round instruction yet (briefly, '
       'before the intro finishes) — it is constant, not round-specific',
       (tester) async {
-        await tester.pumpWidget(host(const HighLowCaption(text: null)));
+        await tester.pumpWidget(
+          host(const HighLowCaption(text: null, plate: false)),
+        );
         await tester.pump(AppAnimations.medium);
         expect(find.text(HighLowCaption.gameName), findsOneWidget);
       },
     );
   });
 
-  group('caption plaque (opt-in, plate: true)', () {
+  group('caption plaque (plate: true)', () {
     testWidgets('sits on a cream plaque instead of floating bare on the '
         'scenery — a caption over hills or a tree would otherwise vanish '
         'into the background', (tester) async {
@@ -196,6 +223,7 @@ void main() {
       String? caption = 'Help them drag the higher instrument to Clef.',
       VoidCallback? onSkip,
       bool skipEnabled = true,
+      EdgeInsets? captionPadding,
     }) => host(
       Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -205,9 +233,40 @@ void main() {
           skipEnabled: skipEnabled,
           onSkip: onSkip,
           below: const Text('LISTEN'),
+          captionPadding: captionPadding,
         ),
       ),
     );
+
+    testWidgets('given a caption span, the caption is centred in it — not on '
+        'the screen — while Close and Skip stay on the true edges (Trello '
+        'card 187: centred over the meadow)', (tester) async {
+      tester.view.physicalSize = const Size(844, 390);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+      // Header-local span 28..380 → screen 52..404 once the 24 px host
+      // padding is added back.
+      await tester.pumpWidget(
+        header(captionPadding: const EdgeInsets.only(left: 28, right: 416)),
+      );
+      await tester.pump(AppAnimations.medium);
+      final plate = tester.getRect(
+        find
+            .descendant(
+              of: find.byType(HighLowCaption),
+              matching: find.byType(DecoratedBox),
+            )
+            .first,
+      );
+      expect(plate.center.dx, closeTo((52 + 404) / 2, 1.0));
+      expect(plate.left, greaterThanOrEqualTo(52 - 0.5));
+      expect(plate.right, lessThanOrEqualTo(404 + 0.5));
+      expect(tester.getRect(find.byTooltip('Close')).left, closeTo(0, 1.0));
+      expect(tester.getRect(find.byTooltip('Skip')).right, closeTo(844, 1.0));
+    });
 
     testWidgets('the caption is centred on the SCREEN (it used to sit well '
         'left of centre)', (tester) async {

@@ -68,6 +68,13 @@ class HighLowHeader extends StatelessWidget {
   final bool skipEnabled;
   final VoidCallback? onSkip;
 
+  /// Where the caption goes, as insets from this header's own left and right
+  /// edges. Null centres it on the screen between equal [sideWidth] columns.
+  /// High/Low passes the meadow's span instead (Trello card 187): the
+  /// composition is no longer symmetric, and screen-centred text lands in the
+  /// tree's canopy. Close and Skip stay at the edges either way.
+  final EdgeInsets? captionPadding;
+
   const HighLowHeader({
     super.key,
     required this.onClose,
@@ -75,10 +82,47 @@ class HighLowHeader extends StatelessWidget {
     required this.skipEnabled,
     required this.onSkip,
     this.below,
+    this.captionPadding,
   });
+
+  /// Close, hugging the left edge — see the class doc.
+  Widget _close() => Transform.translate(
+    offset: const Offset(-_edgeCancel, 0),
+    child: CircleIconButton(
+      icon: Icons.close_rounded,
+      tooltip: 'Close',
+      onTap: onClose,
+    ),
+  );
+
+  /// Skip, hugging the right edge.
+  Widget _skip() => Transform.translate(
+    offset: const Offset(_edgeCancel, 0),
+    child: HighLowSkipPill(enabled: skipEnabled, onTap: onSkip),
+  );
 
   @override
   Widget build(BuildContext context) {
+    final padding = captionPadding;
+    if (padding != null) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              Padding(
+                padding: padding,
+                child: HighLowCaption(text: captionText),
+              ),
+              Positioned(left: 0, child: _close()),
+              Positioned(right: 0, child: _skip()),
+            ],
+          ),
+          if (below != null) below!,
+        ],
+      );
+    }
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -87,17 +131,7 @@ class HighLowHeader extends StatelessWidget {
           children: [
             SizedBox(
               width: sideWidth,
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Transform.translate(
-                  offset: const Offset(-_edgeCancel, 0),
-                  child: CircleIconButton(
-                    icon: Icons.close_rounded,
-                    tooltip: 'Close',
-                    onTap: onClose,
-                  ),
-                ),
-              ),
+              child: Align(alignment: Alignment.centerLeft, child: _close()),
             ),
             Expanded(child: HighLowCaption(text: captionText)),
             SizedBox(
@@ -105,10 +139,7 @@ class HighLowHeader extends StatelessWidget {
               child: FittedBox(
                 fit: BoxFit.scaleDown,
                 alignment: Alignment.centerRight,
-                child: Transform.translate(
-                  offset: const Offset(_edgeCancel, 0),
-                  child: HighLowSkipPill(enabled: skipEnabled, onTap: onSkip),
-                ),
+                child: _skip(),
               ),
             ),
           ],

@@ -12,6 +12,7 @@ import 'package:ear_trainer/app/state/profile_state.dart';
 import 'package:ear_trainer/app/state/progress_state.dart';
 import 'package:ear_trainer/app/state/skill_state.dart';
 import 'package:ear_trainer/models/profile.dart';
+import 'package:ear_trainer/games/high_low/models/scene_layout.dart';
 import 'package:ear_trainer/games/high_low/ordering/ordering_screen.dart';
 import 'package:ear_trainer/games/high_low/screens/high_low_screen.dart';
 import 'package:ear_trainer/games/high_low/services/agency_advancement.dart';
@@ -357,7 +358,7 @@ void main() {
     },
   );
 
-  group('both characters live on the tree, at every agency level', () {
+  group('the characters frame the scene, at every agency level', () {
     tearDown(() {
       devToolsEnabled = false;
     });
@@ -406,11 +407,11 @@ void main() {
 
     for (final chip in ['A0 · Observe', 'A1 · Explore', 'A2 · Decide']) {
       testWidgets(
-        '$chip: Clef is on the tree; Piper stands beside it on the ground, '
-        'clearly bigger (2026-09-27: she used to perch on a lower platform '
-        'and rendered tiny — Cooper: "have her standing beside the tree ... '
-        'at her proper scale"). Neither changes size with the task — there '
-        'is no centre character to compete with the middle',
+        '$chip: Clef is up the tree on the right; Piper stands on the ground '
+        'at the left, clearly bigger (Trello card 187: Piper left, '
+        'instruments through the middle, tree and Clef right — the high/low '
+        'reading survives the move). Neither changes size with the task — '
+        'there is no centre character to compete with the middle',
         (tester) async {
           await startAt(tester, chip);
 
@@ -421,11 +422,9 @@ void main() {
             greaterThan(clef.height * 1.5),
             reason: 'foreground scale, not the tree\'s perch size',
           );
-          // both on the right of the frame — Clef on the tree, Piper beside
-          // it — not the centre.
-          for (final r in [clef, piper]) {
-            expect(r.center.dx, greaterThan(roomyViewport.width * 0.5));
-          }
+          expect(clef.center.dx, greaterThan(roomyViewport.width * 0.5));
+          expect(piper.center.dx, lessThan(roomyViewport.width * 0.25));
+          expect(clef.bottom, lessThan(piper.bottom), reason: 'Clef is up');
         },
       );
     }
@@ -1156,8 +1155,9 @@ void main() {
     });
 
     testWidgets('the layout: close and Skip hug the true top corners, the '
-        'caption is centred, Listen Again sits below the stumps (not under '
-        'the caption — 2026-09-28, Cooper: "I like listen again below the '
+        'caption is centred over the MEADOW on its plate (Trello card 187: '
+        'screen-centred text lands in the canopy), Listen Again sits below '
+        'the stumps (2026-09-28, Cooper: "I like listen again below the '
         'stumps"), and there is no progress indicator', (tester) async {
       await pumpAndFinishIntro(tester, viewport: roomyViewport);
       final size = roomyViewport;
@@ -1166,13 +1166,24 @@ void main() {
       final skip = tester.getRect(find.byTooltip('Skip'));
       final listen = tester.getRect(find.text('Listen Again'));
       final caption = tester.getRect(find.byType(HighLowCaption));
+      final plate = tester.getRect(
+        find
+            .descendant(
+              of: find.byType(HighLowCaption),
+              matching: find.byType(DecoratedBox),
+            )
+            .first,
+      );
+      final meadowRight = SceneLayout(size, noteCount: 2).meadowRight;
 
       expect(close.left, lessThan(size.width * 0.1));
       expect(close.center.dy, lessThan(size.height * 0.25));
       expect(skip.right, greaterThan(size.width * 0.9));
       expect(skip.center.dy, lessThan(size.height * 0.25));
       expect(skip.height, lessThanOrEqualTo(44));
-      expect(caption.center.dx, closeTo(size.width / 2, 1.0));
+      expect(plate.left, greaterThan(close.right));
+      expect(plate.right, lessThanOrEqualTo(meadowRight + 0.5));
+      expect(plate.center.dx, closeTo((close.right + meadowRight) / 2, 8.0));
       // Listen Again now lives in the scene, below the stumps on the left —
       // no longer under the (screen-centred) caption, and no longer
       // excluded from the bottom of the screen: that's exactly where it is
@@ -1470,10 +1481,18 @@ void main() {
                   '(settled at $settled)',
             );
           }
+          // Nowhere near the top-left corner the bug threw them to: Clef's
+          // feet are in the right half, on the tree; Piper's are at the
+          // bottom of the screen (since Trello card 187 she stands at the
+          // left, so "right half" no longer separates her from the corner).
           expect(
-            samples.every((o) => o.dx > roomyViewport.width * 0.5),
+            samples.every(
+              (o) => name == 'Clef'
+                  ? o.dx > roomyViewport.width * 0.5
+                  : o.dy > roomyViewport.height * 0.9,
+            ),
             isTrue,
-            reason: '$name was sampled on the left half of the screen',
+            reason: '$name was sampled away from where they stand',
           );
         }
         // Not disposed here: the screen owns it (ownsGameState: true).
@@ -1517,13 +1536,11 @@ void main() {
       final clefSettled = feetOf(CharacterArt.clef);
 
       var sawSparkle = false;
-      // Four, not five: the fifth correct tap resolves the round.
-      for (var tap = 1; tap <= 4; tap++) {
-        state.tapInstrument(state.currentPrompt!.targetSide);
-        for (var frame = 0; frame < 20; frame++) {
+      Future<void> sampleFrames(int count, String when) async {
+        for (var frame = 0; frame < count; frame++) {
           await tester.pump(const Duration(milliseconds: 16));
           if (find.text('✨').evaluate().isNotEmpty) sawSparkle = true;
-          expect(tester.takeException(), isNull, reason: 'tap $tap');
+          expect(tester.takeException(), isNull, reason: when);
           for (final (name, art, settled) in [
             ('Piper', CharacterArt.piper, piperSettled),
             ('Clef', CharacterArt.clef, clefSettled),
@@ -1531,12 +1548,27 @@ void main() {
             expect(
               (feetOf(art) - settled).distance,
               lessThan(2.0),
-              reason: '$name\'s feet moved after correct tap $tap',
+              reason: '$name\'s feet moved $when',
             );
           }
         }
       }
+
+      // Four, not five: the fifth correct tap resolves the round. Taps
+      // ~320 ms apart keep re-arming the sparkle, as a child tapping
+      // repeatedly does (Cooper's video: two separate ~900 ms episodes).
+      for (var tap = 1; tap <= 4; tap++) {
+        state.tapInstrument(state.currentPrompt!.targetSide);
+        await sampleFrames(20, 'after correct tap $tap');
+      }
+      // Then the rest of the last sparkle's lifetime, until it has gone.
+      await sampleFrames(50, 'while the last sparkle fades');
       expect(sawSparkle, isTrue, reason: 'the sparkle must actually mount');
+      expect(
+        find.text('✨'),
+        findsNothing,
+        reason: 'sampling must cover the sparkle until it clears',
+      );
     });
   });
 }

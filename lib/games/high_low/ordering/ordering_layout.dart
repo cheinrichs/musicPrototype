@@ -1,16 +1,14 @@
 import 'package:flutter/painting.dart';
-import '../models/scene_layout.dart';
+import 'ordering_tree_scene.dart';
 
-/// Where everything sits on the A4 ordering screen: the shared High/Low
-/// scene ([SceneLayout] — instruments on stumps at the left, the tree at the
+/// Where everything sits on the A4 ordering screen: its scene
+/// ([OrderingTreeScene] — instruments on stumps at the left, the tree at the
 /// right with Clef on its top platform) plus the drop slots on the platforms
 /// below her.
 ///
 /// All three slots stay visible here (nothing to hide — every platform but
-/// Clef's is a receptacle at A4). On the play screens the same tree carries
-/// at most one slot, and only once a round is answerable — see
-/// [SceneLayout]'s class doc.
-class OrderingLayout extends SceneLayout {
+/// Clef's is a receptacle at A4).
+class OrderingLayout extends OrderingTreeScene {
   const OrderingLayout(super.screen, {super.insets, required super.noteCount})
     : super(instrumentFraction: 0.34);
 

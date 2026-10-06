@@ -1,7 +1,9 @@
+import 'dart:math';
+
 import 'package:flutter/painting.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ear_trainer/games/high_low/models/high_low_instrument.dart';
 import 'package:ear_trainer/games/high_low/models/scene_layout.dart';
-import 'package:ear_trainer/games/high_low/widgets/character_art.dart';
 import 'package:ear_trainer/games/high_low/widgets/speaking_pulse.dart';
 
 void main() {
@@ -14,180 +16,206 @@ void main() {
     'Pro Max': (Size(932, 430), EdgeInsets.symmetric(horizontal: 59)),
   };
 
+  // The most a character ever grows: the speaking pulse, or the celebration
+  // pose's own scale-up, whichever is larger.
+  final grow = max(SpeakingPulse.maxScaleDelta, 0.08);
+
   for (final entry in cases.entries) {
     final (size, insets) = entry.value;
     group('SceneLayout — ${entry.key}', () {
       SceneLayout two() => SceneLayout(size, insets: insets, noteCount: 2);
-      SceneLayout three() => SceneLayout(
-        size,
-        insets: insets,
-        noteCount: 3,
-        instrumentFraction: 0.36,
+      SceneLayout three() => SceneLayout(size, insets: insets, noteCount: 3);
+
+      Rect instrumentBox(SceneLayout l, int i) => Rect.fromCenter(
+        center: Offset(
+          l.stumpAnchorX(i),
+          l.stumpFeet(i).dy - l.instrumentSize / 2,
+        ),
+        width: l.instrumentSize,
+        height: l.instrumentSize,
       );
 
-      test(
-        'the tree stands in the right of the frame, inside the safe area',
-        () {
-          final l = two();
-          expect(l.clefPerch.dx, greaterThan(size.width * 0.65));
-          final half = SceneLayout.platformWidth * l.treeWidth / 2;
-          expect(
-            l.clefPerch.dx + half,
-            lessThanOrEqualTo(size.width - insets.right),
-          );
-        },
-      );
-
-      test('Clef stays fully on screen, even at the peak of the speaking '
-          'pulse', () {
+      test('the tree is full screen height with a quarter of its width off '
+          'the right edge (Trello card 187 — smaller was tested and does '
+          'not work: the platforms become too small to hit)', () {
         final l = two();
-        final w = l.spriteWidth(CharacterArt.clef, l.characterHeight);
-        final grown = w * (1 + SpeakingPulse.maxScaleDelta);
+        expect(l.treeRect.top, 0);
+        expect(l.treeRect.height, size.height);
         expect(
-          l.clefPerch.dx + grown / 2,
-          lessThanOrEqualTo(size.width - insets.right),
+          l.treeRect.right - size.width,
+          closeTo(l.treeWidth * 0.25, 0.001),
         );
-        expect(l.clefPerch.dx - grown / 2, greaterThanOrEqualTo(insets.left));
-        expect(l.clefPerch.dy - l.characterHeight, greaterThan(0));
       });
 
-      test('Piper stands beside the tree, at a clearly larger scale than Clef '
-          '(2026-09-27: she used to perch on a lower platform and rendered '
-          'tiny against the tree\'s perspective — Cooper: "have her standing '
-          'beside the tree ... at her proper scale")', () {
+      test('every platform face is on screen and inside the safe area', () {
         final l = two();
+        for (var i = 0; i < 3; i++) {
+          final c = l.platform(i);
+          final half = l.platformFaceWidth(i) / 2;
+          expect(c.dx + half, lessThanOrEqualTo(size.width - insets.right));
+          expect(c.dx - half, greaterThan(insets.left));
+          expect(c.dy, inInclusiveRange(0, size.height));
+        }
+        // Top to bottom, as the art has them.
+        expect(l.platform(0).dy, lessThan(l.platform(1).dy));
+        expect(l.platform(1).dy, lessThan(l.platform(2).dy));
+      });
+
+      test('Clef sits on the branch, fully on screen even at the peak of the '
+          'speaking pulse, and covers no platform', () {
+        final l = two();
+        final clef = l.clefBounds(pulse: grow);
+        expect(clef.top, greaterThan(0));
+        expect(clef.left, greaterThanOrEqualTo(insets.left));
+        expect(clef.right, lessThan(l.platformColumnLeftX));
+        expect(l.clefPerch.dx, greaterThan(l.treeRect.left));
+      });
+
+      test('Piper stands at the LEFT edge, inside the safe area, at a '
+          'clearly larger scale than Clef, with only a sliver of her own '
+          'height (ankles at most) below the frame', () {
+        final l = two();
+        final piper = l.piperBounds(pulse: grow);
+        expect(piper.left, greaterThanOrEqualTo(insets.left));
+        expect(piper.right, lessThan(size.width * 0.35));
         expect(l.piperHeight, greaterThan(l.characterHeight * 1.5));
+        expect(l.piperFeetY, greaterThan(size.height));
+        expect(l.piperFeetY - size.height, lessThan(l.piperHeight * 0.1));
       });
 
-      test(
-        'Piper\'s feet are anchored to the bottom of the SCREEN, not to a '
-        'tree platform (2026-09-28, superseding the platform-anchored '
-        'version above — Cooper, on device: "Piper far too low... we '
-        'should only cut off her feet at most") — only a small, deliberate '
-        'sliver of her own height overflows the true bottom edge',
-        () {
-          final l = two();
-          expect(l.piperFeetY, greaterThan(size.height));
-          expect(l.piperFeetY - size.height, lessThan(l.piperHeight * 0.1));
-        },
-      );
-
-      test('Piper is anchored to the right edge of the frame, inside the '
-          'device\'s own safe-area inset', () {
+      test('the instruments stand between Piper and the tree: clear of '
+          'each other, of both characters, and of the platform column', () {
         final l = two();
-        expect(l.piperRightInset, greaterThanOrEqualTo(insets.right));
-      });
-
-      test('INSTRUMENTS KEEP THEIR PROMINENCE: at A0/A1 the instruments are '
-          'the whole activity, so the tree must not squeeze them — they stay '
-          'at half the screen height, and far bigger than Clef', () {
-        final l = two();
-        expect(l.instrumentSize, greaterThanOrEqualTo(size.height * 0.5));
-        expect(l.instrumentSize, greaterThan(l.characterHeight * 1.8));
-      });
-
-      test('two instruments are clear of each other, of the notch, and of '
-          'the tree platforms', () {
-        final l = two();
-        final half = l.instrumentSize / 2;
-        expect(l.stumpAnchorX(0) - half, greaterThanOrEqualTo(insets.left));
+        final a = instrumentBox(l, 0);
+        final b = instrumentBox(l, 1);
         expect(
-          l.stumpAnchorX(1) - half,
-          greaterThanOrEqualTo(l.stumpAnchorX(0) + half - 1),
+          b.left,
+          greaterThanOrEqualTo(a.right - 0.5),
           reason: 'boxes may touch, not overlap',
         );
-        final faceLeft =
-            l.clefPerch.dx - SceneLayout.platformWidth * l.treeWidth / 2;
-        expect(l.instrumentsRight, lessThan(faceLeft));
+        final piper = l.piperBounds(pulse: grow);
+        final clef = l.clefBounds(pulse: grow);
+        for (final box in [a, b]) {
+          expect(box.left, greaterThanOrEqualTo(piper.right));
+          expect(box.right, lessThanOrEqualTo(l.platformColumnLeftX));
+          expect(box.overlaps(clef), isFalse);
+        }
       });
 
-      test('the earned arrow has a free column between the last instrument '
-          'and the tree platforms', () {
+      test('THE TOUCH-TARGET FLOOR: the smallest instrument stays big '
+          'enough for a small finger — that, not looks, is what limits how '
+          'far back the stumps go (Trello card 187)', () {
         final l = two();
-        final faceLeft =
-            l.clefPerch.dx - SceneLayout.platformWidth * l.treeWidth / 2;
-        expect(l.arrowCentre.dx - 36, greaterThan(l.instrumentsRight - 40));
-        expect(l.arrowCentre.dx + 36, lessThan(faceLeft));
-      });
-
-      test('three instruments are the same composition with one more: '
-          'distinct homes, all left of the tree, and the layout is fixed '
-          'for the whole round (it cannot reflow when one is picked up)', () {
-        final l = three();
-        final xs = [for (var i = 0; i < 3; i++) l.stumpAnchorX(i)];
-        expect(xs.toSet().length, 3);
-        expect(xs, orderedEquals([...xs]..sort()));
-        final faceLeft =
-            l.clefPerch.dx - SceneLayout.platformWidth * l.treeWidth / 2;
-        expect(l.instrumentsRight, lessThan(faceLeft));
-        expect(three().stumpFeet(1), l.stumpFeet(1));
-      });
-
-      test('a two-instrument scene is the three-instrument scene minus one: '
-          'same tree, same perches, same ground line', () {
-        final a = SceneLayout(
-          size,
-          insets: insets,
-          noteCount: 2,
-          instrumentFraction: 0.36,
+        final smallest = HighLowInstrument.values
+            .map((i) => i.displaySizeScale)
+            .reduce(min);
+        expect(
+          l.instrumentSize * smallest,
+          greaterThanOrEqualTo(SceneLayout.minTouchTarget),
         );
-        final b = three();
-        expect(a.treeRect, b.treeRect);
-        expect(a.clefPerch, b.clefPerch);
-        expect(a.piperFeetY, b.piperFeetY);
-        // The first stump is in the same place; how far the others are
-        // spaced may tighten on a narrow screen (a third instrument needs
-        // room), but they only ever get closer, never rearranged.
-        expect(a.stumpFeet(0), b.stumpFeet(0));
-        expect(a.stumpFeet(1).dx, greaterThanOrEqualTo(b.stumpFeet(1).dx));
       });
 
-      test('the bottom platform sits near the stumps\' ground line — one '
-          'floor — and every platform is on screen', () {
+      test('the stumps sit back in space: higher up and smaller than '
+          'before the layout pass (ground line was 0.84 of the height, '
+          'instruments half of it)', () {
+        final l = two();
+        expect(size.height - l.groundY, lessThan(size.height * 0.84));
+        expect(l.instrumentSize, lessThan(size.height * 0.5));
+      });
+
+      test('one floor: the stumps\' ground line agrees with the tree\'s '
+          'base — its bottom platform sits just above it', () {
         final l = two();
         final groundLine = size.height - l.groundY;
         expect(
-          (l.platform(3).dy - groundLine).abs(),
+          (l.platform(2).dy - groundLine).abs(),
           lessThan(size.height * 0.05),
         );
-        expect(l.platform(3).dy, lessThan(size.height));
       });
 
       test('placed instruments fit the gap between platforms', () {
         final l = two();
         expect(
           l.placedSize,
+          lessThanOrEqualTo(l.platform(1).dy - l.platform(0).dy),
+        );
+        expect(
+          l.placedSize,
           lessThanOrEqualTo(l.platform(2).dy - l.platform(1).dy),
         );
       });
 
-      group('the tree slot (2026-09-27: the drop target, not a character)', () {
-        test('the high slot sits right under Clef; the low slot sits at '
-            'the tree\'s base — the widest top/bottom contrast the three '
-            'free platforms allow', () {
+      group('the tree slot (the drop target, not a character)', () {
+        test('high is the top platform, low the bottom one — the widest '
+            'contrast three platforms allow, now that Clef is off them', () {
           final l = two();
-          expect(l.slotPlatformFor(isPiperTarget: false), 1);
-          expect(l.slotPlatformFor(isPiperTarget: true), 3);
-          expect(
-            l.slotPlatformFor(isPiperTarget: false),
-            lessThan(l.slotPlatformFor(isPiperTarget: true)),
-          );
+          expect(l.slotPlatformFor(isPiperTarget: false), 0);
+          expect(l.slotPlatformFor(isPiperTarget: true), 2);
         });
 
-        test('exactly one slot platform per round, never Clef\'s own '
-            '(platform 0) — one slot for two instruments, not two, or it '
-            'quietly becomes an ordering task', () {
+        test('NO CHARACTER OVERLAPS A DROP SLOT — Piper\'s tail used to cover '
+            'half the bottom one; verified, not assumed (Trello card 187)', () {
           final l = two();
-          for (final isPiperTarget in [true, false]) {
-            expect(l.slotPlatformFor(isPiperTarget: isPiperTarget), isNot(0));
+          for (final i in [0, 1, 2]) {
+            final slot = l.slotRect(i);
+            expect(
+              slot.overlaps(l.piperBounds(pulse: grow)),
+              isFalse,
+              reason: 'Piper over platform $i',
+            );
+            expect(
+              slot.overlaps(l.clefBounds(pulse: grow)),
+              isFalse,
+              reason: 'Clef over platform $i',
+            );
           }
         });
 
         test('the slot footprint fits its platform\'s face', () {
           final l = two();
-          expect(l.slotSize.width, lessThanOrEqualTo(l.treeWidth));
-          expect(l.slotSize.height, greaterThan(0));
+          for (var i = 0; i < 3; i++) {
+            expect(l.slotSize.width, lessThanOrEqualTo(l.platformFaceWidth(i)));
+          }
         });
+      });
+
+      test('the caption\'s meadow ends at the tree, before any platform', () {
+        final l = two();
+        expect(l.meadowRight, l.treeRect.left);
+        expect(l.meadowRight, lessThan(l.platformColumnLeftX));
+      });
+
+      test('the earned arrow sits between the last instrument and the '
+          'platform column', () {
+        final l = two();
+        expect(l.arrowCentre.dx - 36, greaterThan(l.instrumentsRight - 40));
+        expect(l.arrowCentre.dx + 36, lessThan(l.platformColumnLeftX));
+      });
+
+      test('Listen Again sits below the stumps and on screen', () {
+        final l = two();
+        expect(l.listenAgainCenter.dy, greaterThan(size.height - l.groundY));
+        expect(l.listenAgainCenter.dy + 20, lessThanOrEqualTo(size.height));
+      });
+
+      test('three instruments are the same composition with one more: same '
+          'tree, same characters, same floor, all clear of each other and '
+          'of the tree, and fixed for the round (no reflow)', () {
+        final a = two();
+        final b = three();
+        expect(b.treeRect, a.treeRect);
+        expect(b.clefPerch, a.clefPerch);
+        expect(b.piperFeetY, a.piperFeetY);
+        expect(b.groundY, a.groundY);
+        final xs = [for (var i = 0; i < 3; i++) b.stumpAnchorX(i)];
+        expect(xs, orderedEquals([...xs]..sort()));
+        for (var i = 0; i < 2; i++) {
+          expect(
+            instrumentBox(b, i + 1).left,
+            greaterThanOrEqualTo(instrumentBox(b, i).right - 0.5),
+          );
+        }
+        expect(b.instrumentsRight, lessThanOrEqualTo(b.platformColumnLeftX));
       });
     });
   }

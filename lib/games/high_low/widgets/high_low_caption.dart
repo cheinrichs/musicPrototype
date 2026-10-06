@@ -29,18 +29,16 @@ import '../../../ui/theme/theme.dart';
 /// with a soft shadow. Both use identical padding regardless, so flipping
 /// [defaultPlate] cannot move or resize anything, in either dimension.
 ///
-/// **Off by default (2026-09-28, Cooper, on device: "no tan bubble — plain
-/// text, legibility via colour choice, not a plate"), reversing the earlier
-/// decision recorded above.** Legibility over the meadow now comes from the
-/// text shadow ([shadows]) instead of a plaque behind it. Both lines are
-/// also smaller than before, per the same note ("smaller text") — this is
-/// adult-facing orientation copy, not something a child reads, so it never
-/// needed heading-sized type; shrinking it is also the first move in
-/// reclaiming vertical room at the top of the screen, ahead of anything
-/// that moves the stumps.
+/// **On by default again (Trello card 187, 2026-10-06).** It was dropped on
+/// 2026-09-28 (Cooper: "no tan bubble — plain text, legibility via colour
+/// choice, not a plate") while the text sat on open sky. With the tree's
+/// canopy now behind part of it, plain text does not read — and it was
+/// already low-contrast against pale sky before the new tree (confirmed on
+/// device). Both lines stay at the smaller sizes from that same note: this is
+/// adult-facing orientation copy, not something a child reads.
 class HighLowCaption extends StatelessWidget {
   /// The one place to flip the plate for the whole app.
-  static const bool defaultPlate = false;
+  static const bool defaultPlate = true;
 
   /// This game's name, shown above the round instruction every round.
   static const String gameName = 'High vs Low';

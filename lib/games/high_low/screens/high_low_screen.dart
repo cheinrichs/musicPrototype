@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:confetti/confetti.dart';
 import 'package:flutter/material.dart';
@@ -447,6 +448,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
               // for what would bring it back).
               skipEnabled: _gameState.status != GameStatus.completed,
               onSkip: _gameState.escape,
+              captionPadding: _captionPadding(context),
               // Listen Again no longer lives here — see [_buildScene], which
               // places it below the stumps instead (2026-09-28, Cooper: "I
               // like listen again below the stumps").
@@ -513,6 +515,39 @@ class _HighLowScreenState extends State<HighLowScreen> {
             ),
         ],
       ),
+    );
+  }
+
+  /// The narrowest the caption may be. Below this a two-line instruction
+  /// wraps to three and is cut off; on a phone whose meadow is narrower (an
+  /// SE), the plate reaches into the canopy instead, which it can because it
+  /// is opaque.
+  static const double _minCaptionWidth = 280;
+
+  /// Gap between the close button and the caption's plate.
+  static const double _captionGap = AppSpacing.sm;
+
+  /// The close button's width: [CircleIconButton]'s default size, which
+  /// [HighLowHeader] uses for it.
+  static const double _closeButtonSize = 44;
+
+  /// The caption's span: from just right of Close to the end of the meadow
+  /// ([SceneLayout.meadowRight]), as insets on [HighLowHeader]'s own box —
+  /// which sits inside [GameScreenLayout]'s safe area and its horizontal
+  /// [AppSpacing.lg] padding, so screen x minus both is header x.
+  EdgeInsets _captionPadding(BuildContext context) {
+    final size = MediaQuery.sizeOf(context);
+    final insets = MediaQuery.paddingOf(context);
+    final layout = SceneLayout(size, insets: insets, noteCount: 2);
+    final headerLeft = insets.left + AppSpacing.lg;
+    final headerWidth = size.width - insets.horizontal - 2 * AppSpacing.lg;
+    // Close is drawn flush with the safe edge (HighLowHeader cancels the
+    // padding for it), so its right edge is the inset plus its own width.
+    final spanLeft = insets.left + _closeButtonSize + _captionGap;
+    final spanRight = math.max(layout.meadowRight, spanLeft + _minCaptionWidth);
+    return EdgeInsets.only(
+      left: spanLeft - headerLeft,
+      right: math.max(0, headerWidth - (spanRight - headerLeft)),
     );
   }
 
@@ -796,7 +831,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
         Positioned.fromRect(
           rect: layout.treeRect,
           child: Image.asset(
-            'assets/images/backgrounds/props/OrderingTree.png',
+            'assets/images/backgrounds/props/PitchTree_v2.png',
             fit: BoxFit.fill,
           ),
         ),
@@ -955,15 +990,9 @@ class _HighLowScreenState extends State<HighLowScreen> {
   /// the landed, ticked instrument (see [_buildInstrumentSlot]) shows in
   /// its place, and painting both would double up the same information.
   Widget _buildTreeSlot(SceneLayout layout, int platformIndex) {
-    final c = layout.platform(platformIndex);
-    final w = layout.slotSize.width * 1.35;
-    final h = layout.placedSize;
     final celebratingHere = _gameState.dragFeedback == DragFeedback.correct;
-    return Positioned(
-      left: c.dx - w / 2,
-      top: c.dy - h * 0.8,
-      width: w,
-      height: h,
+    return Positioned.fromRect(
+      rect: layout.slotRect(platformIndex),
       child: DragTarget<int>(
         onWillAcceptWithDetails: (_) => _gameState.canDrop,
         onAcceptWithDetails: (details) {
@@ -997,7 +1026,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
   /// down with the instrument on small screens instead of independently
   /// drifting out of proportion with it.
   ///
-  /// [_stumpSurfaceFraction] accounts for the art itself: StumpA/B ([naturalWidth]x[naturalHeight])
+  /// [SceneLayout.stumpSurfaceFraction] accounts for the art itself: StumpA/B ([naturalWidth]x[naturalHeight])
   /// are photographed/rendered at an angle, so the flat top surface an
   /// instrument stands on isn't the very top pixel of the image — it's
   /// roughly a third of the way down, with the trunk's bark and the grass
@@ -1015,9 +1044,9 @@ class _HighLowScreenState extends State<HighLowScreen> {
     // from the background art": "the stumps are too big ... match the
     // mockup's proportions"), scaled to the instrument standing on it
     // rather than the source art's own resolution.
-    final width = charSize * 0.95;
+    final width = charSize * SceneLayout.stumpWidthOfInstrument;
     final height = width * naturalHeight / naturalWidth;
-    final belowSurface = height * (1 - _stumpSurfaceFraction);
+    final belowSurface = height * (1 - SceneLayout.stumpSurfaceFraction);
 
     return Positioned(
       left: centerX - width / 2,
@@ -1025,12 +1054,6 @@ class _HighLowScreenState extends State<HighLowScreen> {
       child: Image.asset(assetPath, width: width, height: height),
     );
   }
-
-  /// Fraction of the stump art's height, from the top, down to the front
-  /// rim of its flat top surface — read directly off StumpA.png/StumpB.png
-  /// (both are cropped/composed the same way). Below this line is bark and
-  /// grass; above it is the disc an instrument stands on.
-  static const double _stumpSurfaceFraction = 0.37;
 
   /// Which pose the character shows. Only the character whose pole this
   /// round asks about ([isAsking]) changes pose — the other one just
@@ -1062,8 +1085,8 @@ class _HighLowScreenState extends State<HighLowScreen> {
   /// Piper or Clef — the shared inner content (pulse, pose, celebration
   /// burst, sparkle) common to both, with positioning left to the two thin
   /// callers below ([_buildClef], [_buildPiper]) since they anchor
-  /// completely differently (Clef: centred on her perch; Piper: snug to the
-  /// screen's right edge, at a much larger scale — see [SceneLayout]'s
+  /// completely differently (Clef: centred on his perch on the branch; Piper:
+  /// at the screen's left edge, at a much larger scale — see [SceneLayout]'s
   /// class doc).
   ///
   /// **The character who isn't speaking is never made transparent.** It was
@@ -1122,8 +1145,8 @@ class _HighLowScreenState extends State<HighLowScreen> {
     );
   }
 
-  /// Clef, standing on his tree platform — centred on the perch, feet on
-  /// the platform, same as before the tree-slot mechanic.
+  /// Clef, sitting on the branch that reaches left — centred on the perch,
+  /// feet on the branch, leaving every platform free to be a slot.
   Widget _buildClef({
     required SceneLayout layout,
     required CharacterPose pose,
@@ -1156,11 +1179,11 @@ class _HighLowScreenState extends State<HighLowScreen> {
     );
   }
 
-  /// Piper, standing beside the tree on the ground — foreground scale,
-  /// anchored to the screen's right edge rather than centred on anything
-  /// (she is no longer on a platform). Only a sliver at her ankles falls
-  /// below the visible frame, by design — see [SceneLayout.piperFeetY]'s
-  /// doc comment.
+  /// Piper, standing on the ground at the left edge — foreground scale
+  /// (Trello card 187: she stood right of the tree until the tree was pushed
+  /// a quarter off the right edge, which removed that ground). Only a sliver
+  /// at her ankles falls below the visible frame, by design — see
+  /// [SceneLayout.piperFeetY]'s doc comment.
   Widget _buildPiper({
     required SceneLayout layout,
     required CharacterPose pose,
@@ -1172,7 +1195,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
   }) {
     final height = layout.piperHeight;
     return Positioned(
-      right: layout.piperRightInset,
+      left: layout.piperLeftInset,
       bottom: layout.screen.height - layout.piperFeetY,
       child: _characterCore(
         art: CharacterArt.piper,

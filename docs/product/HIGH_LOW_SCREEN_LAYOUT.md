@@ -8,17 +8,27 @@ Tier and agency rules are in `HIGH_LOW_TIERS.md`.
 ## One scene for every level
 
 Decided 2026-09-26 (Cooper: "let's try the tree version at all levels and
-agency and we'll see if it works"), refined 2026-09-27. Two instruments
-(A0–A2), three instruments and the A4 ordering screen are the **same
-composition with more or fewer things in it**:
+agency and we'll see if it works"), refined 2026-09-27, recomposed
+2026-10-06 (Trello card 187, decided with Cooper 2026-10-04/05). Two
+instruments (A0–A2) and three are the **same composition with more or fewer
+things in it**:
 
-- **Instruments on stumps, at the left.**
-- **The tree at the right**, with **Clef on its top platform**.
-- **Piper stands beside the tree, on the ground, at foreground scale** — not
-  perched on a lower platform (see "Piper is off the tree" below).
-- **The game's name and the round instruction, centred at the top; Listen
-  Again directly beneath them** (see "The caption" below).
-- **Close top-left, Skip top-right.** Nothing along the bottom.
+- **Piper on the ground at the left edge**, at foreground scale.
+- **The instruments on stumps through the middle**, set back in space.
+- **The tree on the right** (`PitchTree_v2.png`), full screen height with a
+  quarter of its width off the right edge, and **Clef on the branch that
+  reaches left** — not on a platform, so all three platforms can be slots.
+- **The game's name and the round instruction on a cream plate, centred over
+  the meadow** (see "The caption" below). Listen Again below the stumps.
+- **Close top-left, Skip top-right.**
+
+The high/low reading survives the recomposition: Clef is up the tree, Piper is
+on the ground.
+
+**The A4 ordering screen has not moved.** It still draws the previous
+four-platform tree with Clef on the top platform, in its own copy of the old
+geometry (`OrderingTreeScene`). Whether it should follow onto the new tree is
+an open question for Cooper.
 
 Why: agency is an independent axis, so the scene must not rearrange each time a
 child moves up a level; only the task changes. It also removes the centre
@@ -50,11 +60,17 @@ tuning problem stops existing rather than being solved.
 become a two-item ordering task, a harder and different thing to ask.
 
 **Which platform holds the slot** (`SceneLayout.slotPlatformFor`):
-- **High** → the platform right under Clef (index 1) — physically the "up
-  here by me" spot.
-- **Low** → the tree's bottom-most platform (index 3) — the widest top/bottom
-  contrast the three free platforms allow, and closest to the ground, where
-  Piper now stands.
+- **High** → the top platform (index 0) — "up on top".
+- **Low** → the bottom platform (index 2) — "down at the bottom".
+
+The widest contrast three platforms allow, now that Clef sits on the branch
+rather than the top platform (before 2026-10-06 it was the platform under Clef
+and the bottom one of four).
+
+**No character may overlap a drop slot.** Piper's tail used to cover half the
+bottom slot when she stood right of the tree. Moving her left fixed it, and
+`scene_layout_test.dart` checks it at every phone size rather than assuming
+it, because a character over a target can reappear in any arrangement.
 
 **Slots render only where something can be placed.** None at A0/A1 (nothing is
 draggable there — an empty slot would be a false affordance a small child
@@ -124,34 +140,64 @@ platform, her feet could be cut off on the frame and I think that's okay."
 This also frees her old platform for a slot (see above) — a second, unplanned
 benefit of the move.
 
+### Piper moves to the left edge (2026-10-06, Trello card 187)
+
+Pushing the new tree a quarter off the right edge removed the ground she stood
+on, so she stands at the **left edge**, full foreground height, feet cropped at
+the ankles at most (`SceneLayout.piperLeftInset`, measured to her widest pose).
+This breaks any voice line in which Piper says "here by me" — already handled:
+the Decide lines name the position, not the speaker (see `VOICE_LINES.md`).
+
+### The tree: full height, a quarter off the right edge
+
+**Smaller does not work, and that was tested** at 55%, 65%, 80% and full
+height. The platforms are about a tenth of the image's width, so at any size
+where the canopy stays clear of the meadow they are too small to aim an
+instrument at. What the crop removes is only trunk and a hollow. The branch
+reaching left overhangs the meadow, which is acceptable where it isn't covering
+text. Platform and perch positions were measured off the art on a grid; see
+`SceneLayout.platformCentres` and `SceneLayout.perch`.
+
 ### Invariants (tested in `scene_layout_test.dart` / `high_low_screen_test.dart`)
 
-1. **Clef stays on the tree; the tree stands in the right of the frame.**
-2. **Piper is clearly larger than Clef**, and her head reaches the tree's
-   third platform.
-3. **The instruments do not lose prominence.** At A0/A1 tapping them is the
-   whole activity. They stay at half the screen height (0.50 H), far larger
-   than Clef, and the tree may not squeeze them.
-4. **Exactly one slot platform per round, never Clef's own.**
-5. **The layout never reflows.** Stump positions depend only on the index and
-   the count, never on what has been picked up. A vacated stump shows a
-   greyed ghost on the ordering screen.
-6. *Superseded, 2026-09-27:* "both characters are the same size" and
-   "prominence follows the task" (the target character larger than the one
-   standing by) — both were about a centre character that no longer exists;
-   see `HIGH_LOW_TIERS.md`'s own superseded-decision note for the parallel
-   case on the three-note layout.
+1. **The tree is full height with a quarter off the right; every platform face
+   is on screen and inside the safe area.**
+2. **Clef sits on the branch**, fully on screen, covering no platform.
+3. **Piper stands at the left, inside the safe area**, clearly larger than Clef,
+   cropped at the ankles at most.
+4. **The instruments stand between them**, clear of each other, of both
+   characters and of the platform column.
+5. **The touch-target floor.** The smallest instrument (the bells, at half
+   size) never falls below `SceneLayout.minTouchTarget`, 64 logical pixels.
+   That, not looks, limits how far back the stumps go. On an iPhone SE it is
+   the binding constraint.
+6. **One floor.** The stumps' ground line agrees with the tree's base — within
+   5% of the height of the bottom platform.
+7. **No character overlaps a drop slot.**
+8. **Exactly one slot platform per round.**
+9. **The layout never reflows.** Stump positions depend only on the index and
+   the count, never on what has been picked up.
+10. *Superseded, 2026-10-06:* "the instruments stay at half the screen height"
+    — card 187 sets them back in space (smaller and higher), bounded by the
+    touch-target floor instead.
+11. *Superseded, 2026-09-27:* "both characters are the same size" and
+    "prominence follows the task" (the target character larger than the one
+    standing by) — both were about a centre character that no longer exists;
+    see `HIGH_LOW_TIERS.md`'s own superseded-decision note for the parallel
+    case on the three-note layout.
 
 ## Where things sit
 
-- Ground line (stump surface): 0.16 H up from the bottom. The tree's top
-  platform's feet are at 0.355 H; the bottom platform is a little below the
-  stumps' line. The tree is centred about 0.78 W across, pulled in if the
-  right-hand platform would touch a notch.
-- Instruments: packed left to right from the safe-area edge, pitch at most 1.12
-  boxes, so two instruments look like two and a free column remains before the
-  tree.
-- **The A0 earned arrow** sits in that free column, level with the middle of the
+- Ground line (stump surface): 0.225 H up from the bottom (0.775 H down), where
+  the tree's root flare meets the grass and 0.036 H below its bottom platform.
+  Raised from 0.16 H. An earlier attempt to raise it was reverted because the
+  old tree's bottom platform could not move; this tree's base is where the
+  stumps now stand.
+- Instruments: 0.38 H, down from 0.50 H, capped so two fit between Piper and
+  Clef without their boxes overlapping. The group is centred in that band; the
+  gaps either side of it are half the edge margin.
+- **The A0 earned arrow** sits in the open air below the branch, between the
+  last instrument and the platform column, level with the middle of the
   instruments. It is big, bright and gradient-filled; Skip is small, cream and
   quiet. With the old "I want something new" subtitle gone, that difference in
   how they *look* is what tells a child's control from an adult's — do not let
@@ -192,19 +238,24 @@ close button on one side and Skip on the other. `HighLowHeader` reserves a
 fixed width on each side regardless of what the caption contains — it only
 ever asks for more *height*.
 
-`HighLowHeader` reserves the same width on both sides of the caption
-(`sideWidth`), so the caption is centred on the *screen*. It used to sit well
-left of centre because the right-hand side was narrower than the left.
+**Centred over the meadow, not the screen** (Trello card 187). The composition
+is no longer symmetric, and screen-centred text lands in the tree's canopy.
+`HighLowScreen` passes `HighLowHeader` a caption span from just right of Close
+to the tree's left edge (`SceneLayout.meadowRight`); Close and Skip stay at the
+edges. On a phone whose meadow is narrower than 280 px — an iPhone SE — the
+plate reaches into the canopy rather than squeeze the instruction onto three
+lines; it can, because the plate is opaque. Without a span, `HighLowHeader`
+still centres the caption on the screen between equal `sideWidth` columns.
 
 - **Skip** is a small cream pill: the icon and the word, nothing else. It was
   far too large, with a subtitle; Cooper is fine losing the text for now.
 - **Caption plate** is a switch (`HighLowCaption.defaultPlate`), not a layout:
   on or off, the padding is identical, so flipping it moves nothing. On = the
   cream plaque with warm dark brown text; off = white text with a soft shadow.
-  Cooper is undecided (most concept art has none; the newest concept uses a tan
-  banner). The case for the plate is legibility — the caption now sits over
-  trees and hills, and a caption whose audience is the watching adult is
-  worthless if it vanishes. On by default.
+  **On** (Trello card 187, 2026-10-06). It was switched off on 2026-09-28
+  while the text sat on open sky; with the tree behind part of it, plain text
+  doesn't read, and it was already low-contrast against pale sky before the
+  new tree (confirmed on device).
 
 ## The progress indicator is gone (a decision, not a deletion)
 
@@ -324,6 +375,20 @@ ordering screen with two or three instruments). Write the scene name into
 `flutter build ios --simulator --debug -t tool/screenshot_main.dart`, install,
 `xcrun simctl launch`, then `xcrun simctl io <udid> screenshot` (the framebuffer
 is portrait; rotate 90° clockwise to read it). Nothing in the app imports it.
+
+## Offscreen renders, no simulator needed
+
+`test/render/high_low_scene_render_test.dart` paints the real screen — real
+art, real positions — to PNG files at an iPhone SE, iPhone 14 and Pro Max size,
+for every agency level and both poles:
+
+`flutter test test/render/high_low_scene_render_test.dart --dart-define=RENDER_DIR=/some/dir`
+
+It is skipped unless `RENDER_DIR` is set, so `make test` is unaffected. Text
+draws in the test font, as solid boxes, so it shows where the caption plate
+sits but not how its words read; icons are boxes too. It is a check on
+composition, not a substitute for a device: it cannot show motion, a release
+build's behaviour, or how the colours look on a real screen.
 
 ## Design rules this leans on
 
