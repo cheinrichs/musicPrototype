@@ -205,9 +205,9 @@ class PromptGenerator {
   /// entirely below the other instrument's — guaranteeing that instrument
   /// was *always* the extreme note, never the middle one, for every single
   /// generated prompt with that pair (found via
-  /// `test/games/high_low/cross_instrument_pairing_test.dart`'s
-  /// three-note fairness check: 100% correlation across thousands of
-  /// samples, not a subtle skew). Two notes at the exact same pitch can
+  /// `test/games/high_low/prompt_generator_test.dart`'s three-note
+  /// fairness check: 100% correlation across thousands of samples, not a
+  /// subtle skew). Two notes at the exact same pitch can
   /// never both survive into one combo regardless — a zero-semitone gap
   /// always fails [_gapsInBounds] — so keeping every candidate distinct
   /// costs nothing and only restores combinations the old dedup was
