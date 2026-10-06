@@ -1048,8 +1048,12 @@ class _HighLowScreenState extends State<HighLowScreen> {
   CharacterPose _poseFor({required bool isAsking, required bool celebrating}) {
     if (!isAsking) return CharacterPose.speaking;
     if (celebrating) return CharacterPose.celebrating;
+    // Not driven by Explore's six-second guidance caption any more: that
+    // timer runs from round start whatever the child is doing, so it put
+    // the doubtful face on a child tapping the right answer (Cooper, on
+    // device). The caption is for the parent; the pose answers the child.
     if (_gameState.dragFeedback == DragFeedback.retry ||
-        _gameState.secondaryCaptionText != null) {
+        _gameState.isConsidering) {
       return CharacterPose.thinking;
     }
     return CharacterPose.speaking;

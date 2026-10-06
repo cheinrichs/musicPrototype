@@ -188,6 +188,13 @@ class HighLowGameState extends ChangeNotifier {
   int? _lastDropSide;
   SpokenLine? _activeCaption;
 
+  /// Whether the target character is "considering" — the thinking pose —
+  /// because Explore's five-tap rule just fired a nudge. See
+  /// [isConsidering].
+  bool _considering = false;
+  int _consideringSerial = 0;
+  Timer? _consideringTimer;
+
   /// Cumulative correct taps this round, Participate only (Trello card
   /// RqdPFKLf) — a wrong tap does *not* reset this (see
   /// [tapInstrument]'s doc comment for why); five resolves the round via
@@ -354,6 +361,14 @@ class HighLowGameState extends ChangeNotifier {
   bool get introPlaying => _introPlaying;
 
   DragFeedback get dragFeedback => _dragFeedback;
+
+  /// True while an Explore five-tap nudge is answering a child who has
+  /// persisted on the wrong option: the thinking pose's job, a face that
+  /// considers rather than judges (Cooper, 2026-10-06). Held for the
+  /// nudge line or [_retryFeedbackMinimum], whichever is longer — the same
+  /// dwell a wrong drop gets at Decide — and cleared at once by a correct
+  /// tap, so a right answer is never met with doubt.
+  bool get isConsidering => _considering;
 
   /// Which of Piper/Clef is currently speaking, for however long the line
   /// actually takes to play (Trello card PIm7xE6n, "the talker moves") —
@@ -601,6 +616,33 @@ class HighLowGameState extends ChangeNotifier {
     _characterSparkleTimer = null;
   }
 
+  /// Ends [isConsidering] now, and makes any in-flight
+  /// [_considerWhileNudging] stale. Does not notify — callers do.
+  void _stopConsidering() {
+    _consideringSerial++;
+    _consideringTimer?.cancel();
+    _consideringTimer = null;
+    _considering = false;
+  }
+
+  /// Speak an Explore nudge with the speaker in the thinking pose, for the
+  /// line's length or [_retryFeedbackMinimum], whichever is longer. Its own
+  /// timer, not [_delay]: that one shares [_pendingTimer] with the intro's
+  /// note-gap wait, which a nudge must not cancel.
+  Future<void> _considerWhileNudging(int token, SpokenLine line) async {
+    _stopConsidering();
+    final serial = _consideringSerial;
+    _considering = true;
+    final minimum = Completer<void>();
+    _consideringTimer = Timer(_retryFeedbackMinimum, minimum.complete);
+    notifyListeners();
+    await Future.wait([_speak(token, line), minimum.future]);
+    if (token != _roundToken || serial != _consideringSerial) return;
+    _considering = false;
+    _consideringTimer = null;
+    notifyListeners();
+  }
+
   /// Play [line], tracking [_speakingIsPiper] for however long it
   /// actually takes to finish (Trello card PIm7xE6n, "the talker moves")
   /// — ties the speaking sway's duration to real playback completion via
@@ -647,6 +689,7 @@ class HighLowGameState extends ChangeNotifier {
     _cancelSparkleTimer();
     _cancelTapRingTimer();
     _cancelObserveFlightTimer();
+    _stopConsidering();
     _playingIndex = null;
     _dragFeedback = DragFeedback.none;
     _lastDropSide = null;
@@ -868,6 +911,7 @@ class HighLowGameState extends ChangeNotifier {
       // logged wrong-tap count is for assessment. Five cumulative
       // correct taps resolve the round in a confetti burst.
       if (side == prompt.targetSide) {
+        _stopConsidering();
         _correctTapCumulative++;
         _sparkleCorrectTapCharacter(targetCharacterIsPiper);
         if (_correctTapCumulative >= 5) {
@@ -887,7 +931,7 @@ class HighLowGameState extends ChangeNotifier {
         final nudge = _nudges.next(
           targetCharacterIsPiper ? NudgeSpeaker.piper : NudgeSpeaker.clef,
         );
-        unawaited(_speak(_roundToken, _shared(nudge)));
+        unawaited(_considerWhileNudging(_roundToken, _shared(nudge)));
       }
     }
 
@@ -1205,6 +1249,7 @@ class HighLowGameState extends ChangeNotifier {
     _nudgeVisible = false;
     _speakingIsPiper = null;
     _characterSparkleIsPiper = null;
+    _stopConsidering();
     notifyListeners();
   }
 
@@ -1218,6 +1263,7 @@ class HighLowGameState extends ChangeNotifier {
     _cancelSparkleTimer();
     _cancelTapRingTimer();
     _cancelObserveFlightTimer();
+    _stopConsidering();
     super.dispose();
   }
 }

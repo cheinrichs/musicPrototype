@@ -223,13 +223,23 @@ scale so they never jump in size (`character_art.dart`):
 | Pose | When (the asking character only) |
 | --- | --- |
 | speaking (mouth frames: closed / open / wide) | resting, and whenever it is talking |
-| celebrating | on a correct drop |
-| thinking | on a wrong drop, and on the idle nudge |
+| celebrating | on a correct drop, and on Explore's fifth correct tap |
+| thinking | on a wrong drop, and on Explore's five-wrong-tap nudge |
 
 Only *speaking* has mouth frames; the others are single images. The character
 who isn't asking about this round's pole just speaks. Thinking on a wrong drop
 is not a failure mark — it describes the character, not a verdict on the child
 ("describe the answer, not the attempt").
+
+**Correct taps 1–4 at Explore get no pose change** (decided 2026-10-06): the
+sound and the escalating sparkle are the per-tap reward, and celebrating each
+one would flatten that escalation. **Explore's six-second guidance caption does
+not drive the pose.** It used to, and since its timer runs from round start
+whatever the child is doing, it put the thinking face on a child tapping the
+right answer (Cooper, on device). The caption is for the parent; the pose
+answers the child. Thinking on the nudge holds for the nudge line or 1.4 s,
+whichever is longer — the same dwell as a wrong drop — and a correct tap ends
+it at once.
 
 **Neither character is ever made transparent.** Non-speaker dimming (55%
 opacity) was tried and removed (Cooper: "i don't like that"): reduced opacity

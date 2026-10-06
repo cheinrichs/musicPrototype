@@ -889,17 +889,26 @@ void main() {
     }
 
     /// A round whose answer is known: seeded generator, Trigger, blocked.
-    Future<HighLowGameState> pumpKnownRound(WidgetTester tester) async {
+    Future<HighLowGameState> pumpKnownRound(
+      WidgetTester tester, {
+      AgencyStage? stage,
+    }) async {
       tester.view.physicalSize = roomyViewport;
       tester.view.devicePixelRatio = 1.0;
       addTearDown(() {
         tester.view.resetPhysicalSize();
         tester.view.resetDevicePixelRatio();
       });
-      final state = HighLowGameState(
-        totalPrompts: 3,
-        generator: PromptGenerator(random: Random(1)),
-      );
+      final state = stage == null
+          ? HighLowGameState(
+              totalPrompts: 3,
+              generator: PromptGenerator(random: Random(1)),
+            )
+          : HighLowGameState(
+              totalPrompts: 3,
+              agencyStage: stage,
+              generator: PromptGenerator(random: Random(1)),
+            );
       await tester.pumpWidget(
         MaterialApp(home: HighLowScreen(gameState: state)),
       );
@@ -1013,6 +1022,82 @@ void main() {
         showing(tester).where((n) => n.endsWith('celebration.png')).length,
         1,
       );
+      state.dispose();
+    });
+
+    // Device bug (Cooper): "the listening pose fires on a CORRECT tap at
+    // Explore". It was never the tap — the six-second guidance caption drove
+    // the pose, and its timer runs from round start whatever the child does.
+    testWidgets('at Explore, correct taps after the six-second caption never '
+        'get the thinking pose', (tester) async {
+      final state = await pumpKnownRound(tester, stage: AgencyStage.explore);
+      await tester.pump(const Duration(seconds: 7));
+      expect(state.secondaryCaptionText, isNotNull, reason: 'caption is up');
+      expect(showing(tester).where((n) => n.endsWith('thinking.png')), isEmpty);
+
+      for (var tap = 1; tap <= 4; tap++) {
+        state.tapInstrument(state.currentPrompt!.targetSide);
+        await tester.pump();
+        expect(
+          showing(tester).where((n) => n.endsWith('thinking.png')),
+          isEmpty,
+          reason: 'correct tap $tap',
+        );
+        await tester.pump(const Duration(milliseconds: 1000));
+      }
+      state.dispose();
+    });
+
+    testWidgets('at Explore, the five-wrong-tap nudge makes the target think, '
+        'for the nudge line or the retry minimum', (tester) async {
+      final state = await pumpKnownRound(tester, stage: AgencyStage.explore);
+      final wrong = 1 - state.currentPrompt!.targetSide;
+      for (var tap = 1; tap <= 4; tap++) {
+        state.tapInstrument(wrong);
+        await tester.pump();
+        expect(
+          showing(tester).where((n) => n.endsWith('thinking.png')),
+          isEmpty,
+          reason: 'wrong tap $tap is below the five-tap rule',
+        );
+      }
+      state.tapInstrument(wrong);
+      await tester.pump();
+      expect(
+        showing(tester).where((n) => n.endsWith('thinking.png')).length,
+        1,
+      );
+      expect(
+        showing(tester).where((n) => n.contains('_mouth_')).length,
+        1,
+        reason: 'the one standing by just speaks',
+      );
+
+      // The test audio resolves lines at once, so the minimum dwell governs.
+      await tester.pump(const Duration(milliseconds: 1500));
+      expect(showing(tester).where((n) => n.endsWith('thinking.png')), isEmpty);
+      state.dispose();
+    });
+
+    testWidgets('at Explore, a correct tap during the nudge ends the thinking '
+        'pose at once — a right answer is never met with doubt', (
+      tester,
+    ) async {
+      final state = await pumpKnownRound(tester, stage: AgencyStage.explore);
+      final target = state.currentPrompt!.targetSide;
+      for (var tap = 1; tap <= 5; tap++) {
+        state.tapInstrument(1 - target);
+      }
+      await tester.pump();
+      expect(
+        showing(tester).where((n) => n.endsWith('thinking.png')).length,
+        1,
+      );
+
+      state.tapInstrument(target);
+      await tester.pump();
+      expect(showing(tester).where((n) => n.endsWith('thinking.png')), isEmpty);
+      await tester.pump(const Duration(milliseconds: 1500));
       state.dispose();
     });
 
