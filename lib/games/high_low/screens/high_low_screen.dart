@@ -1106,7 +1106,14 @@ class _HighLowScreenState extends State<HighLowScreen> {
             top: -height * 0.15,
             child: DriftingNotes(size: height, active: true),
           ),
-        if (sparkling) _buildCharacterSparkle(height, sparkleLevel),
+        // Filled to the character's own box: the sparkle Stack's children
+        // are all positioned, so unfilled it sized itself to its incoming
+        // constraints — unbounded here — which in a release build (asserts
+        // off) made this whole Stack infinitely large on every Explore
+        // correct tap — the likely cause of the character jumping to the
+        // top-left corner seen on device.
+        if (sparkling)
+          Positioned.fill(child: _buildCharacterSparkle(height, sparkleLevel)),
       ],
     );
   }

@@ -1394,6 +1394,65 @@ void main() {
         // Not disposed here: the screen owns it (ownsGameState: true).
       });
     }
+
+    // The sighting itself: the jump came on a *correct tap* at Explore,
+    // which is when the "found it" sparkle mounts inside the character's
+    // Stack. The sparkle's own Stack (all children positioned) used to size
+    // itself to its unbounded incoming constraints — an assert in debug, an
+    // infinitely large character box in release. The speaking test above
+    // never taps, so it never mounted the sparkle.
+    testWidgets('a correct tap at Explore sparkles without moving either '
+        'character', (tester) async {
+      tester.view.physicalSize = roomyViewport;
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+      final state = HighLowGameState(
+        totalPrompts: 3,
+        agencyStage: AgencyStage.explore,
+        generator: PromptGenerator(random: Random(1)),
+      );
+      await tester.pumpWidget(
+        MaterialApp(home: HighLowScreen(gameState: state, ownsGameState: true)),
+      );
+      await tester.pump();
+      for (var i = 0; i < 4; i++) {
+        await tester.pump(const Duration(milliseconds: 1200));
+      }
+      await tester.pump(Duration.zero);
+
+      Offset feetOf(CharacterArt art) => tester
+          .getRect(
+            find.byWidgetPredicate((w) => w is CharacterSprite && w.art == art),
+          )
+          .bottomCenter;
+      final piperSettled = feetOf(CharacterArt.piper);
+      final clefSettled = feetOf(CharacterArt.clef);
+
+      var sawSparkle = false;
+      // Four, not five: the fifth correct tap resolves the round.
+      for (var tap = 1; tap <= 4; tap++) {
+        state.tapInstrument(state.currentPrompt!.targetSide);
+        for (var frame = 0; frame < 20; frame++) {
+          await tester.pump(const Duration(milliseconds: 16));
+          if (find.text('✨').evaluate().isNotEmpty) sawSparkle = true;
+          expect(tester.takeException(), isNull, reason: 'tap $tap');
+          for (final (name, art, settled) in [
+            ('Piper', CharacterArt.piper, piperSettled),
+            ('Clef', CharacterArt.clef, clefSettled),
+          ]) {
+            expect(
+              (feetOf(art) - settled).distance,
+              lessThan(2.0),
+              reason: '$name\'s feet moved after correct tap $tap',
+            );
+          }
+        }
+      }
+      expect(sawSparkle, isTrue, reason: 'the sparkle must actually mount');
+    });
   });
 }
 
@@ -1421,4 +1480,3 @@ class _LongVoiceAudio implements AudioController {
   @override
   dynamic noSuchMethod(Invocation invocation) => null;
 }
-
