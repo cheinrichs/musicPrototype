@@ -17,10 +17,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:ear_trainer/games/high_low/ordering/ordering_game_state.dart';
+import 'package:ear_trainer/games/high_low/ordering/ordering_screen.dart';
 import 'package:ear_trainer/games/high_low/screens/high_low_screen.dart';
 import 'package:ear_trainer/games/high_low/services/prompt_generator.dart';
 import 'package:ear_trainer/games/high_low/state/high_low_game_state.dart';
 import 'package:ear_trainer/models/agency_stage.dart';
+import 'package:ear_trainer/models/concept_tier.dart';
 import 'package:ear_trainer/models/round_order.dart';
 
 const _outDir = String.fromEnvironment('RENDER_DIR');
@@ -32,8 +35,70 @@ const _phones = {
   'promax': (Size(932, 430), EdgeInsets.symmetric(horizontal: 59)),
 };
 
+/// Decodes every image on screen for real, then paints [boundary] to
+/// `RENDER_DIR/name.png`.
+Future<void> _capture(
+  WidgetTester tester,
+  GlobalKey boundary,
+  String name,
+) async {
+  await tester.runAsync(() async {
+    for (final element in find.byType(Image).evaluate()) {
+      await precacheImage((element.widget as Image).image, element);
+    }
+  });
+  await tester.pump();
+  final bytes = await tester.runAsync(() async {
+    final render =
+        boundary.currentContext!.findRenderObject()! as RenderRepaintBoundary;
+    final image = await render.toImage(pixelRatio: 2);
+    final data = await image.toByteData(format: ui.ImageByteFormat.png);
+    return data!.buffer.asUint8List();
+  });
+  File('$_outDir/$name.png')
+    ..createSync(recursive: true)
+    ..writeAsBytesSync(bytes!);
+}
+
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
+
+  // The ordering screen, on the same tree (Trello card 188): two notes with
+  // Clef on the top platform, three with him on the branch.
+  for (final phone in ['se', 'iphone14']) {
+    for (final tier in [ConceptTier.t1, ConceptTier.t5]) {
+      final name = '${phone}_ordering_${tier.noteCount}notes';
+      testWidgets(name, skip: _outDir.isEmpty, (tester) async {
+        final (size, insets) = _phones[phone]!;
+        tester.view.physicalSize = size * 2;
+        tester.view.devicePixelRatio = 2;
+        tester.view.padding = FakeViewPadding(
+          left: insets.left * 2,
+          right: insets.right * 2,
+        );
+        addTearDown(tester.view.reset);
+        final boundary = GlobalKey();
+        await tester.pumpWidget(
+          RepaintBoundary(
+            key: boundary,
+            child: MaterialApp(
+              debugShowCheckedModeBanner: false,
+              home: OrderingScreen(
+                tier: tier,
+                state: OrderingGameState(tier: tier),
+              ),
+            ),
+          ),
+        );
+        for (var i = 0; i < 8; i++) {
+          await tester.pump(const Duration(milliseconds: 1200));
+        }
+        await _capture(tester, boundary, name);
+        await tester.pumpWidget(const SizedBox());
+        await tester.pump(const Duration(seconds: 5));
+      });
+    }
+  }
 
   for (final phone in _phones.entries) {
     for (final stage in AgencyStage.values) {
@@ -85,26 +150,7 @@ void main() {
           }
           expect(state.targetCharacterIsPiper, wantLow);
 
-          // Decode every image for real, then let the frame pick them up.
-          await tester.runAsync(() async {
-            for (final element in find.byType(Image).evaluate()) {
-              final image = (element.widget as Image).image;
-              await precacheImage(image, element);
-            }
-          });
-          await tester.pump();
-
-          final bytes = await tester.runAsync(() async {
-            final render =
-                boundary.currentContext!.findRenderObject()!
-                    as RenderRepaintBoundary;
-            final image = await render.toImage(pixelRatio: 2);
-            final data = await image.toByteData(format: ui.ImageByteFormat.png);
-            return data!.buffer.asUint8List();
-          });
-          File('$_outDir/$name.png')
-            ..createSync(recursive: true)
-            ..writeAsBytesSync(bytes!);
+          await _capture(tester, boundary, name);
           state.dispose();
         });
       }

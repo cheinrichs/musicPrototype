@@ -36,10 +36,11 @@ class OrderingRound {
 
   int get slotCount => orderingSlotCount;
 
-  /// The platforms in play this round, top first. A two-note round uses the
-  /// top two and leaves the bottom step empty — the same tree with one step
-  /// unoccupied (Trello card 11) — so the ordering still reads down from
-  /// Clef.
+  /// The slots in play this round, highest first. Slot indices are ranks,
+  /// not platforms: `OrderingLayout.slotCentre` maps them onto whichever
+  /// platforms Clef isn't sitting on (the bottom two with two notes, all
+  /// three with three — Trello card 188), so the ordering still reads down
+  /// from Clef.
   List<int> get activeSlots => [for (var i = 0; i < notes.length; i++) i];
 
   /// The platform (0 = top) that note [noteIndex] belongs on.

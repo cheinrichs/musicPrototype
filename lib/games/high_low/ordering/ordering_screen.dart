@@ -12,6 +12,7 @@ import '../../../models/musical_skill.dart';
 import '../../../ui/components/drifting_notes.dart';
 import '../../../ui/components/game_screen_layout.dart';
 import '../../../ui/theme/theme.dart';
+import '../models/scene_layout.dart';
 import '../widgets/high_low_header.dart';
 import '../widgets/character_art.dart';
 import '../widgets/mouth_frames.dart';
@@ -190,6 +191,16 @@ class _OrderingScreenState extends State<OrderingScreen> {
         skipEnabled: _state.status != GameStatus.completed,
         onSkip: _state.escape,
         below: _buildReplay(),
+        // Over the meadow, as on the play screens (Trello card 188).
+        captionPadding: HighLowHeader.meadowCaptionPadding(
+          screen: MediaQuery.sizeOf(context),
+          insets: MediaQuery.paddingOf(context),
+          meadowRight: OrderingLayout(
+            MediaQuery.sizeOf(context),
+            insets: MediaQuery.paddingOf(context),
+            noteCount: 2,
+          ).meadowRight,
+        ),
       ),
       body: const SizedBox.shrink(),
       scrollableBody: false,
@@ -216,7 +227,7 @@ class _OrderingScreenState extends State<OrderingScreen> {
         Positioned.fromRect(
           rect: layout.treeRect,
           child: Image.asset(
-            'assets/images/backgrounds/props/OrderingTree.png',
+            'assets/images/backgrounds/props/PitchTree_v2.png',
             fit: BoxFit.fill,
           ),
         ),
@@ -228,8 +239,6 @@ class _OrderingScreenState extends State<OrderingScreen> {
     );
   }
 
-  static const _stumpSurfaceFraction = 0.37; // see HighLowScreen
-
   Widget _buildStump(OrderingLayout layout, int note) {
     final feet = layout.stumpFeet(note);
     final width = layout.stumpInstrumentSize * 0.95;
@@ -237,7 +246,7 @@ class _OrderingScreenState extends State<OrderingScreen> {
     final height = width * (isA ? 794 / 1512 : 781 / 1506);
     return Positioned(
       left: feet.dx - width / 2,
-      top: feet.dy - height * _stumpSurfaceFraction,
+      top: feet.dy - height * SceneLayout.stumpSurfaceFraction,
       child: Image.asset(
         isA
             ? 'assets/images/backgrounds/props/StumpA.png'

@@ -264,6 +264,11 @@ void main() {
       expect(plate.center.dx, closeTo((52 + 404) / 2, 1.0));
       expect(plate.left, greaterThanOrEqualTo(52 - 0.5));
       expect(plate.right, lessThanOrEqualTo(404 + 0.5));
+      expect(
+        tester.getRect(find.text('LISTEN')).center.dx,
+        closeTo(plate.center.dx, 1.0),
+        reason: 'what sits below the caption stays under it',
+      );
       expect(tester.getRect(find.byTooltip('Close')).left, closeTo(0, 1.0));
       expect(tester.getRect(find.byTooltip('Skip')).right, closeTo(844, 1.0));
     });

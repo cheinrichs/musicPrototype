@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:confetti/confetti.dart';
 import 'package:flutter/material.dart';
@@ -518,36 +517,14 @@ class _HighLowScreenState extends State<HighLowScreen> {
     );
   }
 
-  /// The narrowest the caption may be. Below this a two-line instruction
-  /// wraps to three and is cut off; on a phone whose meadow is narrower (an
-  /// SE), the plate reaches into the canopy instead, which it can because it
-  /// is opaque.
-  static const double _minCaptionWidth = 280;
-
-  /// Gap between the close button and the caption's plate.
-  static const double _captionGap = AppSpacing.sm;
-
-  /// The close button's width: [CircleIconButton]'s default size, which
-  /// [HighLowHeader] uses for it.
-  static const double _closeButtonSize = 44;
-
-  /// The caption's span: from just right of Close to the end of the meadow
-  /// ([SceneLayout.meadowRight]), as insets on [HighLowHeader]'s own box —
-  /// which sits inside [GameScreenLayout]'s safe area and its horizontal
-  /// [AppSpacing.lg] padding, so screen x minus both is header x.
+  /// The caption over the meadow — see [HighLowHeader.meadowCaptionPadding].
   EdgeInsets _captionPadding(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
     final insets = MediaQuery.paddingOf(context);
-    final layout = SceneLayout(size, insets: insets, noteCount: 2);
-    final headerLeft = insets.left + AppSpacing.lg;
-    final headerWidth = size.width - insets.horizontal - 2 * AppSpacing.lg;
-    // Close is drawn flush with the safe edge (HighLowHeader cancels the
-    // padding for it), so its right edge is the inset plus its own width.
-    final spanLeft = insets.left + _closeButtonSize + _captionGap;
-    final spanRight = math.max(layout.meadowRight, spanLeft + _minCaptionWidth);
-    return EdgeInsets.only(
-      left: spanLeft - headerLeft,
-      right: math.max(0, headerWidth - (spanRight - headerLeft)),
+    return HighLowHeader.meadowCaptionPadding(
+      screen: size,
+      insets: insets,
+      meadowRight: SceneLayout(size, insets: insets, noteCount: 2).meadowRight,
     );
   }
 
@@ -925,8 +902,8 @@ class _HighLowScreenState extends State<HighLowScreen> {
     );
   }
 
-  /// Diameter of the child's earned arrow.
-  static const double _arrowSize = 72;
+  /// Diameter of the child's earned arrow — the layout reserves its column.
+  static const double _arrowSize = SceneLayout.arrowSize;
 
   /// The child's earned arrow — big and bright, the opposite visual
   /// language from the quiet, adult-facing controls elsewhere in this

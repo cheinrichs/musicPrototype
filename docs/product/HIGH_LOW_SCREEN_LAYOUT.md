@@ -16,8 +16,9 @@ things in it**:
 - **Piper on the ground at the left edge**, at foreground scale.
 - **The instruments on stumps through the middle**, set back in space.
 - **The tree on the right** (`PitchTree_v2.png`), full screen height with a
-  quarter of its width off the right edge, and **Clef on the branch that
-  reaches left** — not on a platform, so all three platforms can be slots.
+  quarter of its width off the right edge, with **Clef on the top platform
+  when two instruments are in play, and on the branch reaching left when
+  three are** (see "Clef's seat" below).
 - **The game's name and the round instruction on a cream plate, centred over
   the meadow** (see "The caption" below). Listen Again below the stumps.
 - **Close top-left, Skip top-right.**
@@ -25,10 +26,28 @@ things in it**:
 The high/low reading survives the recomposition: Clef is up the tree, Piper is
 on the ground.
 
-**The A4 ordering screen has not moved.** It still draws the previous
-four-platform tree with Clef on the top platform, in its own copy of the old
-geometry (`OrderingTreeScene`). Whether it should follow onto the new tree is
-an open question for Cooper.
+**One tree across the whole game** (Cooper, 2026-10-07, Trello card 188):
+the A4 ordering screen uses the same tree and the same scene, without Piper.
+The tree's job is that height means pitch; a child who meets one tree while
+choosing and another while ordering learns that less firmly, not more.
+
+## Clef's seat says how many slots are in play
+
+Decided by Cooper, 2026-10-07 (Trello card 188):
+
+- **Two instruments:** Clef sits on the **top platform**. Only the bottom two
+  are available.
+- **Three instruments:** Clef moves to the **branch**, freeing all three.
+
+Clef sitting on a platform says "this one is taken" with no UI at all, and
+where he sits tells you how many slots are in play. He stays high in both
+seats, so "Clef is high" still holds.
+
+**A platform with Clef on it must look clearly unlike a live drop slot**, or a
+child will try to put an instrument where he is sitting. Slots carry a visible
+treatment (`OrderingSlot`: a dark dip with a "?") and his platform doesn't.
+Watch on a device: the dip was designed on the old tree's darker wood and
+barely shows on this one's, so the "?" is doing most of the work.
 
 Why: agency is an independent axis, so the scene must not rearrange each time a
 child moves up a level; only the task changes. It also removes the centre
@@ -59,13 +78,19 @@ tuning problem stops existing rather than being solved.
 **One slot, not two, for a two-instrument round** — two slots would quietly
 become a two-item ordering task, a harder and different thing to ask.
 
-**Which platform holds the slot** (`SceneLayout.slotPlatformFor`):
-- **High** → the top platform (index 0) — "up on top".
-- **Low** → the bottom platform (index 2) — "down at the bottom".
+**Which platform holds the slot** (`SceneLayout.slotPlatformFor`): the
+highest platform Clef isn't on for a high round, the bottom one for a low
+round.
+- **Two instruments** (Clef on top): **high → the middle platform**, low → the
+  bottom. This still reads as up because the slots are relative: the higher
+  of the two available.
+- **Three instruments** (Clef on the branch): high → the top, low → the
+  bottom.
 
-The widest contrast three platforms allow, now that Clef sits on the branch
-rather than the top platform (before 2026-10-06 it was the platform under Clef
-and the bottom one of four).
+*Wording to recheck with Cooper:* the Decide caption says "put the higher one
+up on top", and the agreed (unrecorded) Clef line "up here on top". With two
+instruments the high slot is just under Clef: "up here" is right, "on top"
+means the top of the available ones.
 
 **No character may overlap a drop slot.** Piper's tail used to cover half the
 bottom slot when she stood right of the tree. Moving her left fixed it, and
@@ -156,13 +181,15 @@ where the canopy stays clear of the meadow they are too small to aim an
 instrument at. What the crop removes is only trunk and a hollow. The branch
 reaching left overhangs the meadow, which is acceptable where it isn't covering
 text. Platform and perch positions were measured off the art on a grid; see
-`SceneLayout.platformCentres` and `SceneLayout.perch`.
+`SceneLayout.platformCentres` and `SceneLayout.branchPerch`.
 
 ### Invariants (tested in `scene_layout_test.dart` / `high_low_screen_test.dart`)
 
 1. **The tree is full height with a quarter off the right; every platform face
    is on screen and inside the safe area.**
-2. **Clef sits on the branch**, fully on screen, covering no platform.
+2. **Clef's seat follows the instrument count** — the top platform with two,
+   the branch with three — fully on screen, above every free platform, and
+   never on a slot.
 3. **Piper stands at the left, inside the safe area**, clearly larger than Clef,
    cropped at the ankles at most.
 4. **The instruments stand between them**, clear of each other, of both

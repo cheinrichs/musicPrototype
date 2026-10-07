@@ -17,8 +17,8 @@ import '../widgets/character_art.dart';
 ///   platforms are about a tenth of the image's width, so at any size where
 ///   the canopy stays clear of the meadow they are too small to aim an
 ///   instrument at. What the crop removes is only trunk and a hollow;
-/// - **Clef sits on the branch reaching left** — the bare stretch of it, not
-///   on a platform, so all three platforms are free to be slots;
+/// - **Clef sits on the top platform with two instruments, on the branch with
+///   three** (Trello card 188) — see [clefOnBranch];
 /// - **Piper stands at the left edge, on the ground, at foreground scale**
 ///   (she used to stand right of the tree; the crop removed that ground);
 /// - the **instruments stand on stumps between them**, set back in space —
@@ -29,18 +29,17 @@ import '../widgets/character_art.dart';
 ///
 /// **The drop target is a slot on the tree, not a character** (2026-09-27).
 /// Dragging to a slot near the top of the tree means *high* because it is
-/// physically up there — the action becomes the concept. With Clef off the
-/// platforms, the high slot is the top platform and the low slot the bottom
-/// one: the widest contrast three platforms allow. See
-/// `HighLowScreen._buildTreeSlot`.
+/// physically up there — the action becomes the concept. The high slot is
+/// the highest platform Clef isn't on, the low slot the bottom one — see
+/// [slotPlatformFor] and `HighLowScreen._buildTreeSlot`.
 ///
 /// **The tree's platforms are receptacles only where something can be
 /// placed.** An empty slot on a screen where nothing can be placed is a false
 /// affordance a small child will spend real time failing at, so this class
 /// only knows where the platforms are; the screen decides when to draw one.
 ///
-/// The ordering screen still uses the previous tree — see
-/// `OrderingTreeScene`.
+/// **One tree across the whole game** (Trello card 188): the ordering screen
+/// uses this same scene, without Piper ([withPiper]).
 class SceneLayout {
   // ---- the tree art, measured off PitchTree_v2.png (1536 x 1024) ----
 
@@ -63,12 +62,13 @@ class SceneLayout {
   /// Width of each platform's top face, as a fraction of the tree's width.
   static const platformWidths = [0.119, 0.115, 0.111];
 
-  /// Where Clef's feet go: the top of the bare stretch of the branch reaching
-  /// left, which runs from about 0.27 to 0.38 of the tree's width with its top
-  /// surface at 0.423 of its height. Nearer the trunk than the middle of that
-  /// stretch, which leaves the instruments more room: on an SE the band
-  /// between Piper and Clef is what sets their size.
-  static const perch = Offset(0.355, 0.423);
+  /// Where Clef's feet go when he is on the branch (three instruments): the
+  /// top of the bare stretch of the branch reaching left, which runs from about
+  /// 0.27 to 0.38 of the tree's width with its top surface at 0.423 of its
+  /// height. Nearer the trunk than the middle of that stretch, which leaves the
+  /// instruments more room: on an SE the band between Piper and Clef is what
+  /// sets their size.
+  static const branchPerch = Offset(0.355, 0.423);
 
   /// The left edge of the platform column, as a fraction of the tree's width
   /// (the top platform's face starts here). Nothing on the ground may reach
@@ -89,11 +89,16 @@ class SceneLayout {
   /// the touch-target floor, not by looks: see [minTouchTarget].
   final double instrumentFraction;
 
+  /// Whether Piper stands at the left edge. The ordering screen has no Piper,
+  /// so its instruments may start at the edge instead of beside her.
+  final bool withPiper;
+
   const SceneLayout(
     this.screen, {
     this.insets = EdgeInsets.zero,
     required this.noteCount,
     this.instrumentFraction = 0.38,
+    this.withPiper = true,
   }) : assert(noteCount == 2 || noteCount == 3);
 
   /// The smallest box a small child's finger can be expected to hit reliably,
@@ -132,13 +137,30 @@ class SceneLayout {
 
   // ---- the characters ----
 
-  /// Clef's feet: on the branch.
-  Offset get clefPerch => Offset(
-    treeRect.left + perch.dx * treeWidth,
-    treeRect.top + perch.dy * treeHeight,
-  );
+  /// Where Clef sits depends on how many instruments are in play (Cooper,
+  /// 2026-10-07, Trello card 188):
+  ///
+  /// - **two:** on the **top platform**, leaving the bottom two free;
+  /// - **three:** on the **branch**, freeing all three.
+  ///
+  /// Him sitting on a platform says "this one is taken" with no UI at all, and
+  /// where he sits tells you how many slots are in play. He stays high in both,
+  /// so "Clef is high" still holds.
+  bool get clefOnBranch => noteCount == 3;
 
-  /// Clef's size, on his branch.
+  /// The platforms an instrument can go on this round, top first: every one
+  /// Clef is not sitting on.
+  List<int> get freePlatforms => clefOnBranch ? const [0, 1, 2] : const [1, 2];
+
+  /// Clef's feet: the top platform, or the branch.
+  Offset get clefPerch => clefOnBranch
+      ? Offset(
+          treeRect.left + branchPerch.dx * treeWidth,
+          treeRect.top + branchPerch.dy * treeHeight,
+        )
+      : platform(0);
+
+  /// Clef's size, in the tree.
   double get characterHeight => screen.height * 0.24;
 
   /// Drawn width of a character sprite of [art] at [height].
@@ -193,25 +215,27 @@ class SceneLayout {
 
   // ---- the tree slot (the drop target — see the class doc) ----
 
-  /// Which platform holds the slot for a high-pole round: the top one.
-  static const int highSlotPlatform = 0;
-
-  /// Which platform holds the slot for a low-pole round: the bottom one.
-  static const int lowSlotPlatform = 2;
-
-  /// The platform this round's slot sits on.
+  /// The platform this round's slot sits on: the highest free platform for a
+  /// high round, the bottom one for a low round. With two instruments Clef
+  /// takes the top, so high is the **middle** platform — which still reads
+  /// as up, because the slots are relative: the higher of the two available.
   int slotPlatformFor({required bool isPiperTarget}) =>
-      isPiperTarget ? lowSlotPlatform : highSlotPlatform;
+      isPiperTarget ? freePlatforms.last : freePlatforms.first;
 
   /// A slot's footprint on its platform: the narrowest face, so one size fits
   /// every platform.
   Size get slotSize =>
       Size(platformWidths.reduce(math.min) * treeWidth, treeHeight * 0.06);
 
-  /// Height of an instrument standing on a platform — just under the gap to
-  /// the platform above, so placed instruments never sit on each other.
+  /// Height of an instrument standing on a platform — just under the smaller
+  /// gap between platforms, so placed instruments never sit on each other.
   double get placedSize =>
-      (platformCentres[1].dy - platformCentres[0].dy) * treeHeight * 0.95;
+      math.min(
+        platformCentres[1].dy - platformCentres[0].dy,
+        platformCentres[2].dy - platformCentres[1].dy,
+      ) *
+      treeHeight *
+      0.95;
 
   /// The drop target over platform [index]: wider than the face so a small
   /// child's imprecise aim still lands, and tall enough to take an
@@ -269,9 +293,21 @@ class SceneLayout {
   /// SE that difference is what keeps the smallest instrument above
   /// [minTouchTarget].
   double get _gap => _margin / 2;
-  double get _bandLeft => piperRight + _gap;
-  double get _bandRight =>
-      math.min(clefPerch.dx - _clefHalfWidth, platformColumnLeftX) - _gap;
+  double get _bandLeft => withPiper ? piperRight + _gap : insets.left + _margin;
+
+  /// The band ends before the free column Observe's earned arrow needs
+  /// between the instruments and the platforms, and — when Clef is on the
+  /// branch above them — before Clef.
+  double get _bandRight {
+    final beforeArrow = platformColumnLeftX - arrowSize - 2 * _gap;
+    final edge = clefOnBranch
+        ? math.min(clefPerch.dx - _clefHalfWidth, beforeArrow)
+        : beforeArrow;
+    return edge - _gap;
+  }
+
+  /// Diameter of Observe's earned arrow.
+  static const double arrowSize = 72;
 
   /// Instrument box size: [instrumentFraction] of the height, capped so the
   /// instruments fit the band without their boxes overlapping (which would
@@ -332,9 +368,12 @@ class SceneLayout {
     final floor = screen.height - insets.bottom;
     return Offset(
       (stumpAnchorX(0) + stumpAnchorX(noteCount - 1)) / 2,
-      (stumpsBottom + floor) / 2,
+      math.min((stumpsBottom + floor) / 2, floor - _listenAgainHalfHeight),
     );
   }
+
+  /// Half Listen Again's height (its 40 px button), so it is never cut off.
+  static const double _listenAgainHalfHeight = 20;
 
   /// Where the A0 earned arrow sits: in the open air below the branch,
   /// between the last instrument and the platform column, level with the

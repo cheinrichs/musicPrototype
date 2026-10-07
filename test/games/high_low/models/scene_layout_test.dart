@@ -4,6 +4,7 @@ import 'package:flutter/painting.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ear_trainer/games/high_low/models/high_low_instrument.dart';
 import 'package:ear_trainer/games/high_low/models/scene_layout.dart';
+import 'package:ear_trainer/games/high_low/ordering/ordering_layout.dart';
 import 'package:ear_trainer/games/high_low/widgets/speaking_pulse.dart';
 
 void main() {
@@ -61,14 +62,37 @@ void main() {
         expect(l.platform(1).dy, lessThan(l.platform(2).dy));
       });
 
-      test('Clef sits on the branch, fully on screen even at the peak of the '
-          'speaking pulse, and covers no platform', () {
+      test('CLEF\'S SEAT FOLLOWS THE INSTRUMENT COUNT (Trello card 188): with '
+          'two he sits on the top platform, taking it — "this one is taken", '
+          'with no UI — and is fully on screen and inside the safe area even '
+          'at the peak of the speaking pulse', () {
         final l = two();
+        expect(l.clefOnBranch, isFalse);
+        expect(l.clefPerch, l.platform(0));
+        expect(l.freePlatforms, [1, 2]);
+        final clef = l.clefBounds(pulse: grow);
+        expect(clef.top, greaterThan(0));
+        expect(clef.right, lessThanOrEqualTo(size.width - insets.right));
+      });
+
+      test('with three he moves to the branch, freeing all three platforms, '
+          'and covers none of them', () {
+        final l = three();
+        expect(l.clefOnBranch, isTrue);
+        expect(l.freePlatforms, [0, 1, 2]);
         final clef = l.clefBounds(pulse: grow);
         expect(clef.top, greaterThan(0));
         expect(clef.left, greaterThanOrEqualTo(insets.left));
         expect(clef.right, lessThan(l.platformColumnLeftX));
         expect(l.clefPerch.dx, greaterThan(l.treeRect.left));
+      });
+
+      test('either way Clef stays high: above every free platform', () {
+        for (final l in [two(), three()]) {
+          for (final p in l.freePlatforms) {
+            expect(l.clefPerch.dy, lessThan(l.platform(p).dy));
+          }
+        }
       });
 
       test('Piper stands at the LEFT edge, inside the safe area, at a '
@@ -146,28 +170,49 @@ void main() {
       });
 
       group('the tree slot (the drop target, not a character)', () {
-        test('high is the top platform, low the bottom one — the widest '
-            'contrast three platforms allow, now that Clef is off them', () {
+        test('two instruments: Clef has the top, so HIGH is the middle '
+            'platform and LOW the bottom — relative, the higher of the two '
+            'available is up (Trello card 188)', () {
           final l = two();
+          expect(l.slotPlatformFor(isPiperTarget: false), 1);
+          expect(l.slotPlatformFor(isPiperTarget: true), 2);
+        });
+
+        test('three instruments: all three free, so high is the top and low '
+            'the bottom', () {
+          final l = three();
           expect(l.slotPlatformFor(isPiperTarget: false), 0);
           expect(l.slotPlatformFor(isPiperTarget: true), 2);
         });
 
+        test('a slot is never the platform Clef is sitting on', () {
+          for (final l in [two(), three()]) {
+            for (final isPiperTarget in [true, false]) {
+              expect(
+                l.freePlatforms,
+                contains(l.slotPlatformFor(isPiperTarget: isPiperTarget)),
+              );
+            }
+          }
+        });
+
         test('NO CHARACTER OVERLAPS A DROP SLOT — Piper\'s tail used to cover '
-            'half the bottom one; verified, not assumed (Trello card 187)', () {
-          final l = two();
-          for (final i in [0, 1, 2]) {
-            final slot = l.slotRect(i);
-            expect(
-              slot.overlaps(l.piperBounds(pulse: grow)),
-              isFalse,
-              reason: 'Piper over platform $i',
-            );
-            expect(
-              slot.overlaps(l.clefBounds(pulse: grow)),
-              isFalse,
-              reason: 'Clef over platform $i',
-            );
+            'half the bottom one; verified, not assumed (Trello card 187), '
+            'for every free platform, with Clef in either seat', () {
+          for (final l in [two(), three()]) {
+            for (final i in l.freePlatforms) {
+              final slot = l.slotRect(i);
+              expect(
+                slot.overlaps(l.piperBounds(pulse: grow)),
+                isFalse,
+                reason: 'Piper over platform $i (${l.noteCount} instruments)',
+              );
+              expect(
+                slot.overlaps(l.clefBounds(pulse: grow)),
+                isFalse,
+                reason: 'Clef over platform $i (${l.noteCount} instruments)',
+              );
+            }
           }
         });
 
@@ -199,12 +244,12 @@ void main() {
       });
 
       test('three instruments are the same composition with one more: same '
-          'tree, same characters, same floor, all clear of each other and '
-          'of the tree, and fixed for the round (no reflow)', () {
+          'tree, same Piper, same floor — only Clef moves, up to the '
+          'branch — all clear of each other and of the tree, and fixed for '
+          'the round (no reflow)', () {
         final a = two();
         final b = three();
         expect(b.treeRect, a.treeRect);
-        expect(b.clefPerch, a.clefPerch);
         expect(b.piperFeetY, a.piperFeetY);
         expect(b.groundY, a.groundY);
         final xs = [for (var i = 0; i < 3; i++) b.stumpAnchorX(i)];
@@ -216,6 +261,44 @@ void main() {
           );
         }
         expect(b.instrumentsRight, lessThanOrEqualTo(b.platformColumnLeftX));
+      });
+
+      group('the ordering screen is the same tree (Trello card 188)', () {
+        test('its slots are the free platforms, highest first: the two under '
+            'Clef with two notes, all three with three', () {
+          final o2 = OrderingLayout(size, insets: insets, noteCount: 2);
+          expect(o2.slotCentre(0), o2.platform(1));
+          expect(o2.slotCentre(1), o2.platform(2));
+          expect(o2.clefFeet, o2.platform(0));
+          final o3 = OrderingLayout(size, insets: insets, noteCount: 3);
+          for (var s = 0; s < 3; s++) {
+            expect(o3.slotCentre(s), o3.platform(s));
+          }
+          expect(o3.clefOnBranch, isTrue);
+        });
+
+        test('with no Piper its instruments start at the left edge, clear of '
+            'each other and of the platform column, and above the touch '
+            'floor', () {
+          for (final n in [2, 3]) {
+            final o = OrderingLayout(size, insets: insets, noteCount: n);
+            expect(
+              o.stumpAnchorX(0) - o.instrumentSize / 2,
+              greaterThanOrEqualTo(insets.left),
+            );
+            expect(
+              o.instrumentsRight,
+              lessThanOrEqualTo(o.platformColumnLeftX),
+            );
+            final smallest = HighLowInstrument.values
+                .map((i) => i.displaySizeScale)
+                .reduce(min);
+            expect(
+              o.instrumentSize * smallest,
+              greaterThanOrEqualTo(SceneLayout.minTouchTarget),
+            );
+          }
+        });
       });
     });
   }

@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import '../../../ui/components/circle_icon_button.dart';
 import '../../../ui/theme/theme.dart';
@@ -85,6 +87,41 @@ class HighLowHeader extends StatelessWidget {
     this.captionPadding,
   });
 
+  /// The narrowest the caption may be. Below this a two-line instruction
+  /// wraps to three and is cut off; on a phone whose meadow is narrower (an
+  /// SE), the plate reaches into the canopy instead, which it can because it
+  /// is opaque.
+  static const double minCaptionWidth = 280;
+
+  /// Gap between the close button and the caption's plate.
+  static const double _captionGap = AppSpacing.sm;
+
+  /// The close button's width: [CircleIconButton]'s default size.
+  static const double _closeButtonSize = 44;
+
+  /// A [captionPadding] that centres the caption over the meadow: from just
+  /// right of Close to [meadowRight] (the tree's left edge), on a [screen]
+  /// with these safe-area [insets]. This header sits inside
+  /// `GameScreenLayout`'s safe area and its horizontal [AppSpacing.lg]
+  /// padding, so screen x minus both is header x. Shared by every screen on
+  /// the tree (Trello cards 187, 188).
+  static EdgeInsets meadowCaptionPadding({
+    required Size screen,
+    required EdgeInsets insets,
+    required double meadowRight,
+  }) {
+    final headerLeft = insets.left + AppSpacing.lg;
+    final headerWidth = screen.width - insets.horizontal - 2 * AppSpacing.lg;
+    // Close is drawn flush with the safe edge (the padding is cancelled for
+    // it), so its right edge is the inset plus its own width.
+    final spanLeft = insets.left + _closeButtonSize + _captionGap;
+    final spanRight = math.max(meadowRight, spanLeft + minCaptionWidth);
+    return EdgeInsets.only(
+      left: spanLeft - headerLeft,
+      right: math.max(0, headerWidth - (spanRight - headerLeft)),
+    );
+  }
+
   /// Close, hugging the left edge — see the class doc.
   Widget _close() => Transform.translate(
     offset: const Offset(-_edgeCancel, 0),
@@ -119,7 +156,15 @@ class HighLowHeader extends StatelessWidget {
               Positioned(right: 0, child: _skip()),
             ],
           ),
-          if (below != null) below!,
+          // Under the caption, not the screen's middle: it belongs to it.
+          if (below != null)
+            Padding(
+              padding: EdgeInsets.only(
+                left: padding.left,
+                right: padding.right,
+              ),
+              child: below!,
+            ),
         ],
       );
     }
