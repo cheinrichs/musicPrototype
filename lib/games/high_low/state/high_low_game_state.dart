@@ -303,11 +303,12 @@ class HighLowGameState extends ChangeNotifier {
        _sequencer = sequencer ?? RoundSequencer();
 
   /// Whether the earned arrow starts the Observe flight to the tree (see
-  /// [observeFlightPlan]). Off by default: until the flight has its visuals
-  /// and has been checked on a device, the arrow keeps its immediate advance,
-  /// so the live game's behaviour does not change ahead of that check. Tests
-  /// turn it on to exercise the state machine.
-  final bool observeFlight;
+  /// [observeFlightPlan]). Off by default: until the flight has been checked
+  /// on a device, the arrow keeps its immediate advance, so the game a child
+  /// plays does not change ahead of that check. The dev gate can turn it on
+  /// (`DevSettingsState.observeFlight`) so Cooper can see it on the adult
+  /// profile. Settable before [startGame], like [agencyStage].
+  bool observeFlight;
 
   /// Lines this game replaces in the app's shared set (Trello card 183): a
   /// shared line plays unless this map names a replacement for it. Empty by
@@ -439,12 +440,25 @@ class HighLowGameState extends ChangeNotifier {
       ? null
       : List.unmodifiable(_observeFlightPlan!);
 
-  /// Index into [observeFlightPlan] of the instrument flying now.
+  /// Index into [observeFlightPlan] of the instrument flying now. Equal to
+  /// the plan's length during [observeFlightHold], once all have landed.
   int get observeFlightStep => _observeFlightStep;
 
-  /// Whether an Observe flight is running. The adult's skip still works
-  /// throughout, and a tap on an instrument still plays its note.
+  /// Whether an Observe flight is running, including the hold after the
+  /// last landing. The adult's skip still works throughout, and a tap on an
+  /// instrument still plays its note.
   bool get isObserveFlying => _observeFlightPlan != null;
+
+  /// Where side [side] is in this round's flight: null when no flight is
+  /// running; otherwise its place in [observeFlightPlan] (0 = flies first,
+  /// the lowest pitch), with whether it has left its stump yet (it is flying
+  /// now, or has landed).
+  ({int order, bool airborne})? observeFlightOf(int side) {
+    final plan = _observeFlightPlan;
+    if (plan == null) return null;
+    final order = plan.indexOf(side);
+    return (order: order, airborne: order <= _observeFlightStep);
+  }
 
   /// Which side the dragged character was last dropped on (correct or
   /// not) — the UI uses this to know which instrument to animate for
@@ -1133,6 +1147,14 @@ class HighLowGameState extends ChangeNotifier {
   /// set by feel once the flight is on a device.
   static const observeFlightStepDuration = Duration(milliseconds: 900);
 
+  /// How long both instruments rest on the tree after the last one lands,
+  /// before the next round replaces the scene. Without it the highest one
+  /// would be swept away the instant it arrived, and the card's point — that
+  /// the last thing the child watches is the highest one rising to the top —
+  /// would be lost. The same dwell a correct drop gets. A guess, like
+  /// [observeFlightStepDuration].
+  static const observeFlightHold = Duration(milliseconds: 1200);
+
   void _startObserveFlight(HighLowPrompt prompt) {
     // Lowest pitch first. The sides' own midis come from the prompt; equal
     // pitches cannot happen (the two notes are always different).
@@ -1153,11 +1175,19 @@ class HighLowGameState extends ChangeNotifier {
         notifyListeners();
         return;
       }
-      // Every instrument has landed: now the round is recorded and advances,
-      // with the flight order on the record so it can be read back later.
-      _recordRoundResult(observeFlightOrder: List.unmodifiable(_observeFlightPlan!));
-      _observeFlightPlan = null;
-      _advanceOrComplete();
+      // Every instrument has landed: hold them there for a beat, then record
+      // the round, with the flight order on the record so it can be read
+      // back later, and advance.
+      notifyListeners();
+      _observeFlightTimer = Timer(observeFlightHold, () {
+        _observeFlightTimer = null;
+        if (token != _roundToken) return;
+        _recordRoundResult(
+          observeFlightOrder: List.unmodifiable(_observeFlightPlan!),
+        );
+        _observeFlightPlan = null;
+        _advanceOrComplete();
+      });
     });
   }
 

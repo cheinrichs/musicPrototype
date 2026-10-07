@@ -1174,9 +1174,9 @@ void main() {
     });
   });
 
-  group('Observe flight to the tree — state machine only (Trello card: '
-      'instruments fly to the tree one at a time, lowest pitch first; the '
-      'visuals are not built, so this runs behind observeFlight: true)', () {
+  group('Observe flight to the tree — state machine (Trello card 173: '
+      'instruments fly to the tree one at a time, lowest pitch first; behind '
+      'observeFlight, off for children until seen on a device)', () {
     HighLowGameState flightState({int totalPrompts = 2}) => HighLowGameState(
       totalPrompts: totalPrompts,
       agencyStage: AgencyStage.observe,
@@ -1184,8 +1184,14 @@ void main() {
       observeFlight: true,
     );
 
+    /// Both flights and the hold after them: the whole sequence.
+    final wholeFlight =
+        HighLowGameState.observeFlightStepDuration * 2 +
+        HighLowGameState.observeFlightHold;
+
     testWidgets('the arrow starts the flight and the round does NOT advance '
-        'until every instrument has landed', (tester) async {
+        'until every instrument has landed AND been held there for a beat, '
+        'so the child sees the highest one at the top', (tester) async {
       final state = flightState();
       state.startGame();
       await tester.pump();
@@ -1203,8 +1209,36 @@ void main() {
       expect(state.currentPromptIndex, 0);
 
       await tester.pump(HighLowGameState.observeFlightStepDuration);
-      expect(state.isObserveFlying, isFalse, reason: 'both landed');
+      expect(state.observeFlightStep, 2, reason: 'both landed');
+      expect(state.isObserveFlying, isTrue, reason: 'holding on the tree');
+      expect(state.currentPromptIndex, 0, reason: 'not swept away yet');
+      expect(state.observeFlightOf(0)!.airborne, isTrue);
+      expect(state.observeFlightOf(1)!.airborne, isTrue);
+
+      await tester.pump(HighLowGameState.observeFlightHold);
+      expect(state.isObserveFlying, isFalse);
       expect(state.currentPromptIndex, 1, reason: 'now advanced');
+      state.dispose();
+    });
+
+    testWidgets('each side knows its place in the flight: the lowest leaves '
+        'first, the other waits on its stump until its turn', (tester) async {
+      final state = flightState();
+      state.startGame();
+      await tester.pump();
+      state.tapInstrument(0);
+      state.tapInstrument(1);
+      await tester.pump();
+      expect(state.observeFlightOf(0), isNull, reason: 'no flight yet');
+
+      state.tapArrow();
+      final first = state.observeFlightPlan!.first;
+      final second = state.observeFlightPlan!.last;
+      expect(state.observeFlightOf(first), (order: 0, airborne: true));
+      expect(state.observeFlightOf(second), (order: 1, airborne: false));
+      await tester.pump(HighLowGameState.observeFlightStepDuration);
+      expect(state.observeFlightOf(second), (order: 1, airborne: true));
+      await tester.pump(wholeFlight);
       state.dispose();
     });
 
@@ -1243,8 +1277,7 @@ void main() {
           : [1, 0];
       state.tapArrow();
       state.tapInstrument(0); // touching during the flight still plays
-      await tester.pump(HighLowGameState.observeFlightStepDuration);
-      await tester.pump(HighLowGameState.observeFlightStepDuration);
+      await tester.pump(wholeFlight);
 
       final record = state.instrumentation.last;
       expect(record.observeFlightOrder, plan);
@@ -1264,7 +1297,10 @@ void main() {
       state.tapArrow();
       await tester.pump(HighLowGameState.observeFlightStepDuration);
       expect(state.observeFlightStep, 1, reason: 'one landing, not two');
-      await tester.pump(HighLowGameState.observeFlightStepDuration);
+      await tester.pump(
+        HighLowGameState.observeFlightStepDuration +
+            HighLowGameState.observeFlightHold,
+      );
       expect(state.currentPromptIndex, 1, reason: 'advanced exactly once');
       state.dispose();
     });
@@ -1287,9 +1323,28 @@ void main() {
       expect(state.currentPromptIndex, 1);
       expect(state.instrumentation.length, before);
 
-      // The cancelled flight's timer must not fire into the next round.
-      await tester.pump(HighLowGameState.observeFlightStepDuration * 3);
+      // The cancelled flight's timers must not fire into the next round.
+      await tester.pump(wholeFlight * 2);
       expect(state.currentPromptIndex, 1);
+      state.dispose();
+    });
+
+    testWidgets('a skip during the hold, after both have landed, also '
+        'advances exactly once and leaves no timer behind', (tester) async {
+      final state = flightState(totalPrompts: 3);
+      state.startGame();
+      await tester.pump();
+      state.tapInstrument(0);
+      state.tapInstrument(1);
+      await tester.pump();
+      state.tapArrow();
+      await tester.pump(HighLowGameState.observeFlightStepDuration * 2);
+      expect(state.observeFlightStep, 2, reason: 'in the hold');
+
+      state.escape();
+      expect(state.currentPromptIndex, 1);
+      await tester.pump(wholeFlight * 2);
+      expect(state.currentPromptIndex, 1, reason: 'the hold did not fire');
       state.dispose();
     });
 
@@ -1301,7 +1356,7 @@ void main() {
       state.tapInstrument(1);
       await tester.pump();
       state.tapArrow();
-      await tester.pump(HighLowGameState.observeFlightStepDuration * 2);
+      await tester.pump(wholeFlight);
       expect(state.currentPromptIndex, 1);
       expect(state.isObserveFlying, isFalse);
       expect(state.observeFlightPlan, isNull);

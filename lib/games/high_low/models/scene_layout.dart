@@ -260,6 +260,15 @@ class SceneLayout {
   int slotPlatformFor({required bool isPiperTarget}) =>
       isPiperTarget ? freePlatforms.last : freePlatforms.first;
 
+  /// Where the instrument that flies [order]th lands after Observe's arrow
+  /// (Trello card 173): they fly lowest pitch first, filling the free
+  /// platforms from the bottom up, so the last one the child watches rises
+  /// highest. With two instruments Clef has the top (card 188), so they land
+  /// on the bottom and the middle — the same two platforms a low and a high
+  /// round put their slot on; with three, all three.
+  int observeLandingPlatform(int order) =>
+      freePlatforms[freePlatforms.length - 1 - order];
+
   /// A slot's footprint on its platform: the narrowest face, so one size fits
   /// every platform.
   Size get slotSize =>

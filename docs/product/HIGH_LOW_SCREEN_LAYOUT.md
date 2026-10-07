@@ -114,6 +114,37 @@ instrument never visually left its stump during the drag (its
 finger). This is a real behaviour change from build 69, where any release
 anywhere on screen counted as an answer.
 
+## Observe: heard-it rings, then the instruments fly to the tree
+
+Trello card 173 (Cooper, 2026-09-27): the child taps each instrument as often
+as they like; each one **heard** gets a mark that stays; once every one has
+been heard the earned arrow appears; when the child chooses to tap it, the
+instruments **fly to the tree one at a time, lowest pitch first**, so the
+last thing they watch is the highest one rising.
+
+- **The "heard it" mark** is a thin cream ring, edged in warm brown, lying on
+  the ground under the instrument. Deliberately quiet: it must not read as
+  the Explore sparkle ("this is the answer"), nor as the glow removed from
+  playing instruments, nor as a tick (ticks mean a correct placement). No
+  glow, no blur, no motion. One candidate look, for Cooper to judge.
+- **The arrow goes** once it has sent the instruments flying.
+- **The flight** uses `ArcFlight` (`lib/ui/components/arc_flight.dart`), the
+  one primitive every instrument flight uses, so the gesture looks the same
+  wherever a child meets it (the drag-demonstration card is next). The arc
+  **rises first and then slides level onto the platform**, finishing its
+  shrink before the final approach. It used to lift over and drop down onto
+  the platform, which with two instruments passed straight through Clef on
+  the top platform, directly above where the higher one lands; a test now
+  checks every frame of the flight against him.
+- **Where they land:** the free platforms, bottom up — with two instruments
+  the bottom and the middle (Clef has the top), with three all three.
+- **They rest there for a beat** (`HighLowGameState.observeFlightHold`, 1.2 s)
+  before the next round, or the highest one would be swept away the instant
+  it arrived.
+- **Behind a switch until Cooper has seen it:** the dev gate's "Arrow: Next /
+  Fly" chooses between the old immediate advance and the flight; children's
+  games keep the immediate advance. The rings are on for everyone.
+
 ## The celebration is the social payoff — it must fire reliably
 
 The voice line still asks a favour ("pop the high one up here by me" —

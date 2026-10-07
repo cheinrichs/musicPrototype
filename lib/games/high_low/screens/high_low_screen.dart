@@ -16,6 +16,7 @@ import '../../../models/agency_stage.dart';
 import '../../../models/concept_tier.dart';
 import '../../../models/musical_skill.dart';
 import '../../../models/game_status.dart';
+import '../../../ui/components/arc_flight.dart';
 import '../../../ui/components/circle_icon_button.dart';
 import '../../../ui/components/dev_setup_overlay.dart';
 import '../../../ui/components/drifting_notes.dart';
@@ -291,7 +292,8 @@ class _HighLowScreenState extends State<HighLowScreen> {
     _gameState
       ..agencyStage = devSettings.agencyStage
       ..conceptTier = devSettings.conceptTier
-      ..roundOrder = devSettings.roundOrder;
+      ..roundOrder = devSettings.roundOrder
+      ..observeFlight = devSettings.observeFlight;
     final threeNote = devSettings.conceptTier.noteCount == 3;
     setState(() {
       _showDevGate = false;
@@ -817,6 +819,15 @@ class _HighLowScreenState extends State<HighLowScreen> {
             fit: BoxFit.fill,
           ),
         ),
+        // Observe's "you have heard this" marks (Trello card 173), under the
+        // instruments so they read as on the ground.
+        for (final side in [0, 1])
+          if (_showsHeardRing(side))
+            _buildHeardRing(
+              centerX: layout.stumpAnchorX(side),
+              surfaceY: size.height - groundY,
+              width: charSize * 0.8,
+            ),
         // Instruments before characters: a correct drop slides the
         // instrument onto the slot, and painting characters on top would
         // hide the celebration pose. At rest nothing overlaps (see
@@ -882,7 +893,9 @@ class _HighLowScreenState extends State<HighLowScreen> {
         // it (both instruments tapped this round — never a timer). Not built
         // until then — conditionally mounted, not just hidden, so it can't be
         // hit-tested a moment early. Painted last.
-        if (_gameState.showArrow)
+        // Gone once it has sent the instruments flying (Trello card 173):
+        // its job is done, and the flight is what to watch.
+        if (_gameState.showArrow && !_gameState.isObserveFlying)
           Positioned(
             left: layout.arrowCentre.dx - _arrowSize / 2,
             top: layout.arrowCentre.dy - _arrowSize / 2,
@@ -1319,6 +1332,23 @@ class _HighLowScreenState extends State<HighLowScreen> {
       );
     }
 
+    // Observe's flight to the tree (Trello card 173): once this side's turn
+    // comes it is carried up along the shared arc to its platform, lowest
+    // pitch first, and stays there until the round turns.
+    final flight = _gameState.observeFlightOf(side);
+    if (flight != null && flight.airborne) {
+      return ArcFlight(
+        key: ValueKey('flight-$side'),
+        from: Offset(anchorX, screenHeight - groundY),
+        to: layout.platform(layout.observeLandingPlatform(flight.order)),
+        size: Size.square(charSize),
+        toScale: layout.placedSize / charSize,
+        flying: true,
+        duration: HighLowGameState.observeFlightStepDuration,
+        child: button,
+      );
+    }
+
     if (celebratingThis) {
       button = Stack(
         clipBehavior: Clip.none,
@@ -1373,6 +1403,43 @@ class _HighLowScreenState extends State<HighLowScreen> {
     );
   }
 
+  /// Whether side [side] wears Observe's "heard it" ring: it has been tapped
+  /// this round, and has not flown to the tree yet (an empty stump keeps no
+  /// mark).
+  bool _showsHeardRing(int side) =>
+      _gameState.observeHighlightedSides.contains(side) &&
+      !(_gameState.observeFlightOf(side)?.airborne ?? false);
+
+  /// Observe's persistent "you have heard this" mark (Trello card 173): a
+  /// thin cream ring lying on the ground under the instrument, edged in warm
+  /// brown so it shows on grass and on a stump alike.
+  ///
+  /// **Deliberately quiet.** It must not read as the Explore sparkle, which
+  /// means "this is the answer" — the opposite of "you have heard this" — nor
+  /// as the glow that was removed from playing instruments. So: no glow, no
+  /// blur, no pulse, no motion, nothing on the instrument itself, and no tick
+  /// (ticks mean a correct placement, and nothing at Observe is correct or
+  /// wrong). One candidate look, to be judged on a device.
+  Widget _buildHeardRing({
+    required double centerX,
+    required double surfaceY,
+    required double width,
+  }) {
+    final height = width * 0.24;
+    return Positioned(
+      left: centerX - width / 2,
+      top: surfaceY - height / 2,
+      width: width,
+      height: height,
+      child: const IgnorePointer(
+        child: CustomPaint(
+          key: ValueKey('heard-ring'),
+          painter: _HeardRingPainter(),
+        ),
+      ),
+    );
+  }
+
   /// Drop feedback for a side, from [HighLowGameState.dragFeedback] +
   /// [HighLowGameState.lastDropSide] — Trigger-only.
   _CharacterFeedback? _feedbackFor(int side) {
@@ -1385,6 +1452,33 @@ class _HighLowScreenState extends State<HighLowScreen> {
 }
 
 enum _CharacterFeedback { correct, retry }
+
+/// Paints the "heard it" ring — see `_buildHeardRing`.
+class _HeardRingPainter extends CustomPainter {
+  const _HeardRingPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final oval = Offset.zero & size;
+    canvas.drawOval(
+      oval,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 5
+        ..color = AppColors.inkBrown.withValues(alpha: 0.35),
+    );
+    canvas.drawOval(
+      oval,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.5
+        ..color = AppColors.card,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_HeardRingPainter oldDelegate) => false;
+}
 
 /// An instrument character sitting on a stump — grows and releases drifting
 /// notes (via the shared [GlowWiggleCharacter]/[DriftingNotes] treatment,

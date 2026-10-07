@@ -112,6 +112,77 @@ void main() {
     });
   }
 
+  // Observe's heard-it rings and flight to the tree (Trello card 173): both
+  // instruments heard with the arrow up, the first one in the air, the
+  // second in the air, and both landed during the hold.
+  for (final phone in ['se', 'iphone14']) {
+    testWidgets('${phone}_observe_flight', skip: _outDir.isEmpty, (
+      tester,
+    ) async {
+      final (size, insets) = _phones[phone]!;
+      tester.view.physicalSize = size * 2;
+      tester.view.devicePixelRatio = 2;
+      tester.view.padding = FakeViewPadding(
+        left: insets.left * 2,
+        right: insets.right * 2,
+      );
+      addTearDown(tester.view.reset);
+      final state = HighLowGameState(
+        totalPrompts: 3,
+        agencyStage: AgencyStage.observe,
+        observeFlight: true,
+        generator: PromptGenerator(random: Random(3)),
+      );
+      final boundary = GlobalKey();
+      await tester.pumpWidget(
+        RepaintBoundary(
+          key: boundary,
+          child: MaterialApp(
+            debugShowCheckedModeBanner: false,
+            home: HighLowScreen(gameState: state),
+          ),
+        ),
+      );
+      await tester.pump();
+      for (var i = 0; i < 4; i++) {
+        await tester.pump(const Duration(milliseconds: 1200));
+      }
+      state.tapInstrument(0);
+      state.tapInstrument(1);
+      await tester.pump(const Duration(seconds: 2));
+      await _capture(tester, boundary, '${phone}_observe_1_heard');
+
+      // Frame by frame, as a phone draws it: an animation starts on the
+      // frame that first builds it, so one long jump would freeze the second
+      // instrument at its start.
+      Future<void> frames(Duration d) async {
+        for (
+          var t = Duration.zero;
+          t < d;
+          t += const Duration(milliseconds: 16)
+        ) {
+          await tester.pump(const Duration(milliseconds: 16));
+        }
+      }
+
+      state.tapArrow();
+      await tester.pump();
+      await frames(HighLowGameState.observeFlightStepDuration ~/ 2);
+      await _capture(tester, boundary, '${phone}_observe_2_midflight');
+
+      await frames(HighLowGameState.observeFlightStepDuration);
+      await _capture(tester, boundary, '${phone}_observe_3_second_flying');
+
+      await frames(HighLowGameState.observeFlightStepDuration);
+      await _capture(tester, boundary, '${phone}_observe_4_landed');
+      // Let the hold end and the next round's start-up animations settle,
+      // so nothing is left pending when the tree goes.
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump(const Duration(seconds: 5));
+      state.dispose();
+    });
+  }
+
   // The ordering screen, on the same tree (Trello card 188): two notes with
   // Clef on the top platform, three with him on the branch.
   for (final phone in ['se', 'iphone14']) {

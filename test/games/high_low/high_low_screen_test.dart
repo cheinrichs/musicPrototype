@@ -841,7 +841,7 @@ void main() {
           ),
         );
         await tester.pump();
-        await tester.tap(find.text('Ordering'));
+        await tester.tap(find.widgetWithText(ChoiceChip, 'Order'));
         await tester.pump();
         await tester.tap(find.text(chip));
         await tester.pump();
@@ -1648,6 +1648,168 @@ void main() {
         reason: 'beneath it',
       );
     });
+  });
+
+  group('Observe: heard-it rings and the flight to the tree (Trello card '
+      '173)', () {
+    Future<HighLowGameState> pumpObserve(
+      WidgetTester tester, {
+      Size viewport = roomyViewport,
+    }) async {
+      tester.view.physicalSize = viewport;
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+      final state = HighLowGameState(
+        totalPrompts: 3,
+        agencyStage: AgencyStage.observe,
+        observeFlight: true,
+        generator: PromptGenerator(random: Random(3)),
+      );
+      await tester.pumpWidget(
+        MaterialApp(home: HighLowScreen(gameState: state, ownsGameState: true)),
+      );
+      await tester.pump();
+      for (var i = 0; i < 4; i++) {
+        await tester.pump(const Duration(milliseconds: 1200));
+      }
+      return state;
+    }
+
+    final ring = find.byKey(const ValueKey('heard-ring'));
+
+    /// Frame by frame, as a phone draws it.
+    Future<void> frames(WidgetTester tester, Duration d) async {
+      for (var t = Duration.zero; t < d; t += const Duration(milliseconds: 16)) {
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+    }
+
+    Rect instrumentRect(WidgetTester tester, HighLowGameState state, int side) {
+      final asset = side == 0
+          ? state.leftInstrument.leftAssetPath
+          : state.rightInstrument.rightAssetPath;
+      return tester.getRect(
+        find.byWidgetPredicate(
+          (w) =>
+              w is Image &&
+              w.image is AssetImage &&
+              (w.image as AssetImage).assetName == asset,
+        ),
+      );
+    }
+
+    testWidgets('a ring marks each instrument once it has been heard, and '
+        'stays — none before, one after the first tap, two after both', (
+      tester,
+    ) async {
+      final state = await pumpObserve(tester);
+      expect(ring, findsNothing);
+      state.tapInstrument(0);
+      await tester.pump(const Duration(seconds: 2));
+      expect(ring, findsOneWidget);
+      state.tapInstrument(1);
+      await tester.pump(const Duration(seconds: 2));
+      expect(ring, findsNWidgets(2));
+      await tester.pump(const Duration(seconds: 10));
+      expect(ring, findsNWidgets(2), reason: 'persistent, never decays');
+    });
+
+    testWidgets('the ring never appears outside Observe', (tester) async {
+      tester.view.physicalSize = roomyViewport;
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+      final state = HighLowGameState(
+        totalPrompts: 3,
+        agencyStage: AgencyStage.explore,
+      );
+      await tester.pumpWidget(
+        MaterialApp(home: HighLowScreen(gameState: state, ownsGameState: true)),
+      );
+      await tester.pump();
+      for (var i = 0; i < 4; i++) {
+        await tester.pump(const Duration(milliseconds: 1200));
+      }
+      state.tapInstrument(0);
+      state.tapInstrument(1);
+      await tester.pump(const Duration(seconds: 2));
+      expect(ring, findsNothing);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump(const Duration(seconds: 5));
+    });
+
+    testWidgets('the arrow goes once it has sent the instruments flying; '
+        'each lands on a free platform, lowest on the bottom, highest on the '
+        'middle — Clef has the top with two instruments (card 188) — and '
+        'both rest there before the round turns', (tester) async {
+      final state = await pumpObserve(tester);
+      state.tapInstrument(0);
+      state.tapInstrument(1);
+      await tester.pump(const Duration(seconds: 2));
+      final layout = SceneLayout(roomyViewport, noteCount: 2);
+      final arrow = find.byTooltip('Tap when ready');
+      expect(arrow, findsOneWidget, reason: 'earned by hearing both');
+
+      state.tapArrow();
+      await tester.pump();
+      final low = state.observeFlightPlan!.first;
+      final high = state.observeFlightPlan!.last;
+      expect(arrow, findsNothing, reason: 'its job is done');
+
+      await frames(tester, HighLowGameState.observeFlightStepDuration * 2);
+      expect(state.isObserveFlying, isTrue, reason: 'in the hold');
+      expect(ring, findsNothing, reason: 'nothing left on the stumps');
+      for (final (side, platform) in [(low, 2), (high, 1)]) {
+        final feet = instrumentRect(tester, state, side).bottomCenter;
+        expect(
+          (feet - layout.platform(platform)).distance,
+          lessThan(2.0),
+          reason: 'side $side on platform $platform',
+        );
+      }
+      await tester.pump(HighLowGameState.observeFlightHold);
+      expect(state.currentPromptIndex, 1);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump(const Duration(seconds: 5));
+    });
+
+    for (final (name, viewport) in [
+      ('iPhone 14', roomyViewport),
+      ('SE', tightViewport),
+    ]) {
+      testWidgets('no flying instrument ever crosses Clef, on any frame — '
+          'with two instruments he sits on the top platform right above '
+          'where the higher one lands ($name)', (tester) async {
+        final state = await pumpObserve(tester, viewport: viewport);
+        state.tapInstrument(0);
+        state.tapInstrument(1);
+        await tester.pump(const Duration(seconds: 2));
+        final layout = SceneLayout(viewport, noteCount: 2);
+        final clef = layout.clefBounds();
+
+        state.tapArrow();
+        await tester.pump();
+        for (var f = 0; f < 120; f++) {
+          await tester.pump(const Duration(milliseconds: 16));
+          for (final side in [0, 1]) {
+            if (!(state.observeFlightOf(side)?.airborne ?? false)) continue;
+            expect(
+              instrumentRect(tester, state, side).overlaps(clef),
+              isFalse,
+              reason: 'side $side over Clef at frame $f',
+            );
+          }
+        }
+        await tester.pump(HighLowGameState.observeFlightHold);
+        await tester.pumpWidget(const SizedBox());
+        await tester.pump(const Duration(seconds: 5));
+      });
+    }
   });
 }
 

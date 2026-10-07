@@ -32,10 +32,17 @@ class DevSettingsState extends ChangeNotifier {
   /// that itself.
   bool _orderingSelected = false;
 
+  /// Whether Observe's earned arrow sends the instruments flying to the tree
+  /// (Trello card 173) instead of advancing at once. Off by default, so a
+  /// child's game is unchanged until Cooper has seen the flight on a device;
+  /// this is how he sees it.
+  bool _observeFlight = false;
+
   AgencyStage get agencyStage => _agencyStage;
   ConceptTier get conceptTier => _conceptTier;
   RoundOrder get roundOrder => _roundOrder;
   bool get orderingSelected => _orderingSelected;
+  bool get observeFlight => _observeFlight;
 
   /// Lowering agency brings the tier down with it: the product cannot
   /// reach a tier its agency stage hasn't earned (see
@@ -61,6 +68,11 @@ class DevSettingsState extends ChangeNotifier {
 
   void setOrderingSelected(bool selected) {
     _orderingSelected = selected;
+    notifyListeners();
+  }
+
+  void setObserveFlight(bool on) {
+    _observeFlight = on;
     notifyListeners();
   }
 }

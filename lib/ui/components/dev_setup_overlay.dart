@@ -93,15 +93,37 @@ class DevSetupOverlay extends StatelessWidget {
                     onSelected: devSettings.setRoundOrder,
                   ),
                   const SizedBox(height: AppSpacing.xs),
-                  // Ordering is a separate skill, not a fourth AgencyStage
-                  // (Trello card 168) — this toggle stands in for a real
-                  // skill picker that doesn't exist yet.
-                  _SettingRow<bool>(
-                    title: 'Skill',
-                    values: const [false, true],
-                    labelOf: (o) => o ? 'Ordering' : 'Pairwise',
-                    selected: devSettings.orderingSelected,
-                    onSelected: devSettings.setOrderingSelected,
+                  // Two two-way toggles share one row, so the column still
+                  // fits an SE without scrolling.
+                  Row(
+                    children: [
+                      // Ordering is a separate skill, not a fourth
+                      // AgencyStage (Trello card 168) — this toggle stands in
+                      // for a real skill picker that doesn't exist yet.
+                      Expanded(
+                        child: _SettingRow<bool>(
+                          title: 'Skill',
+                          values: const [false, true],
+                          labelOf: (o) => o ? 'Order' : 'Pair',
+                          selected: devSettings.orderingSelected,
+                          onSelected: devSettings.setOrderingSelected,
+                          titleWidth: 40,
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      // Trello card 173: off until the flight has been seen on
+                      // a device; this is how it gets seen.
+                      Expanded(
+                        child: _SettingRow<bool>(
+                          title: 'Arrow',
+                          values: const [false, true],
+                          labelOf: (o) => o ? 'Fly' : 'Next',
+                          selected: devSettings.observeFlight,
+                          onSelected: devSettings.setObserveFlight,
+                          titleWidth: 40,
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   SizedBox(
@@ -142,6 +164,10 @@ class _SettingRow<T> extends StatelessWidget {
   final ValueChanged<T> onSelected;
   final bool Function(T)? isEnabled;
 
+  /// Width of the title column. Narrower for the half-width rows that share
+  /// a line, so their two chips still fit on one line on an SE.
+  final double titleWidth;
+
   const _SettingRow({
     required this.title,
     required this.values,
@@ -149,6 +175,7 @@ class _SettingRow<T> extends StatelessWidget {
     required this.selected,
     required this.onSelected,
     this.isEnabled,
+    this.titleWidth = 56,
   });
 
   @override
@@ -157,7 +184,7 @@ class _SettingRow<T> extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         SizedBox(
-          width: 56,
+          width: titleWidth,
           child: Text(title, style: AppTypography.label.copyWith(fontSize: 12)),
         ),
         const SizedBox(width: AppSpacing.xs),
