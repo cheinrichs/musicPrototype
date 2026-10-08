@@ -1500,12 +1500,14 @@ void main() {
     }
 
     // The sighting itself: the jump came on a *correct tap* at Explore,
-    // which is when the "found it" sparkle mounts inside the character's
-    // Stack. The sparkle's own Stack (all children positioned) used to size
-    // itself to its unbounded incoming constraints — an assert in debug, an
-    // infinitely large character box in release. The speaking test above
-    // never taps, so it never mounted the sparkle.
-    testWidgets('a correct tap at Explore sparkles without moving either '
+    // which is when the "found it" sparkle mounted inside the character's
+    // Stack, sizing itself to unbounded constraints (an assert in debug, an
+    // infinitely large character box in release). The sparkle has since
+    // moved onto the instrument (Trello card 189); this still guards both
+    // characters on every frame of correct taps, and now also pins where the
+    // sparkle is and that it builds up and stays.
+    testWidgets('a correct tap at Explore sparkles on the instrument — one '
+        'more each tap, staying for the round — without moving either '
         'character', (tester) async {
       tester.view.physicalSize = roomyViewport;
       tester.view.devicePixelRatio = 1.0;
@@ -1554,20 +1556,96 @@ void main() {
         }
       }
 
-      // Four, not five: the fifth correct tap resolves the round. Taps
-      // ~320 ms apart keep re-arming the sparkle, as a child tapping
-      // repeatedly does (Cooper's video: two separate ~900 ms episodes).
+      final target = state.currentPrompt!.targetSide;
+      final targetAsset = target == 0
+          ? state.leftInstrument.leftAssetPath
+          : state.rightInstrument.rightAssetPath;
+      Rect targetRect() => tester.getRect(
+        find.byWidgetPredicate(
+          (w) =>
+              w is Image &&
+              w.image is AssetImage &&
+              (w.image as AssetImage).assetName == targetAsset,
+        ),
+      );
+
+      // Four, not five: the fifth correct tap resolves the round.
       for (var tap = 1; tap <= 4; tap++) {
-        state.tapInstrument(state.currentPrompt!.targetSide);
+        state.tapInstrument(target);
         await sampleFrames(20, 'after correct tap $tap');
+        final sparkles = find.text('✨');
+        expect(sparkles, findsNWidgets(tap), reason: 'one more each tap');
+        for (final s in sparkles.evaluate()) {
+          final c = tester.getRect(find.byWidget(s.widget)).center;
+          expect(
+            targetRect().inflate(targetRect().width * 0.3).contains(c),
+            isTrue,
+            reason: 'on the instrument the child chose',
+          );
+        }
       }
-      // Then the rest of the last sparkle's lifetime, until it has gone.
-      await sampleFrames(50, 'while the last sparkle fades');
-      expect(sawSparkle, isTrue, reason: 'the sparkle must actually mount');
+      // Progress, not a response: still there well after the last tap.
+      await sampleFrames(120, 'after the taps');
+      expect(sawSparkle, isTrue);
+      expect(find.text('✨'), findsNWidgets(4), reason: 'it stays');
+    });
+  });
+
+  group('device feedback on build 87 (Trello cards 191, 193)', () {
+    Future<HighLowGameState> pumpAt(
+      WidgetTester tester,
+      AgencyStage stage,
+    ) async {
+      tester.view.physicalSize = roomyViewport;
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+      final state = HighLowGameState(totalPrompts: 3, agencyStage: stage);
+      await tester.pumpWidget(
+        MaterialApp(home: HighLowScreen(gameState: state, ownsGameState: true)),
+      );
+      await tester.pump();
+      for (var i = 0; i < 4; i++) {
+        await tester.pump(const Duration(milliseconds: 1200));
+      }
+      return state;
+    }
+
+    testWidgets('Listen Again sits on a cream pill, centred between the two '
+        'stumps — it was dark text on the dirt path, left of centre', (
+      tester,
+    ) async {
+      await pumpAt(tester, AgencyStage.decide);
+      final pill = find.byKey(const ValueKey('listen-again-pill'));
+      final box = tester.widget<Container>(pill).decoration! as BoxDecoration;
+      expect(box.gradient, isNotNull, reason: 'cream, like every control');
+      final layout = SceneLayout(roomyViewport, noteCount: 2);
       expect(
-        find.text('✨'),
-        findsNothing,
-        reason: 'sampling must cover the sparkle until it clears',
+        tester.getRect(pill).center.dx,
+        closeTo((layout.stumpAnchorX(0) + layout.stumpAnchorX(1)) / 2, 1.0),
+      );
+    });
+
+    testWidgets('the instruction stays put when the six-second guidance '
+        'arrives; the guidance joins it beneath, it does not replace it', (
+      tester,
+    ) async {
+      final state = await pumpAt(tester, AgencyStage.explore);
+      final instruction = state.captionText!;
+      expect(find.text(instruction), findsOneWidget);
+      expect(find.byKey(const ValueKey('caption-guidance')), findsNothing);
+
+      await tester.pump(const Duration(seconds: 7));
+      expect(state.secondaryCaptionText, isNotNull);
+      expect(find.text(instruction), findsOneWidget, reason: 'stays put');
+      final guidance = find.byKey(const ValueKey('caption-guidance'));
+      expect(guidance, findsOneWidget);
+      expect(
+        tester.getRect(guidance).top,
+        greaterThan(tester.getRect(find.text(instruction)).bottom - 0.5),
+        reason: 'beneath it',
       );
     });
   });

@@ -434,13 +434,11 @@ class _HighLowScreenState extends State<HighLowScreen> {
                 }
                 context.go(AppRoutes.home);
               },
-              // Secondary guidance overrides the primary caption once it
-              // appears — Participate only (Trello card xpAkja5b):
-              // Observe/Trigger's own secondary nudge died with the timed
-              // move-on control; see
-              // [HighLowGameState.secondaryCaptionText]'s doc comment.
-              captionText:
-                  _gameState.secondaryCaptionText ?? _gameState.captionText,
+              // The instruction stays put; Explore's six-second guidance
+              // joins it as a line beneath, never replaces it (Trello card
+              // 193). See [HighLowGameState.secondaryCaptionText].
+              captionText: _gameState.captionText,
+              guidanceText: _gameState.secondaryCaptionText,
               // Skip top-right, Listen Again centred under the caption; no
               // progress indicator (it is always five rounds, so it told
               // the child nothing — see docs/product/HIGH_LOW_SCREEN_LAYOUT.md
@@ -653,33 +651,46 @@ class _HighLowScreenState extends State<HighLowScreen> {
       child: AnimatedOpacity(
         opacity: canReplay ? 1 : 0.5,
         duration: AppAnimations.fast,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                gradient: AppColors.cardGradient,
-                shape: BoxShape.circle,
-                border: Border.all(color: AppColors.cardEdge, width: 2),
-                boxShadow: const [
-                  BoxShadow(
-                    color: AppColors.shadow,
-                    blurRadius: 8,
-                    offset: Offset(0, 4),
-                  ),
-                ],
+        // One cream pill holding the icon and the words, like every other
+        // control (Trello card 191, Cooper: the label was dark text on the
+        // dirt path and barely legible). Text kept: a parent benefits from
+        // knowing a replay exists. The pill as a whole is what is centred
+        // between the stumps; a bare icon beside bare text read as left of
+        // centre, because the eye centres on the icon.
+        child: Container(
+          key: const ValueKey('listen-again-pill'),
+          constraints: const BoxConstraints(minHeight: 40),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.xs,
+          ),
+          decoration: BoxDecoration(
+            gradient: AppColors.cardGradient,
+            borderRadius: BorderRadius.circular(AppSpacing.radiusRound),
+            border: Border.all(color: AppColors.cardEdge, width: 1.5),
+            boxShadow: const [
+              BoxShadow(
+                color: AppColors.shadow,
+                blurRadius: 6,
+                offset: Offset(0, 3),
               ),
-              child: const Icon(
+            ],
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
                 Icons.volume_up_rounded,
                 color: AppColors.secondary,
                 size: 22,
               ),
-            ),
-            const SizedBox(width: AppSpacing.sm),
-            Text('Listen Again', style: AppTypography.label),
-          ],
+              const SizedBox(width: AppSpacing.xs),
+              Text(
+                'Listen Again',
+                style: AppTypography.label.copyWith(color: AppColors.inkBrown),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -750,23 +761,17 @@ class _HighLowScreenState extends State<HighLowScreen> {
     // "The talker moves" (Trello card PIm7xE6n) — whichever of Piper/Clef
     // is currently speaking, regardless of which one happens to be this
     // round's target (Observe's per-note narration is about which *note*
-    // just sounded, not which pole this round is asking about). And the
-    // transient "found it" character sparkle (Trello card RqdPFKLf) — the
-    // two are mutually exclusive per character by construction (see
-    // [HighLowGameState.speakingIsPiper]'s doc comment).
+    // just sounded, not which pole this round is asking about).
     final piperSpeaking = _gameState.speakingIsPiper == true;
     final clefSpeaking = _gameState.speakingIsPiper == false;
     // The character who isn't speaking is NOT dimmed — see the class doc on
     // [_buildCharacter] for why that was tried and removed.
     final speakingLineName = _gameState.speakingLine?.assetName;
     final speakingGeneration = _gameState.speakingGeneration;
-    final piperSparkling = _gameState.characterSparkleIsPiper == true;
-    final clefSparkling = _gameState.characterSparkleIsPiper == false;
-    // How many cumulative correct taps Participate has banked (0-5) —
-    // scales the sparkle's visual intensity so each tap reads as *more*
-    // than the last (Cooper: "a flat sparkle is a reward; an escalating
-    // one is a promise"). Only meaningful while sparkling.
-    final sparkleLevel = _gameState.correctTapProgress;
+    // Explore's correct-tap sparkle, on the instrument (Trello card 189):
+    // one per correct tap so far, on the target side only.
+    int sparklesOn(int side) =>
+        _gameState.sparkleSide == side ? _gameState.correctTapProgress : 0;
 
     // Trello card NcVPjPZ5 — Cooper: "the pianos should not get the
     // stumps, they look weird sitting on top of a stump." A piano's own
@@ -832,6 +837,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
           celebratingThis: celebrating && _gameState.lastDropSide == 0,
           glowing: _gameState.playingIndex == 0,
           feedback: _feedbackFor(0),
+          sparkles: sparklesOn(0),
         ),
         _buildInstrumentSlot(
           side: 1,
@@ -847,6 +853,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
           celebratingThis: celebrating && _gameState.lastDropSide == 1,
           glowing: _gameState.playingIndex == 1,
           feedback: _feedbackFor(1),
+          sparkles: sparklesOn(1),
         ),
         // The tree slot — the actual drop target — painted before both
         // characters so a correct, landed instrument's celebration is never
@@ -861,8 +868,6 @@ class _HighLowScreenState extends State<HighLowScreen> {
           speaking: piperSpeaking,
           speakingLineName: speakingLineName,
           speakingGeneration: speakingGeneration,
-          sparkling: piperSparkling,
-          sparkleLevel: sparkleLevel,
         ),
         _buildClef(
           layout: layout,
@@ -870,8 +875,6 @@ class _HighLowScreenState extends State<HighLowScreen> {
           speaking: clefSpeaking,
           speakingLineName: speakingLineName,
           speakingGeneration: speakingGeneration,
-          sparkling: clefSparkling,
-          sparkleLevel: sparkleLevel,
         ),
         // The child's earned arrow (Trello card xpAkja5b) — Observe only,
         // in the free column between the instruments and the tree, visible
@@ -1083,8 +1086,6 @@ class _HighLowScreenState extends State<HighLowScreen> {
     required bool speaking,
     required String? speakingLineName,
     required int speakingGeneration,
-    required bool sparkling,
-    required int sparkleLevel,
     required double height,
   }) {
     final sprite = SpeakingPulse.builder(
@@ -1110,14 +1111,6 @@ class _HighLowScreenState extends State<HighLowScreen> {
             top: -height * 0.15,
             child: DriftingNotes(size: height, active: true),
           ),
-        // Filled to the character's own box: the sparkle Stack's children
-        // are all positioned, so unfilled it sized itself to its incoming
-        // constraints — unbounded here — which in a release build (asserts
-        // off) made this whole Stack infinitely large on every Explore
-        // correct tap — the likely cause of the character jumping to the
-        // top-left corner seen on device.
-        if (sparkling)
-          Positioned.fill(child: _buildCharacterSparkle(height, sparkleLevel)),
       ],
     );
   }
@@ -1130,8 +1123,6 @@ class _HighLowScreenState extends State<HighLowScreen> {
     required bool speaking,
     required String? speakingLineName,
     required int speakingGeneration,
-    required bool sparkling,
-    required int sparkleLevel,
   }) {
     final height = layout.characterHeight;
     final feet = layout.clefPerch;
@@ -1148,8 +1139,6 @@ class _HighLowScreenState extends State<HighLowScreen> {
           speaking: speaking,
           speakingLineName: speakingLineName,
           speakingGeneration: speakingGeneration,
-          sparkling: sparkling,
-          sparkleLevel: sparkleLevel,
           height: height,
         ),
       ),
@@ -1167,8 +1156,6 @@ class _HighLowScreenState extends State<HighLowScreen> {
     required bool speaking,
     required String? speakingLineName,
     required int speakingGeneration,
-    required bool sparkling,
-    required int sparkleLevel,
   }) {
     final height = layout.piperHeight;
     return Positioned(
@@ -1180,59 +1167,51 @@ class _HighLowScreenState extends State<HighLowScreen> {
         speaking: speaking,
         speakingLineName: speakingLineName,
         speakingGeneration: speakingGeneration,
-        sparkling: sparkling,
-        sparkleLevel: sparkleLevel,
         height: height,
       ),
     );
   }
 
-  /// Fixed positions, each `(top, right)` as a fraction of the
-  /// character's own size measured from its top-right corner (matching
-  /// the single fixed sparkle this replaced: `top: -0.05, right: -0.05`),
-  /// for up to four escalating sparkles — see [_buildCharacterSparkle].
-  /// Four, not five: the fifth cumulative correct tap fires the confetti
-  /// burst instead of a fifth sparkle (Cooper: "building to a confetti
-  /// burst").
+  /// Fixed positions, each `(top, right)` as a fraction of the instrument's
+  /// box measured from its top-right corner, for up to four sparkles — see
+  /// [_buildInstrumentSparkle]. Four, not five: the fifth cumulative correct
+  /// tap fires the confetti burst instead of a fifth sparkle (Cooper:
+  /// "building to a confetti burst").
   static const List<(double top, double right)> _sparkleOffsets = [
-    (-0.05, -0.05),
-    (0.10, -0.20),
-    (-0.05, -0.35),
-    (0.22, -0.05),
+    (0.02, 0.02),
+    (0.22, -0.08),
+    (0.02, 0.24),
+    (0.42, 0.0),
   ];
 
-  /// The "found it" character sparkle (Trello card RqdPFKLf) — same
-  /// visual language as the instrument's own ✨ overlay
-  /// ([_InstrumentButton]), anchored to a character instead. Callers
-  /// guarantee this is never shown for the same character
-  /// [SpeakingPulse] is animating at the same instant — see
-  /// [HighLowGameState.speakingIsPiper]'s doc comment for why the two
-  /// signals must not collide.
+  /// Explore's correct-tap sparkle, on the instrument the child got right
+  /// (Trello card 189, Cooper: "the indicator needs to be on the
+  /// instrument"): the instrument made the sound, so the instrument answers.
   ///
-  /// [level] (Participate's cumulative correct-tap count, 1-4 here — see
-  /// [_sparkleOffsets]) scales how many sparkles show at once, so each
-  /// correct tap reads as visibly *more* than the last instead of a flat,
-  /// repeated reward (Cooper: "a flat sparkle is a reward; an escalating
-  /// one is a promise — that's what makes a child tap again without
-  /// needing to be told").
-  Widget _buildCharacterSparkle(double size, int level) {
-    final count = level.clamp(1, _sparkleOffsets.length);
+  /// [count] sparkles, one per correct tap so far (1-4), so each tap reads as
+  /// visibly *more* than the last (Cooper: "a flat sparkle is a reward; an
+  /// escalating one is a promise"). They stay for the rest of the round —
+  /// progress toward the confetti, where the music notes are a per-tap
+  /// response that resets — so they must not move once there: each one pops
+  /// in once and holds still (no idle looping motion). [size] is the
+  /// instrument's box.
+  Widget _buildInstrumentSparkle(double size, int count) {
+    final shown = count.clamp(1, _sparkleOffsets.length);
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        for (var i = 0; i < count; i++)
+        for (var i = 0; i < shown; i++)
           Positioned(
+            key: ValueKey('sparkle-$i'),
             top: size * _sparkleOffsets[i].$1,
             right: size * _sparkleOffsets[i].$2,
-            child: IgnorePointer(
-              child: Text('✨', style: TextStyle(fontSize: size * 0.2))
-                  .animate(onPlay: (c) => c.repeat(reverse: true))
-                  .scale(
-                    begin: const Offset(0.85, 0.85),
-                    end: const Offset(1.15, 1.15),
-                    duration: const Duration(milliseconds: 700),
-                    curve: Curves.easeInOut,
-                  ),
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0, end: 1),
+              duration: AppAnimations.fast,
+              curve: Curves.easeOutBack,
+              builder: (context, s, child) =>
+                  Transform.scale(scale: s, child: child),
+              child: Text('✨', style: TextStyle(fontSize: size * 0.18)),
             ),
           ),
       ],
@@ -1276,6 +1255,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
     required bool celebratingThis,
     required bool glowing,
     required _CharacterFeedback? feedback,
+    int sparkles = 0,
   }) {
     // Traveling to the character (rather than pulsing in place) is a
     // Trigger-only distinction (Trello card xpAkja5b: "at A2+ travels to
@@ -1318,6 +1298,24 @@ class _HighLowScreenState extends State<HighLowScreen> {
         ),
         childWhenDragging: Opacity(opacity: 0.3, child: button),
         child: button,
+      );
+    }
+
+    // Explore's correct-tap sparkle, on the instrument (Trello card 189).
+    // Filled to the instrument's own box, which is bounded, so the sparkle's
+    // all-positioned Stack has a size to take (the corner-jump lesson); it
+    // takes no touches, so tapping through it still plays the instrument.
+    if (sparkles > 0) {
+      button = Stack(
+        clipBehavior: Clip.none,
+        children: [
+          button,
+          Positioned.fill(
+            child: IgnorePointer(
+              child: _buildInstrumentSparkle(charSize, sparkles),
+            ),
+          ),
+        ],
       );
     }
 

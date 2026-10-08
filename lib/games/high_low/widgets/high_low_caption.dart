@@ -52,11 +52,20 @@ class HighLowCaption extends StatelessWidget {
   /// The round's parent instruction — the smaller, second line. Null only
   /// briefly, before the intro has a round to describe.
   final String? text;
+
+  /// Parent guidance that arrives partway through a round (Explore's
+  /// six-second line), shown **beneath** [text], never in place of it
+  /// (Trello card 193, Cooper: the instruction "changes after a while; it
+  /// should stay put"). The timing stays: guidance on screen from the start
+  /// is noise, arriving as a parent starts wondering it is help. The plate
+  /// grows taller for it, never wider.
+  final String? guidance;
   final bool plate;
 
   const HighLowCaption({
     super.key,
     required this.text,
+    this.guidance,
     this.plate = defaultPlate,
   });
 
@@ -74,12 +83,21 @@ class HighLowCaption extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textColor = plate ? AppColors.inkBrown : Colors.white;
+    // Quieter than the instruction, so it reads as an aside to the parent.
+    final guidanceColor = plate ? AppColors.warmGray : Colors.white70;
     final shadows = plate
         ? null
         : const [Shadow(color: Color(0xCC2E2116), blurRadius: 6)];
+    final guidanceHeight = guidance == null ? 0.0 : _gap + _instructionHeight;
 
     return SizedBox(
-      height: _nameHeight + _gap + _instructionHeight + 2 * AppSpacing.sm + 3,
+      height:
+          _nameHeight +
+          _gap +
+          _instructionHeight +
+          guidanceHeight +
+          2 * AppSpacing.sm +
+          3,
       child: Center(
         child: DecoratedBox(
           decoration: plate
@@ -137,6 +155,32 @@ class HighLowCaption extends StatelessWidget {
                     ),
                   ),
                 ),
+                if (guidance != null) ...[
+                  const SizedBox(height: _gap),
+                  SizedBox(
+                    height: _instructionHeight,
+                    child: Center(
+                      child: TweenAnimationBuilder<double>(
+                        tween: Tween(begin: 0, end: 1),
+                        duration: AppAnimations.medium,
+                        builder: (context, opacity, child) =>
+                            Opacity(opacity: opacity, child: child),
+                        child: Text(
+                          guidance!,
+                          key: const ValueKey('caption-guidance'),
+                          style: AppTypography.bodyLarge.copyWith(
+                            fontSize: _instructionFontSize,
+                            color: guidanceColor,
+                            shadows: shadows,
+                          ),
+                          textAlign: TextAlign.center,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),

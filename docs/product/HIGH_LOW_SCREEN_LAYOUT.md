@@ -173,7 +173,24 @@ the ankles at most (`SceneLayout.piperLeftInset`, measured to her widest pose).
 This breaks any voice line in which Piper says "here by me" — already handled:
 the Decide lines name the position, not the speaker (see `VOICE_LINES.md`).
 
+**Half again as big (2026-10-08, Trello card 192):** three-quarters of the
+screen's height, up from half — **capped where the touch-target floor would
+break.** Her width comes out of the instruments' room, so on a phone as narrow
+as an iPhone SE the full size would push the smallest instrument below 64 px;
+there she is as big as the floor allows (about 0.6 of the height). Every
+notched phone has room for the full size. The cap is worked out for two
+instruments, so a three-instrument scene has the same Piper. Once the
+six-second guidance makes the caption plate taller, the plate comes down over
+her ear tips on an iPhone 14 — chrome over scenery, not over a target; for
+Cooper to judge on a device.
+
 ### The tree: full height, a quarter off the right edge
+
+**It bleeds past the top and bottom of the screen** (2026-10-08, Trello card
+190): 2% of the height each way. The art has a few transparent rows under its
+roots, so fitted exactly it left a gap at the bottom. It grows about its left
+edge, so the instruments' room — what the touch floor needs on an SE — is
+unchanged; the extra width goes off the right.
 
 **Smaller does not work, and that was tested** at 55%, 65%, 80% and full
 height. The platforms are about a tenth of the image's width, so at any size
@@ -221,11 +238,24 @@ text. Platform and perch positions were measured off the art on a grid; see
   old tree's bottom platform could not move; this tree's base is where the
   stumps now stand.
 - Instruments: 0.38 H, down from 0.50 H, capped so two fit between Piper and
-  Clef without their boxes overlapping. The group is centred in that band; the
-  gaps either side of it are half the edge margin.
-- **The A0 earned arrow** sits in the open air below the branch, between the
-  last instrument and the platform column, level with the middle of the
-  instruments. It is big, bright and gradient-filled; Skip is small, cream and
+  the platforms without their boxes overlapping. The group is centred in that
+  band; the gaps either side of it are half the edge margin.
+- **The A0 earned arrow** sits in a column the layout reserves for it, between
+  the last instrument and the platform column, level with the middle of the
+  instruments.
+- **Listen Again** (2026-10-08, Trello card 191): the icon and the words on one
+  cream pill, like every other control, centred between the stumps. It was
+  dark text on the dirt path, barely legible, and read as left of centre
+  because the eye centred on the bare icon. The text stays: a parent benefits
+  from knowing a replay exists.
+- **Explore's correct-tap sparkle is on the instrument** (2026-10-08, Trello
+  card 189, Cooper: "the indicator needs to be on the instrument"). The child is
+  identifying an instrument, so the answer lands on the thing they chose; on a
+  character it read as "Clef approves" rather than "that one". One ✨ per
+  correct tap so far, at the instrument's top-right, staying for the round:
+  **progress** toward the confetti at five, where the music notes are a per-tap
+  **response** that resets. Each ✨ pops in once and then holds still (no idle
+  motion). It is big, bright and gradient-filled; Skip is small, cream and
   quiet. With the old "I want something new" subtitle gone, that difference in
   how they *look* is what tells a child's control from an adult's — do not let
   the two converge into a matched pair.
@@ -264,6 +294,14 @@ restructure; solving it by growing the bubble sideways instead would crowd the
 close button on one side and Skip on the other. `HighLowHeader` reserves a
 fixed width on each side regardless of what the caption contains — it only
 ever asks for more *height*.
+
+**Parent guidance joins the instruction; it never replaces it** (2026-10-08,
+Trello card 193, Cooper: the instruction "changes after a while; it should
+stay put"). Explore's six-second guidance ("Encourage them to keep tapping the
+higher one.") used to take the instruction's place. It now fades in as a
+quieter warm-grey line beneath it, on the same plate, which grows taller for
+it. The timing stays deliberate: guidance on screen from the start is noise;
+arriving just as a parent starts wondering, it is help.
 
 **Centred over the meadow, not the screen** (Trello card 187). The composition
 is no longer symmetric, and screen-centred text lands in the tree's canopy.

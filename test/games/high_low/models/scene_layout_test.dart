@@ -40,11 +40,21 @@ void main() {
           'the right edge (Trello card 187 — smaller was tested and does '
           'not work: the platforms become too small to hit)', () {
         final l = two();
-        expect(l.treeRect.top, 0);
-        expect(l.treeRect.height, size.height);
         expect(
           l.treeRect.right - size.width,
-          closeTo(l.treeWidth * 0.25, 0.001),
+          greaterThanOrEqualTo(l.treeWidth * 0.25),
+        );
+      });
+
+      test('the tree bleeds past the top and the bottom of the screen — '
+          'scenery bigger than the frame, no gap under its roots (Trello '
+          'card 190)', () {
+        final l = two();
+        expect(l.treeRect.top, lessThan(0));
+        // The art's last opaque row is 1018 of its 1024.
+        expect(
+          l.treeRect.top + l.treeRect.height * 1018 / 1024,
+          greaterThan(size.height),
         );
       });
 
@@ -105,6 +115,21 @@ void main() {
         expect(l.piperHeight, greaterThan(l.characterHeight * 1.5));
         expect(l.piperFeetY, greaterThan(size.height));
         expect(l.piperFeetY - size.height, lessThan(l.piperHeight * 0.1));
+      });
+
+      test('Piper is 50% bigger than before (three-quarters of the height, '
+          'Trello card 192) wherever the touch-target floor allows it, and '
+          'never smaller than she was (half the height)', () {
+        final l = two();
+        expect(l.piperHeight, lessThanOrEqualTo(size.height * 0.75 + 0.001));
+        expect(l.piperHeight, greaterThan(size.height * 0.5));
+        if (size.width / size.height >= 2) {
+          expect(
+            l.piperHeight,
+            closeTo(size.height * 0.75, 0.001),
+            reason: 'every notched phone has room for the full size',
+          );
+        }
       });
 
       test('the instruments stand between Piper and the tree: clear of '

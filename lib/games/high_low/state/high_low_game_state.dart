@@ -254,17 +254,10 @@ class HighLowGameState extends ChangeNotifier {
 
   /// Which of Piper/Clef is currently speaking a voice line, tied to real
   /// playback duration via [_speak] (Trello card PIm7xE6n) — null when
-  /// neither is. See [speakingIsPiper]'s doc comment for the interlock
-  /// with [_characterSparkleIsPiper].
+  /// neither is.
   bool? _speakingIsPiper;
   SpokenLine? _speakingLine;
   int _speakingGeneration = 0;
-
-  /// Which of Piper/Clef should show the transient "found it" sparkle
-  /// right now (Trello card RqdPFKLf) — see
-  /// [characterSparkleIsPiper]'s doc comment.
-  bool? _characterSparkleIsPiper;
-  Timer? _characterSparkleTimer;
 
   /// Holds a tapped instrument's note effect ([playingIndex]) for
   /// [_noteRingDuration], like the opening cue does. Playback resolves as
@@ -375,12 +368,6 @@ class HighLowGameState extends ChangeNotifier {
   /// null when neither is. Nothing else about a character moves any more
   /// (Trello card NcVPjPZ5 moved idle motion onto the instruments), which
   /// is what makes this legible as its own distinct signal.
-  ///
-  /// Never true for the same character [characterSparkleIsPiper] is also
-  /// true for — motion means "I'm speaking", sparkle means "you found
-  /// it", and a character showing both at once would blur the two
-  /// (Trello cards RqdPFKLf/PIm7xE6n's shared interlock). See [_speak]
-  /// and [_sparkleCorrectTapCharacter].
   bool? get speakingIsPiper => _speakingIsPiper;
 
   /// The line currently speaking, for looking up its precomputed loudness
@@ -394,19 +381,27 @@ class HighLowGameState extends ChangeNotifier {
   /// Bumped every time [_speak] starts a new line. See [speakingLine].
   int get speakingGeneration => _speakingGeneration;
 
-  /// Which of Piper/Clef should show the transient "found it" sparkle
-  /// right now (Trello card RqdPFKLf) — set for ~900ms on a correct
-  /// Participate tap (see [tapInstrument]), then cleared. See
-  /// [speakingIsPiper]'s doc comment for why this is never true for
-  /// whichever character is currently speaking.
-  bool? get characterSparkleIsPiper => _characterSparkleIsPiper;
+  /// The instrument wearing Explore's correct-tap sparkle: the target side,
+  /// once the child has tapped it correctly at least once this round, and
+  /// null otherwise (Trello card 189, Cooper: "the indicator needs to be on
+  /// the instrument"). The child is identifying an instrument, so the answer
+  /// lands on the thing they chose; on a character it read as "Clef
+  /// approves" rather than "that one".
+  ///
+  /// **Progress, not a response.** It stays for the rest of the round and
+  /// grows with [correctTapProgress] toward the confetti at five, where the
+  /// music notes are per tap and reset — the two must not blur.
+  int? get sparkleSide {
+    final prompt = currentPrompt;
+    if (agencyStage != AgencyStage.explore || prompt == null) return null;
+    return _correctTapCumulative > 0 ? prompt.targetSide : null;
+  }
 
   /// How many cumulative correct taps Participate has banked this round
-  /// (0-5) — the screen scales the sparkle's visual intensity to this so
-  /// each correct tap reads as *more* than the last, building to the
-  /// confetti burst [confettiTrigger] signals at five (Cooper: "a flat
-  /// sparkle is a reward; an escalating one is a promise"). Always 0
-  /// outside Participate.
+  /// (0-5) — the screen shows that many sparkles on [sparkleSide], so each
+  /// correct tap reads as *more* than the last, building to the confetti
+  /// burst [confettiTrigger] signals at five (Cooper: "a flat sparkle is a
+  /// reward; an escalating one is a promise"). Always 0 outside Participate.
   int get correctTapProgress => _correctTapCumulative;
 
   /// Bumped once every time the fifth cumulative correct tap fires the
@@ -611,11 +606,6 @@ class HighLowGameState extends ChangeNotifier {
     _tapRingTimer = null;
   }
 
-  void _cancelSparkleTimer() {
-    _characterSparkleTimer?.cancel();
-    _characterSparkleTimer = null;
-  }
-
   /// Ends [isConsidering] now, and makes any in-flight
   /// [_considerWhileNudging] stale. Does not notify — callers do.
   void _stopConsidering() {
@@ -664,29 +654,11 @@ class HighLowGameState extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Transiently sparkles [isPiper]'s character on a correct A0/A1 tap
-  /// (Trello card RqdPFKLf) — suppressed if that same character is
-  /// currently speaking (the interlock in [speakingIsPiper]'s doc
-  /// comment). The tap still counts toward the streak either way; only
-  /// the visual cue is skipped for that instant.
-  void _sparkleCorrectTapCharacter(bool isPiper) {
-    if (_speakingIsPiper == isPiper) return;
-    _characterSparkleIsPiper = isPiper;
-    notifyListeners();
-    _characterSparkleTimer?.cancel();
-    _characterSparkleTimer = Timer(const Duration(milliseconds: 900), () {
-      _characterSparkleTimer = null;
-      _characterSparkleIsPiper = null;
-      notifyListeners();
-    });
-  }
-
   void _startRound() {
     final token = ++_roundToken;
     _exploreTaps.reset();
     _cancelPendingTimer();
     _cancelNudgeTimer();
-    _cancelSparkleTimer();
     _cancelTapRingTimer();
     _cancelObserveFlightTimer();
     _stopConsidering();
@@ -706,7 +678,6 @@ class HighLowGameState extends ChangeNotifier {
     _showArrow = false;
     _nudgeVisible = false;
     _speakingIsPiper = null;
-    _characterSparkleIsPiper = null;
 
     final prompt = currentPrompt;
     _activeCaption = switch (agencyStage) {
@@ -913,7 +884,6 @@ class HighLowGameState extends ChangeNotifier {
       if (side == prompt.targetSide) {
         _stopConsidering();
         _correctTapCumulative++;
-        _sparkleCorrectTapCharacter(targetCharacterIsPiper);
         if (_correctTapCumulative >= 5) {
           _confettiTrigger++;
           _celebrateCorrect(side);
@@ -1131,7 +1101,6 @@ class HighLowGameState extends ChangeNotifier {
     _audio.stopCurrentNote();
     _cancelPendingTimer();
     _cancelNudgeTimer();
-    _cancelSparkleTimer();
     _cancelTapRingTimer();
     _cancelObserveFlightTimer();
 
@@ -1217,7 +1186,6 @@ class HighLowGameState extends ChangeNotifier {
     _roundToken++;
     _cancelPendingTimer();
     _cancelNudgeTimer();
-    _cancelSparkleTimer();
     _cancelTapRingTimer();
     _cancelObserveFlightTimer();
     _status = GameStatus.completed;
@@ -1230,7 +1198,6 @@ class HighLowGameState extends ChangeNotifier {
     _roundToken++;
     _cancelPendingTimer();
     _cancelNudgeTimer();
-    _cancelSparkleTimer();
     _cancelTapRingTimer();
     _cancelObserveFlightTimer();
     _status = GameStatus.notStarted;
@@ -1248,7 +1215,6 @@ class HighLowGameState extends ChangeNotifier {
     _arrowCueSpoken = false;
     _nudgeVisible = false;
     _speakingIsPiper = null;
-    _characterSparkleIsPiper = null;
     _stopConsidering();
     notifyListeners();
   }
@@ -1260,7 +1226,6 @@ class HighLowGameState extends ChangeNotifier {
     _roundToken++;
     _cancelPendingTimer();
     _cancelNudgeTimer();
-    _cancelSparkleTimer();
     _cancelTapRingTimer();
     _cancelObserveFlightTimer();
     _stopConsidering();

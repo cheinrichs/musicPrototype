@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/painting.dart';
 import '../widgets/character_art.dart';
+import 'high_low_instrument.dart';
 
 /// Where everything in the High/Low scene sits, as pure geometry so the rules
 /// that keep going wrong on a real device can be tested at real screen sizes
@@ -112,12 +113,23 @@ class SceneLayout {
 
   // ---- the tree ----
 
-  double get treeHeight => screen.height;
+  /// How far the tree runs past the top and the bottom of the screen, as a
+  /// fraction of the screen's height (Trello card 190: overscan it, rather
+  /// than fit it). The art has a few transparent rows under its roots, so
+  /// fitted exactly it left a gap at the bottom; bled past both edges it
+  /// reads as scenery bigger than the frame.
+  static const treeBleed = 0.02;
+
+  double get treeHeight => screen.height * (1 + 2 * treeBleed);
   double get treeWidth => treeHeight * treeAspect;
 
+  /// The tree's left edge stays where a screen-height tree with a quarter
+  /// off the right puts it; the bleed grows it rightwards, upwards and
+  /// downwards from there. That keeps the room the instruments have — which
+  /// on an SE is exactly what the touch-target floor needs — unchanged.
   Rect get treeRect => Rect.fromLTWH(
-    screen.width - (1 - treeOffscreenFraction) * treeWidth,
-    0,
+    screen.width - (1 - treeOffscreenFraction) * screen.height * treeAspect,
+    -screen.height * treeBleed,
     treeWidth,
     treeHeight,
   );
@@ -174,7 +186,33 @@ class SceneLayout {
   /// Piper's height, standing at the left edge — a clearly larger,
   /// "foreground" scale than [characterHeight], so she reads as closer to the
   /// viewer than anything on the tree.
-  double get piperHeight => screen.height * 0.50;
+  ///
+  /// Three-quarters of the screen's height (Trello card 192, Cooper: 50%
+  /// bigger, up from half), **capped where the touch-target floor would
+  /// break**. Her width comes out of the instruments' room, and on a phone as
+  /// narrow as an SE the full size would shrink the smallest instrument below
+  /// [minTouchTarget]; the floor is the hard constraint, so there she is as
+  /// big as it allows (about 0.6 of the height). The cap is worked out for
+  /// two instruments, the play screens' count, so a three-instrument scene
+  /// has the same Piper.
+  double get piperHeight {
+    const ideal = 0.75;
+    final widestPerHeight = _widestPose(CharacterArt.piper, 1);
+    final neededForInstruments = 2 * minTouchTarget / _smallestInstrumentScale;
+    final room =
+        _bandRightFor(clefOnBranch: false) -
+        insets.left -
+        _margin -
+        _gap -
+        neededForInstruments;
+    return math.min(screen.height * ideal, room / widestPerHeight);
+  }
+
+  /// The smallest any instrument is drawn, as a fraction of the instrument
+  /// box: the bells, at half size.
+  static final double _smallestInstrumentScale = HighLowInstrument.values
+      .map((i) => i.displaySizeScale)
+      .reduce(math.min);
 
   /// Where Piper's feet sit: past the bottom of the screen by a sliver of her
   /// own height, so her ankles at most are cropped (Cooper: "we should only
@@ -298,7 +336,9 @@ class SceneLayout {
   /// The band ends before the free column Observe's earned arrow needs
   /// between the instruments and the platforms, and — when Clef is on the
   /// branch above them — before Clef.
-  double get _bandRight {
+  double get _bandRight => _bandRightFor(clefOnBranch: clefOnBranch);
+
+  double _bandRightFor({required bool clefOnBranch}) {
     final beforeArrow = platformColumnLeftX - arrowSize - 2 * _gap;
     final edge = clefOnBranch
         ? math.min(clefPerch.dx - _clefHalfWidth, beforeArrow)

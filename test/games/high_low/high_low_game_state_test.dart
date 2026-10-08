@@ -754,10 +754,9 @@ void main() {
 
   group('HighLowGameState — Participate\'s cumulative sparkle (Trello card '
       'RqdPFKLf)', () {
-    testWidgets('a correct tap sparkles the owning character and adds to the '
-        'cumulative count; a wrong tap adds nothing but is never a failure', (
-      tester,
-    ) async {
+    testWidgets('a correct tap sparkles the INSTRUMENT the child got right '
+        '(Trello card 189) and adds to the cumulative count; a wrong tap adds '
+        'nothing but is never a failure', (tester) async {
       final state = HighLowGameState(
         totalPrompts: 1,
         agencyStage: AgencyStage.explore,
@@ -769,14 +768,21 @@ void main() {
       final targetSide = state.currentPrompt!.targetSide;
       final wrongSide = 1 - targetSide;
 
+      expect(state.sparkleSide, isNull, reason: 'nothing found yet');
       state.tapInstrument(targetSide);
       await tester.pump();
       expect(
-        state.characterSparkleIsPiper,
-        state.targetCharacterIsPiper,
-        reason: 'the owning character sparkles on a correct tap',
+        state.sparkleSide,
+        targetSide,
+        reason: 'the instrument the child chose answers',
       );
       expect(state.correctTapProgress, 1);
+      await tester.pump(const Duration(seconds: 3));
+      expect(
+        state.sparkleSide,
+        targetSide,
+        reason: 'progress, not a response: it stays for the round',
+      );
 
       state.tapInstrument(wrongSide);
       await tester.pump();

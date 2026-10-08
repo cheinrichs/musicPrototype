@@ -63,6 +63,55 @@ Future<void> _capture(
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
+  // Explore mid-round: three correct taps' sparkles on the instrument (card
+  // 189) and the six-second guidance beneath the instruction (card 193).
+  for (final phone in ['se', 'iphone14']) {
+    testWidgets('${phone}_explore_sparkles_guidance', skip: _outDir.isEmpty, (
+      tester,
+    ) async {
+      final (size, insets) = _phones[phone]!;
+      tester.view.physicalSize = size * 2;
+      tester.view.devicePixelRatio = 2;
+      tester.view.padding = FakeViewPadding(
+        left: insets.left * 2,
+        right: insets.right * 2,
+      );
+      addTearDown(tester.view.reset);
+      final state = HighLowGameState(
+        totalPrompts: 3,
+        agencyStage: AgencyStage.explore,
+        generator: PromptGenerator(random: Random(1)),
+      );
+      final boundary = GlobalKey();
+      await tester.pumpWidget(
+        RepaintBoundary(
+          key: boundary,
+          child: MaterialApp(
+            debugShowCheckedModeBanner: false,
+            home: HighLowScreen(gameState: state),
+          ),
+        ),
+      );
+      await tester.pump();
+      for (var i = 0; i < 4; i++) {
+        await tester.pump(const Duration(milliseconds: 1200));
+      }
+      for (var tap = 0; tap < 3; tap++) {
+        state.tapInstrument(state.currentPrompt!.targetSide);
+        await tester.pump(const Duration(milliseconds: 400));
+      }
+      // Frame by frame: the guidance fades in, and an animation starts on the
+      // frame that first builds it.
+      for (var f = 0; f < 7000 ~/ 16; f++) {
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      await _capture(tester, boundary, '${phone}_explore_sparkles_guidance');
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump(const Duration(seconds: 5));
+      state.dispose();
+    });
+  }
+
   // The ordering screen, on the same tree (Trello card 188): two notes with
   // Clef on the top platform, three with him on the branch.
   for (final phone in ['se', 'iphone14']) {

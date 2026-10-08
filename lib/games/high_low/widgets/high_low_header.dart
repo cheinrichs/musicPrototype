@@ -64,6 +64,10 @@ class HighLowHeader extends StatelessWidget {
   final VoidCallback onClose;
   final String? captionText;
 
+  /// Guidance shown beneath [captionText], never instead of it — see
+  /// [HighLowCaption.guidance].
+  final String? guidanceText;
+
   /// Listen Again, centred beneath the caption.
   final Widget? below;
 
@@ -81,6 +85,7 @@ class HighLowHeader extends StatelessWidget {
     super.key,
     required this.onClose,
     required this.captionText,
+    this.guidanceText,
     required this.skipEnabled,
     required this.onSkip,
     this.below,
@@ -150,7 +155,10 @@ class HighLowHeader extends StatelessWidget {
             children: [
               Padding(
                 padding: padding,
-                child: HighLowCaption(text: captionText),
+                child: HighLowCaption(
+                  text: captionText,
+                  guidance: guidanceText,
+                ),
               ),
               Positioned(left: 0, child: _close()),
               Positioned(right: 0, child: _skip()),
@@ -178,7 +186,9 @@ class HighLowHeader extends StatelessWidget {
               width: sideWidth,
               child: Align(alignment: Alignment.centerLeft, child: _close()),
             ),
-            Expanded(child: HighLowCaption(text: captionText)),
+            Expanded(
+              child: HighLowCaption(text: captionText, guidance: guidanceText),
+            ),
             SizedBox(
               width: sideWidth,
               child: FittedBox(
