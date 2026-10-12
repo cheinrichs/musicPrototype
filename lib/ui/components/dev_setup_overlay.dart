@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../app/state/dev_settings_state.dart';
 import '../../models/agency_stage.dart';
 import '../../models/concept_tier.dart';
+import '../../models/dial_mode.dart';
 import '../../models/round_order.dart';
 import '../../models/round_set_length.dart';
 import '../theme/theme.dart';
@@ -75,28 +76,22 @@ class DevSetupOverlay extends StatelessWidget {
                     onSelected: devSettings.setAgencyStage,
                   ),
                   const SizedBox(height: AppSpacing.xs),
-                  _SettingRow<ConceptTier>(
-                    title: 'Tier',
-                    values: ConceptTier.values,
-                    labelOf: (t) => t.label,
-                    selected: devSettings.conceptTier,
-                    onSelected: devSettings.setConceptTier,
-                    // Tiers the chosen agency stage can't reach are shown
-                    // but disabled — see ConceptTier.isReachableAt.
-                    isEnabled: (t) => t.isReachableAt(devSettings.agencyStage),
-                  ),
-                  const SizedBox(height: AppSpacing.xs),
-                  // Order, and the round-set length beside it on the same
+                  // Tier, and the round-set length beside it on the same
                   // row so the column still fits an SE.
                   Row(
                     children: [
                       Expanded(
-                        child: _SettingRow<RoundOrder>(
-                          title: 'Order',
-                          values: RoundOrder.values,
-                          labelOf: (o) => o.label,
-                          selected: devSettings.roundOrder,
-                          onSelected: devSettings.setRoundOrder,
+                        child: _SettingRow<ConceptTier>(
+                          title: 'Tier',
+                          values: ConceptTier.values,
+                          labelOf: (t) => t.label,
+                          selected: devSettings.conceptTier,
+                          onSelected: devSettings.setConceptTier,
+                          // Tiers the chosen agency stage can't reach are
+                          // shown but disabled — see
+                          // ConceptTier.isReachableAt.
+                          isEnabled: (t) =>
+                              t.isReachableAt(devSettings.agencyStage),
                         ),
                       ),
                       // The round-set length for the agency picked above
@@ -110,6 +105,35 @@ class DevSetupOverlay extends StatelessWidget {
                         onChanged: (n) => devSettings.setRoundSetLength(
                           devSettings.agencyStage,
                           n,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  Row(
+                    children: [
+                      Expanded(
+                        flex: 5,
+                        child: _SettingRow<RoundOrder>(
+                          title: 'Order',
+                          values: RoundOrder.values,
+                          labelOf: (o) => o.label,
+                          selected: devSettings.roundOrder,
+                          onSelected: devSettings.setRoundOrder,
+                        ),
+                      ),
+                      const SizedBox(width: AppSpacing.sm),
+                      // Trello card 208: Loud or Quiet's needle follows every
+                      // sound, or only the child's taps (build 90's rule).
+                      Expanded(
+                        flex: 4,
+                        child: _SettingRow<DialMode>(
+                          title: 'Dial',
+                          values: DialMode.values,
+                          labelOf: (m) => m.label,
+                          selected: devSettings.dialMode,
+                          onSelected: devSettings.setDialMode,
+                          titleWidth: 32,
                         ),
                       ),
                     ],
@@ -268,6 +292,9 @@ class _SettingRow<T> extends StatelessWidget {
                   ),
                   visualDensity: VisualDensity.compact,
                   materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  // The fill already marks the selection; the checkmark's
+                  // width is what lets three toggles share one row on an SE.
+                  showCheckmark: false,
                   selected: value == selected,
                   onSelected: (isEnabled?.call(value) ?? true)
                       ? (_) => onSelected(value)

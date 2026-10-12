@@ -80,7 +80,8 @@ void main() {
     await tester.pumpWidget(MaterialApp.router(routerConfig: router));
     // Past the post-frame start and both opening sounds, in frames, so the
     // animations actually run.
-    for (var i = 0; i < 300; i++) {
+    // Past the start, both opening sounds and the needle settling back.
+    for (var i = 0; i < 340; i++) {
       await tester.pump(const Duration(milliseconds: 16));
     }
   }
@@ -122,8 +123,10 @@ void main() {
     await finish(tester);
   });
 
-  testWidgets('the needle rests straight up through the opening sounds, and '
-      'swings to the side the child taps', (tester) async {
+  testWidgets('the needle is back at rest, straight up, once the opening '
+      'sounds have played, and swings to the side the child taps', (
+    tester,
+  ) async {
     await mount(tester);
     expect(needleDegrees(tester), closeTo(0, 0.01));
     final loud = game.currentRound!.loudSide;

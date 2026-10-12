@@ -35,8 +35,45 @@ class LoudQuietRound {
     required this.asksLoud,
   });
 
-  /// The playback gain of [side].
+  /// The gain [side] stands for — 1 for the loud one, [quietGain] for the
+  /// quiet one. What the needle shows; see [playbackGainOf] for what plays.
   double gainOf(int side) => side == loudSide ? 1.0 : quietGain;
+
+  /// What [side] actually plays at: [gainOf] with its instrument's
+  /// [perceptualTrimDb] on top, so a reedy oboe and a mellow cello at the
+  /// same intended level sound equally loud.
+  double playbackGainOf(int side) =>
+      gainOf(side) * dbToGain(perceptualTrimDb[instrumentOf(side)] ?? 0);
+
+  /// Per-instrument trim in dB (Trello card 207), Loud or Quiet only — High
+  /// vs Low shares the samples and its balance is right, so they are not
+  /// re-exported. The samples sit at −18 LUFS, but LUFS is not perceived
+  /// loudness: K-weighting misses sharpness, the harmonic density that makes
+  /// a sound cut through. Cooper on build 90: "loud oboe sounds a little too
+  /// loud, guitar and flute also just a touch too loud."
+  ///
+  /// ⚠️ Starting values, to be tuned by ear on a device speaker — Cooper is
+  /// the measurement here, not a meter. Guitar's is smallest of the three:
+  /// it is also the one whose energy a phone speaker reproduces least
+  /// (≈76% above 200 Hz, tool/measure_speaker_audibility.py), so a hard cut
+  /// would cost it most at the quiet end. The oboe (≈94%) can take more.
+  static const Map<HighLowInstrument, double> perceptualTrimDb = {
+    HighLowInstrument.oboe: -3.0,
+    HighLowInstrument.flute: -1.5,
+    HighLowInstrument.guitar: -1.0,
+  };
+
+  static double dbToGain(double db) => math.pow(10, db / 20).toDouble();
+
+  /// The instruments Loud or Quiet draws from: all but the tuba. Its range
+  /// here (G♯3–B3) puts only ≈60% of its energy where a phone speaker can
+  /// reproduce it, so at the quiet end (−12 dB) it is the one most likely to
+  /// vanish in a real room — and High vs Low already leaves it out of every
+  /// tier.
+  static List<HighLowInstrument> get pool => [
+    for (final i in HighLowInstrument.values)
+      if (i != HighLowInstrument.tuba) i,
+  ];
 
   /// The side the round asks for.
   int get targetSide => asksLoud ? loudSide : 1 - loudSide;
@@ -72,7 +109,7 @@ class LoudQuietRound {
     required bool asksLoud,
     required math.Random random,
   }) {
-    final pool = HighLowInstrument.values;
+    final pool = LoudQuietRound.pool;
     final left = pool[random.nextInt(pool.length)];
     var right = left;
     if (tier.instrumentsVary) {

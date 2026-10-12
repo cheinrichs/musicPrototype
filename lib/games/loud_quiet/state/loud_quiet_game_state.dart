@@ -7,6 +7,7 @@ import '../../../audio/shared_voice_line.dart';
 import '../../../audio/sfx_type.dart';
 import '../../../models/agency_stage.dart';
 import '../../../models/concept_tier.dart';
+import '../../../models/dial_mode.dart';
 import '../../../models/game_status.dart';
 import '../../../models/round_order.dart';
 import '../../../models/round_set_length.dart';
@@ -36,12 +37,12 @@ enum LoudQuietDrop { none, correct, retry }
 /// with the shared pool, the thinking pose while a nudge plays, the skip
 /// logged as its own event, and [RoundInstrumentation] (borrowed as-is).
 ///
-/// **The needle moves only on a tap the child makes** (card 162), never
-/// while a round's sounds play at its start or on a replay — that would show
-/// the answer before the question. It also stays still at Decide, where the
-/// child answers: a needle that read out each tap would let them answer by
-/// looking instead of listening (card 167 says to decide this deliberately;
-/// decided here, for Cooper to overrule).
+/// **When the needle moves is [dialMode]** (Trello card 208, reversing
+/// build 90). By default it follows every sound — the round's own playback
+/// at every agency, Decide included, and every tap — and settles back to
+/// rest once the prompt has played, so it never sits on the answer. The dev
+/// toggle restores build 90's rule (only the child's taps, never at Decide),
+/// and each round records which mode it ran in.
 ///
 /// **No voice lines are recorded yet** (card 182), so the characters say
 /// nothing, rather than playing placeholder speech; only the shared nudges,
@@ -55,6 +56,7 @@ class LoudQuietGameState extends ChangeNotifier {
     this.agencyStage = AgencyStage.observe,
     this.conceptTier = ConceptTier.t1,
     this.roundOrder = RoundOrder.blocked,
+    this.dialMode = DialMode.everySound,
     NudgePool? nudges,
   }) : _audio = audio ?? AudioController.instance,
        _random = random ?? math.Random(),
@@ -86,6 +88,9 @@ class LoudQuietGameState extends ChangeNotifier {
   AgencyStage agencyStage;
   ConceptTier conceptTier;
   RoundOrder roundOrder;
+
+  /// When the needle moves (card 208); fixed for the set by the screen.
+  DialMode dialMode;
 
   /// How long each sound is left to ring before the next, as in High vs Low.
   static const noteGap = Duration(milliseconds: 2300);
@@ -251,20 +256,27 @@ class LoudQuietGameState extends ChangeNotifier {
     unawaited(_playRound(token));
   }
 
-  /// The round's two sounds, in order — at its start and on a replay. The
-  /// needle does not move: it answers only the child's own taps.
+  /// The round's two sounds, in order — at its start and on a replay. With
+  /// [DialMode.everySound] the needle swings to each as it plays, at every
+  /// agency, then settles back to rest: left parked on the last sound it
+  /// would hand the answer to a child who wasn't even watching (card 208).
   Future<void> _playRound(int token) async {
     _status = GameStatus.playing;
     notifyListeners();
     final round = currentRound;
     if (round == null) return;
+    final follow = dialMode == DialMode.everySound;
     for (final side in [0, 1]) {
       if (token != _token) return;
+      if (follow) {
+        _needle = LoudQuietRound.needlePosition(round.gainOf(side));
+      }
       _ring(side);
       unawaited(_playSide(side));
       await _wait(noteGap);
     }
     if (token != _token) return;
+    if (follow) _needle = 0;
     _becomeAnswerable(token);
   }
 
@@ -287,7 +299,7 @@ class LoudQuietGameState extends ChangeNotifier {
     if (round == null) return;
     await _audio.playAssetForScale(
       round.instrumentOf(side).assetPathForMidi(round.midi),
-      volume: round.gainOf(side),
+      volume: round.playbackGainOf(side),
     );
   }
 
@@ -329,9 +341,10 @@ class LoudQuietGameState extends ChangeNotifier {
     _ring(side);
     unawaited(_playSide(side));
 
-    // The dial answers the child's own tap — at the levels with no answer
-    // to give away.
-    if (agencyStage != AgencyStage.decide) {
+    // The dial answers the child's own tap — at every agency by default
+    // (card 208); in build 90's mode, only where there is no answer to
+    // give away.
+    if (dialMode == DialMode.everySound || agencyStage != AgencyStage.decide) {
       _needle = LoudQuietRound.needlePosition(round.gainOf(side));
     }
 
@@ -495,6 +508,7 @@ class LoudQuietGameState extends ChangeNotifier {
         wrongTapCount: _wrongTaps,
         observeTapSequence: List.unmodifiable(_tapSequence),
         skipped: skipped,
+        dialMode: dialMode.name,
       ),
     );
   }

@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import '../../models/agency_stage.dart';
 import '../../models/concept_tier.dart';
+import '../../models/dial_mode.dart';
 import '../../models/round_order.dart';
 import '../../models/round_set_length.dart';
 
@@ -45,8 +46,19 @@ class DevSettingsState extends ChangeNotifier {
   /// since nothing there can change it.
   RoundSetLength _roundSetLength = RoundSetLength.standard;
 
+  /// When Loud or Quiet's needle moves (Trello card 208): every sound, by
+  /// default, or only the child's own taps (build 90's rule).
+  DialMode _dialMode = DialMode.everySound;
+
   AgencyStage get agencyStage => _agencyStage;
   RoundSetLength get roundSetLength => _roundSetLength;
+  DialMode get dialMode => _dialMode;
+
+  void setDialMode(DialMode mode) {
+    _dialMode = mode;
+    notifyListeners();
+  }
+
   ConceptTier get conceptTier => _conceptTier;
   RoundOrder get roundOrder => _roundOrder;
   bool get orderingSelected => _orderingSelected;

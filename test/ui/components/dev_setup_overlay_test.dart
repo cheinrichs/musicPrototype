@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:ear_trainer/app/state/dev_settings_state.dart';
 import 'package:ear_trainer/models/agency_stage.dart';
 import 'package:ear_trainer/models/concept_tier.dart';
+import 'package:ear_trainer/models/dial_mode.dart';
 import 'package:ear_trainer/ui/components/dev_setup_overlay.dart';
 
 void main() {
@@ -93,6 +94,25 @@ void main() {
     expect(devSettings.roundSetLength.observe, 4);
     expect(devSettings.roundSetLength.explore, 4);
     expect(devSettings.roundSetLength.decide, 5);
+  });
+
+  testWidgets('the Dial toggle switches Loud or Quiet between the needle '
+      'following every sound and only the child\'s taps (Trello card 208)', (
+    tester,
+  ) async {
+    final devSettings = DevSettingsState();
+    await tester.pumpWidget(
+      ChangeNotifierProvider<DevSettingsState>.value(
+        value: devSettings,
+        child: MaterialApp(
+          home: Scaffold(body: DevSetupOverlay(onStart: () {})),
+        ),
+      ),
+    );
+    expect(devSettings.dialMode, DialMode.everySound);
+    await tester.tap(find.widgetWithText(ChoiceChip, 'Taps'));
+    await tester.pump();
+    expect(devSettings.dialMode, DialMode.childTapsOnly);
   });
 
   test('RoundSetLength clamps to the range the dev screen offers', () {

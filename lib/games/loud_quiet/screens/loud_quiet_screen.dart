@@ -62,7 +62,10 @@ class _LoudQuietScreenState extends State<LoudQuietScreen> {
     // card 196), read live so the dev screen's change takes effect.
     _game =
         widget.gameState ??
-        LoudQuietGameState(roundSetLength: _devSettings().roundSetLength);
+        LoudQuietGameState(
+          roundSetLength: _devSettings().roundSetLength,
+          dialMode: _devSettings().dialMode,
+        );
     _game.addListener(_onChanged);
     _confetti = ConfettiController(duration: AppAnimations.confettiBurst);
 
@@ -104,7 +107,8 @@ class _LoudQuietScreenState extends State<LoudQuietScreen> {
       ..agencyStage = dev.agencyStage
       ..conceptTier = dev.conceptTier
       ..roundOrder = dev.roundOrder
-      ..roundSetLength = dev.roundSetLength;
+      ..roundSetLength = dev.roundSetLength
+      ..dialMode = dev.dialMode;
     setState(() => _showDevGate = false);
     _game.startGame();
   }
@@ -234,8 +238,8 @@ class _LoudQuietScreenState extends State<LoudQuietScreen> {
   }
 
   /// The needle, turning about its pivot on the dial's hub — never its
-  /// image centre. Rest is straight up; it eases to where the child's tap
-  /// puts it.
+  /// image centre. Rest is straight up; it eases to each sound as it plays
+  /// (see [DialMode]) and back to rest after the prompt.
   Widget _buildNeedle(LoudQuietLayout layout) {
     final r = layout.needleRect;
     final pivot = Alignment(

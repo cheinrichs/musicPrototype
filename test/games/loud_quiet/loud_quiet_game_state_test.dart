@@ -4,7 +4,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:ear_trainer/audio/audio_controller.dart';
 import 'package:ear_trainer/audio/sfx_type.dart';
 import 'package:ear_trainer/audio/spoken_line.dart';
+import 'package:ear_trainer/games/high_low/models/high_low_instrument.dart';
 import 'package:ear_trainer/games/loud_quiet/models/loud_quiet_round.dart';
+import 'package:ear_trainer/models/dial_mode.dart';
 import 'package:ear_trainer/games/loud_quiet/state/loud_quiet_game_state.dart';
 import 'package:ear_trainer/models/agency_stage.dart';
 import 'package:ear_trainer/models/concept_tier.dart';
@@ -86,6 +88,58 @@ void main() {
       }
     });
 
+    test('the perceptual trim (card 207) cuts oboe most, flute and guitar '
+        'a little, and nothing else; the needle ignores it', () {
+      LoudQuietRound round(HighLowInstrument i) => LoudQuietRound(
+        leftInstrument: i,
+        rightInstrument: i,
+        midi: 72,
+        loudSide: 0,
+        quietGain: LoudQuietRound.wideQuietGain,
+        asksLoud: true,
+      );
+      double trimDb(HighLowInstrument i) =>
+          20 * math.log(round(i).playbackGainOf(0)) / math.ln10;
+      expect(trimDb(HighLowInstrument.oboe), closeTo(-3.0, 1e-9));
+      expect(trimDb(HighLowInstrument.flute), closeTo(-1.5, 1e-9));
+      expect(trimDb(HighLowInstrument.guitar), closeTo(-1.0, 1e-9));
+      for (final i in [
+        HighLowInstrument.cello,
+        HighLowInstrument.piano,
+        HighLowInstrument.trumpet,
+        HighLowInstrument.violin,
+        HighLowInstrument.bells,
+      ]) {
+        expect(round(i).playbackGainOf(0), 1.0, reason: i.name);
+      }
+      expect(
+        trimDb(HighLowInstrument.oboe),
+        lessThan(trimDb(HighLowInstrument.flute)),
+        reason: 'oboe cut hardest',
+      );
+      // The quiet end must survive: no trim pushes a quiet sound more than
+      // a few dB below the untrimmed quiet level.
+      for (final db in LoudQuietRound.perceptualTrimDb.values) {
+        expect(db, inInclusiveRange(-4.0, 0.0));
+      }
+    });
+
+    test('the tuba is never drawn: too little of it reaches a phone '
+        'speaker to survive the quiet end', () {
+      final random = math.Random(9);
+      for (final tier in ConceptTier.values) {
+        for (var i = 0; i < 60; i++) {
+          final r = LoudQuietRound.generate(
+            tier: tier,
+            asksLoud: true,
+            random: random,
+          );
+          expect(r.leftInstrument, isNot(HighLowInstrument.tuba));
+          expect(r.rightInstrument, isNot(HighLowInstrument.tuba));
+        }
+      }
+    });
+
     test('the loud side lands on both sides over a session', () {
       final random = math.Random(5);
       final sides = {
@@ -129,23 +183,45 @@ void main() {
   });
 
   group('LoudQuietGameState', () {
-    testWidgets('a round opens by playing both sides at their gains, and the '
-        'needle stays at rest through it', (tester) async {
+    testWidgets('a round opens by playing both sides at their trimmed '
+        'gains', (tester) async {
       final audio = _RecordingAudio();
       final game = _game(audio)..startGame();
       final round = game.currentRound!;
       await _playThrough(tester);
       expect(audio.notes.map((n) => n.$2).toList(), [
-        round.gainOf(0),
-        round.gainOf(1),
+        round.playbackGainOf(0),
+        round.playbackGainOf(1),
       ]);
-      expect(game.needle, 0);
       expect(game.status, GameStatus.awaitingInput);
       game.dispose();
     });
 
-    testWidgets('the needle follows the child\'s tap, and a replay does not '
-        'move it', (tester) async {
+    // Card 208: by default the needle follows the round's own playback at
+    // every agency, Decide included, then settles back to rest.
+    for (final stage in AgencyStage.values) {
+      testWidgets('${stage.name}: the needle swings to each sound of the '
+          'prompt, then settles back to rest', (tester) async {
+        final audio = _RecordingAudio();
+        final game = _game(audio, stage: stage)..startGame();
+        final round = game.currentRound!;
+        double at(int side) =>
+            LoudQuietRound.needlePosition(round.gainOf(side));
+        await tester.pump();
+        expect(game.needle, closeTo(at(0), 1e-9));
+        await tester.pump(LoudQuietGameState.noteGap);
+        expect(game.needle, closeTo(at(1), 1e-9));
+        await tester.pump(LoudQuietGameState.noteGap);
+        expect(game.needle, 0, reason: 'not parked on the answer');
+        expect(game.records, isEmpty);
+        game.escape();
+        expect(game.records.single.dialMode, 'everySound');
+        game.dispose();
+      });
+    }
+
+    testWidgets('the needle follows the child\'s tap; a replay swings it '
+        'again and settles it back to rest', (tester) async {
       final audio = _RecordingAudio();
       final game = _game(audio)..startGame();
       await _playThrough(tester);
@@ -154,11 +230,50 @@ void main() {
       expect(game.needle, closeTo(1, 1e-9));
       game.tapInstrument(1 - round.loudSide);
       expect(game.needle, closeTo(-1, 1e-9));
-      final before = game.needle;
+      game.tapCharacter(piper: true);
+      await tester.pump();
+      expect(
+        game.needle,
+        closeTo(LoudQuietRound.needlePosition(round.gainOf(0)), 1e-9),
+      );
+      await _playThrough(tester);
+      expect(game.needle, 0);
+      game.dispose();
+    });
+
+    testWidgets('build 90\'s mode, behind the toggle: the prompt never moves '
+        'the needle, a replay leaves it, and Decide taps leave it still; '
+        'the round records the mode', (tester) async {
+      final audio = _RecordingAudio();
+      final game = LoudQuietGameState(
+        audio: audio,
+        random: math.Random(1),
+        dialMode: DialMode.childTapsOnly,
+      )..startGame();
+      await tester.pump();
+      expect(game.needle, 0);
+      await _playThrough(tester);
+      expect(game.needle, 0);
+      final round = game.currentRound!;
+      game.tapInstrument(round.loudSide);
+      expect(game.needle, closeTo(1, 1e-9));
       game.tapCharacter(piper: true);
       await _playThrough(tester);
-      expect(game.needle, before);
+      expect(game.needle, closeTo(1, 1e-9));
+      game.escape();
+      expect(game.records.single.dialMode, 'childTapsOnly');
       game.dispose();
+
+      final decide = LoudQuietGameState(
+        audio: audio,
+        random: math.Random(1),
+        agencyStage: AgencyStage.decide,
+        dialMode: DialMode.childTapsOnly,
+      )..startGame();
+      await _playThrough(tester);
+      decide.tapInstrument(decide.currentRound!.loudSide);
+      expect(decide.needle, 0);
+      decide.dispose();
     });
 
     testWidgets('tapping the character who is not asking giggles, then the '
@@ -205,7 +320,7 @@ void main() {
       audio.notes.clear();
       final round = game.currentRound!;
       game.tapInstrument(1 - round.loudSide);
-      expect(audio.notes.single.$2, round.quietGain);
+      expect(audio.notes.single.$2, round.playbackGainOf(1 - round.loudSide));
       game.dispose();
     });
 
@@ -283,16 +398,20 @@ void main() {
       game.dispose();
     });
 
-    testWidgets('Decide: a tap only plays — the needle stays still and '
-        'nothing is answered', (tester) async {
+    testWidgets('Decide: a tap plays and moves the needle (card 208), but '
+        'answers nothing', (tester) async {
       final audio = _RecordingAudio();
       final game = _game(audio, stage: AgencyStage.decide)..startGame();
       await _playThrough(tester);
-      final target = game.currentRound!.targetSide;
+      final round = game.currentRound!;
+      final target = round.targetSide;
       for (var i = 0; i < 6; i++) {
         game.tapInstrument(target);
       }
-      expect(game.needle, 0);
+      expect(
+        game.needle,
+        closeTo(LoudQuietRound.needlePosition(round.gainOf(target)), 1e-9),
+      );
       expect(game.status, GameStatus.awaitingInput);
       expect(game.records, isEmpty);
       game.dispose();
