@@ -699,18 +699,8 @@ class HighLowGameState extends ChangeNotifier {
     _nudgeVisible = false;
     _speakingIsPiper = null;
 
-    final prompt = currentPrompt;
-    _activeCaption = switch (agencyStage) {
-      AgencyStage.observe => null, // narrated live as each note plays
-      AgencyStage.explore =>
-        prompt?.targetDirection == PitchDirection.higher
-            ? VoiceLine.listenForHigh
-            : VoiceLine.listenForLow,
-      AgencyStage.decide =>
-        prompt?.targetDirection == PitchDirection.higher
-            ? VoiceLine.giveMeHigh
-            : VoiceLine.giveMeLow,
-    };
+    // Observe has none: it is narrated live as each note plays.
+    _activeCaption = _roundCue;
     _status = GameStatus.playing;
     notifyListeners();
     if (_activeCaption != null) {
@@ -888,7 +878,9 @@ class HighLowGameState extends ChangeNotifier {
         if (!_arrowCueSpoken) {
           _arrowCueSpoken = true;
           unawaited(
-            _audio.playVoiceLine(_shared(SharedVoiceLine.pressTheArrowWhenDone)),
+            _audio.playVoiceLine(
+              _shared(SharedVoiceLine.pressTheArrowWhenDone),
+            ),
           );
         }
       }
@@ -1091,29 +1083,55 @@ class HighLowGameState extends ChangeNotifier {
     );
   }
 
-  /// Replay the current round: the note pair, then the round's own cue
-  /// (Participate's "listen for the ..." / Trigger's "put me on the ...")
-  /// — in that order (Trello card DC0QKLr3, which was replaying only the
-  /// notes and never the character's prompt). Observe has no separate
-  /// top-level cue to replay — the notes' own live per-note narration
-  /// (see [_runIntro]) already covers it. Always available except while a
-  /// Trigger drop's feedback is showing or the game is over.
-  Future<void> replay() async {
+  /// The round's own spoken cue — Explore's "listen for the ..." or
+  /// Decide's "give me the ..." — in the asking character's voice. Observe
+  /// has none: its notes narrate themselves as they play (see [_runIntro]).
+  SpokenLine? get _roundCue {
+    final higher = currentPrompt?.targetDirection == PitchDirection.higher;
+    return switch (agencyStage) {
+      AgencyStage.observe => null,
+      AgencyStage.explore =>
+        higher ? VoiceLine.listenForHigh : VoiceLine.listenForLow,
+      AgencyStage.decide => higher ? VoiceLine.giveMeHigh : VoiceLine.giveMeLow,
+    };
+  }
+
+  /// The child tapped a character: replay the round (Trello card 195, which
+  /// retired the Listen Again button — tap anything and it makes its own
+  /// sound). **The character speaks first, then the notes**: on a replay
+  /// the child already knows notes are coming; what helps first is what
+  /// they were asked.
+  ///
+  /// Only the asking character says the cue. The other one doesn't repeat
+  /// it — a low-pole instruction in Clef's high voice would blur the pitch
+  /// gap between the two voices, which is itself a picture of the concept
+  /// (CHARACTER_VOICES.md). Theirs is a non-verbal giggle, a shared line
+  /// not yet recorded, so silent for now (see docs/product/VOICE_LINES.md).
+  /// In Observe both characters narrate the notes, so either one replays
+  /// the narrated pair.
+  ///
+  /// Always available except while a correct answer celebrates or the game
+  /// is over.
+  Future<void> tapCharacter({required bool piper}) async {
     if (_status == GameStatus.completed ||
         _status == GameStatus.showingFeedback) {
       return;
     }
     _listenAgainCount++;
-    _audio.playSfx(SfxType.tap);
     final token = ++_roundToken;
     _status = GameStatus.playing;
     notifyListeners();
-    await _runIntro(token);
-    if (token != _roundToken) return;
-    final cue = _activeCaption;
-    if (agencyStage != AgencyStage.observe && cue != null) {
-      await _speak(token, cue);
+    final cue = _roundCue;
+    if (cue != null) {
+      final line = cue.isPiper == piper
+          ? cue
+          : _shared(
+              piper ? SharedVoiceLine.gigglePiper : SharedVoiceLine.giggleClef,
+            );
+      await _speak(token, line);
+      if (token != _roundToken) return;
     }
+    await _runIntro(token);
   }
 
   /// The adult's persistent skip (Trello card xpAkja5b, "Two controls:
@@ -1174,7 +1192,9 @@ class HighLowGameState extends ChangeNotifier {
   void _startObserveFlight(HighLowPrompt prompt) {
     // Lowest pitch first. The sides' own midis come from the prompt; equal
     // pitches cannot happen (the two notes are always different).
-    _observeFlightPlan = prompt.firstMidi <= prompt.secondMidi ? [0, 1] : [1, 0];
+    _observeFlightPlan = prompt.firstMidi <= prompt.secondMidi
+        ? [0, 1]
+        : [1, 0];
     _observeFlightStep = 0;
     _scheduleObserveFlightStep(_roundToken);
     notifyListeners();

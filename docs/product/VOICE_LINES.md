@@ -215,6 +215,24 @@ Shared across games (Trello card 183), in Piper's voice, decided 2026-10-05. It 
 earlier unrecorded hook, "Tap the arrow when you're ready.", which is retired. **Wired but not
 recorded**, so it plays as a silent no-op until a take exists.
 
+## Character-tap giggles — shared
+
+| Character | Sound | Enum | Recorded | Wired |
+|---|---|---|---|---|
+| Clef | a giggle, **no words** | `SharedVoiceLine.giggleClef` | **no** | yes (High vs Low, Loud or Quiet) |
+| Piper | a giggle, **no words** | `SharedVoiceLine.gigglePiper` | **no** | yes (High vs Low, Loud or Quiet) |
+
+Trello card 195, decided 2026-10-11. The Listen Again button is gone: **tapping a character
+replays the round, the character first, then the notes.** The asking character says the round's
+cue. The other one giggles. They never repeat the cue, because a low-pole instruction in Clef's
+high voice would blur the roughly fifth-wide gap between the two voices, and that gap is itself a
+picture of the concept (CHARACTER_VOICES.md). In Observe there is no cue, so either tap replays
+the narrated notes.
+
+**Recording notes:** keep each giggle short, under a second, so the notes follow quickly. Keep
+it in each character's own register: Clef high, Piper low. **Wired but not recorded**, so both
+play as a silent no-op until takes exist.
+
 ## Retired and naming
 
 - **`putClefOnLow` does not exist.** The first version of this doc flagged it as a

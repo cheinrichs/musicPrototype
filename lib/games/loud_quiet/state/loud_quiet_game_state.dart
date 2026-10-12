@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import '../../../audio/audio_controller.dart';
+import '../../../audio/shared_voice_line.dart';
 import '../../../audio/sfx_type.dart';
 import '../../../models/agency_stage.dart';
 import '../../../models/concept_tier.dart';
@@ -87,6 +88,7 @@ class LoudQuietGameState extends ChangeNotifier {
   Timer? _guidanceTimer;
   Timer? _ringTimer;
   Timer? _consideringTimer;
+  Timer? _retryTimer;
 
   int? _playingIndex;
   double _needle = 0;
@@ -351,9 +353,11 @@ class LoudQuietGameState extends ChangeNotifier {
     _drop = LoudQuietDrop.retry;
     final token = _token;
     _nudge(token);
-    _timer?.cancel();
-    _timer = Timer(retryMinimum, () {
-      if (token != _token) return;
+    // Its own timer, unguarded by the round token: a replay restarts the
+    // sounds (bumping the token, reusing [_timer]) and must not strand the
+    // "not that one" on screen. A new round cancels it in [_cancelTimers].
+    _retryTimer?.cancel();
+    _retryTimer = Timer(retryMinimum, () {
       _drop = LoudQuietDrop.none;
       notifyListeners();
     });
@@ -418,9 +422,12 @@ class LoudQuietGameState extends ChangeNotifier {
     _advance();
   }
 
-  /// Tapping a character replays the round (card 195): the character first,
-  /// then the two sounds. No lines are recorded yet, so it is the sounds.
-  void replay() {
+  /// Tapping a character replays the round (card 195), as on High vs Low:
+  /// the character first, then the two sounds. The other character gives
+  /// the shared giggle, never the asking one's cue; the asking one's cue
+  /// waits on this game's lines (card 182), so its tap goes straight to the
+  /// sounds. Neither giggle is recorded yet, so both are silent for now.
+  Future<void> tapCharacter({required bool piper}) async {
     if (_status == GameStatus.completed ||
         _status == GameStatus.showingFeedback ||
         _status == GameStatus.notStarted) {
@@ -429,7 +436,17 @@ class LoudQuietGameState extends ChangeNotifier {
     _replays++;
     final token = ++_token;
     _guidanceTimer?.cancel();
-    unawaited(_playRound(token));
+    _timer?.cancel();
+    final asking = asksLoud ? !piper : piper;
+    if (!asking) {
+      _status = GameStatus.playing;
+      notifyListeners();
+      await _audio.playVoiceLineAndAwait(
+        piper ? SharedVoiceLine.gigglePiper : SharedVoiceLine.giggleClef,
+      );
+      if (token != _token) return;
+    }
+    await _playRound(token);
   }
 
   /// The adult's Skip: logged as a skip, never scored (card 173's rule).
@@ -479,6 +496,7 @@ class LoudQuietGameState extends ChangeNotifier {
     _timer?.cancel();
     _guidanceTimer?.cancel();
     _ringTimer?.cancel();
+    _retryTimer?.cancel();
     _stopConsidering();
   }
 

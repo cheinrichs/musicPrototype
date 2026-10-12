@@ -638,65 +638,17 @@ class _HighLowScreenState extends State<HighLowScreen> {
     }
   }
 
-  /// Listen Again: the round button with its label beside it (not below — a
-  /// label underneath reached down into the tips of tall instruments). Sits
-  /// below the stumps, in the scene layer — see [_buildScene]'s use of
-  /// [SceneLayout.listenAgainCenter] (2026-09-28, moved out from under the
-  /// caption per Cooper's feedback).
-  Widget _buildListenAgainButton() {
-    final canReplay =
-        _gameState.status != GameStatus.completed &&
-        _gameState.status != GameStatus.showingFeedback;
-    return GestureDetector(
-      onTap: canReplay ? _gameState.replay : null,
-      behavior: HitTestBehavior.opaque,
-      child: AnimatedOpacity(
-        opacity: canReplay ? 1 : 0.5,
-        duration: AppAnimations.fast,
-        // One cream pill holding the icon and the words, like every other
-        // control (Trello card 191, Cooper: the label was dark text on the
-        // dirt path and barely legible). Text kept: a parent benefits from
-        // knowing a replay exists. The pill as a whole is what is centred
-        // between the stumps; a bare icon beside bare text read as left of
-        // centre, because the eye centres on the icon.
-        child: Container(
-          key: const ValueKey('listen-again-pill'),
-          constraints: const BoxConstraints(minHeight: 40),
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.md,
-            vertical: AppSpacing.xs,
-          ),
-          decoration: BoxDecoration(
-            gradient: AppColors.cardGradient,
-            borderRadius: BorderRadius.circular(AppSpacing.radiusRound),
-            border: Border.all(color: AppColors.cardEdge, width: 1.5),
-            boxShadow: const [
-              BoxShadow(
-                color: AppColors.shadow,
-                blurRadius: 6,
-                offset: Offset(0, 3),
-              ),
-            ],
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(
-                Icons.volume_up_rounded,
-                color: AppColors.secondary,
-                size: 22,
-              ),
-              const SizedBox(width: AppSpacing.xs),
-              Text(
-                'Listen Again',
-                style: AppTypography.label.copyWith(color: AppColors.inkBrown),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+  /// A character the child can tap to hear the round again (Trello card
+  /// 195, which retired the Listen Again button: tap anything and it makes
+  /// its own sound). The asking character says the cue first, then the
+  /// notes play — see [HighLowGameState.tapCharacter].
+  Widget _tappable({required bool piper, required Widget child}) =>
+      GestureDetector(
+        key: ValueKey(piper ? 'hl-piper' : 'hl-clef'),
+        behavior: HitTestBehavior.opaque,
+        onTap: () => _gameState.tapCharacter(piper: piper),
+        child: child,
+      );
 
   /// The scene: two instruments on stumps at the left, and the tree at the
   /// right with Clef on its top platform and Piper on its bottom one — the
@@ -901,19 +853,8 @@ class _HighLowScreenState extends State<HighLowScreen> {
             top: layout.arrowCentre.dy - _arrowSize / 2,
             child: _buildEarnedArrow(),
           ),
-        // Listen Again, below the stumps rather than under the caption
-        // (2026-09-28 — see [SceneLayout.listenAgainCenter]'s doc). Centred
-        // via FractionalTranslation rather than measuring the button's own
-        // size up front, so it stays centred on [listenAgainCenter]
-        // regardless of how wide "Listen Again" ends up rendering.
-        Positioned(
-          left: layout.listenAgainCenter.dx,
-          top: layout.listenAgainCenter.dy,
-          child: FractionalTranslation(
-            translation: const Offset(-0.5, -0.5),
-            child: _buildListenAgainButton(),
-          ),
-        ),
+        // No Listen Again button (Trello card 195): tapping either character
+        // replays the round — see [_tappable].
       ],
     );
   }
@@ -1146,13 +1087,16 @@ class _HighLowScreenState extends State<HighLowScreen> {
       bottom: layout.screen.height - feet.dy,
       child: Align(
         alignment: Alignment.bottomCenter,
-        child: _characterCore(
-          art: CharacterArt.clef,
-          pose: pose,
-          speaking: speaking,
-          speakingLineName: speakingLineName,
-          speakingGeneration: speakingGeneration,
-          height: height,
+        child: _tappable(
+          piper: false,
+          child: _characterCore(
+            art: CharacterArt.clef,
+            pose: pose,
+            speaking: speaking,
+            speakingLineName: speakingLineName,
+            speakingGeneration: speakingGeneration,
+            height: height,
+          ),
         ),
       ),
     );
@@ -1174,13 +1118,16 @@ class _HighLowScreenState extends State<HighLowScreen> {
     return Positioned(
       left: layout.piperLeftInset,
       bottom: layout.screen.height - layout.piperFeetY,
-      child: _characterCore(
-        art: CharacterArt.piper,
-        pose: pose,
-        speaking: speaking,
-        speakingLineName: speakingLineName,
-        speakingGeneration: speakingGeneration,
-        height: height,
+      child: _tappable(
+        piper: true,
+        child: _characterCore(
+          art: CharacterArt.piper,
+          pose: pose,
+          speaking: speaking,
+          speakingLineName: speakingLineName,
+          speakingGeneration: speakingGeneration,
+          height: height,
+        ),
       ),
     );
   }

@@ -439,7 +439,7 @@ class _LoudQuietScreenState extends State<LoudQuietScreen> {
   }) => GestureDetector(
     key: ValueKey(key),
     // Tap a character to hear the round again (card 195).
-    onTap: _game.replay,
+    onTap: () => _game.tapCharacter(piper: art == CharacterArt.piper),
     child: CharacterSprite(
       art: art,
       pose: pose,

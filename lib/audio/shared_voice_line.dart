@@ -15,8 +15,8 @@ import 'spoken_line.dart';
 /// its state takes, when the shared wording stops fitting that game. Shared by
 /// default, overridden on purpose.
 ///
-/// The arrow cue has no recording yet, so it plays as a silent no-op until one
-/// is made, the same as any other missing asset.
+/// The arrow cue and the giggles have no recordings yet, so they play as a
+/// silent no-op until one is made, the same as any other missing asset.
 enum SharedVoiceLine implements SpokenLine {
   /// Clef's nudge, 2-3 and 4-5 wording ("Ooh, nearly! Listen again.").
   tryAgainClef,
@@ -40,7 +40,17 @@ enum SharedVoiceLine implements SpokenLine {
   /// calm instruction, "Press the arrow when you're done!" (card 182's
   /// wording). Replaces the earlier unrecorded hook, "Tap the arrow when
   /// you're ready." No recording yet.
-  pressTheArrowWhenDone;
+  pressTheArrowWhenDone,
+
+  /// Clef's giggle, non-verbal (Trello card 195): what Clef gives when the
+  /// child taps him in a round that is Piper's to ask. No words — a
+  /// low-pole instruction in his high voice would blur the pitch gap
+  /// between them. No recording yet.
+  giggleClef,
+
+  /// Piper's giggle, non-verbal (Trello card 195), the same for a round that
+  /// is Clef's to ask. No recording yet.
+  gigglePiper;
 
   @override
   String get assetName => name;
@@ -57,5 +67,7 @@ enum SharedVoiceLine implements SpokenLine {
     SharedVoiceLine.tryAgainPiper67 => true,
     SharedVoiceLine.tryAgainPiper8plus => true,
     SharedVoiceLine.pressTheArrowWhenDone => true,
+    SharedVoiceLine.giggleClef => false,
+    SharedVoiceLine.gigglePiper => true,
   };
 }

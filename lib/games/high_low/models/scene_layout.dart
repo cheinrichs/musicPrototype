@@ -403,26 +403,6 @@ class SceneLayout {
   /// are cropped/composed the same way). Below this line is bark and grass;
   /// above it is the disc an instrument stands on.
   static const stumpSurfaceFraction = 0.37;
-  double get _stumpDepth =>
-      instrumentSize *
-      stumpWidthOfInstrument *
-      stumpAspect *
-      (1 - stumpSurfaceFraction);
-
-  /// Where Listen Again sits: below the stumps, centred under them (Cooper:
-  /// "I like listen again below the stumps"), midway between the stumps'
-  /// lowest point and the bottom of the safe area.
-  Offset get listenAgainCenter {
-    final stumpsBottom = screen.height - groundY + _stumpDepth;
-    final floor = screen.height - insets.bottom;
-    return Offset(
-      (stumpAnchorX(0) + stumpAnchorX(noteCount - 1)) / 2,
-      math.min((stumpsBottom + floor) / 2, floor - _listenAgainHalfHeight),
-    );
-  }
-
-  /// Half Listen Again's height (its 40 px button), so it is never cut off.
-  static const double _listenAgainHalfHeight = 20;
 
   /// Where the A0 earned arrow sits: in the open air below the branch,
   /// between the last instrument and the platform column, level with the

@@ -305,7 +305,7 @@ void main() {
           state.startGame();
           await tester.pump();
           await tester.pump(const Duration(milliseconds: 4700));
-          state.replay();
+          state.tapCharacter(piper: false);
           await tester.pump();
           await tester.pump(const Duration(milliseconds: 4700));
 
@@ -486,6 +486,58 @@ void main() {
   });
 
   group('HighLowGameState — shared controls', () {
+    // Trello card 195: tapping a character replays the round, the asking
+    // character's cue first, then the notes; the other character never
+    // repeats the cue.
+    for (final stage in [AgencyStage.explore, AgencyStage.decide]) {
+      testWidgets('${stage.name}: the asking character says the cue, then '
+          'the notes play; the other character giggles, never the cue', (
+        tester,
+      ) async {
+        final audio = _OrderAudio();
+        final state = HighLowGameState(
+          totalPrompts: 2,
+          agencyStage: stage,
+          audio: audio,
+        );
+        state.startGame();
+        for (var i = 0; i < 6; i++) {
+          await tester.pump(const Duration(milliseconds: 1200));
+        }
+        expect(state.status, GameStatus.awaitingInput);
+        final askerIsPiper =
+            state.currentPrompt!.targetDirection != PitchDirection.higher;
+
+        audio.events.clear();
+        state.tapCharacter(piper: askerIsPiper);
+        for (var i = 0; i < 6; i++) {
+          await tester.pump(const Duration(milliseconds: 1200));
+        }
+        final cue = audio.events.first;
+        expect(cue, startsWith('line:'));
+        expect(cue, isNot(contains('giggle')));
+        expect(audio.events.skip(1).take(2), everyElement(startsWith('note:')));
+        expect(state.status, GameStatus.awaitingInput);
+
+        audio.events.clear();
+        state.tapCharacter(piper: !askerIsPiper);
+        for (var i = 0; i < 6; i++) {
+          await tester.pump(const Duration(milliseconds: 1200));
+        }
+        expect(
+          audio.events.first,
+          askerIsPiper ? 'line:giggleClef' : 'line:gigglePiper',
+        );
+        expect(audio.events, isNot(contains(cue)));
+        expect(audio.events.skip(1), hasLength(2));
+        expect(audio.events.skip(1), everyElement(startsWith('note:')));
+        expect(state.instrumentation, isEmpty);
+        state.escape();
+        expect(state.instrumentation.single.listenAgainCount, 2);
+        state.dispose();
+      });
+    }
+
     testWidgets('escape always advances immediately, mid-intro, unscored', (
       tester,
     ) async {
@@ -1527,6 +1579,35 @@ void main() {
       state.dispose();
     });
   });
+}
+
+/// Records every voice line and note, in the order the game asks for them.
+class _OrderAudio implements AudioController {
+  final List<String> events = [];
+
+  @override
+  Future<void> playVoiceLine(SpokenLine line) async {
+    events.add('line:${line.assetName}');
+  }
+
+  @override
+  Future<void> playVoiceLineAndAwait(SpokenLine line) async {
+    events.add('line:${line.assetName}');
+  }
+
+  @override
+  Future<void> playAssetForScale(String path, {double volume = 1.0}) async {
+    events.add('note:$path');
+  }
+
+  @override
+  Future<void> playSfx(SfxType sfx) async {}
+
+  @override
+  void stopCurrentNote() {}
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
 }
 
 /// Records the names of every line the game asks to play, and plays nothing.

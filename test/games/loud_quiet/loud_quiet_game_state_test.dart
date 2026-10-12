@@ -154,9 +154,46 @@ void main() {
       game.tapInstrument(1 - round.loudSide);
       expect(game.needle, closeTo(-1, 1e-9));
       final before = game.needle;
-      game.replay();
+      game.tapCharacter(piper: true);
       await _playThrough(tester);
       expect(game.needle, before);
+      game.dispose();
+    });
+
+    testWidgets('tapping the character who is not asking giggles, then the '
+        'sounds; the asking one goes straight to the sounds (card 195)', (
+      tester,
+    ) async {
+      final audio = _RecordingAudio();
+      final game = _game(audio, stage: AgencyStage.explore)..startGame();
+      await _playThrough(tester);
+      final askerIsPiper = !game.asksLoud;
+      audio.notes.clear();
+      game.tapCharacter(piper: !askerIsPiper);
+      await tester.pump();
+      expect(audio.lines.single, askerIsPiper ? 'giggleClef' : 'gigglePiper');
+      await _playThrough(tester);
+      expect(audio.notes, hasLength(2));
+      audio.lines.clear();
+      audio.notes.clear();
+      game.tapCharacter(piper: askerIsPiper);
+      await _playThrough(tester);
+      expect(audio.lines, isEmpty);
+      expect(audio.notes, hasLength(2));
+      game.dispose();
+    });
+
+    testWidgets('a replay during a wrong drop\'s "not that one" does not '
+        'strand it on screen', (tester) async {
+      final audio = _RecordingAudio();
+      final game = _game(audio, stage: AgencyStage.decide)..startGame();
+      await _playThrough(tester);
+      game.dropInstrument(1 - game.currentRound!.targetSide);
+      expect(game.drop, LoudQuietDrop.retry);
+      game.tapCharacter(piper: true);
+      await tester.pump(LoudQuietGameState.retryMinimum);
+      expect(game.drop, LoudQuietDrop.none);
+      await _playThrough(tester);
       game.dispose();
     });
 

@@ -26,6 +26,7 @@ import 'package:ear_trainer/audio/spoken_line.dart';
 import 'package:ear_trainer/audio/sfx_type.dart';
 import 'package:ear_trainer/games/high_low/widgets/high_low_caption.dart';
 import 'package:ear_trainer/models/agency_stage.dart';
+import 'package:ear_trainer/models/game_status.dart';
 import 'package:ear_trainer/models/round_order.dart';
 import 'package:ear_trainer/ui/components/progress_dots.dart';
 
@@ -1158,16 +1159,13 @@ void main() {
 
     testWidgets('the layout: close and Skip hug the true top corners, the '
         'caption is centred over the MEADOW on its plate (Trello card 187: '
-        'screen-centred text lands in the canopy), Listen Again sits below '
-        'the stumps (2026-09-28, Cooper: "I like listen again below the '
-        'stumps"), and there is no progress indicator', (tester) async {
+        'screen-centred text lands in the canopy), and there is no progress '
+        'indicator', (tester) async {
       await pumpAndFinishIntro(tester, viewport: roomyViewport);
       final size = roomyViewport;
 
       final close = tester.getRect(find.byTooltip('Close'));
       final skip = tester.getRect(find.byTooltip('Skip'));
-      final listen = tester.getRect(find.text('Listen Again'));
-      final caption = tester.getRect(find.byType(HighLowCaption));
       final plate = tester.getRect(
         find
             .descendant(
@@ -1186,12 +1184,6 @@ void main() {
       expect(plate.left, greaterThan(close.right));
       expect(plate.right, lessThanOrEqualTo(meadowRight + 0.5));
       expect(plate.center.dx, closeTo((close.right + meadowRight) / 2, 8.0));
-      // Listen Again now lives in the scene, below the stumps on the left —
-      // no longer under the (screen-centred) caption, and no longer
-      // excluded from the bottom of the screen: that's exactly where it is
-      // now, by design.
-      expect(listen.top, greaterThan(caption.bottom));
-      expect(listen.center.dx, lessThan(size.width * 0.5));
       expect(
         find.byType(ProgressDots),
         findsNothing,
@@ -1201,10 +1193,8 @@ void main() {
       );
       expect(find.text('I want something new'), findsNothing);
 
-      // Close and Skip stay out of the bottom band (still adult/escape
-      // controls, up top per the thumb-reach principle); Listen Again is
-      // deliberately excluded from this check now — it belongs low on
-      // screen, below the stumps.
+      // Close and Skip stay out of the bottom band (adult/escape controls,
+      // up top per the thumb-reach principle).
       final bottomBand = Rect.fromLTWH(
         0,
         size.height * 0.88,
@@ -1615,19 +1605,20 @@ void main() {
       return state;
     }
 
-    testWidgets('Listen Again sits on a cream pill, centred between the two '
-        'stumps — it was dark text on the dirt path, left of centre', (
-      tester,
-    ) async {
-      await pumpAt(tester, AgencyStage.decide);
-      final pill = find.byKey(const ValueKey('listen-again-pill'));
-      final box = tester.widget<Container>(pill).decoration! as BoxDecoration;
-      expect(box.gradient, isNotNull, reason: 'cream, like every control');
-      final layout = SceneLayout(roomyViewport, noteCount: 2);
-      expect(
-        tester.getRect(pill).center.dx,
-        closeTo((layout.stumpAnchorX(0) + layout.stumpAnchorX(1)) / 2, 1.0),
-      );
+    testWidgets('no Listen Again button: tapping either character replays '
+        'the round instead (Trello card 195)', (tester) async {
+      final state = await pumpAt(tester, AgencyStage.decide);
+      expect(find.text('Listen Again'), findsNothing);
+      expect(state.status, GameStatus.awaitingInput);
+      for (final key in ['hl-piper', 'hl-clef']) {
+        await tester.tap(find.byKey(ValueKey(key)));
+        await tester.pump();
+        expect(state.status, GameStatus.playing, reason: key);
+        for (var i = 0; i < 5; i++) {
+          await tester.pump(const Duration(milliseconds: 1200));
+        }
+        expect(state.status, GameStatus.awaitingInput, reason: key);
+      }
     });
 
     testWidgets('the instruction stays put when the six-second guidance '

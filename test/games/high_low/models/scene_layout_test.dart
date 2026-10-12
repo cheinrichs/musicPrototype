@@ -286,12 +286,6 @@ void main() {
         expect(l.arrowCentre.dx + 36, lessThan(l.platformColumnLeftX));
       });
 
-      test('Listen Again sits below the stumps and on screen', () {
-        final l = two();
-        expect(l.listenAgainCenter.dy, greaterThan(size.height - l.groundY));
-        expect(l.listenAgainCenter.dy + 20, lessThanOrEqualTo(size.height));
-      });
-
       test('three instruments are the same composition with one more: same '
           'tree, same Piper, same floor — only Clef moves, up to the '
           'branch — all clear of each other and of the tree, and fixed for '
