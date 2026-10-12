@@ -33,6 +33,9 @@ const _phones = {
 
 class _SilentAudio implements AudioController {
   @override
+  Future<Duration?> noteLength(String path) async => null;
+
+  @override
   Future<void> playAssetForScale(String path, {double volume = 1.0}) async {}
 
   @override

@@ -7,7 +7,6 @@ import '../../../audio/shared_voice_line.dart';
 import '../../../audio/sfx_type.dart';
 import '../../../models/agency_stage.dart';
 import '../../../models/concept_tier.dart';
-import '../../../models/dial_mode.dart';
 import '../../../models/game_status.dart';
 import '../../../models/round_order.dart';
 import '../../../models/round_set_length.dart';
@@ -18,6 +17,22 @@ import '../models/loud_quiet_round.dart';
 /// What a Decide drop is showing: nothing, a correct landing, or a gentle
 /// "not that one" settling back.
 enum LoudQuietDrop { none, correct, retry }
+
+/// One complete needle gesture (Trello card 208): out to [position] — 0
+/// rest at the quiet end, 1 the loud end — wobbling on arrival, and home
+/// to rest within [length], the sound's real length. [serial] tells a new
+/// gesture from the last, so the same instrument tapped twice swings twice.
+class NeedleSwing {
+  final double position;
+  final Duration length;
+  final int serial;
+
+  const NeedleSwing({
+    required this.position,
+    required this.length,
+    required this.serial,
+  });
+}
 
 /// The Loud or Quiet game (Trello card 162): the same three agency levels as
 /// High vs Low, about loudness instead of pitch.
@@ -37,12 +52,12 @@ enum LoudQuietDrop { none, correct, retry }
 /// with the shared pool, the thinking pose while a nudge plays, the skip
 /// logged as its own event, and [RoundInstrumentation] (borrowed as-is).
 ///
-/// **When the needle moves is [dialMode]** (Trello card 208, reversing
-/// build 90). By default it follows every sound — the round's own playback
-/// at every agency, Decide included, and every tap — and settles back to
-/// rest once the prompt has played, so it never sits on the answer. The dev
-/// toggle restores build 90's rule (only the child's taps, never at Decide),
-/// and each round records which mode it ran in.
+/// **The needle answers every sound it is free to show** (Trello card 208):
+/// the round's own playback and every tap, each a complete gesture — swing
+/// out to that sound's level, wobble, home to rest at the quiet end, timed
+/// to the sample's real length — see [needleSwing]. At Decide the dial is
+/// locked ([dialLocked]) until the correct drop opens it and the needle
+/// sweeps while that instrument plays.
 ///
 /// **No voice lines are recorded yet** (card 182), so the characters say
 /// nothing, rather than playing placeholder speech; only the shared nudges,
@@ -56,7 +71,6 @@ class LoudQuietGameState extends ChangeNotifier {
     this.agencyStage = AgencyStage.observe,
     this.conceptTier = ConceptTier.t1,
     this.roundOrder = RoundOrder.blocked,
-    this.dialMode = DialMode.everySound,
     NudgePool? nudges,
   }) : _audio = audio ?? AudioController.instance,
        _random = random ?? math.Random(),
@@ -89,8 +103,9 @@ class LoudQuietGameState extends ChangeNotifier {
   ConceptTier conceptTier;
   RoundOrder roundOrder;
 
-  /// When the needle moves (card 208); fixed for the set by the screen.
-  DialMode dialMode;
+  /// A sample's length when audio can't say (it isn't running, as in
+  /// tests): about what the note samples measure.
+  static const fallbackNoteLength = Duration(milliseconds: 1650);
 
   /// How long each sound is left to ring before the next, as in High vs Low.
   static const noteGap = Duration(milliseconds: 2300);
@@ -115,7 +130,8 @@ class LoudQuietGameState extends ChangeNotifier {
   Timer? _retryTimer;
 
   int? _playingIndex;
-  double _needle = 0;
+  NeedleSwing? _swing;
+  int _swingSerial = 0;
   final Set<int> _heard = {};
   final List<int> _tapSequence = [];
   bool _showArrow = false;
@@ -144,9 +160,18 @@ class LoudQuietGameState extends ChangeNotifier {
   /// The note-playing ring on an instrument, as on High vs Low.
   int? get playingIndex => _playingIndex;
 
-  /// Where the needle points: −1 the quiet end, 0 straight up (rest), +1 the
-  /// loud end.
-  double get needle => _needle;
+  /// The needle's latest gesture: every sound the dial is free to show
+  /// sends one, and the screen plays it through — swing out, wobble, home
+  /// to rest at the quiet end — restarting from wherever the needle is when
+  /// a new one arrives (card 208). Null until the first.
+  NeedleSwing? get needleSwing => _swing;
+
+  /// Decide's lock over the dial (card 208, Cooper's design): shut while the
+  /// child is being asked, so the needle can't give the answer away; opened
+  /// by the correct drop, and only by it — a wrong drop leaves it shut, a
+  /// wordless "not that one". Observe and Explore have no lock.
+  bool get dialLocked =>
+      agencyStage == AgencyStage.decide && _drop != LoudQuietDrop.correct;
 
   /// Observe: the earned arrow, once every instrument has been heard.
   bool get showArrow => agencyStage == AgencyStage.observe && _showArrow;
@@ -238,7 +263,6 @@ class LoudQuietGameState extends ChangeNotifier {
     final token = ++_token;
     _cancelTimers();
     _playingIndex = null;
-    _needle = 0;
     _heard.clear();
     _tapSequence.clear();
     _showArrow = false;
@@ -256,27 +280,21 @@ class LoudQuietGameState extends ChangeNotifier {
     unawaited(_playRound(token));
   }
 
-  /// The round's two sounds, in order — at its start and on a replay. With
-  /// [DialMode.everySound] the needle swings to each as it plays, at every
-  /// agency, then settles back to rest: left parked on the last sound it
-  /// would hand the answer to a child who wasn't even watching (card 208).
+  /// The round's two sounds, in order — at its start and on a replay. The
+  /// needle follows each (unless Decide's lock is shut) and is home at rest
+  /// again by the next, never parked on the answer (card 208).
   Future<void> _playRound(int token) async {
     _status = GameStatus.playing;
     notifyListeners();
     final round = currentRound;
     if (round == null) return;
-    final follow = dialMode == DialMode.everySound;
     for (final side in [0, 1]) {
       if (token != _token) return;
-      if (follow) {
-        _needle = LoudQuietRound.needlePosition(round.gainOf(side));
-      }
       _ring(side);
       unawaited(_playSide(side));
       await _wait(noteGap);
     }
     if (token != _token) return;
-    if (follow) _needle = 0;
     _becomeAnswerable(token);
   }
 
@@ -294,13 +312,31 @@ class LoudQuietGameState extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> _playSide(int side) async {
+  /// Plays [side], and — unless the dial is locked — sends the needle its
+  /// gesture for it, timed to the sample's real length (card 208: `play()`
+  /// resolves when a note starts, so it can't time an end). Returns that
+  /// length.
+  Future<Duration> _playSide(int side) async {
     final round = currentRound;
-    if (round == null) return;
-    await _audio.playAssetForScale(
-      round.instrumentOf(side).assetPathForMidi(round.midi),
+    if (round == null) return fallbackNoteLength;
+    final path = round.instrumentOf(side).assetPathForMidi(round.midi);
+    // The sound first, at once — a retap must never wait on anything.
+    final playing = _audio.playAssetForScale(
+      path,
       volume: round.playbackGainOf(side),
     );
+    final length = await _audio.noteLength(path) ?? fallbackNoteLength;
+    // Unless the round moved on, or the game closed, while it was read.
+    if (!_disposed && currentRound == round && !dialLocked) {
+      _swing = NeedleSwing(
+        position: LoudQuietRound.needlePosition(round.gainOf(side)),
+        length: length,
+        serial: ++_swingSerial,
+      );
+      notifyListeners();
+    }
+    await playing;
+    return length;
   }
 
   void _ring(int side) {
@@ -339,14 +375,9 @@ class LoudQuietGameState extends ChangeNotifier {
     }
     _firstResponseSide ??= side;
     _ring(side);
+    // Every tap is its own complete needle gesture, even the same
+    // instrument four times running (card 208) — see [_playSide].
     unawaited(_playSide(side));
-
-    // The dial answers the child's own tap — at every agency by default
-    // (card 208); in build 90's mode, only where there is no answer to
-    // give away.
-    if (dialMode == DialMode.everySound || agencyStage != AgencyStage.decide) {
-      _needle = LoudQuietRound.needlePosition(round.gainOf(side));
-    }
 
     switch (agencyStage) {
       case AgencyStage.observe:
@@ -438,7 +469,29 @@ class LoudQuietGameState extends ChangeNotifier {
     _record();
     notifyListeners();
     _timer?.cancel();
+    if (agencyStage == AgencyStage.decide) {
+      unawaited(_openTheDial(token, side));
+      return;
+    }
     _timer = Timer(celebration, () {
+      if (token != _token) return;
+      _advance();
+    });
+  }
+
+  /// A beat after the chime, so the chime doesn't mask a quiet one.
+  static const dialOpenBeat = Duration(milliseconds: 400);
+
+  /// Decide's correct drop opens the lock (now [dialLocked] is false): the
+  /// instrument plays and the needle sweeps to its level while it does, and
+  /// the round waits for the sound to finish before moving on (card 208).
+  Future<void> _openTheDial(int token, int side) async {
+    await _wait(dialOpenBeat);
+    if (token != _token) return;
+    final length = await _playSide(side);
+    if (token != _token) return;
+    _timer?.cancel();
+    _timer = Timer(length > celebration ? length : celebration, () {
       if (token != _token) return;
       _advance();
     });
@@ -508,7 +561,6 @@ class LoudQuietGameState extends ChangeNotifier {
         wrongTapCount: _wrongTaps,
         observeTapSequence: List.unmodifiable(_tapSequence),
         skipped: skipped,
-        dialMode: dialMode.name,
       ),
     );
   }
@@ -536,8 +588,12 @@ class LoudQuietGameState extends ChangeNotifier {
 
   @override
   void dispose() {
+    _disposed = true;
     ++_token;
     _cancelTimers();
     super.dispose();
   }
+
+  /// A sound's length is read asynchronously; the game may close meanwhile.
+  bool _disposed = false;
 }

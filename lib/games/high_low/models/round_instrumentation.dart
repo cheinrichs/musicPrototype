@@ -79,12 +79,6 @@ class RoundInstrumentation {
   /// child had done before the skip.
   final bool skipped;
 
-  /// Loud or Quiet only (Trello card 208): which dial mode the round ran in
-  /// — `DialMode.name`, whether the needle followed every sound including
-  /// the prompt or only the child's own taps — so how much children lean on
-  /// the needle can be measured rather than argued. Null in other games.
-  final String? dialMode;
-
   const RoundInstrumentation({
     required this.promptNumber,
     required this.waitedForPlaythrough,
@@ -96,6 +90,5 @@ class RoundInstrumentation {
     this.observeTapSequence = const [],
     this.observeFlightOrder = const [],
     this.skipped = false,
-    this.dialMode,
   });
 }

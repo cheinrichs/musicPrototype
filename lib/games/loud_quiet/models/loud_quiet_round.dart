@@ -89,17 +89,19 @@ class LoudQuietRound {
   /// …and at a narrow tier: 6 dB, half the amplitude.
   static const double narrowQuietGain = 0.5;
 
-  /// The quietest gain the dial shows, at the quiet end of the needle's
-  /// sweep; full gain is the loud end.
-  static const double quietestGain = wideQuietGain;
+  /// Where the dial's zero sits, in dB below full: under the quietest sound
+  /// it shows (−12 dB), so even the quietest is a short movement up from
+  /// rest and the loudest is the longest (card 208 — loudness is a
+  /// magnitude, not a polarity).
+  static const double dialFloorDb = -14;
 
-  /// Where the needle points for a sound at [gain]: −1 at the quiet end of its
-  /// sweep, +1 at the loud end, in decibels between them — so a narrow
-  /// round's quiet sound (6 dB down) sits in the middle zone.
+  /// Where the needle points for a sound at [gain]: 0 at rest (the dial's
+  /// zero, below the quiet end), 1 at full, in decibels between — a wide
+  /// round's quiet sound lands a seventh of the way, a narrow round's
+  /// (−6 dB) a little past halfway.
   static double needlePosition(double gain) {
-    double db(double g) => 20 * math.log(g) / math.ln10;
-    final t = (db(gain) - db(quietestGain)) / (0 - db(quietestGain));
-    return (t.clamp(0.0, 1.0)) * 2 - 1;
+    final db = 20 * math.log(gain) / math.ln10;
+    return ((db - dialFloorDb) / -dialFloorDb).clamp(0.0, 1.0);
   }
 
   /// A round at [tier], asking about the loud pole if [asksLoud]. Three-note

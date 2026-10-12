@@ -8,6 +8,7 @@ import 'package:ear_trainer/audio/audio_controller.dart';
 import 'package:ear_trainer/audio/sfx_type.dart';
 import 'package:ear_trainer/audio/spoken_line.dart';
 import 'package:ear_trainer/games/loud_quiet/models/loud_quiet_layout.dart';
+import 'package:ear_trainer/games/loud_quiet/models/loud_quiet_round.dart';
 import 'package:ear_trainer/games/loud_quiet/screens/loud_quiet_screen.dart';
 import 'package:ear_trainer/games/loud_quiet/state/loud_quiet_game_state.dart';
 import 'package:ear_trainer/models/agency_stage.dart';
@@ -15,6 +16,10 @@ import 'package:ear_trainer/models/game_status.dart';
 
 class _QuietAudio implements AudioController {
   int notes = 0;
+
+  /// Audio can't say here, so the game uses its fallback length.
+  @override
+  Future<Duration?> noteLength(String path) async => null;
 
   @override
   Future<void> playAssetForScale(String path, {double volume = 1.0}) async {
@@ -78,9 +83,8 @@ void main() {
       ],
     );
     await tester.pumpWidget(MaterialApp.router(routerConfig: router));
-    // Past the post-frame start and both opening sounds, in frames, so the
-    // animations actually run.
-    // Past the start, both opening sounds and the needle settling back.
+    // Past the post-frame start, both opening sounds and the needle coming
+    // home, in frames, so the animations actually run.
     for (var i = 0; i < 340; i++) {
       await tester.pump(const Duration(milliseconds: 16));
     }
@@ -89,18 +93,23 @@ void main() {
   /// Unmounts and lets the last timers run out, so none is left pending.
   Future<void> finish(WidgetTester tester) async {
     await tester.pumpWidget(const SizedBox());
-    await tester.pump(const Duration(seconds: 5));
+    // Long enough for a next round's whole opening, which a correct Decide
+    // drop starts only after its instrument has played (card 208).
+    await tester.pump(const Duration(seconds: 10));
   }
 
   double needleDegrees(WidgetTester tester) {
     final rotate = tester.widget<Transform>(
-      find.descendant(
-        of: find.byKey(const ValueKey('needle')),
-        matching: find.byType(Transform),
-      ),
+      find.byKey(const ValueKey('needle')),
     );
     final m = rotate.transform.storage;
     return math.atan2(m[1], m[0]) * 180 / math.pi;
+  }
+
+  Future<void> frames(WidgetTester tester, int ms) async {
+    for (var t = 0; t < ms; t += 16) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
   }
 
   for (final entry in viewports.entries) {
@@ -123,23 +132,63 @@ void main() {
     await finish(tester);
   });
 
-  testWidgets('the needle is back at rest, straight up, once the opening '
-      'sounds have played, and swings to the side the child taps', (
-    tester,
-  ) async {
+  testWidgets('the needle is home at rest — the quiet end — once the opening '
+      'sounds have played, and every tap on the loud one swings it out and '
+      'back, four taps four swings (card 208)', (tester) async {
     await mount(tester);
-    expect(needleDegrees(tester), closeTo(0, 0.01));
+    const rest = LoudQuietLayout.restDegrees;
+    expect(needleDegrees(tester), closeTo(rest, 0.5));
+    final loud = game.currentRound!.loudSide;
+    for (var i = 0; i < 4; i++) {
+      await tester.tap(find.byKey(ValueKey('lq-instrument-$loud')));
+      await frames(tester, 300);
+      expect(
+        needleDegrees(tester),
+        greaterThan(LoudQuietLayout.needleDegrees(1) - 12),
+        reason: 'tap ${i + 1} swings out to loud',
+      );
+      await frames(tester, 2000);
+      expect(needleDegrees(tester), closeTo(rest, 0.5), reason: 'and home');
+    }
+    await finish(tester);
+  });
+
+  testWidgets('a tap mid-gesture restarts from where the needle is — no '
+      'jump home, no queue', (tester) async {
+    await mount(tester);
     final loud = game.currentRound!.loudSide;
     await tester.tap(find.byKey(ValueKey('lq-instrument-$loud')));
-    for (var i = 0; i < 60; i++) {
-      await tester.pump(const Duration(milliseconds: 16));
-    }
-    expect(needleDegrees(tester), closeTo(LoudQuietLayout.sweepDegrees, 0.5));
+    await frames(tester, 600);
+    final before = needleDegrees(tester);
     await tester.tap(find.byKey(ValueKey('lq-instrument-${1 - loud}')));
-    for (var i = 0; i < 60; i++) {
-      await tester.pump(const Duration(milliseconds: 16));
-    }
-    expect(needleDegrees(tester), closeTo(-LoudQuietLayout.sweepDegrees, 0.5));
+    await tester.pump(const Duration(milliseconds: 16));
+    expect(needleDegrees(tester), closeTo(before, 6));
+    await frames(tester, 300);
+    expect(
+      needleDegrees(tester),
+      closeTo(
+        LoudQuietLayout.needleDegrees(
+          LoudQuietRound.needlePosition(game.currentRound!.quietGain),
+        ),
+        6,
+      ),
+      reason: 'now at the quiet sound\'s level',
+    );
+    await finish(tester);
+  });
+
+  testWidgets('Decide: a lock sits over the knob; a wrong drop leaves it '
+      'shut, the right one opens it', (tester) async {
+    await mount(tester, stage: AgencyStage.decide);
+    expect(find.byKey(const ValueKey('dial-lock')), findsOneWidget);
+    game.dropInstrument(1 - game.currentRound!.targetSide);
+    await frames(tester, 300);
+    expect(find.byKey(const ValueKey('dial-lock')), findsOneWidget);
+    expect(game.dialLocked, isTrue);
+    await frames(tester, 1500);
+    game.dropInstrument(game.currentRound!.targetSide);
+    await frames(tester, 900);
+    expect(find.byKey(const ValueKey('dial-lock')), findsNothing);
     await finish(tester);
   });
 

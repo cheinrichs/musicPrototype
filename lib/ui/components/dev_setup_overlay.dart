@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import '../../app/state/dev_settings_state.dart';
 import '../../models/agency_stage.dart';
 import '../../models/concept_tier.dart';
-import '../../models/dial_mode.dart';
 import '../../models/round_order.dart';
 import '../../models/round_set_length.dart';
 import '../theme/theme.dart';
@@ -110,33 +109,12 @@ class DevSetupOverlay extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: AppSpacing.xs),
-                  Row(
-                    children: [
-                      Expanded(
-                        flex: 5,
-                        child: _SettingRow<RoundOrder>(
-                          title: 'Order',
-                          values: RoundOrder.values,
-                          labelOf: (o) => o.label,
-                          selected: devSettings.roundOrder,
-                          onSelected: devSettings.setRoundOrder,
-                        ),
-                      ),
-                      const SizedBox(width: AppSpacing.sm),
-                      // Trello card 208: Loud or Quiet's needle follows every
-                      // sound, or only the child's taps (build 90's rule).
-                      Expanded(
-                        flex: 4,
-                        child: _SettingRow<DialMode>(
-                          title: 'Dial',
-                          values: DialMode.values,
-                          labelOf: (m) => m.label,
-                          selected: devSettings.dialMode,
-                          onSelected: devSettings.setDialMode,
-                          titleWidth: 32,
-                        ),
-                      ),
-                    ],
+                  _SettingRow<RoundOrder>(
+                    title: 'Order',
+                    values: RoundOrder.values,
+                    labelOf: (o) => o.label,
+                    selected: devSettings.roundOrder,
+                    onSelected: devSettings.setRoundOrder,
                   ),
                   const SizedBox(height: AppSpacing.xs),
                   // Two two-way toggles share one row, so the column still

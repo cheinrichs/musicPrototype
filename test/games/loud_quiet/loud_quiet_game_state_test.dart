@@ -6,7 +6,6 @@ import 'package:ear_trainer/audio/sfx_type.dart';
 import 'package:ear_trainer/audio/spoken_line.dart';
 import 'package:ear_trainer/games/high_low/models/high_low_instrument.dart';
 import 'package:ear_trainer/games/loud_quiet/models/loud_quiet_round.dart';
-import 'package:ear_trainer/models/dial_mode.dart';
 import 'package:ear_trainer/games/loud_quiet/state/loud_quiet_game_state.dart';
 import 'package:ear_trainer/models/agency_stage.dart';
 import 'package:ear_trainer/models/concept_tier.dart';
@@ -18,6 +17,13 @@ import 'package:ear_trainer/models/round_set_length.dart';
 class _RecordingAudio implements AudioController {
   final List<(String, double)> notes = [];
   final List<String> lines = [];
+
+  /// What every sample measures here — longer than a celebration, so a
+  /// test can tell the round waiting for the sound from the timer.
+  static const length = Duration(milliseconds: 1700);
+
+  @override
+  Future<Duration?> noteLength(String path) async => length;
 
   @override
   Future<void> playAssetForScale(String path, {double volume = 1.0}) async {
@@ -168,16 +174,22 @@ void main() {
       expect(quiet.targetSide, 1 - quiet.loudSide);
     });
 
-    test('needle: full gain at the loud end, the quietest at the quiet end, '
-        'a narrow round\'s quiet sound in the middle', () {
-      expect(LoudQuietRound.needlePosition(1.0), closeTo(1, 1e-9));
+    test('the dial reads up from zero below the quietest (card 208): the '
+        'quiet sound a short way, a narrow round\'s quiet one past halfway, '
+        'full gain all the way', () {
       expect(
         LoudQuietRound.needlePosition(LoudQuietRound.wideQuietGain),
-        closeTo(-1, 1e-9),
+        closeTo(2 / 14, 0.01),
       );
       expect(
         LoudQuietRound.needlePosition(LoudQuietRound.narrowQuietGain),
-        closeTo(0, 0.01),
+        closeTo(8 / 14, 0.01),
+      );
+      expect(LoudQuietRound.needlePosition(1.0), closeTo(1, 1e-9));
+      expect(
+        LoudQuietRound.needlePosition(0.01),
+        0,
+        reason: 'never below rest',
       );
     });
   });
@@ -197,83 +209,86 @@ void main() {
       game.dispose();
     });
 
-    // Card 208: by default the needle follows the round's own playback at
-    // every agency, Decide included, then settles back to rest.
-    for (final stage in AgencyStage.values) {
-      testWidgets('${stage.name}: the needle swings to each sound of the '
-          'prompt, then settles back to rest', (tester) async {
+    // Card 208: every sound the dial is free to show sends the needle a
+    // complete gesture; the screen plays it out (see dial_needle_test).
+    for (final stage in [AgencyStage.observe, AgencyStage.explore]) {
+      testWidgets('${stage.name}: each prompt sound sends a swing to its '
+          'level, timed to the sample\'s real length', (tester) async {
         final audio = _RecordingAudio();
         final game = _game(audio, stage: stage)..startGame();
         final round = game.currentRound!;
-        double at(int side) =>
-            LoudQuietRound.needlePosition(round.gainOf(side));
         await tester.pump();
-        expect(game.needle, closeTo(at(0), 1e-9));
+        final first = game.needleSwing!;
+        expect(first.position, LoudQuietRound.needlePosition(round.gainOf(0)));
+        expect(first.length, _RecordingAudio.length);
         await tester.pump(LoudQuietGameState.noteGap);
-        expect(game.needle, closeTo(at(1), 1e-9));
-        await tester.pump(LoudQuietGameState.noteGap);
-        expect(game.needle, 0, reason: 'not parked on the answer');
-        expect(game.records, isEmpty);
-        game.escape();
-        expect(game.records.single.dialMode, 'everySound');
+        final second = game.needleSwing!;
+        expect(second.serial, greaterThan(first.serial));
+        expect(second.position, LoudQuietRound.needlePosition(round.gainOf(1)));
+        expect(game.dialLocked, isFalse);
+        await _playThrough(tester);
         game.dispose();
       });
     }
 
-    testWidgets('the needle follows the child\'s tap; a replay swings it '
-        'again and settles it back to rest', (tester) async {
+    testWidgets('the same instrument tapped four times swings four times — '
+        'the bug Cooper found', (tester) async {
       final audio = _RecordingAudio();
-      final game = _game(audio)..startGame();
+      final game = _game(audio, stage: AgencyStage.explore)..startGame();
       await _playThrough(tester);
-      final round = game.currentRound!;
-      game.tapInstrument(round.loudSide);
-      expect(game.needle, closeTo(1, 1e-9));
-      game.tapInstrument(1 - round.loudSide);
-      expect(game.needle, closeTo(-1, 1e-9));
-      game.tapCharacter(piper: true);
-      await tester.pump();
-      expect(
-        game.needle,
-        closeTo(LoudQuietRound.needlePosition(round.gainOf(0)), 1e-9),
-      );
-      await _playThrough(tester);
-      expect(game.needle, 0);
+      final loud = game.currentRound!.loudSide;
+      final serials = <int>{};
+      for (var i = 0; i < 4; i++) {
+        game.tapInstrument(loud);
+        await tester.pump();
+        serials.add(game.needleSwing!.serial);
+        expect(game.needleSwing!.position, 1.0);
+      }
+      expect(serials, hasLength(4));
+      await tester.pump(const Duration(seconds: 2));
       game.dispose();
     });
 
-    testWidgets('build 90\'s mode, behind the toggle: the prompt never moves '
-        'the needle, a replay leaves it, and Decide taps leave it still; '
-        'the round records the mode', (tester) async {
+    testWidgets('Decide: the dial is locked — the prompt and taps never move '
+        'it, a wrong drop leaves it shut — and the correct drop opens it: '
+        'the instrument plays, the needle sweeps, and the round waits for '
+        'the sound', (tester) async {
       final audio = _RecordingAudio();
-      final game = LoudQuietGameState(
-        audio: audio,
-        random: math.Random(1),
-        dialMode: DialMode.childTapsOnly,
-      )..startGame();
-      await tester.pump();
-      expect(game.needle, 0);
+      final game = _game(audio, stage: AgencyStage.decide)..startGame();
       await _playThrough(tester);
-      expect(game.needle, 0);
+      expect(game.dialLocked, isTrue);
+      expect(game.needleSwing, isNull, reason: 'prompt never moved it');
       final round = game.currentRound!;
       game.tapInstrument(round.loudSide);
-      expect(game.needle, closeTo(1, 1e-9));
-      game.tapCharacter(piper: true);
-      await _playThrough(tester);
-      expect(game.needle, closeTo(1, 1e-9));
-      game.escape();
-      expect(game.records.single.dialMode, 'childTapsOnly');
-      game.dispose();
+      await tester.pump();
+      expect(game.needleSwing, isNull, reason: 'taps never move it');
 
-      final decide = LoudQuietGameState(
-        audio: audio,
-        random: math.Random(1),
-        agencyStage: AgencyStage.decide,
-        dialMode: DialMode.childTapsOnly,
-      )..startGame();
-      await _playThrough(tester);
-      decide.tapInstrument(decide.currentRound!.loudSide);
-      expect(decide.needle, 0);
-      decide.dispose();
+      game.dropInstrument(1 - round.targetSide);
+      await tester.pump();
+      expect(game.dialLocked, isTrue, reason: 'a wrong drop leaves it shut');
+      await tester.pump(LoudQuietGameState.retryMinimum);
+
+      audio.notes.clear();
+      game.dropInstrument(round.targetSide);
+      expect(game.dialLocked, isFalse);
+      await tester.pump(LoudQuietGameState.dialOpenBeat);
+      await tester.pump();
+      expect(
+        audio.notes.single.$1,
+        contains(round.instrumentOf(round.targetSide).name),
+      );
+      expect(
+        game.needleSwing!.position,
+        LoudQuietRound.needlePosition(round.gainOf(round.targetSide)),
+      );
+      expect(game.currentPromptIndex, 0);
+      await tester.pump(LoudQuietGameState.celebration);
+      expect(game.currentPromptIndex, 0, reason: 'the sound is still playing');
+      await tester.pump(_RecordingAudio.length);
+      expect(game.currentPromptIndex, 1);
+      expect(game.dialLocked, isTrue, reason: 'locked again for the next');
+      await tester.pump(const Duration(seconds: 6));
+      game.dispose();
     });
 
     testWidgets('tapping the character who is not asking giggles, then the '
@@ -398,20 +413,16 @@ void main() {
       game.dispose();
     });
 
-    testWidgets('Decide: a tap plays and moves the needle (card 208), but '
-        'answers nothing', (tester) async {
+    testWidgets('Decide: a tap only plays — nothing is answered', (
+      tester,
+    ) async {
       final audio = _RecordingAudio();
       final game = _game(audio, stage: AgencyStage.decide)..startGame();
       await _playThrough(tester);
-      final round = game.currentRound!;
-      final target = round.targetSide;
+      final target = game.currentRound!.targetSide;
       for (var i = 0; i < 6; i++) {
         game.tapInstrument(target);
       }
-      expect(
-        game.needle,
-        closeTo(LoudQuietRound.needlePosition(round.gainOf(target)), 1e-9),
-      );
       expect(game.status, GameStatus.awaitingInput);
       expect(game.records, isEmpty);
       game.dispose();
@@ -433,7 +444,9 @@ void main() {
       expect(game.canDrop, isFalse);
       expect(game.correctCount, 1);
       expect(game.records.single.firstResponseCorrect, isFalse);
-      await tester.pump(LoudQuietGameState.celebration);
+      // The lock opens and the instrument plays out before the next round.
+      await tester.pump(LoudQuietGameState.dialOpenBeat);
+      await tester.pump(_RecordingAudio.length);
       expect(game.currentPromptIndex, 1);
       expect(game.drop, LoudQuietDrop.none);
       game.dispose();

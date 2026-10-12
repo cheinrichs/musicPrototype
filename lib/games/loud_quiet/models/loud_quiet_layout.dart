@@ -83,6 +83,21 @@ class LoudQuietLayout {
   /// To set by eye against the art on a device.
   static const double sweepDegrees = 55;
 
+  /// The needle at rest — the dial's zero, below the quietest (card 208):
+  /// nearly flat at the bottom of the quiet end of the arc, so the quietest
+  /// sound is the shortest movement and the loudest the longest. Measured
+  /// on the renders, the face's zone boundaries sit about ±30° from
+  /// vertical, so −85° is under the quiet zone, a wide round's quiet sound
+  /// (−65°) lands mid-quiet, a narrow one's (−5°) mid-scale, loud (+55°) in
+  /// the loud zone. The art points straight up at 0°, so this is a
+  /// start-angle offset; the pivot is unchanged. To set by eye on a device.
+  static const double restDegrees = -85;
+
+  /// The needle's angle for a dial position: 0 rest, 1 the loud end
+  /// ([sweepDegrees]).
+  static double needleDegrees(double position) =>
+      restDegrees + position * (sweepDegrees - restDegrees);
+
   // ---- the needle art, DialNeedle.png (1024 x 1536) ----
 
   static const needleAspect = 1024 / 1536;

@@ -88,6 +88,7 @@ void main() {
           'sweep the tip is inside the face, above the hub', () {
         final layout = l();
         for (final deg in [
+          LoudQuietLayout.restDegrees,
           -LoudQuietLayout.sweepDegrees,
           LoudQuietLayout.sweepDegrees,
         ]) {

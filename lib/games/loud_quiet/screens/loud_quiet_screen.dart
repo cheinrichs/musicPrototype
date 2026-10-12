@@ -20,6 +20,7 @@ import '../../high_low/widgets/high_low_header.dart';
 import '../../high_low/widgets/mouth_frames.dart';
 import '../models/loud_quiet_layout.dart';
 import '../state/loud_quiet_game_state.dart';
+import '../widgets/dial_needle.dart';
 
 /// The Loud or Quiet screen (Trello card 162): Piper at the left, the
 /// instruments on stumps through the middle, the dial on the right with Clef
@@ -62,10 +63,7 @@ class _LoudQuietScreenState extends State<LoudQuietScreen> {
     // card 196), read live so the dev screen's change takes effect.
     _game =
         widget.gameState ??
-        LoudQuietGameState(
-          roundSetLength: _devSettings().roundSetLength,
-          dialMode: _devSettings().dialMode,
-        );
+        LoudQuietGameState(roundSetLength: _devSettings().roundSetLength);
     _game.addListener(_onChanged);
     _confetti = ConfettiController(duration: AppAnimations.confettiBurst);
 
@@ -107,8 +105,7 @@ class _LoudQuietScreenState extends State<LoudQuietScreen> {
       ..agencyStage = dev.agencyStage
       ..conceptTier = dev.conceptTier
       ..roundOrder = dev.roundOrder
-      ..roundSetLength = dev.roundSetLength
-      ..dialMode = dev.dialMode;
+      ..roundSetLength = dev.roundSetLength;
     setState(() => _showDevGate = false);
     _game.startGame();
   }
@@ -215,7 +212,7 @@ class _LoudQuietScreenState extends State<LoudQuietScreen> {
             fit: BoxFit.fill,
           ),
         ),
-        _buildNeedle(layout),
+        ..._buildNeedle(layout),
         if (round != null)
           for (final side in [0, 1])
             if (round.instrumentOf(side).name != 'piano')
@@ -237,35 +234,25 @@ class _LoudQuietScreenState extends State<LoudQuietScreen> {
     );
   }
 
-  /// The needle, turning about its pivot on the dial's hub — never its
-  /// image centre. Rest is straight up; it eases to each sound as it plays
-  /// (see [DialMode]) and back to rest after the prompt.
-  Widget _buildNeedle(LoudQuietLayout layout) {
-    final r = layout.needleRect;
-    final pivot = Alignment(
-      LoudQuietLayout.needlePivot.dx * 2 - 1,
-      LoudQuietLayout.needlePivot.dy * 2 - 1,
-    );
-    return Positioned.fromRect(
-      rect: r,
-      child: IgnorePointer(
-        child: TweenAnimationBuilder<double>(
-          key: const ValueKey('needle'),
-          tween: Tween(end: _game.needle * LoudQuietLayout.sweepDegrees),
-          duration: const Duration(milliseconds: 450),
-          curve: Curves.easeOutBack,
-          builder: (context, degrees, child) => Transform.rotate(
-            angle: degrees * 3.141592653589793 / 180,
-            alignment: pivot,
-            child: child,
-          ),
-          child: Image.asset(
-            'assets/images/backgrounds/props/DialNeedle.png',
-            fit: BoxFit.fill,
+  /// The needle — a complete gesture per sound, home to rest at the quiet
+  /// end — and, at Decide, the lock over its knob (card 208).
+  List<Widget> _buildNeedle(LoudQuietLayout layout) {
+    final lockSize = layout.dialHeight * 0.16;
+    final hub = layout.hubPoint;
+    return [
+      Positioned.fromRect(
+        rect: layout.needleRect,
+        child: IgnorePointer(child: DialNeedle(swing: _game.needleSwing)),
+      ),
+      if (_game.agencyStage == AgencyStage.decide)
+        Positioned(
+          left: hub.dx - lockSize / 2,
+          top: hub.dy - lockSize / 2,
+          child: IgnorePointer(
+            child: DialLock(locked: _game.dialLocked, size: lockSize),
           ),
         ),
-      ),
-    );
+    ];
   }
 
   Widget _buildStump(LoudQuietLayout layout, int side) {

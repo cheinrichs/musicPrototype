@@ -180,6 +180,20 @@ class AudioController {
     });
   }
 
+  /// How long the sample at [path] really plays — its decoded length, not a
+  /// guess — or null if audio isn't running or it can't load. Loud or
+  /// Quiet's needle times its return to rest by this (Trello card 208):
+  /// [playAssetForScale] resolves when the note *starts*, which has bitten
+  /// this codebase twice when used as an end.
+  Future<Duration?> noteLength(String path) async {
+    if (!_isInitialized) return null;
+    if (!_noteCache.containsKey(path)) {
+      await _preloadAssetPath(path);
+    }
+    final source = _noteCache[path];
+    return source == null ? null : _soloud!.getLength(source);
+  }
+
   /// Stop the current scale note (call at end of scale). Also cancels a
   /// note that has been requested but hasn't started yet.
   void stopCurrentNote() {
