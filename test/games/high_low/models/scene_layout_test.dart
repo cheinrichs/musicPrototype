@@ -241,6 +241,30 @@ void main() {
           }
         });
 
+        test('A TAP NEVER ANSWERS (Trello card L00pxs7q): from anywhere on '
+            'an instrument, a finger that slips during a tap cannot reach a '
+            'drop slot — every slot is more than a slip away from every '
+            'instrument, on every phone, in every seat Clef can take', () {
+          // Comfortably past the touch slop that starts a drag (18 px), so
+          // only a deliberate drag reaches the tree.
+          const slip = 48.0;
+          for (final l in [two(), three()]) {
+            for (var i = 0; i < l.noteCount; i++) {
+              final box = instrumentBox(l, i);
+              for (final p in l.freePlatforms) {
+                final slot = l.slotRect(p);
+                expect(
+                  slot.left - box.right,
+                  greaterThan(slip),
+                  reason:
+                      'instrument $i to platform $p '
+                      '(${l.noteCount} instruments)',
+                );
+              }
+            }
+          }
+        });
+
         test('the slot footprint fits its platform\'s face', () {
           final l = two();
           for (var i = 0; i < 3; i++) {

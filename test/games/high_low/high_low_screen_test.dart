@@ -514,7 +514,9 @@ void main() {
           final gesture = await tester.startGesture(start);
           await tester.pump(const Duration(milliseconds: 20));
           // 30px: past the ~18px touch slop that starts a Draggable, but a
-          // tiny fraction of the ~200px trip to the centered character.
+          // fraction of the trip to the tree slot (at least 96px from any
+          // instrument on any phone — see scene_layout_test.dart's "A TAP
+          // NEVER ANSWERS").
           await gesture.moveTo(start + const Offset(30, 0));
           await tester.pump(const Duration(milliseconds: 20));
           await gesture.up();
