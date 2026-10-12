@@ -125,8 +125,9 @@ void main() {
     });
 
     testWidgets(
-      'escaping without tapping records nothing — there is nothing to '
-      'score unless a real tap streak resolved the round',
+      'escaping without tapping scores nothing — it is logged as a skip, '
+      'its own event, not a completed round (Trello card 173, decided '
+      '2026-10-12)',
       (tester) async {
         final state = HighLowGameState(
           totalPrompts: 1,
@@ -141,7 +142,8 @@ void main() {
         state.escape();
         await tester.pump();
         expect(state.status, GameStatus.completed);
-        expect(state.instrumentation, isEmpty);
+        expect(state.results, isEmpty, reason: 'nothing scored');
+        expect(state.instrumentation.single.skipped, isTrue);
       },
     );
 
@@ -1305,9 +1307,11 @@ void main() {
       state.dispose();
     });
 
-    testWidgets('the adult\'s skip mid-flight cancels it and advances once, '
-        'unrecorded — skipped rounds are still not logged (open question, '
-        'carded)', (tester) async {
+    testWidgets('the adult\'s skip mid-flight cancels it, advances once, and '
+        'is logged as a skip — exactly one record, carrying the taps the '
+        'child made, never a completed round (decided 2026-10-12)', (
+      tester,
+    ) async {
       final state = flightState(totalPrompts: 3);
       state.startGame();
       await tester.pump();
@@ -1321,7 +1325,12 @@ void main() {
       state.escape();
       expect(state.isObserveFlying, isFalse);
       expect(state.currentPromptIndex, 1);
-      expect(state.instrumentation.length, before);
+      expect(state.instrumentation.length, before + 1);
+      final record = state.instrumentation.last;
+      expect(record.skipped, isTrue);
+      expect(record.observeTapSequence, [0, 1]);
+      expect(record.observeFlightOrder, isEmpty, reason: 'no flight finished');
+      expect(state.results, isEmpty, reason: 'nothing scored');
 
       // The cancelled flight's timers must not fire into the next round.
       await tester.pump(wholeFlight * 2);
@@ -1345,6 +1354,25 @@ void main() {
       expect(state.currentPromptIndex, 1);
       await tester.pump(wholeFlight * 2);
       expect(state.currentPromptIndex, 1, reason: 'the hold did not fire');
+      state.dispose();
+    });
+
+    testWidgets('a skip after the round is already recorded (a correct drop '
+        'celebrating) is not logged a second time', (tester) async {
+      final state = HighLowGameState(
+        totalPrompts: 3,
+        agencyStage: AgencyStage.decide,
+      );
+      state.startGame();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 4700));
+      state.dropInstrument(state.currentPrompt!.targetSide);
+      expect(state.instrumentation.length, 1);
+
+      state.escape(); // inside the celebration, before the round turns
+      expect(state.instrumentation.length, 1, reason: 'one record per round');
+      expect(state.instrumentation.single.skipped, isFalse);
+      await tester.pump(const Duration(seconds: 3));
       state.dispose();
     });
 

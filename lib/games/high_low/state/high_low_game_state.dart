@@ -192,6 +192,11 @@ class HighLowGameState extends ChangeNotifier {
   /// because Explore's five-tap rule just fired a nudge. See
   /// [isConsidering].
   bool _considering = false;
+
+  /// Whether this round has already been recorded (completed, or skipped),
+  /// so a Skip pressed during a correct drop's celebration is not logged as
+  /// a second, skipped record of the same round.
+  bool _roundRecorded = false;
   int _consideringSerial = 0;
   Timer? _consideringTimer;
 
@@ -671,6 +676,7 @@ class HighLowGameState extends ChangeNotifier {
   void _startRound() {
     final token = ++_roundToken;
     _exploreTaps.reset();
+    _roundRecorded = false;
     _cancelPendingTimer();
     _cancelNudgeTimer();
     _cancelTapRingTimer();
@@ -1058,10 +1064,17 @@ class HighLowGameState extends ChangeNotifier {
     await _playCaptionThenIntro(token, _activeCaption!);
   }
 
-  void _recordRoundResult({List<int> observeFlightOrder = const []}) {
+  /// Records the current round. A [skipped] round (the adult's Skip) is
+  /// logged as its own event but never scored — see
+  /// [RoundInstrumentation.skipped].
+  void _recordRoundResult({
+    List<int> observeFlightOrder = const [],
+    bool skipped = false,
+  }) {
     final prompt = currentPrompt;
     if (prompt == null) return;
-    _results.add(PromptResult(prompt: prompt, isCorrect: true));
+    _roundRecorded = true;
+    if (!skipped) _results.add(PromptResult(prompt: prompt, isCorrect: true));
     _instrumentation.add(
       RoundInstrumentation(
         promptNumber: prompt.promptNumber,
@@ -1073,6 +1086,7 @@ class HighLowGameState extends ChangeNotifier {
         wrongTapCount: _wrongTapCount,
         observeTapSequence: List.unmodifiable(_observeTapSequence),
         observeFlightOrder: observeFlightOrder,
+        skipped: skipped,
       ),
     );
   }
@@ -1118,8 +1132,10 @@ class HighLowGameState extends ChangeNotifier {
     _cancelTapRingTimer();
     _cancelObserveFlightTimer();
 
-    // Skipped rounds aren't scored — nothing to record, this isn't an
-    // answer of any kind.
+    // Logged as a skip — its own event, never scored (Trello card 173,
+    // decided 2026-10-12). Not if this round was already recorded (a skip
+    // during a correct drop's celebration), or it would be logged twice.
+    if (!_roundRecorded) _recordRoundResult(skipped: true);
     _advanceOrComplete();
   }
 
@@ -1241,6 +1257,7 @@ class HighLowGameState extends ChangeNotifier {
     _tappedSidesObserve.clear();
     _observeTapSequence.clear();
     _exploreTaps.reset();
+    _roundRecorded = false;
     _showArrow = false;
     _arrowCueSpoken = false;
     _nudgeVisible = false;

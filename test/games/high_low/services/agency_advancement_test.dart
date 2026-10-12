@@ -4,12 +4,14 @@ import 'package:ear_trainer/games/high_low/services/agency_advancement.dart';
 import 'package:ear_trainer/models/agency_stage.dart';
 
 void main() {
-  RoundInstrumentation observeRound({int n = 1}) => RoundInstrumentation(
-    promptNumber: n,
-    waitedForPlaythrough: true,
-    firstResponseCorrect: null,
-    listenAgainCount: 0,
-  );
+  RoundInstrumentation observeRound({int n = 1, bool skipped = false}) =>
+      RoundInstrumentation(
+        promptNumber: n,
+        waitedForPlaythrough: true,
+        firstResponseCorrect: null,
+        listenAgainCount: 0,
+        skipped: skipped,
+      );
 
   RoundInstrumentation exploreRound({int wrongTapCount = 0}) =>
       RoundInstrumentation(
@@ -54,6 +56,80 @@ void main() {
       );
       expect(result.change, AgencyChange.advance);
       expect(result.reason, isNotEmpty);
+    });
+
+    group('skipped rounds (logged since 2026-10-12, Trello card 173)', () {
+      test('a skip inside the recent window holds Observe where it is — the '
+          'rule always said "consecutive rounds completed without being '
+          'skipped"; logging skips is what makes it true', () {
+        final rounds = [
+          for (var i = 0; i < AgencyAdvancement.roundsRequired; i++)
+            observeRound(n: i),
+        ];
+        rounds[rounds.length - 2] = observeRound(skipped: true);
+        final result = AgencyAdvancement.evaluate(
+          current: AgencyStage.observe,
+          instrumentation: rounds,
+        );
+        expect(result.change, AgencyChange.hold);
+      });
+
+      test('…and a skip inside the window holds Explore too', () {
+        final result = AgencyAdvancement.evaluate(
+          current: AgencyStage.explore,
+          instrumentation: [
+            for (var i = 0; i < AgencyAdvancement.roundsRequired - 1; i++)
+              exploreRound(),
+            RoundInstrumentation(
+              promptNumber: 9,
+              waitedForPlaythrough: true,
+              firstResponseCorrect: null,
+              listenAgainCount: 0,
+              skipped: true,
+            ),
+          ],
+        );
+        expect(result.change, AgencyChange.hold);
+      });
+
+      test('a full window of completed rounds after an older skip still '
+          'advances — only the recent window counts', () {
+        final result = AgencyAdvancement.evaluate(
+          current: AgencyStage.observe,
+          instrumentation: [
+            observeRound(skipped: true),
+            for (var i = 0; i < AgencyAdvancement.roundsRequired; i++)
+              observeRound(n: i),
+          ],
+        );
+        expect(result.change, AgencyChange.advance);
+      });
+
+      test('Decide demotion reads completed rounds only, as before skips were '
+          'logged — a skip neither triggers nor blocks it', () {
+        final failing = List.generate(
+          AgencyAdvancement.roundsRequired,
+          (_) => dragRound(wrongTapCount: 99),
+        );
+        final withSkip = [
+          ...failing.take(1),
+          RoundInstrumentation(
+            promptNumber: 9,
+            waitedForPlaythrough: true,
+            firstResponseCorrect: null,
+            listenAgainCount: 0,
+            skipped: true,
+          ),
+          ...failing.skip(1),
+        ];
+        expect(
+          AgencyAdvancement.evaluate(
+            current: AgencyStage.decide,
+            instrumentation: withSkip,
+          ).change,
+          AgencyChange.demote,
+        );
+      });
     });
 
     group('Explore → Drag', () {

@@ -80,28 +80,40 @@ class AgencyAdvancement {
     required AgencyStage current,
     required List<RoundInstrumentation> instrumentation,
   }) {
-    if (instrumentation.length < roundsRequired) return AgencyEvaluation.hold;
-    final recent = instrumentation.sublist(
-      instrumentation.length - roundsRequired,
-    );
-
-    switch (current) {
-      case AgencyStage.observe:
-        return _observeToExplore(recent);
-      case AgencyStage.explore:
-        return _exploreToDecide(recent) ?? AgencyEvaluation.hold;
-      case AgencyStage.decide:
-        return _decideDemotion(recent) ?? AgencyEvaluation.hold;
+    // Moving UP needs the last few rounds to be completed ones, back to back:
+    // a skipped round (logged since 2026-10-12, Trello card 173) breaks the
+    // streak. Before skips were logged they left no trace, so "consecutive
+    // rounds completed without being skipped" was not actually enforced.
+    if (current != AgencyStage.decide) {
+      if (instrumentation.length < roundsRequired) return AgencyEvaluation.hold;
+      final recent = instrumentation.sublist(
+        instrumentation.length - roundsRequired,
+      );
+      if (recent.any((r) => r.skipped)) return AgencyEvaluation.hold;
+      return current == AgencyStage.observe
+          ? _observeToExplore(recent)
+          : _exploreToDecide(recent) ?? AgencyEvaluation.hold;
     }
+
+    // Moving DOWN reads completed rounds only, exactly as before skips were
+    // logged. Whether skips should count toward demotion is a product
+    // question, not decided here.
+    final completed = [
+      for (final r in instrumentation)
+        if (!r.skipped) r,
+    ];
+    if (completed.length < roundsRequired) return AgencyEvaluation.hold;
+    final recent = completed.sublist(completed.length - roundsRequired);
+    return _decideDemotion(recent) ?? AgencyEvaluation.hold;
   }
 
   /// Observe's own completion criterion (tapping both instruments) is what
-  /// gets a round recorded at all — [HighLowGameState.tapArrow] only ever
-  /// fires once [HighLowGameState.showArrow] is true, and a skipped round
-  /// records nothing (see [HighLowGameState.escape]'s doc comment). So the
-  /// mere presence of [roundsRequired] recorded rounds already *is* "the
-  /// child taps each instrument, across a few rounds" — there is nothing
-  /// further to check per round.
+  /// gets a round recorded as completed — [HighLowGameState.tapArrow] only
+  /// ever fires once [HighLowGameState.showArrow] is true, and a skipped
+  /// round is recorded as skipped (see [RoundInstrumentation.skipped]), which
+  /// [evaluate] has already ruled out of the window. So [roundsRequired]
+  /// completed rounds already *is* "the child taps each instrument, across a
+  /// few rounds" — there is nothing further to check per round.
   static AgencyEvaluation _observeToExplore(
     List<RoundInstrumentation> recent,
   ) => AgencyEvaluation(

@@ -70,6 +70,15 @@ class RoundInstrumentation {
   /// pitch first. Empty when no flight ran.
   final List<int> observeFlightOrder;
 
+  /// Whether the adult's Skip ended this round rather than the child (Trello
+  /// card 173's open question, decided 2026-10-12, Cooper may overrule): a
+  /// skip is logged as its own event, distinct from a completed round. At
+  /// Observe it is the adult's escape valve and evidence of difficulty,
+  /// which the tracking-log card wants kept separable from completion. A
+  /// skipped round is never scored, and the fields above hold whatever the
+  /// child had done before the skip.
+  final bool skipped;
+
   const RoundInstrumentation({
     required this.promptNumber,
     required this.waitedForPlaythrough,
@@ -80,5 +89,6 @@ class RoundInstrumentation {
     this.wrongTapCount = 0,
     this.observeTapSequence = const [],
     this.observeFlightOrder = const [],
+    this.skipped = false,
   });
 }
