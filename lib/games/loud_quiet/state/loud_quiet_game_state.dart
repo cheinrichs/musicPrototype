@@ -543,7 +543,28 @@ class LoudQuietGameState extends ChangeNotifier {
     _advance();
   }
 
-  void _record({bool skipped = false}) {
+  /// The child left the set with the close (Trello card 196): its own
+  /// event, distinct from finishing the set and from the adult's [escape].
+  /// Recorded against the round in progress, never scored, and
+  /// [debugPrint]ed until a persisted tracking log exists (card 128).
+  void leaveSet() {
+    if (_status == GameStatus.completed || _status == GameStatus.notStarted) {
+      return;
+    }
+    _audio.stopCurrentNote();
+    if (!_roundRecorded) _record(leftSet: true);
+    debugPrint(
+      'Left the set via close: Loud or Quiet, ${agencyStage.label}, '
+      'round ${_index + 1} of $totalPrompts',
+    );
+  }
+
+  /// How far through the set the child is, 0 to 1 — the progress bar's
+  /// fill (card 196): a step per finished round, full once the set is.
+  double get setProgress =>
+      _status == GameStatus.completed ? 1 : _index / totalPrompts;
+
+  void _record({bool skipped = false, bool leftSet = false}) {
     final round = currentRound;
     if (round == null || _roundRecorded) return;
     _roundRecorded = true;
@@ -561,6 +582,7 @@ class LoudQuietGameState extends ChangeNotifier {
         wrongTapCount: _wrongTaps,
         observeTapSequence: List.unmodifiable(_tapSequence),
         skipped: skipped,
+        leftSet: leftSet,
       ),
     );
   }

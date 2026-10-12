@@ -11,6 +11,7 @@ import '../../../models/concept_tier.dart';
 import '../../../models/game_status.dart';
 import '../../../models/pitch_direction.dart';
 import '../../../models/round_order.dart';
+import '../../../models/round_set_length.dart';
 import '../models/high_low_instrument.dart';
 import '../models/high_low_prompt.dart';
 import '../models/round_instrumentation.dart';
@@ -96,7 +97,28 @@ class HighLowGameState extends ChangeNotifier {
   final AudioController _audio;
   final PromptGenerator _generator;
   final RoundSequencer _sequencer;
-  final int totalPrompts;
+
+  /// The shared per-agency round count (Trello card 196) — never a literal
+  /// in this game. The screen passes the live setting; settable before
+  /// [startGame], like [agencyStage].
+  RoundSetLength roundSetLength;
+
+  /// A fixed count instead, for tests that need one regardless of stage.
+  final int? _totalPromptsOverride;
+
+  /// Fixed when the set starts, so changing agency mid-set can't change it.
+  int? _setLength;
+
+  /// How many rounds this set runs: [roundSetLength] at the set's agency.
+  int get totalPrompts =>
+      _setLength ??
+      _totalPromptsOverride ??
+      roundSetLength.lengthFor(agencyStage);
+
+  /// How far through the set the child is, 0 to 1 — the progress bar's
+  /// fill (card 196): a step per finished round, full once the set is.
+  double get setProgress =>
+      _status == GameStatus.completed ? 1 : _currentPromptIndex / totalPrompts;
 
   /// Mutable so a debug-only pre-game gate can override these (Trello card
   /// 92) before calling [startGame] — see DevSetupOverlay. Never changes
@@ -294,14 +316,16 @@ class HighLowGameState extends ChangeNotifier {
     AudioController? audio,
     PromptGenerator? generator,
     RoundSequencer? sequencer,
-    this.totalPrompts = 5,
+    this.roundSetLength = RoundSetLength.standard,
+    int? totalPrompts,
     this.agencyStage = AgencyStage.decide,
     ConceptTier conceptTier = ConceptTier.t1,
     this.roundOrder = RoundOrder.blocked,
     this.observeFlight = false,
     this.voiceOverrides = const {},
     NudgePool? nudges,
-  }) : requestedTier = conceptTier,
+  }) : _totalPromptsOverride = totalPrompts,
+       requestedTier = conceptTier,
        _nudges = nudges ?? NudgePool(),
        _audio = audio ?? AudioController.instance,
        _generator = generator ?? PromptGenerator(),
@@ -575,6 +599,7 @@ class HighLowGameState extends ChangeNotifier {
 
   /// Start a new game.
   void startGame() {
+    _setLength = _totalPromptsOverride ?? roundSetLength.lengthFor(agencyStage);
     final targets = _sequencer.sequence(count: totalPrompts, order: roundOrder);
     _prompts = _generator.generatePrompts(
       count: totalPrompts,
@@ -1062,11 +1087,14 @@ class HighLowGameState extends ChangeNotifier {
   void _recordRoundResult({
     List<int> observeFlightOrder = const [],
     bool skipped = false,
+    bool leftSet = false,
   }) {
     final prompt = currentPrompt;
     if (prompt == null) return;
     _roundRecorded = true;
-    if (!skipped) _results.add(PromptResult(prompt: prompt, isCorrect: true));
+    if (!skipped && !leftSet) {
+      _results.add(PromptResult(prompt: prompt, isCorrect: true));
+    }
     _instrumentation.add(
       RoundInstrumentation(
         promptNumber: prompt.promptNumber,
@@ -1079,7 +1107,26 @@ class HighLowGameState extends ChangeNotifier {
         observeTapSequence: List.unmodifiable(_observeTapSequence),
         observeFlightOrder: observeFlightOrder,
         skipped: skipped,
+        leftSet: leftSet,
       ),
+    );
+  }
+
+  /// The child left the set with the close (Trello card 196): its own
+  /// event, distinct from finishing the set and from the adult's [escape].
+  /// The round in progress is recorded as left (unless it was already
+  /// recorded), never scored. No persisted tracking log exists yet (card
+  /// 128), so the event is also [debugPrint]ed — as agency changes are —
+  /// rather than lost when the screen closes.
+  void leaveSet() {
+    if (_status == GameStatus.completed || _status == GameStatus.notStarted) {
+      return;
+    }
+    _audio.stopCurrentNote();
+    if (!_roundRecorded) _recordRoundResult(leftSet: true);
+    debugPrint(
+      'Left the set via close: High vs Low, ${agencyStage.label}, '
+      'round ${_currentPromptIndex + 1} of $totalPrompts',
     );
   }
 

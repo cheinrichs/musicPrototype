@@ -353,14 +353,25 @@ still centres the caption on the screen between equal `sideWidth` columns.
   doesn't read, and it was already low-contrast against pale sky before the
   new tree (confirmed on device).
 
-## The progress indicator is gone (a decision, not a deletion)
+## The progress bar is back (Trello card 196, 2026-10-12)
 
-Cooper: "it's only 5 rounds and it's always 5 rounds." It told the child nothing.
-**Bring it back if round counts stop being fixed** — adaptive lengths, or A1
-completing on taps rather than a round count — because it then becomes
-meaningful again. If it returns it must stay a separate, small, non-interactive
-object, never merged with Skip (progress is colourful and small children poke
-it; Skip is the adult's quiet control).
+It was removed when every set was five rounds ("it's always 5 rounds"). It returned
+once set length began to vary by agency (Observe 3, Explore 4, Decide 5, from the
+shared `RoundSetLength`), and once Cooper watched what it does for a small child: it
+tells him the thing will end. For a three-year-old the bar is a contract, not a reward.
+
+- **One continuous bar, not pips.** It fills a step as each round ends. It lives in
+  `RoundSetProgressBar`, shared by High vs Low and Loud or Quiet through
+  `HighLowHeader.progress`.
+- **The X, the bar and Skip share the top row, and the bar dominates.** The X is
+  small and grey, but its tap target is still 44 px; leaving is the quieter of the
+  two, never harder to reach. The caption sits on the row beneath.
+- **A full bar really ends the set.** After a short beat it goes to the games screen
+  (`RoundSetEnd`), never a silent restart and no longer the reward screen with
+  "play again". Once stones exist, the ending becomes the stone's celebration and
+  the bar counts the stone's rounds.
+- **It stays a separate, non-interactive object,** never merged with Skip.
+- **Sage green,** outside Loud or Quiet's cream-gold-orange loudness ramp.
 
 ## Poses
 

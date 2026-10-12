@@ -100,6 +100,25 @@ too hard, or the game needs rework.
 > - pattern across sessions (one skip is noise, the same game skipped across days is
 >   signal)
 
+### 4a. Leaving the set with the close (X)
+
+A third event, kept apart from finishing the set and from the adult's Skip (Trello card
+196, logged since 2026-10-12): `RoundInstrumentation.leftSet` on the round in progress,
+never scored. It is the clearest boredom signal the app has. Cooper's three-year-old
+reached the arrow well at Observe, then closed the game on the third round.
+
+- **It is not a skip.** Skip moves on within the set and is usually the adult's. Leaving
+  ends the set, and is often the child's.
+- **Read it with the progress bar.** Since card 196 the bar shows the set ending. Leaving
+  one round before the end means something different from leaving on the first round.
+- **Don't make the X harder to reach to lower the count.** A child should be able to
+  leave; the count is the measurement, not the problem. The X is now small and grey
+  beside a dominant bar, but its tap target is still a full 44 px.
+- **Where it goes today:** the record lives with the session, and the event is
+  `debugPrint`ed. No persisted tracking log exists yet (card 128), so nothing survives
+  past the screen. It does not feed agency advancement; advancement only runs on a
+  completed set.
+
 ### 5. Exposure counts
 
 Weak as evidence of learning — they say nothing about comprehension. But fine as a

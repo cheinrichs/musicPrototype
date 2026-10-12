@@ -79,6 +79,12 @@ class RoundInstrumentation {
   /// child had done before the skip.
   final bool skipped;
 
+  /// Whether the child left the whole set with the close (X) during this
+  /// round (Trello card 196) — a third event, distinct from completing the
+  /// round and from the adult's [skipped]: the clearest boredom signal the
+  /// app has. Never scored. See docs/product/ADVANCEMENT_SIGNALS.md.
+  final bool leftSet;
+
   const RoundInstrumentation({
     required this.promptNumber,
     required this.waitedForPlaythrough,
@@ -90,5 +96,6 @@ class RoundInstrumentation {
     this.observeTapSequence = const [],
     this.observeFlightOrder = const [],
     this.skipped = false,
+    this.leftSet = false,
   });
 }

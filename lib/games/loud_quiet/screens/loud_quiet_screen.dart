@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:confetti/confetti.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -13,6 +15,7 @@ import '../../../ui/components/arc_flight.dart';
 import '../../../ui/components/dev_setup_overlay.dart';
 import '../../../ui/components/drifting_notes.dart';
 import '../../../ui/components/game_screen_layout.dart';
+import '../../../ui/components/round_set_end.dart';
 import '../../../ui/theme/theme.dart';
 import '../../high_low/ordering/ordering_slot.dart';
 import '../../high_low/widgets/character_art.dart';
@@ -115,7 +118,8 @@ class _LoudQuietScreenState extends State<LoudQuietScreen> {
       _lastConfetti = _game.confettiTrigger;
       _confetti.play();
     }
-    if (_game.status == GameStatus.completed) {
+    // Once per set — the screen stays up for the full bar's beat.
+    if (_game.status == GameStatus.completed && _setEndTimer == null) {
       try {
         context.read<ProgressState>().completeSession(
           gameType: 'loud_quiet',
@@ -125,20 +129,21 @@ class _LoudQuietScreenState extends State<LoudQuietScreen> {
       } on ProviderNotFoundException {
         // Tests without the app's providers.
       }
-      context.go(
-        AppRoutes.reward,
-        extra: {
-          'correctCount': _game.correctCount,
-          'totalCount': _game.totalPrompts,
-          'gameType': 'loud_quiet',
-        },
-      );
+      // The bar is full: show it so for a beat, then the set really ends
+      // (Trello card 196) — to the games screen, never a silent restart.
+      _setEndTimer = Timer(RoundSetEnd.beat, () {
+        if (mounted) RoundSetEnd.leave(context);
+      });
     }
     setState(() {});
   }
 
+  /// Ends the set once its bar has shown full — see [_onChanged].
+  Timer? _setEndTimer;
+
   @override
   void dispose() {
+    _setEndTimer?.cancel();
     _game.removeListener(_onChanged);
     if (_ownsGame) _game.dispose();
     _confetti.dispose();
@@ -169,7 +174,12 @@ class _LoudQuietScreenState extends State<LoudQuietScreen> {
           ),
           header: HighLowHeader(
             title: LoudQuietScreen.title,
-            onClose: () => context.go(AppRoutes.home),
+            onClose: () {
+              // Leaving is its own logged event (card 196).
+              _game.leaveSet();
+              context.go(AppRoutes.home);
+            },
+            progress: _game.setProgress,
             captionText: _game.captionText,
             guidanceText: _game.guidanceText,
             skipEnabled: _game.status != GameStatus.completed,

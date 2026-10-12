@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:ear_trainer/app/router.dart';
@@ -247,16 +248,72 @@ void main() {
     await finish(tester);
   });
 
-  testWidgets('finishing the session goes to the reward screen', (
-    tester,
-  ) async {
+  double barFill(WidgetTester tester) {
+    final bar = tester.getSize(
+      find.byKey(const ValueKey('round-set-progress')),
+    );
+    final fill = tester.getSize(
+      find.byKey(const ValueKey('round-set-progress-fill')),
+    );
+    return fill.width / (bar.width - 4);
+  }
+
+  testWidgets('the progress bar fills a step per round, and when full the '
+      'set really ends — the games screen after a beat, never a silent '
+      'restart or a reward screen (card 196)', (tester) async {
     await mount(tester);
-    for (var i = 0; i < game.totalPrompts; i++) {
-      game.escape();
+    expect(game.totalPrompts, 3, reason: 'Observe: the shared setting');
+    expect(barFill(tester), closeTo(0, 0.01));
+    game.escape();
+    await frames(tester, 600);
+    expect(barFill(tester), closeTo(1 / 3, 0.02));
+    game.escape();
+    game.escape();
+    await frames(tester, 600);
+    expect(barFill(tester), closeTo(1, 0.02));
+    expect(find.text('home'), findsNothing, reason: 'shown full first');
+    await frames(tester, 400);
+    expect(find.text('home'), findsOneWidget);
+    expect(find.text('reward'), findsNothing);
+    await finish(tester);
+  });
+
+  testWidgets('the close sits small beside the bar, its tap target still '
+      'full size, and leaving logs its own event (card 196)', (tester) async {
+    await mount(tester);
+    final close = tester.getRect(find.byKey(const ValueKey('quiet-close')));
+    final bar = tester.getRect(
+      find.byKey(const ValueKey('round-set-progress')),
+    );
+    expect(close.width, greaterThanOrEqualTo(44));
+    expect(close.height, greaterThanOrEqualTo(44));
+    expect(bar.width, greaterThan(667 * 0.6), reason: 'the bar dominates');
+    expect((close.center.dy - bar.center.dy).abs(), lessThan(4));
+    // The whole of the close takes a tap, corner to corner.
+    for (final p in [
+      close.center,
+      close.topLeft + const Offset(3, 3),
+      close.bottomRight - const Offset(3, 3),
+    ]) {
+      final hit = tester.hitTestOnBinding(p);
+      expect(
+        hit.path.any(
+          (e) =>
+              e.target is RenderPointerListener ||
+              e.target.runtimeType.toString().contains('Gesture'),
+        ),
+        isTrue,
+        reason: 'tap at $p reaches the close',
+      );
     }
+    await tester.tap(find.byTooltip('Close'));
     await tester.pump();
     await tester.pump();
-    expect(find.text('reward'), findsOneWidget);
+    expect(find.text('home'), findsOneWidget, reason: 'the tap left');
+    expect(game.records, hasLength(1));
+    expect(game.records.single.leftSet, isTrue);
+    expect(game.records.single.skipped, isFalse);
+    expect(find.text('home'), findsOneWidget);
     await finish(tester);
   });
 }

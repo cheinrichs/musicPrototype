@@ -19,6 +19,8 @@ import '../../../models/game_status.dart';
 import '../../../ui/components/arc_flight.dart';
 import '../../../ui/components/circle_icon_button.dart';
 import '../../../ui/components/dev_setup_overlay.dart';
+import '../../../ui/components/round_set_end.dart';
+import '../../../models/round_set_length.dart';
 import '../../../ui/components/drifting_notes.dart';
 import '../../../ui/components/game_screen_layout.dart';
 import '../../../ui/components/glow_wiggle_character.dart';
@@ -109,6 +111,16 @@ class _HighLowScreenState extends State<HighLowScreen> {
   /// start a session at the active profile's own agency capability (Trello
   /// card 172) and, at session end, to write an [AgencyAdvancement] result
   /// back to it.
+  /// The live round-set lengths; the app always provides them, and tests
+  /// without the app's providers get the standard ones.
+  RoundSetLength _resolveRoundSetLength() {
+    try {
+      return context.read<DevSettingsState>().roundSetLength;
+    } on ProviderNotFoundException {
+      return RoundSetLength.standard;
+    }
+  }
+
   ProfileState? _resolveProfileState() {
     try {
       return context.read<ProfileState>();
@@ -209,7 +221,11 @@ class _HighLowScreenState extends State<HighLowScreen> {
     _canUseDevTools = _resolveCanUseDevTools();
     _showDevGate = _canUseDevTools;
     _ownsGameState = widget.gameState == null || widget.ownsGameState;
-    _gameState = widget.gameState ?? HighLowGameState();
+    // The round count comes from the one shared per-agency setting (Trello
+    // card 196), as Loud or Quiet's does.
+    _gameState =
+        widget.gameState ??
+        HighLowGameState(roundSetLength: _resolveRoundSetLength());
     _gameState.addListener(_onGameStateChanged);
     _confettiController = ConfettiController(
       duration: AppAnimations.confettiBurst,
@@ -235,6 +251,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
 
   @override
   void dispose() {
+    _setEndTimer?.cancel();
     _gameState.removeListener(_onGameStateChanged);
     if (_ownsGameState) _gameState.dispose();
     _confettiController.dispose();
@@ -246,7 +263,9 @@ class _HighLowScreenState extends State<HighLowScreen> {
       _lastConfettiTrigger = _gameState.confettiTrigger;
       _confettiController.play();
     }
-    if (_gameState.status == GameStatus.completed) {
+    // Once per set: the screen now stays up for the full bar's beat, so
+    // later notifications must not complete the session twice.
+    if (_gameState.status == GameStatus.completed && _setEndTimer == null) {
       _evaluateAgencyAdvancement();
       final progressState = context.read<ProgressState>();
       progressState.completeSession(
@@ -254,27 +273,35 @@ class _HighLowScreenState extends State<HighLowScreen> {
         correctCount: _gameState.correctCount,
         totalCount: _gameState.totalPrompts,
       );
-      if (_gameState.correctCount >= 4) {
+      // Four of five, before sets varied in length (card 196): the same
+      // 80%, so a three-round Observe set can still earn it.
+      if (_gameState.correctCount * 5 >= _gameState.totalPrompts * 4) {
         context.read<SkillState>().awardXp(
           MusicalSkill.pitchAwareness,
           _gameState.correctCount * 10,
         );
       }
 
-      final routeExtra =
-          GoRouterState.of(context).extra as Map<String, dynamic>?;
-      context.go(
-        AppRoutes.reward,
-        extra: {
-          'correctCount': _gameState.correctCount,
-          'totalCount': _gameState.totalPrompts,
-          'gameType': 'high_low',
-          'fromPath': routeExtra?['fromPath'] ?? false,
-          'nodeId': routeExtra?['nodeId'],
-        },
-      );
+      // The bar is full: show it so for a beat, then the set really ends
+      // (Trello card 196) — back to the games screen, not a reward screen
+      // with "play again" that would loop the set behind a full bar.
+      _setEndTimer = Timer(RoundSetEnd.beat, () {
+        if (!mounted) return;
+        RoundSetEnd.leave(context, routeExtra: _routeExtra());
+      });
     }
     setState(() {});
+  }
+
+  /// Ends the set once its bar has shown full — see [_onGameStateChanged].
+  Timer? _setEndTimer;
+
+  Object? _routeExtra() {
+    try {
+      return GoRouterState.of(context).extra;
+    } catch (_) {
+      return null;
+    }
   }
 
   void _startFromDevGate() {
@@ -293,7 +320,8 @@ class _HighLowScreenState extends State<HighLowScreen> {
       ..agencyStage = devSettings.agencyStage
       ..conceptTier = devSettings.conceptTier
       ..roundOrder = devSettings.roundOrder
-      ..observeFlight = devSettings.observeFlight;
+      ..observeFlight = devSettings.observeFlight
+      ..roundSetLength = devSettings.roundSetLength;
     final threeNote = devSettings.conceptTier.noteCount == 3;
     setState(() {
       _showDevGate = false;
@@ -429,6 +457,8 @@ class _HighLowScreenState extends State<HighLowScreen> {
             ),
             header: HighLowHeader(
               onClose: () {
+                // Leaving is its own logged event (card 196).
+                _gameState.leaveSet();
                 final extra =
                     GoRouterState.of(context).extra as Map<String, dynamic>?;
                 if (extra?['fromPath'] == true) {
@@ -436,6 +466,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
                 }
                 context.go(AppRoutes.home);
               },
+              progress: _gameState.setProgress,
               // The instruction stays put; Explore's six-second guidance
               // joins it as a line beneath, never replaces it (Trello card
               // 193). See [HighLowGameState.secondaryCaptionText].

@@ -149,15 +149,13 @@ void main() {
     final closeRect = tester.getRect(find.byTooltip('Close'));
     final captionRect = tester.getRect(find.textContaining('higher'));
 
+    // Since the progress bar took the top row (Trello card 196) the caption
+    // sits on the row beneath the close, so it can't run under it; a margin
+    // below replaces the margin beside.
     expect(
-      captionRect.left,
-      greaterThan(closeRect.right),
-      reason: 'the caption must start to the right of the close button',
-    );
-    expect(
-      captionRect.left - closeRect.right,
+      captionRect.top - closeRect.bottom,
       greaterThanOrEqualTo(4.0),
-      reason: 'there must be a real margin, not just adjacency',
+      reason: 'a real margin below the close, not just adjacency',
     );
   });
 
@@ -1157,10 +1155,10 @@ void main() {
       }
     });
 
-    testWidgets('the layout: close and Skip hug the true top corners, the '
-        'caption is centred over the MEADOW on its plate (Trello card 187: '
-        'screen-centred text lands in the canopy), and there is no progress '
-        'indicator', (tester) async {
+    testWidgets('the layout: close, the progress bar and Skip share the top '
+        'row and the bar dominates (Trello card 196); the caption is centred '
+        'over the MEADOW on its plate beneath them (card 187: screen-centred '
+        'text lands in the canopy)', (tester) async {
       await pumpAndFinishIntro(tester, viewport: roomyViewport);
       final size = roomyViewport;
 
@@ -1181,15 +1179,20 @@ void main() {
       expect(skip.right, greaterThan(size.width * 0.9));
       expect(skip.center.dy, lessThan(size.height * 0.25));
       expect(skip.height, lessThanOrEqualTo(44));
-      expect(plate.left, greaterThan(close.right));
+      final bar = tester.getRect(
+        find.byKey(const ValueKey('round-set-progress')),
+      );
+      expect(bar.width, greaterThan(size.width * 0.6), reason: 'it dominates');
+      expect(bar.left, greaterThan(close.right));
+      expect(bar.right, lessThan(skip.left));
+      expect((bar.center.dy - close.center.dy).abs(), lessThan(4));
+      expect(plate.top, greaterThan(close.bottom), reason: 'the row beneath');
       expect(plate.right, lessThanOrEqualTo(meadowRight + 0.5));
       expect(plate.center.dx, closeTo((close.right + meadowRight) / 2, 8.0));
       expect(
         find.byType(ProgressDots),
         findsNothing,
-        reason:
-            'always five rounds, so it told the child nothing; see '
-            'docs/product/HIGH_LOW_SCREEN_LAYOUT.md for what would bring it back',
+        reason: 'one continuous bar; the pips were withdrawn (card 196)',
       );
       expect(find.text('I want something new'), findsNothing);
 
@@ -1398,6 +1401,68 @@ void main() {
         );
       },
     );
+  });
+
+  group('the round set has an end (Trello card 196)', () {
+    testWidgets('the bar fills a step per round from the shared per-agency '
+        'count, and a full bar ends the set on the games screen — never the '
+        'reward screen, never a silent restart', (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      tester.view.physicalSize = roomyViewport;
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      final state = HighLowGameState(agencyStage: AgencyStage.observe);
+      expect(state.totalPrompts, 3, reason: 'Observe: the shared setting');
+      final router = GoRouter(
+        initialLocation: AppRoutes.highLow,
+        routes: [
+          GoRoute(
+            path: AppRoutes.highLow,
+            builder: (context, _) =>
+                HighLowScreen(gameState: state, ownsGameState: true),
+          ),
+          GoRoute(
+            path: AppRoutes.reward,
+            builder: (context, _) => const Scaffold(body: Text('REWARD')),
+          ),
+          GoRoute(
+            path: AppRoutes.home,
+            builder: (context, _) => const Scaffold(body: Text('GAMES')),
+          ),
+        ],
+      );
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider(create: (_) => ProgressState()),
+            ChangeNotifierProvider(create: (_) => SkillState()),
+          ],
+          child: MaterialApp.router(routerConfig: router),
+        ),
+      );
+      await tester.pump();
+      expect(find.byKey(const ValueKey('round-set-progress')), findsOneWidget);
+      expect(state.setProgress, 0);
+      for (var round = 0; round < 3; round++) {
+        state.tapInstrument(0);
+        state.tapInstrument(1);
+        state.tapArrow();
+        await tester.pump();
+        if (round < 2) {
+          expect(state.setProgress, closeTo((round + 1) / 3, 1e-9));
+        }
+      }
+      expect(state.setProgress, 1);
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 50)),
+      );
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text('GAMES'), findsNothing, reason: 'shown full first');
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pump();
+      expect(find.text('GAMES'), findsOneWidget);
+      expect(find.text('REWARD'), findsNothing);
+    });
   });
 
   group('speaking never moves a character (device bug, build 75: Piper and/or '

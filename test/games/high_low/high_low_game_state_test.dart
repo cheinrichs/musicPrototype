@@ -485,6 +485,36 @@ void main() {
     );
   });
 
+  group('HighLowGameState — the round set (Trello card 196)', () {
+    test('the set length comes from the shared per-agency setting: 3 at '
+        'Observe, 4 at Explore, 5 at Decide', () {
+      for (final (stage, n) in [
+        (AgencyStage.observe, 3),
+        (AgencyStage.explore, 4),
+        (AgencyStage.decide, 5),
+      ]) {
+        final state = HighLowGameState(agencyStage: stage);
+        expect(state.totalPrompts, n, reason: stage.name);
+        state.dispose();
+      }
+    });
+
+    testWidgets('leaving with the close is its own event: the round is '
+        'logged as left, not skipped and not scored', (tester) async {
+      final state = HighLowGameState(
+        agencyStage: AgencyStage.decide,
+        audio: _RecordingAudio(),
+      );
+      state.startGame();
+      await tester.pump(const Duration(seconds: 5));
+      state.leaveSet();
+      expect(state.instrumentation.single.leftSet, isTrue);
+      expect(state.instrumentation.single.skipped, isFalse);
+      expect(state.correctCount, 0);
+      state.dispose();
+    });
+  });
+
   group('HighLowGameState — shared controls', () {
     // Trello card 195: tapping a character replays the round, the asking
     // character's cue first, then the notes; the other character never

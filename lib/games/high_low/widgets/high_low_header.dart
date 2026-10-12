@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import '../../../ui/components/circle_icon_button.dart';
+import '../../../ui/components/round_set_progress_bar.dart';
 import '../../../ui/theme/theme.dart';
 import 'high_low_caption.dart';
 
@@ -84,6 +85,13 @@ class HighLowHeader extends StatelessWidget {
   /// tree's canopy. Close and Skip stay at the edges either way.
   final EdgeInsets? captionPadding;
 
+  /// How far through the round set the child is, 0 to 1 (Trello card 196).
+  /// Given, the top row is the progress bar — near full width, dominant —
+  /// with a small grey close beside it and Skip at the far end, and the
+  /// caption drops to the row beneath. Leaving stays available but is the
+  /// quieter of the two: Davis found the old close and left mid-set.
+  final double? progress;
+
   const HighLowHeader({
     super.key,
     required this.onClose,
@@ -94,6 +102,7 @@ class HighLowHeader extends StatelessWidget {
     required this.onSkip,
     this.below,
     this.captionPadding,
+    this.progress,
   });
 
   /// The narrowest the caption may be. Below this a two-line instruction
@@ -147,8 +156,69 @@ class HighLowHeader extends StatelessWidget {
     child: HighLowSkipPill(enabled: skipEnabled, onTap: onSkip),
   );
 
+  /// Close beside the progress bar: a plain grey cross, no disc — quiet next
+  /// to the bar — but its tap target is still the full [_closeButtonSize]
+  /// square. Card 196: never make leaving harder to reach.
+  ///
+  /// Laid out where it sits, not pushed to the edge by a translate as
+  /// [_close] is: a translated control is only tappable where its painted
+  /// and laid-out boxes overlap (ancestors test the tap against the layout),
+  /// which left most of a translated close dead.
+  Widget _quietClose() => Tooltip(
+    message: 'Close',
+    child: GestureDetector(
+      key: const ValueKey('quiet-close'),
+      onTap: onClose,
+      behavior: HitTestBehavior.opaque,
+      child: const SizedBox.square(
+        dimension: _closeButtonSize,
+        child: Icon(
+          Icons.close_rounded,
+          size: 26,
+          color: AppColors.textSecondary,
+        ),
+      ),
+    ),
+  );
+
+  /// The progress layout: bar row on top, caption beneath — see [progress].
+  Widget _withProgress(double progress) {
+    final padding = captionPadding ?? EdgeInsets.zero;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          children: [
+            _quietClose(),
+            const SizedBox(width: AppSpacing.xs),
+            Expanded(child: RoundSetProgressBar(progress: progress)),
+            const SizedBox(width: AppSpacing.md),
+            // Untranslated for the same reason as [_quietClose].
+            HighLowSkipPill(enabled: skipEnabled, onTap: onSkip),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        Padding(
+          padding: padding,
+          child: HighLowCaption(
+            text: captionText,
+            guidance: guidanceText,
+            title: title,
+          ),
+        ),
+        if (below != null)
+          Padding(
+            padding: EdgeInsets.only(left: padding.left, right: padding.right),
+            child: below!,
+          ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final progress = this.progress;
+    if (progress != null) return _withProgress(progress);
     final padding = captionPadding;
     if (padding != null) {
       return Column(
