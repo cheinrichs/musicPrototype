@@ -8,32 +8,52 @@ import 'package:ear_trainer/ui/screens/songstone_home_screen.dart';
 
 void main() {
   group('SongStoneHomeScreen', () {
+    GoRouter router() => GoRouter(
+      initialLocation: AppRoutes.landing,
+      routes: [
+        GoRoute(
+          path: AppRoutes.landing,
+          builder: (context, state) => const SongStoneHomeScreen(),
+        ),
+        GoRoute(
+          path: AppRoutes.credits,
+          builder: (context, state) => const CreditsScreen(),
+        ),
+        GoRoute(
+          path: AppRoutes.profilePicker,
+          builder: (context, state) => const Text('picker'),
+        ),
+      ],
+    );
+
     testWidgets(
-      'has exactly one AdultDoor, and it reaches the credits screen — '
-      'Trello card rDHLTn8u: "tell me how to reach the door"',
+      'has two AdultDoors — credits, and switching profile — and the credits '
+      'one reaches the credits screen (Trello card rDHLTn8u: "tell me how '
+      'to reach the door")',
       (tester) async {
-        final router = GoRouter(
-          initialLocation: AppRoutes.landing,
-          routes: [
-            GoRoute(
-              path: AppRoutes.landing,
-              builder: (context, state) => const SongStoneHomeScreen(),
-            ),
-            GoRoute(
-              path: AppRoutes.credits,
-              builder: (context, state) => const CreditsScreen(),
-            ),
-          ],
-        );
-        await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+        await tester.pumpWidget(MaterialApp.router(routerConfig: router()));
         await tester.pump();
 
-        expect(find.byType(AdultDoor), findsOneWidget);
+        expect(find.byType(AdultDoor), findsNWidgets(2));
 
-        await tester.tap(find.byType(AdultDoor));
+        await tester.tap(find.bySemanticsLabel('About and credits'));
         await tester.pumpAndSettle();
 
         expect(find.byType(CreditsScreen), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'the switch-profile door goes back to the profile picker, behind the '
+      'same unremarkable door as credits (Trello card 194)',
+      (tester) async {
+        await tester.pumpWidget(MaterialApp.router(routerConfig: router()));
+        await tester.pump();
+
+        await tester.tap(find.bySemanticsLabel('Switch profile'));
+        await tester.pumpAndSettle();
+
+        expect(find.text('picker'), findsOneWidget);
       },
     );
 
@@ -52,14 +72,16 @@ void main() {
         // pending when the test tears down.
         await tester.pump(const Duration(milliseconds: 350));
 
-        final doorRect = tester.getRect(find.byType(AdultDoor));
-        for (final label in ['Playground', 'Learning Path', 'Games']) {
-          final pillRect = tester.getRect(find.text(label));
-          expect(
-            doorRect.overlaps(pillRect),
-            isFalse,
-            reason: 'door overlaps the "$label" pill',
-          );
+        for (final door in find.byType(AdultDoor).evaluate()) {
+          final doorRect = tester.getRect(find.byWidget(door.widget));
+          for (final label in ['Playground', 'Learning Path', 'Games']) {
+            final pillRect = tester.getRect(find.text(label));
+            expect(
+              doorRect.overlaps(pillRect),
+              isFalse,
+              reason: 'door overlaps the "$label" pill',
+            );
+          }
         }
       },
     );

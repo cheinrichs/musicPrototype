@@ -48,9 +48,24 @@ class SongStoneHomeScreen extends StatelessWidget {
           SafeArea(
             child: Align(
               alignment: Alignment.bottomRight,
-              child: AdultDoor(
-                semanticLabel: 'About and credits',
-                onTap: () => context.push(AppRoutes.credits),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Switch profile without quitting the app (Trello card
+                  // 194), behind the same door rather than one unguarded
+                  // tap: a child who likes another face must not start
+                  // logging rounds into a sibling's record. Back to the
+                  // picker, which lands here again as the chosen profile.
+                  AdultDoor(
+                    icon: Icons.switch_account_outlined,
+                    semanticLabel: 'Switch profile',
+                    onTap: () => context.go(AppRoutes.profilePicker),
+                  ),
+                  AdultDoor(
+                    semanticLabel: 'About and credits',
+                    onTap: () => context.push(AppRoutes.credits),
+                  ),
+                ],
               ),
             ),
           ),
