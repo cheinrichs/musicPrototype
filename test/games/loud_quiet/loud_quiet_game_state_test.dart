@@ -10,6 +10,7 @@ import 'package:ear_trainer/models/agency_stage.dart';
 import 'package:ear_trainer/models/concept_tier.dart';
 import 'package:ear_trainer/models/game_status.dart';
 import 'package:ear_trainer/models/round_order.dart';
+import 'package:ear_trainer/models/round_set_length.dart';
 
 /// Records every sound asked for — the path and its gain — and plays nothing.
 class _RecordingAudio implements AudioController {
@@ -325,6 +326,7 @@ void main() {
         audio: audio,
         random: math.Random(2),
         roundOrder: RoundOrder.blocked,
+        totalPrompts: 5,
       )..startGame();
       final asks = <bool>[];
       for (var i = 0; i < game.totalPrompts; i++) {
@@ -348,6 +350,41 @@ void main() {
       game.escape();
       expect(game.records, hasLength(2));
       expect(game.records.last.skipped, isFalse);
+      game.dispose();
+    });
+
+    test('the set length comes from the shared per-agency setting (card '
+        '196): 3 at Observe, 4 at Explore, 5 at Decide', () {
+      final audio = _RecordingAudio();
+      for (final (stage, n) in [
+        (AgencyStage.observe, 3),
+        (AgencyStage.explore, 4),
+        (AgencyStage.decide, 5),
+      ]) {
+        final game = _game(audio, stage: stage);
+        expect(game.totalPrompts, n, reason: stage.name);
+        game.dispose();
+      }
+    });
+
+    testWidgets('a changed setting is what the set runs, fixed when the set '
+        'starts', (tester) async {
+      final audio = _RecordingAudio();
+      final game = LoudQuietGameState(
+        audio: audio,
+        random: math.Random(1),
+        agencyStage: AgencyStage.explore,
+        roundSetLength: RoundSetLength.standard.withLength(
+          AgencyStage.explore,
+          2,
+        ),
+      )..startGame();
+      expect(game.totalPrompts, 2);
+      game.agencyStage = AgencyStage.decide;
+      expect(game.totalPrompts, 2, reason: 'fixed for this set');
+      game.escape();
+      game.escape();
+      expect(game.status, GameStatus.completed);
       game.dispose();
     });
 

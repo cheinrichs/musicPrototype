@@ -58,7 +58,11 @@ class _LoudQuietScreenState extends State<LoudQuietScreen> {
   void initState() {
     super.initState();
     _ownsGame = widget.gameState == null;
-    _game = widget.gameState ?? LoudQuietGameState();
+    // The round count comes from the one shared per-agency setting (Trello
+    // card 196), read live so the dev screen's change takes effect.
+    _game =
+        widget.gameState ??
+        LoudQuietGameState(roundSetLength: _devSettings().roundSetLength);
     _game.addListener(_onChanged);
     _confetti = ConfettiController(duration: AppAnimations.confettiBurst);
 
@@ -77,6 +81,15 @@ class _LoudQuietScreenState extends State<LoudQuietScreen> {
     }
   }
 
+  /// The app always provides this; tests without it get the defaults.
+  DevSettingsState _devSettings() {
+    try {
+      return context.read<DevSettingsState>();
+    } on ProviderNotFoundException {
+      return DevSettingsState();
+    }
+  }
+
   ProfileState? _profileState() {
     try {
       return context.read<ProfileState>();
@@ -90,7 +103,8 @@ class _LoudQuietScreenState extends State<LoudQuietScreen> {
     _game
       ..agencyStage = dev.agencyStage
       ..conceptTier = dev.conceptTier
-      ..roundOrder = dev.roundOrder;
+      ..roundOrder = dev.roundOrder
+      ..roundSetLength = dev.roundSetLength;
     setState(() => _showDevGate = false);
     _game.startGame();
   }

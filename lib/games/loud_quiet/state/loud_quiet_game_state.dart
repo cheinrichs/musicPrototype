@@ -9,6 +9,7 @@ import '../../../models/agency_stage.dart';
 import '../../../models/concept_tier.dart';
 import '../../../models/game_status.dart';
 import '../../../models/round_order.dart';
+import '../../../models/round_set_length.dart';
 import '../../high_low/models/round_instrumentation.dart';
 import '../../shared/nudges.dart';
 import '../models/loud_quiet_round.dart';
@@ -49,19 +50,37 @@ class LoudQuietGameState extends ChangeNotifier {
   LoudQuietGameState({
     AudioController? audio,
     math.Random? random,
-    this.totalPrompts = 5,
+    this.roundSetLength = RoundSetLength.standard,
+    int? totalPrompts,
     this.agencyStage = AgencyStage.observe,
     this.conceptTier = ConceptTier.t1,
     this.roundOrder = RoundOrder.blocked,
     NudgePool? nudges,
   }) : _audio = audio ?? AudioController.instance,
        _random = random ?? math.Random(),
-       _nudges = nudges ?? NudgePool();
+       _nudges = nudges ?? NudgePool(),
+       _totalPromptsOverride = totalPrompts;
 
   final AudioController _audio;
   final math.Random _random;
   final NudgePool _nudges;
-  final int totalPrompts;
+
+  /// The shared per-agency round count (Trello card 196) — never a literal
+  /// in this game. The screen passes the live setting. Settable before
+  /// [startGame], like [agencyStage].
+  RoundSetLength roundSetLength;
+
+  /// A fixed count instead, for tests that need one regardless of stage.
+  final int? _totalPromptsOverride;
+
+  /// Fixed when the set starts, so changing agency mid-set can't change it.
+  int? _setLength;
+
+  /// How many rounds this set runs: [roundSetLength] at the set's agency.
+  int get totalPrompts =>
+      _setLength ??
+      _totalPromptsOverride ??
+      roundSetLength.lengthFor(agencyStage);
 
   /// Settable before [startGame], like High vs Low's.
   AgencyStage agencyStage;
@@ -189,6 +208,7 @@ class LoudQuietGameState extends ChangeNotifier {
 
   void startGame() {
     _rounds.clear();
+    _setLength = _totalPromptsOverride ?? roundSetLength.lengthFor(agencyStage);
     final half = (totalPrompts + 1) ~/ 2;
     for (var i = 0; i < totalPrompts; i++) {
       final asksLoud = switch (roundOrder) {

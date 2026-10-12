@@ -64,6 +64,44 @@ void main() {
     expect(startButton.bottom, lessThanOrEqualTo(viewportHeight));
   });
 
+  testWidgets('the Rounds row sets the round-set length for the agency '
+      'picked above it, and only that one (Trello card 196)', (tester) async {
+    final devSettings = DevSettingsState();
+    await tester.pumpWidget(
+      ChangeNotifierProvider<DevSettingsState>.value(
+        value: devSettings,
+        child: MaterialApp(
+          home: Scaffold(body: DevSetupOverlay(onStart: () {})),
+        ),
+      ),
+    );
+    String shown() =>
+        tester.widget<Text>(find.byKey(const ValueKey('rounds-value'))).data!;
+
+    expect(shown(), '5', reason: 'Decide by default: 5');
+    await tester.tap(find.text('A0 · Observe'));
+    await tester.pump();
+    expect(shown(), '3', reason: 'Observe: 3');
+
+    await tester.tap(find.byKey(const ValueKey('rounds-plus')));
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('rounds-plus')));
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey('rounds-minus')));
+    await tester.pump();
+    expect(shown(), '4');
+    expect(devSettings.roundSetLength.observe, 4);
+    expect(devSettings.roundSetLength.explore, 4);
+    expect(devSettings.roundSetLength.decide, 5);
+  });
+
+  test('RoundSetLength clamps to the range the dev screen offers', () {
+    final s = DevSettingsState()..setRoundSetLength(AgencyStage.explore, 99);
+    expect(s.roundSetLength.explore, 8);
+    s.setRoundSetLength(AgencyStage.explore, 0);
+    expect(s.roundSetLength.explore, 1);
+  });
+
   testWidgets(
     'offers all eight tier chips, T1 through T8 — Trello card "Rebuild '
     'the tier ladder as eight tiers (2x2x2)": this screen only offered '

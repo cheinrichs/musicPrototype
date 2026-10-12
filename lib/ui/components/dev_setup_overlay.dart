@@ -4,6 +4,7 @@ import '../../app/state/dev_settings_state.dart';
 import '../../models/agency_stage.dart';
 import '../../models/concept_tier.dart';
 import '../../models/round_order.dart';
+import '../../models/round_set_length.dart';
 import '../theme/theme.dart';
 
 /// Debug-only pre-game gate: lets a developer pick an [AgencyStage],
@@ -85,12 +86,33 @@ class DevSetupOverlay extends StatelessWidget {
                     isEnabled: (t) => t.isReachableAt(devSettings.agencyStage),
                   ),
                   const SizedBox(height: AppSpacing.xs),
-                  _SettingRow<RoundOrder>(
-                    title: 'Order',
-                    values: RoundOrder.values,
-                    labelOf: (o) => o.label,
-                    selected: devSettings.roundOrder,
-                    onSelected: devSettings.setRoundOrder,
+                  // Order, and the round-set length beside it on the same
+                  // row so the column still fits an SE.
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _SettingRow<RoundOrder>(
+                          title: 'Order',
+                          values: RoundOrder.values,
+                          labelOf: (o) => o.label,
+                          selected: devSettings.roundOrder,
+                          onSelected: devSettings.setRoundOrder,
+                        ),
+                      ),
+                      // The round-set length for the agency picked above
+                      // (Trello card 196) — one shared setting per agency,
+                      // which every game reads; changing it here changes it
+                      // for that agency only.
+                      _RoundsStepper(
+                        rounds: devSettings.roundSetLength.lengthFor(
+                          devSettings.agencyStage,
+                        ),
+                        onChanged: (n) => devSettings.setRoundSetLength(
+                          devSettings.agencyStage,
+                          n,
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: AppSpacing.xs),
                   // Two two-way toggles share one row, so the column still
@@ -143,6 +165,50 @@ class DevSetupOverlay extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// "Rounds − n +": the round-set length for the selected agency, within
+/// [RoundSetLength.min]–[RoundSetLength.max].
+class _RoundsStepper extends StatelessWidget {
+  final int rounds;
+  final ValueChanged<int> onChanged;
+
+  const _RoundsStepper({required this.rounds, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    Widget step(String key, IconData icon, int to, bool enabled) => IconButton(
+      key: ValueKey(key),
+      icon: Icon(icon, size: 18),
+      visualDensity: VisualDensity.compact,
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints.tightFor(width: 32, height: 32),
+      onPressed: enabled ? () => onChanged(to) : null,
+    );
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text('Rounds', style: AppTypography.label.copyWith(fontSize: 12)),
+        step(
+          'rounds-minus',
+          Icons.remove_rounded,
+          rounds - 1,
+          rounds > RoundSetLength.min,
+        ),
+        Text(
+          '$rounds',
+          key: const ValueKey('rounds-value'),
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+        ),
+        step(
+          'rounds-plus',
+          Icons.add_rounded,
+          rounds + 1,
+          rounds < RoundSetLength.max,
+        ),
+      ],
     );
   }
 }

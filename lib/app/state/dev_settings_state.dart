@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import '../../models/agency_stage.dart';
 import '../../models/concept_tier.dart';
 import '../../models/round_order.dart';
+import '../../models/round_set_length.dart';
 
 /// Developer-only overrides for the generic Agency/Concept-Tier/Round-Order
 /// knobs (Trello card 92). Any activity screen can read this to let a dev
@@ -38,7 +39,14 @@ class DevSettingsState extends ChangeNotifier {
   /// this is how he sees it.
   bool _observeFlight = false;
 
+  /// How many rounds a set runs at each agency stage (Trello card 196). The
+  /// one shared setting every game reads — not a dev override of something
+  /// else: a public build reads [RoundSetLength.standard] from here too,
+  /// since nothing there can change it.
+  RoundSetLength _roundSetLength = RoundSetLength.standard;
+
   AgencyStage get agencyStage => _agencyStage;
+  RoundSetLength get roundSetLength => _roundSetLength;
   ConceptTier get conceptTier => _conceptTier;
   RoundOrder get roundOrder => _roundOrder;
   bool get orderingSelected => _orderingSelected;
@@ -73,6 +81,12 @@ class DevSettingsState extends ChangeNotifier {
 
   void setObserveFlight(bool on) {
     _observeFlight = on;
+    notifyListeners();
+  }
+
+  /// Sets the round count for [stage] only; the others keep theirs.
+  void setRoundSetLength(AgencyStage stage, int rounds) {
+    _roundSetLength = _roundSetLength.withLength(stage, rounds);
     notifyListeners();
   }
 }
