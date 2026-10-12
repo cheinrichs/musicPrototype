@@ -158,7 +158,11 @@ class AudioController {
   /// through `HighLowInstrument.assetPathForMidi` instead of through
   /// [Note], since an instrument's real range isn't always this enum's
   /// fixed C4-B5 (see [Note.assetPath]'s doc comment).
-  Future<void> playAssetForScale(String path) async {
+  ///
+  /// [volume] is a playback gain (1.0 = the sample as recorded). Loud or
+  /// Quiet's whole subject is loudness, and it is a playback parameter on the
+  /// existing samples rather than new recordings (Trello card 162).
+  Future<void> playAssetForScale(String path, {double volume = 1.0}) async {
     if (!_isInitialized || _isMuted) return;
 
     // Cut-and-replace, never wait: a retap must sound at once, not queue
@@ -170,7 +174,9 @@ class AudioController {
         await _preloadAssetPath(path);
       }
       final source = _noteCache[path];
-      return source == null ? null : await _soloud!.play(source);
+      return source == null
+          ? null
+          : await _soloud!.play(source, volume: volume);
     });
   }
 

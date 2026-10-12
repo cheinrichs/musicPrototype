@@ -4,6 +4,7 @@ import '../ui/screens/main_shell.dart';
 import '../ui/screens/profile_picker_screen.dart';
 import '../ui/screens/songstone_home_screen.dart';
 import '../games/high_low/screens/high_low_screen.dart';
+import '../games/loud_quiet/screens/loud_quiet_screen.dart';
 import '../games/scale_direction/screens/scale_direction_screen.dart';
 import '../games/match_note/screens/match_note_screen.dart';
 import '../games/interval_id/screens/interval_screen.dart';
@@ -21,6 +22,7 @@ class AppRoutes {
   static const String landing = '/welcome';
   static const String home = '/';
   static const String highLow = '/high-low';
+  static const String loudQuiet = '/loud-quiet';
   static const String scaleDirection = '/scale-direction';
   static const String matchNote = '/match-note';
   static const String intervalId = '/interval-id';
@@ -58,6 +60,10 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: AppRoutes.highLow,
       builder: (context, state) => const HighLowScreen(),
+    ),
+    GoRoute(
+      path: AppRoutes.loudQuiet,
+      builder: (context, state) => const LoudQuietScreen(),
     ),
     GoRoute(
       path: AppRoutes.scaleDirection,

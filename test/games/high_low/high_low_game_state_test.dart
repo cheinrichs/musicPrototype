@@ -1273,8 +1273,8 @@ void main() {
       state.tapInstrument(0);
       state.tapInstrument(1);
       await tester.pump();
-      final plan = (state.currentPrompt!.firstMidi <=
-              state.currentPrompt!.secondMidi)
+      final plan =
+          (state.currentPrompt!.firstMidi <= state.currentPrompt!.secondMidi)
           ? [0, 1]
           : [1, 0];
       state.tapArrow();
@@ -1392,8 +1392,9 @@ void main() {
     });
 
     testWidgets('with the flag off (the live default) the arrow advances at '
-        'once, exactly as before — nothing changes ahead of the device check',
-        (tester) async {
+        'once, exactly as before — nothing changes ahead of the device check', (
+      tester,
+    ) async {
       final state = HighLowGameState(
         totalPrompts: 2,
         agencyStage: AgencyStage.observe,
@@ -1544,7 +1545,7 @@ class _RecordingAudio implements AudioController {
   }
 
   @override
-  Future<void> playAssetForScale(String path) async {}
+  Future<void> playAssetForScale(String path, {double volume = 1.0}) async {}
 
   @override
   Future<void> playSfx(SfxType sfx) async {}
@@ -1555,4 +1556,3 @@ class _RecordingAudio implements AudioController {
   @override
   dynamic noSuchMethod(Invocation invocation) => null;
 }
-

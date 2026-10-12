@@ -62,11 +62,17 @@ class HighLowCaption extends StatelessWidget {
   final String? guidance;
   final bool plate;
 
+  /// The name on the first line. High vs Low's by default; Loud or Quiet
+  /// passes its own (the first thing this widget needed parameterised for a
+  /// second game).
+  final String title;
+
   const HighLowCaption({
     super.key,
     required this.text,
     this.guidance,
     this.plate = defaultPlate,
+    this.title = gameName,
   });
 
   static double get _nameHeight =>
@@ -123,7 +129,7 @@ class HighLowCaption extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  gameName,
+                  title,
                   style: AppTypography.heading2.copyWith(
                     fontSize: _gameNameFontSize,
                     color: textColor,

@@ -98,6 +98,12 @@ enum ConceptTier {
     _IntervalBand.narrow => 4,
   };
 
+  /// Whether this is a wide-gap tier (T1, T3, T5, T7) rather than a narrow
+  /// one. Pitch reads it as a wide interval; Loud or Quiet as a big loudness
+  /// difference (Trello card 162: "wide/narrow interval becomes big/small
+  /// volume difference").
+  bool get isWide => _interval == _IntervalBand.wide;
+
   /// Largest semitone gap this tier can produce — 12 (an octave) for wide
   /// tiers, 7 (a perfect 5th) for narrow ones.
   int get maxSemitones => switch (_interval) {

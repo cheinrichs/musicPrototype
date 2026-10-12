@@ -106,6 +106,13 @@ class HomeScreen extends StatelessWidget {
       route: AppRoutes.highLow,
     ),
     (
+      title: 'Loud or Quiet',
+      subtitle: 'Which one is louder?',
+      icon: Icons.volume_up_rounded,
+      color: AppColors.gold,
+      route: AppRoutes.loudQuiet,
+    ),
+    (
       title: 'Scale Direction',
       subtitle: 'Up or down?',
       icon: Icons.stairs_rounded,

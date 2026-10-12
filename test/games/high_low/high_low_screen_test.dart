@@ -1684,7 +1684,11 @@ void main() {
 
     /// Frame by frame, as a phone draws it.
     Future<void> frames(WidgetTester tester, Duration d) async {
-      for (var t = Duration.zero; t < d; t += const Duration(milliseconds: 16)) {
+      for (
+        var t = Duration.zero;
+        t < d;
+        t += const Duration(milliseconds: 16)
+      ) {
         await tester.pump(const Duration(milliseconds: 16));
       }
     }
@@ -1828,7 +1832,8 @@ class _LongVoiceAudio implements AudioController {
   Future<void> playVoiceLine(SpokenLine line) => Future<void>.value();
 
   @override
-  Future<void> playAssetForScale(String path) => Future<void>.value();
+  Future<void> playAssetForScale(String path, {double volume = 1.0}) =>
+      Future<void>.value();
 
   @override
   Future<void> playSfx(SfxType sfx) => Future<void>.value();

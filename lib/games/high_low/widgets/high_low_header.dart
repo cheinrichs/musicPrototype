@@ -68,6 +68,9 @@ class HighLowHeader extends StatelessWidget {
   /// [HighLowCaption.guidance].
   final String? guidanceText;
 
+  /// The game's name on the caption — see [HighLowCaption.title].
+  final String title;
+
   /// Listen Again, centred beneath the caption.
   final Widget? below;
 
@@ -86,6 +89,7 @@ class HighLowHeader extends StatelessWidget {
     required this.onClose,
     required this.captionText,
     this.guidanceText,
+    this.title = HighLowCaption.gameName,
     required this.skipEnabled,
     required this.onSkip,
     this.below,
@@ -158,6 +162,7 @@ class HighLowHeader extends StatelessWidget {
                 child: HighLowCaption(
                   text: captionText,
                   guidance: guidanceText,
+                  title: title,
                 ),
               ),
               Positioned(left: 0, child: _close()),
@@ -187,7 +192,11 @@ class HighLowHeader extends StatelessWidget {
               child: Align(alignment: Alignment.centerLeft, child: _close()),
             ),
             Expanded(
-              child: HighLowCaption(text: captionText, guidance: guidanceText),
+              child: HighLowCaption(
+                text: captionText,
+                guidance: guidanceText,
+                title: title,
+              ),
             ),
             SizedBox(
               width: sideWidth,
