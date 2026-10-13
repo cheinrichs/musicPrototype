@@ -8,16 +8,17 @@ import '../../../app/config.dart';
 import '../../../app/router.dart';
 import '../../../app/state/dev_settings_state.dart';
 import '../../../app/state/profile_state.dart';
-import '../../../app/state/progress_state.dart';
 import '../../../models/agency_stage.dart';
 import '../../../models/game_status.dart';
 import '../../../ui/components/arc_flight.dart';
 import '../../../ui/components/continue_bar.dart';
+import '../../../ui/components/instrument_sparkle.dart';
 import '../../../ui/components/dev_setup_overlay.dart';
 import '../../../ui/components/drifting_notes.dart';
 import '../../../ui/components/game_screen_layout.dart';
 import '../../../ui/components/round_set_end.dart';
 import '../../../ui/theme/theme.dart';
+import '../../game_session.dart';
 import '../../high_low/ordering/ordering_slot.dart';
 import '../../high_low/widgets/character_art.dart';
 import '../../high_low/widgets/high_low_header.dart';
@@ -30,12 +31,11 @@ import '../widgets/dial_needle.dart';
 /// instruments on stumps through the middle, the dial on the right with Clef
 /// on its middle platform. See [LoudQuietLayout] and [LoudQuietGameState].
 ///
-/// **Built directly, not on a shared template** (card 162). Reused as-is from
-/// High vs Low, as components: the header and caption (now taking a title),
-/// the character sprites, the drop slot and tick, the shared flight arc,
-/// the drifting notes. Duplicated here, to compare when a template is
-/// extracted: the dev gate start-up, the stump drawing, the instrument
-/// button, the sparkle, the earned arrow, the confetti.
+/// **Built directly, not on a shared template** (card 162). Shared with
+/// High vs Low: how a set starts and ends ([GameEntry], [GameSession]), the
+/// header and caption, the character sprites, the drop slot and tick, the
+/// flight arc, the continue bar, the drifting notes. Still duplicated: the
+/// stump drawing, the instrument button, the sparkle, the confetti.
 ///
 /// **No Listen Again button** (card 195): tapping either character replays
 /// the round, the character first and then the sounds.
@@ -43,7 +43,11 @@ class LoudQuietScreen extends StatefulWidget {
   /// Injected by tests; the screen makes its own otherwise.
   final LoudQuietGameState? gameState;
 
-  const LoudQuietScreen({super.key, this.gameState});
+  /// What set to play (see [GameEntry]); null plays the active child's own
+  /// set. Given, it also skips the dev gate.
+  final GameEntry? entry;
+
+  const LoudQuietScreen({super.key, this.gameState, this.entry});
 
   static const String title = 'Loud or Quiet';
 
@@ -67,20 +71,22 @@ class _LoudQuietScreenState extends State<LoudQuietScreen> {
     // card 196), read live so the dev screen's change takes effect.
     _game =
         widget.gameState ??
-        LoudQuietGameState(roundSetLength: _devSettings().roundSetLength);
+        LoudQuietGameState(
+          roundSetLength: _devSettings().roundSetLength,
+          totalPrompts: widget.entry?.rounds,
+        );
     _game.addListener(_onChanged);
     _confetti = ConfettiController(duration: AppAnimations.confettiBurst);
 
     final canUseDevTools = _profileState()?.canUseDevTools ?? devToolsEnabled;
-    _showDevGate = canUseDevTools && widget.gameState == null;
+    _showDevGate =
+        canUseDevTools && widget.gameState == null && widget.entry == null;
     if (!_showDevGate) {
       if (widget.gameState == null) {
-        // The child's own agency capability, as High vs Low does (card
-        // 172). Not written back yet: Loud or Quiet doesn't run agency
-        // advancement in this first build.
-        _game.agencyStage =
-            _profileState()?.activeProfile?.agencyOverride ??
-            AgencyStage.observe;
+        // The set asked for, or the child's own — as High vs Low does.
+        final entry = widget.entry ?? GameEntry.forActiveChild(context);
+        _game.agencyStage = entry.agency;
+        if (entry.tier != null) _game.conceptTier = entry.tier!;
       }
       WidgetsBinding.instance.addPostFrameCallback((_) => _game.startGame());
     }
@@ -121,15 +127,17 @@ class _LoudQuietScreenState extends State<LoudQuietScreen> {
     }
     // Once per set — the screen stays up for the full bar's beat.
     if (_game.status == GameStatus.completed && _setEndTimer == null) {
-      try {
-        context.read<ProgressState>().completeSession(
+      // Counted, and agency advanced, the way every game's set is: the
+      // child's agency is one value, whichever game moves it.
+      GameSession.recordFinishedSet(
+        context,
+        SetReport(
           gameType: 'loud_quiet',
+          agency: _game.agencyStage,
+          rounds: _game.records,
           correctCount: _game.correctCount,
-          totalCount: _game.totalPrompts,
-        );
-      } on ProviderNotFoundException {
-        // Tests without the app's providers.
-      }
+        ),
+      );
       // The bar is full: show it so for a beat, then the set really ends
       // (Trello card 196) — to the games screen, never a silent restart.
       _setEndTimer = Timer(RoundSetEnd.beat, () {
@@ -345,7 +353,9 @@ class _LoudQuietScreenState extends State<LoudQuietScreen> {
             ),
             if (sparkles > 0)
               Positioned.fill(
-                child: IgnorePointer(child: _sparkle(box, sparkles)),
+                child: IgnorePointer(
+                  child: InstrumentSparkle(size: box, count: sparkles),
+                ),
               ),
           ],
         ),
@@ -398,36 +408,6 @@ class _LoudQuietScreenState extends State<LoudQuietScreen> {
       left: feet.dx - box / 2,
       top: feet.dy - box,
       child: button,
-    );
-  }
-
-  static const List<(double top, double right)> _sparkleOffsets = [
-    (0.02, 0.02),
-    (0.22, -0.08),
-    (0.02, 0.24),
-    (0.42, 0.0),
-  ];
-
-  /// Explore's sparkle: one per correct tap, staying, still once there.
-  Widget _sparkle(double size, int count) {
-    final shown = count.clamp(1, _sparkleOffsets.length);
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        for (var i = 0; i < shown; i++)
-          Positioned(
-            top: size * _sparkleOffsets[i].$1,
-            right: size * _sparkleOffsets[i].$2,
-            child: TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0, end: 1),
-              duration: AppAnimations.fast,
-              curve: Curves.easeOutBack,
-              builder: (context, s, child) =>
-                  Transform.scale(scale: s, child: child),
-              child: Text('✨', style: TextStyle(fontSize: size * 0.18)),
-            ),
-          ),
-      ],
     );
   }
 

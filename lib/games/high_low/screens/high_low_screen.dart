@@ -18,6 +18,7 @@ import '../../../models/musical_skill.dart';
 import '../../../models/game_status.dart';
 import '../../../ui/components/arc_flight.dart';
 import '../../../ui/components/continue_bar.dart';
+import '../../../ui/components/instrument_sparkle.dart';
 import '../../../ui/components/circle_icon_button.dart';
 import '../../../ui/components/dev_setup_overlay.dart';
 import '../../../ui/components/round_set_end.dart';
@@ -27,7 +28,7 @@ import '../../../ui/components/game_screen_layout.dart';
 import '../../../ui/components/glow_wiggle_character.dart';
 import '../../../ui/theme/theme.dart';
 import '../models/high_low_instrument.dart';
-import '../services/agency_advancement.dart';
+import '../../game_session.dart';
 import '../models/round_report.dart';
 import '../services/round_report_service.dart';
 import '../state/high_low_game_state.dart';
@@ -73,7 +74,17 @@ class HighLowScreen extends StatefulWidget {
   /// read the state, so its pending timers die with the tree.
   final bool ownsGameState;
 
-  const HighLowScreen({super.key, this.gameState, this.ownsGameState = false});
+  /// What set to play (see [GameEntry]); null plays the active child's own
+  /// set. Given, it also skips the dev gate: whoever launched the set has
+  /// already chosen.
+  final GameEntry? entry;
+
+  const HighLowScreen({
+    super.key,
+    this.gameState,
+    this.ownsGameState = false,
+    this.entry,
+  });
 
   @override
   State<HighLowScreen> createState() => _HighLowScreenState();
@@ -107,11 +118,6 @@ class _HighLowScreenState extends State<HighLowScreen> {
     }
   }
 
-  /// The [ProfileState] above this screen, or null when none is provided —
-  /// same reasoning as [_resolveCanUseDevTools]'s fallback. Used both to
-  /// start a session at the active profile's own agency capability (Trello
-  /// card 172) and, at session end, to write an [AgencyAdvancement] result
-  /// back to it.
   /// The live round-set lengths; the app always provides them, and tests
   /// without the app's providers get the standard ones.
   RoundSetLength _resolveRoundSetLength() {
@@ -120,49 +126,6 @@ class _HighLowScreenState extends State<HighLowScreen> {
     } on ProviderNotFoundException {
       return RoundSetLength.standard;
     }
-  }
-
-  ProfileState? _resolveProfileState() {
-    try {
-      return context.read<ProfileState>();
-    } on ProviderNotFoundException {
-      return null;
-    }
-  }
-
-  /// Runs [AgencyAdvancement] against the session that just finished and,
-  /// if it recommends a change, writes it back to the active profile
-  /// (Trello card 172). A no-op with no active profile — dev-gate sessions
-  /// and most widget tests never reach this at all, and a session with no
-  /// profile behind it has nowhere to persist a capability change to.
-  ///
-  /// The reason a change was made is only [debugPrint]ed for now — no
-  /// persisted, profile-scoped tracking log exists yet to receive it (its
-  /// own, separate undertaking). Printing it is better than silently
-  /// dropping it while that infrastructure doesn't exist, not a
-  /// substitute for it.
-  void _evaluateAgencyAdvancement() {
-    final profileState = _resolveProfileState();
-    final profile = profileState?.activeProfile;
-    if (profileState == null || profile == null) return;
-
-    final current = profile.agencyOverride ?? AgencyStage.observe;
-    final evaluation = AgencyAdvancement.evaluate(
-      current: current,
-      instrumentation: _gameState.instrumentation,
-    );
-    final next = switch (evaluation.change) {
-      AgencyChange.advance => current.next,
-      AgencyChange.demote => current.previous,
-      AgencyChange.hold => null,
-    };
-    if (next == null) return;
-
-    debugPrint(
-      'Agency ${evaluation.change.name}: ${profile.name} '
-      '${current.label} -> ${next.label} (${evaluation.reason})',
-    );
-    unawaited(profileState.setAgencyOverride(profile, next));
   }
 
   /// True after the dev gate picks a [ConceptTier.noteCount] 3 tier
@@ -220,29 +183,31 @@ class _HighLowScreenState extends State<HighLowScreen> {
   void initState() {
     super.initState();
     _canUseDevTools = _resolveCanUseDevTools();
-    _showDevGate = _canUseDevTools;
+    _showDevGate = _canUseDevTools && widget.entry == null;
     _ownsGameState = widget.gameState == null || widget.ownsGameState;
     // The round count comes from the one shared per-agency setting (Trello
     // card 196), as Loud or Quiet's does.
     _gameState =
         widget.gameState ??
-        HighLowGameState(roundSetLength: _resolveRoundSetLength());
+        HighLowGameState(
+          roundSetLength: _resolveRoundSetLength(),
+          totalPrompts: widget.entry?.rounds,
+        );
     _gameState.addListener(_onGameStateChanged);
     _confettiController = ConfettiController(
       duration: AppAnimations.confettiBurst,
     );
 
-    if (!_canUseDevTools) {
-      // The child's own agency capability, not a hard-coded default —
-      // Trello card 172. Only when this screen made its own game state:
-      // a caller that injects one (every test that wants a known stage)
-      // has already made that choice on purpose, and must not be
-      // overridden by whatever profile happens to be active. No profile
-      // at all (or none active) defaults to Observe, the least demanding
-      // level — "the youngest kids aren't going to be able to drag."
+    if (!_showDevGate) {
+      // The set asked for, or the child's own (Trello card 172) — see
+      // [GameEntry.forActiveChild]. Only when this screen made its own game
+      // state: a caller that injects one (every test that wants a known
+      // stage) has already made that choice on purpose, and must not be
+      // overridden by whatever profile happens to be active.
       if (widget.gameState == null) {
-        final profile = _resolveProfileState()?.activeProfile;
-        _gameState.agencyStage = profile?.agencyOverride ?? AgencyStage.observe;
+        final entry = widget.entry ?? GameEntry.forActiveChild(context);
+        _gameState.agencyStage = entry.agency;
+        if (entry.tier != null) _gameState.conceptTier = entry.tier!;
       }
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _gameState.startGame();
@@ -267,12 +232,15 @@ class _HighLowScreenState extends State<HighLowScreen> {
     // Once per set: the screen now stays up for the full bar's beat, so
     // later notifications must not complete the session twice.
     if (_gameState.status == GameStatus.completed && _setEndTimer == null) {
-      _evaluateAgencyAdvancement();
-      final progressState = context.read<ProgressState>();
-      progressState.completeSession(
-        gameType: 'high_low',
-        correctCount: _gameState.correctCount,
-        totalCount: _gameState.totalPrompts,
+      // Counted, and agency advanced, the way every game's set is.
+      GameSession.recordFinishedSet(
+        context,
+        SetReport(
+          gameType: 'high_low',
+          agency: _gameState.agencyStage,
+          rounds: _gameState.instrumentation,
+          correctCount: _gameState.correctCount,
+        ),
       );
       // Four of five, before sets varied in length (card 196): the same
       // 80%, so a three-round Observe set can still earn it.
@@ -1111,52 +1079,6 @@ class _HighLowScreenState extends State<HighLowScreen> {
     );
   }
 
-  /// Fixed positions, each `(top, right)` as a fraction of the instrument's
-  /// box measured from its top-right corner, for up to four sparkles — see
-  /// [_buildInstrumentSparkle]. Four, not five: the fifth cumulative correct
-  /// tap fires the confetti burst instead of a fifth sparkle (Cooper:
-  /// "building to a confetti burst").
-  static const List<(double top, double right)> _sparkleOffsets = [
-    (0.02, 0.02),
-    (0.22, -0.08),
-    (0.02, 0.24),
-    (0.42, 0.0),
-  ];
-
-  /// Explore's correct-tap sparkle, on the instrument the child got right
-  /// (Trello card 189, Cooper: "the indicator needs to be on the
-  /// instrument"): the instrument made the sound, so the instrument answers.
-  ///
-  /// [count] sparkles, one per correct tap so far (1-4), so each tap reads as
-  /// visibly *more* than the last (Cooper: "a flat sparkle is a reward; an
-  /// escalating one is a promise"). They stay for the rest of the round —
-  /// progress toward the confetti, where the music notes are a per-tap
-  /// response that resets — so they must not move once there: each one pops
-  /// in once and holds still (no idle looping motion). [size] is the
-  /// instrument's box.
-  Widget _buildInstrumentSparkle(double size, int count) {
-    final shown = count.clamp(1, _sparkleOffsets.length);
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        for (var i = 0; i < shown; i++)
-          Positioned(
-            key: ValueKey('sparkle-$i'),
-            top: size * _sparkleOffsets[i].$1,
-            right: size * _sparkleOffsets[i].$2,
-            child: TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0, end: 1),
-              duration: AppAnimations.fast,
-              curve: Curves.easeOutBack,
-              builder: (context, s, child) =>
-                  Transform.scale(scale: s, child: child),
-              child: Text('✨', style: TextStyle(fontSize: size * 0.18)),
-            ),
-          ),
-      ],
-    );
-  }
-
   /// One instrument, sitting on its stump at [anchorX] — always tappable
   /// (exploration, every stage), and during Trigger also draggable onto
   /// the centered character (Trello, "reverse the A2 drag interaction":
@@ -1251,7 +1173,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
           button,
           Positioned.fill(
             child: IgnorePointer(
-              child: _buildInstrumentSparkle(charSize, sparkles),
+              child: InstrumentSparkle(size: charSize, count: sparkles),
             ),
           ),
         ],
