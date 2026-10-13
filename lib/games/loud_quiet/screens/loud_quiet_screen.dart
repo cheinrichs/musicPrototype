@@ -12,6 +12,7 @@ import '../../../app/state/progress_state.dart';
 import '../../../models/agency_stage.dart';
 import '../../../models/game_status.dart';
 import '../../../ui/components/arc_flight.dart';
+import '../../../ui/components/continue_bar.dart';
 import '../../../ui/components/dev_setup_overlay.dart';
 import '../../../ui/components/drifting_notes.dart';
 import '../../../ui/components/game_screen_layout.dart';
@@ -234,11 +235,12 @@ class _LoudQuietScreenState extends State<LoudQuietScreen> {
             _buildInstrument(layout, side, slotPlatform),
         _buildPiper(layout),
         _buildClef(layout),
+        // The child's earned way on, in the one place every game puts it
+        // (Trello card 209).
         if (_game.showArrow)
-          Positioned(
-            left: layout.arrowCentre.dx - LoudQuietLayout.arrowSize / 2,
-            top: layout.arrowCentre.dy - LoudQuietLayout.arrowSize / 2,
-            child: _buildArrow(),
+          Positioned.fromRect(
+            rect: ContinueBar.rectFor(layout.screen, layout.insets),
+            child: ContinueBar(onTap: _game.tapArrow),
           ),
       ],
     );
@@ -299,12 +301,9 @@ class _LoudQuietScreenState extends State<LoudQuietScreen> {
         onLeave: (_) {
           if (_hovering) setState(() => _hovering = false);
         },
-        builder: (context, candidate, rejected) => Align(
-          alignment: const Alignment(0, 0.6),
-          child: OrderingSlot(
-            state: _hovering ? SlotState.hovering : SlotState.empty,
-            size: layout.slotSize,
-          ),
+        builder: (context, candidate, rejected) => OrderingSlot(
+          state: _hovering ? SlotState.hovering : SlotState.empty,
+          size: layout.slotRect(platform).size,
         ),
       ),
     );
@@ -492,31 +491,4 @@ class _LoudQuietScreenState extends State<LoudQuietScreen> {
       ),
     );
   }
-
-  Widget _buildArrow() => Tooltip(
-    message: 'Tap when ready',
-    child: GestureDetector(
-      onTap: _game.tapArrow,
-      child: Container(
-        width: LoudQuietLayout.arrowSize,
-        height: LoudQuietLayout.arrowSize,
-        decoration: const BoxDecoration(
-          gradient: AppColors.earnedArrowGradient,
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.earnedArrowShadow,
-              blurRadius: 14,
-              offset: Offset(0, 6),
-            ),
-          ],
-        ),
-        child: const Icon(
-          Icons.arrow_forward_rounded,
-          color: Colors.white,
-          size: 40,
-        ),
-      ),
-    ),
-  );
 }

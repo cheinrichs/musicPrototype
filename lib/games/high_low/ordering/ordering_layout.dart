@@ -5,9 +5,9 @@ import '../models/scene_layout.dart';
 /// High vs Low ([SceneLayout] — one tree across the whole game, Trello card
 /// 188), without Piper, plus a drop slot on every free platform.
 ///
-/// With two instruments Clef sits on the top platform and the slots are the
-/// two below him; with three he moves to the branch and all three platforms
-/// are slots. Either way the order still reads down from Clef.
+/// With two instruments Clef sits on the middle platform and the slots are
+/// the one above him and the one below (Trello card 214); with three he
+/// moves to the branch and all three platforms are slots.
 class OrderingLayout extends SceneLayout {
   const OrderingLayout(super.screen, {super.insets, required super.noteCount})
     : super(withPiper: false);

@@ -20,13 +20,12 @@ void main() {
       expect(layout.clefFeet.dy, lessThan(layout.slotCentre(0).dy));
     });
 
-    test('two notes: Clef sits on the top platform, taking it, and the two '
-        'slots are the platforms below him — the order still reads down from '
-        'Clef', () {
+    test('two notes: Clef sits on the middle platform, and the two slots '
+        'are the one above him and the one below (Trello card 214)', () {
       final two = OrderingLayout(roomy, noteCount: 2);
       final three = OrderingLayout(roomy, noteCount: 3);
-      expect(two.clefFeet, two.platform(0));
-      expect(two.slotCentre(0), three.slotCentre(1));
+      expect(two.clefFeet, two.platform(1));
+      expect(two.slotCentre(0), three.slotCentre(0));
       expect(two.slotCentre(1), three.slotCentre(2));
     });
 

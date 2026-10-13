@@ -17,6 +17,7 @@ import '../../../models/concept_tier.dart';
 import '../../../models/musical_skill.dart';
 import '../../../models/game_status.dart';
 import '../../../ui/components/arc_flight.dart';
+import '../../../ui/components/continue_bar.dart';
 import '../../../ui/components/circle_icon_button.dart';
 import '../../../ui/components/dev_setup_overlay.dart';
 import '../../../ui/components/round_set_end.dart';
@@ -870,72 +871,22 @@ class _HighLowScreenState extends State<HighLowScreen> {
           speakingLineName: speakingLineName,
           speakingGeneration: speakingGeneration,
         ),
-        // The child's earned arrow (Trello card xpAkja5b) — Observe only,
-        // in the free column between the instruments and the tree, visible
-        // only once [HighLowGameState.showArrow] says the child has earned
-        // it (both instruments tapped this round — never a timer). Not built
-        // until then — conditionally mounted, not just hidden, so it can't be
-        // hit-tested a moment early. Painted last.
+        // The child's earned way on (Trello card xpAkja5b) — Observe only,
+        // visible only once [HighLowGameState.showArrow] says the child has
+        // earned it (both instruments tapped this round — never a timer).
+        // Not built until then — conditionally mounted, not just hidden, so
+        // it can't be hit-tested a moment early. Painted last. Where it sits
+        // is [ContinueBar]'s, the same in every game (card 209).
         // Gone once it has sent the instruments flying (Trello card 173):
         // its job is done, and the flight is what to watch.
         if (_gameState.showArrow && !_gameState.isObserveFlying)
-          Positioned(
-            left: layout.arrowCentre.dx - _arrowSize / 2,
-            top: layout.arrowCentre.dy - _arrowSize / 2,
-            child: _buildEarnedArrow(),
+          Positioned.fromRect(
+            rect: ContinueBar.rectFor(layout.screen, layout.insets),
+            child: ContinueBar(onTap: _gameState.tapArrow),
           ),
         // No Listen Again button (Trello card 195): tapping either character
         // replays the round — see [_tappable].
       ],
-    );
-  }
-
-  /// Diameter of the child's earned arrow — the layout reserves its column.
-  static const double _arrowSize = SceneLayout.arrowSize;
-
-  /// The child's earned arrow — big and bright, the opposite visual
-  /// language from the quiet, adult-facing controls elsewhere in this
-  /// app (compare [AdultDoor]'s deliberately unshowy styling): this one
-  /// is for the child, and it's meant to be found. Plays a one-shot
-  /// entrance pop (elastic scale-in) when it first mounts, then holds
-  /// still — no idle animation once settled, matching every other
-  /// on-screen element now that idle motion has been retired entirely
-  /// (Cooper, driving the simulator: "the instruments and the characters
-  /// don't have any idle bobbing"). A second, ongoing pulse would also
-  /// muddy the one thing motion means elsewhere on this screen: that a
-  /// character is speaking.
-  Widget _buildEarnedArrow() {
-    return Tooltip(
-      message: 'Tap when ready',
-      child: GestureDetector(
-        onTap: _gameState.tapArrow,
-        child:
-            Container(
-              width: _arrowSize,
-              height: _arrowSize,
-              decoration: const BoxDecoration(
-                gradient: AppColors.earnedArrowGradient,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.earnedArrowShadow,
-                    blurRadius: 14,
-                    offset: Offset(0, 6),
-                  ),
-                ],
-              ),
-              child: const Icon(
-                Icons.arrow_forward_rounded,
-                color: Colors.white,
-                size: 40,
-              ),
-            ).animate().scale(
-              begin: const Offset(0.4, 0.4),
-              end: const Offset(1, 1),
-              duration: AppAnimations.medium,
-              curve: Curves.elasticOut,
-            ),
-      ),
     );
   }
 
@@ -972,12 +923,9 @@ class _HighLowScreenState extends State<HighLowScreen> {
         },
         builder: (context, candidateData, rejectedData) => celebratingHere
             ? const SizedBox.shrink()
-            : Align(
-                alignment: const Alignment(0, 0.6),
-                child: OrderingSlot(
-                  state: _dragHovering ? SlotState.hovering : SlotState.empty,
-                  size: layout.slotSize,
-                ),
+            : OrderingSlot(
+                state: _dragHovering ? SlotState.hovering : SlotState.empty,
+                size: layout.slotRect(platformIndex).size,
               ),
       ),
     );

@@ -18,8 +18,8 @@ import 'high_low_instrument.dart';
 ///   platforms are about a tenth of the image's width, so at any size where
 ///   the canopy stays clear of the meadow they are too small to aim an
 ///   instrument at. What the crop removes is only trunk and a hollow;
-/// - **Clef sits on the top platform with two instruments, on the branch with
-///   three** (Trello card 188) — see [clefOnBranch];
+/// - **Clef sits on the middle platform with two instruments, on the branch
+///   with three** (Trello cards 188, 214) — see [clefOnBranch];
 /// - **Piper stands at the left edge, on the ground, at foreground scale**
 ///   (she used to stand right of the tree; the crop removed that ground);
 /// - the **instruments stand on stumps between them**, set back in space —
@@ -31,7 +31,7 @@ import 'high_low_instrument.dart';
 /// **The drop target is a slot on the tree, not a character** (2026-09-27).
 /// Dragging to a slot near the top of the tree means *high* because it is
 /// physically up there — the action becomes the concept. The high slot is
-/// the highest platform Clef isn't on, the low slot the bottom one — see
+/// the top platform, the low slot the bottom one — see
 /// [slotPlatformFor] and `HighLowScreen._buildTreeSlot`.
 ///
 /// **The tree's platforms are receptacles only where something can be
@@ -150,30 +150,48 @@ class SceneLayout {
   // ---- the characters ----
 
   /// Where Clef sits depends on how many instruments are in play (Cooper,
-  /// 2026-10-07, Trello card 188):
+  /// 2026-10-12, Trello card 214, revising card 188):
   ///
-  /// - **two:** on the **top platform**, leaving the bottom two free;
+  /// - **two:** on the **middle platform**, with the top and bottom free —
+  ///   high goes above him, low below him;
   /// - **three:** on the **branch**, freeing all three.
   ///
-  /// Him sitting on a platform says "this one is taken" with no UI at all, and
-  /// where he sits tells you how many slots are in play. He stays high in both,
-  /// so "Clef is high" still holds.
+  /// A clef is a reference pitch: the thing every other note is placed
+  /// relative to. Sitting at the midpoint with high above and low below is
+  /// the notation he is named after, and the same place he takes over the
+  /// Loud or Quiet dial. It also makes "put the higher one up on top" true
+  /// of the screen — with him on the top platform it was not.
   bool get clefOnBranch => noteCount == 3;
 
   /// The platforms an instrument can go on this round, top first: every one
   /// Clef is not sitting on.
-  List<int> get freePlatforms => clefOnBranch ? const [0, 1, 2] : const [1, 2];
+  List<int> get freePlatforms => clefOnBranch ? const [0, 1, 2] : const [0, 2];
 
-  /// Clef's feet: the top platform, or the branch.
+  /// Clef's feet: the middle platform, or the branch.
   Offset get clefPerch => clefOnBranch
       ? Offset(
           treeRect.left + branchPerch.dx * treeWidth,
           treeRect.top + branchPerch.dy * treeHeight,
         )
-      : platform(0);
+      : platform(1);
 
-  /// Clef's size, in the tree.
-  double get characterHeight => screen.height * 0.24;
+  /// The most a character's drawn box ever grows past its resting size: the
+  /// celebration pose's scale-up (8%), which is more than the speaking
+  /// pulse's.
+  static const double maxCharacterGrowth = 0.08;
+
+  /// Clef's size, in the tree: **as tall as fits between the middle platform
+  /// and the top one's slot**, at the peak of [maxCharacterGrowth] (card 214).
+  ///
+  /// The shelves are about a sixth of the screen apart and he used to be a
+  /// quarter of it tall, so on the middle shelf at his old size his head
+  /// stood inside the top slot — where the high instrument lands and where a
+  /// drag counts. He is one size wherever he sits, so the branch has the same
+  /// Clef.
+  double get characterHeight {
+    final room = platform(1).dy - slotRect(0).bottom;
+    return room / (1 + maxCharacterGrowth);
+  }
 
   /// Drawn width of a character sprite of [art] at [height].
   double spriteWidth(CharacterArt art, double height) =>
@@ -253,19 +271,19 @@ class SceneLayout {
 
   // ---- the tree slot (the drop target — see the class doc) ----
 
-  /// The platform this round's slot sits on: the highest free platform for a
-  /// high round, the bottom one for a low round. With two instruments Clef
-  /// takes the top, so high is the **middle** platform — which still reads
-  /// as up, because the slots are relative: the higher of the two available.
+  /// The platform this round's slot sits on: the top platform for a high
+  /// round, the bottom one for a low round — with two instruments, above
+  /// Clef or below him (card 214). Still one slot per round, never two: two
+  /// would quietly become an ordering task.
   int slotPlatformFor({required bool isPiperTarget}) =>
       isPiperTarget ? freePlatforms.last : freePlatforms.first;
 
   /// Where the instrument that flies [order]th lands after Observe's arrow
   /// (Trello card 173): they fly lowest pitch first, filling the free
   /// platforms from the bottom up, so the last one the child watches rises
-  /// highest. With two instruments Clef has the top (card 188), so they land
-  /// on the bottom and the middle — the same two platforms a low and a high
-  /// round put their slot on; with three, all three.
+  /// highest. With two instruments Clef has the middle (card 214), so they
+  /// land below him and then above him — the same two platforms a low and a
+  /// high round put their slot on; with three, all three.
   int observeLandingPlatform(int order) =>
       freePlatforms[freePlatforms.length - 1 - order];
 
@@ -342,21 +360,24 @@ class SceneLayout {
   double get _gap => _margin / 2;
   double get _bandLeft => withPiper ? piperRight + _gap : insets.left + _margin;
 
-  /// The band ends before the free column Observe's earned arrow needs
-  /// between the instruments and the platforms, and — when Clef is on the
-  /// branch above them — before Clef.
+  /// The band ends a clear column short of the platforms, and — when Clef is
+  /// on the branch above them — before Clef.
   double get _bandRight => _bandRightFor(clefOnBranch: clefOnBranch);
 
   double _bandRightFor({required bool clefOnBranch}) {
-    final beforeArrow = platformColumnLeftX - arrowSize - 2 * _gap;
+    final beforeTree = platformColumnLeftX - treeClearance - 2 * _gap;
     final edge = clefOnBranch
-        ? math.min(clefPerch.dx - _clefHalfWidth, beforeArrow)
-        : beforeArrow;
+        ? math.min(clefPerch.dx - _clefHalfWidth, beforeTree)
+        : beforeTree;
     return edge - _gap;
   }
 
-  /// Diameter of Observe's earned arrow.
-  static const double arrowSize = 72;
+  /// The clear column between the last instrument and the platforms. It was
+  /// reserved for Observe's earned arrow, which has moved to the bottom of
+  /// the screen (Trello card 209); kept, so nothing reflows, and because it
+  /// is what keeps every instrument a finger's slip away from a drop slot
+  /// (card L00pxs7q).
+  static const double treeClearance = 72;
 
   /// Instrument box size: [instrumentFraction] of the height, capped so the
   /// instruments fit the band without their boxes overlapping (which would
@@ -403,12 +424,4 @@ class SceneLayout {
   /// are cropped/composed the same way). Below this line is bark and grass;
   /// above it is the disc an instrument stands on.
   static const stumpSurfaceFraction = 0.37;
-
-  /// Where the A0 earned arrow sits: in the open air below the branch,
-  /// between the last instrument and the platform column, level with the
-  /// middle of the instruments.
-  Offset get arrowCentre => Offset(
-    (instrumentsRight + platformColumnLeftX) / 2,
-    screen.height - groundY - instrumentSize * 0.4,
-  );
 }

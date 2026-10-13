@@ -23,7 +23,7 @@ import 'ordering_slot.dart';
 
 /// High/Low's A4 ordering screen (Trello card 11, Panel 3): drag each
 /// instrument from its stump onto a platform of the tree, highest at the
-/// top under Clef.
+/// top.
 ///
 /// - An instrument **sounds as it lands**.
 /// - **Nothing is checked until every platform in play is filled.** No
@@ -311,13 +311,10 @@ class _OrderingScreenState extends State<OrderingScreen> {
         onLeave: (_) {
           if (_hoverSlot == slot) setState(() => _hoverSlot = null);
         },
-        builder: (context, _, _) => Align(
-          alignment: Alignment(0, 0.6),
-          child: OrderingSlot(
-            key: ValueKey('slot-$slot'),
-            state: _slotState(slot),
-            size: layout.slotSize,
-          ),
+        builder: (context, _, _) => OrderingSlot(
+          key: ValueKey('slot-$slot'),
+          state: _slotState(slot),
+          size: Size(w, h),
         ),
       ),
     );

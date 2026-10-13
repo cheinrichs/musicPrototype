@@ -3,21 +3,18 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:ear_trainer/games/high_low/ordering/ordering_slot.dart';
 import 'package:ear_trainer/ui/theme/theme.dart';
 
-Future<void> pumpSlot(
-  WidgetTester tester,
-  SlotState state, {
-  SlotStyle? style,
-}) => tester.pumpWidget(
-  MaterialApp(
-    home: Center(
-      child: style == null
-          ? OrderingSlot(state: state, size: const Size(80, 22))
-          : OrderingSlot(state: state, size: const Size(80, 22), style: style),
-    ),
-  ),
-);
+Future<void> pumpSlot(WidgetTester tester, SlotState state) =>
+    tester.pumpWidget(
+      MaterialApp(
+        home: Center(
+          child: OrderingSlot(state: state, size: const Size(110, 90)),
+        ),
+      ),
+    );
 
 void main() {
+  const style = DashedSlotStyle();
+
   group('slot states', () {
     test('there are exactly four — and none of them is a "wrong" state. '
         'A slot never marks a mistake: right placements are ticked, wrong '
@@ -30,92 +27,81 @@ void main() {
       });
     });
 
-    test('each state looks different from the others', () {
-      const style = SoftDepressionSlotStyle();
-      final looks = {for (final s in SlotState.values) s: style.look(s)};
-      expect(looks.values.toSet().length, 4);
+    test('an EMPTY slot is visible before any drag begins — a dashed '
+        'outline with a note in it (Trello card 215): a slot only shown '
+        'mid-drag teaches nothing to a child who has not found dragging', () {
+      final empty = style.look(SlotState.empty);
+      expect(empty.invisible, isFalse);
+      expect(empty.outline, isNotNull);
+      expect(empty.dashed, isTrue);
+      expect(empty.glyph, isTrue);
     });
 
-    test('empty asks for something with a "?", and only empty does — a '
-        'literacy symbol, acceptable here because nobody reaches A4 '
-        'ordering at two or three', () {
-      const style = SoftDepressionSlotStyle();
-      expect(style.look(SlotState.empty).glyph, isTrue);
-      for (final s in [
-        SlotState.hovering,
-        SlotState.filled,
-        SlotState.confirmed,
-      ]) {
-        expect(style.look(s).glyph, isFalse, reason: '$s');
-      }
+    test('a drag passing over STRENGTHENS it: heavier wash, thicker solid '
+        'line, drawn up to meet the instrument', () {
+      final empty = style.look(SlotState.empty);
+      final hover = style.look(SlotState.hovering);
+      expect(hover.fillOpacity, greaterThan(empty.fillOpacity));
+      expect(hover.outlineWidth, greaterThan(empty.outlineWidth));
+      expect(hover.scale, greaterThan(1.0));
+      expect(empty.scale, 1.0);
     });
 
-    test('an instrument passing over draws the slot up to meet it', () {
-      const style = SoftDepressionSlotStyle();
-      expect(style.look(SlotState.hovering).scale, greaterThan(1.0));
-      expect(style.look(SlotState.empty).scale, 1.0);
+    test('filled or confirmed it draws nothing — the instrument standing '
+        'there, and its tick, say it', () {
+      expect(style.look(SlotState.filled).invisible, isTrue);
+      expect(style.look(SlotState.confirmed).invisible, isTrue);
     });
 
-    test('only a confirmed slot is green; nothing on any slot is red', () {
-      const style = SoftDepressionSlotStyle();
-      expect(style.look(SlotState.confirmed).ringColor, AppColors.correct);
+    test('it is a layer ON the painting, not part of it: cool colours only, '
+        'outside the dial\'s cream → gold → orange ramp, and never red', () {
       for (final s in SlotState.values) {
         final look = style.look(s);
-        for (final c in [look.color, look.ringColor, look.glyphColor]) {
+        for (final c in [look.fill, look.outline]) {
           if (c == null) continue;
-          expect(
-            c.r > 0.6 && c.g < 0.35 && c.b < 0.35,
-            isFalse,
-            reason: '$s uses a red-ish colour $c',
-          );
+          expect(c.b, greaterThanOrEqualTo(c.r), reason: '$s: $c is warm');
+          expect([
+            AppColors.ivory,
+            AppColors.gold,
+            AppColors.fox,
+          ], isNot(contains(c)));
           expect(c, isNot(AppColors.incorrect), reason: '$s uses rose');
-          expect(c, isNot(AppColors.incorrectLight), reason: '$s uses rose');
         }
       }
     });
   });
 
   group('OrderingSlot', () {
-    testWidgets('shows a question mark while empty and not otherwise', (
+    testWidgets('shows a note while empty or hovered, never a "?"', (
       tester,
     ) async {
-      await pumpSlot(tester, SlotState.empty);
-      expect(find.text('?'), findsOneWidget);
-      for (final s in [
-        SlotState.hovering,
-        SlotState.filled,
-        SlotState.confirmed,
-      ]) {
+      for (final s in [SlotState.empty, SlotState.hovering]) {
         await pumpSlot(tester, s);
         await tester.pump(const Duration(milliseconds: 400));
-        expect(find.text('?'), findsNothing, reason: '$s');
+        expect(find.byIcon(Icons.music_note_rounded), findsOneWidget);
+        expect(find.text('?'), findsNothing);
+      }
+      for (final s in [SlotState.filled, SlotState.confirmed]) {
+        await pumpSlot(tester, s);
+        expect(find.byIcon(Icons.music_note_rounded), findsNothing);
       }
     });
 
-    testWidgets('the whole treatment is one swappable decision: a different '
-        'style changes the look without touching anything else', (
-      tester,
-    ) async {
-      const soft = SoftDepressionSlotStyle();
-      const grey = GreyQuestionSlotStyle();
-      expect(
-        soft.look(SlotState.empty).color,
-        isNot(grey.look(SlotState.empty).color),
-      );
-
-      await pumpSlot(tester, SlotState.empty, style: grey);
-      expect(
-        find.text('?'),
-        findsOneWidget,
-        reason: 'same states, same glyph rule',
-      );
-      expect(orderingSlotStyle, isA<SlotStyle>());
+    test('the outline stands on the platform face and rises about an '
+        'instrument\'s height, inside the drop target', () {
+      const size = Size(110, 90);
+      final box = OrderingSlot.outlineRect(size);
+      final face = size.height * OrderingSlot.faceFraction;
+      expect(box.bottom, greaterThan(face));
+      expect(box.bottom, lessThanOrEqualTo(size.height));
+      expect(box.top, greaterThanOrEqualTo(0));
+      expect(box.height, greaterThan(box.width));
+      expect(box.center.dx, closeTo(size.width / 2, 0.001));
     });
 
-    testWidgets('occupies exactly the size it is given, so it lands on a '
-        'platform', (tester) async {
+    testWidgets('occupies exactly the drop target it is given', (tester) async {
       await pumpSlot(tester, SlotState.empty);
-      expect(tester.getSize(find.byType(OrderingSlot)), const Size(80, 22));
+      expect(tester.getSize(find.byType(OrderingSlot)), const Size(110, 90));
     });
   });
 

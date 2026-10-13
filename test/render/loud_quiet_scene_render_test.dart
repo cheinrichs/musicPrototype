@@ -27,8 +27,11 @@ const _outDir = String.fromEnvironment('RENDER_DIR');
 
 const _phones = {
   'se': (Size(667, 375), EdgeInsets.zero),
-  'iphone14': (Size(844, 390), EdgeInsets.symmetric(horizontal: 47)),
-  'promax': (Size(932, 430), EdgeInsets.symmetric(horizontal: 59)),
+  'iphone14': (
+    Size(844, 390),
+    EdgeInsets.only(left: 47, right: 47, bottom: 21),
+  ),
+  'promax': (Size(932, 430), EdgeInsets.only(left: 59, right: 59, bottom: 21)),
 };
 
 class _SilentAudio implements AudioController {
@@ -102,6 +105,16 @@ void main() {
             s.tapInstrument(1 - s.currentRound!.loudSide);
           },
         ),
+        // The earned way on (card 209): both heard, the bar up.
+        'observe_earned': (
+          AgencyStage.observe,
+          (s, t) async {
+            s.tapInstrument(s.currentRound!.loudSide);
+            await _frames(t, const Duration(milliseconds: 2500));
+            s.tapInstrument(1 - s.currentRound!.loudSide);
+            await _frames(t, const Duration(milliseconds: 2500));
+          },
+        ),
         'explore_sparkles': (
           AgencyStage.explore,
           (s, t) async {
@@ -127,6 +140,7 @@ void main() {
         tester.view.padding = FakeViewPadding(
           left: insets.left * 2,
           right: insets.right * 2,
+          bottom: insets.bottom * 2,
         );
         addTearDown(tester.view.reset);
         final (stage, act) = scene.value;

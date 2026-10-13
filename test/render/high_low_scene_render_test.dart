@@ -31,8 +31,11 @@ const _outDir = String.fromEnvironment('RENDER_DIR');
 /// Real landscape phones, with the notch's side insets where there is one.
 const _phones = {
   'se': (Size(667, 375), EdgeInsets.zero),
-  'iphone14': (Size(844, 390), EdgeInsets.symmetric(horizontal: 47)),
-  'promax': (Size(932, 430), EdgeInsets.symmetric(horizontal: 59)),
+  'iphone14': (
+    Size(844, 390),
+    EdgeInsets.only(left: 47, right: 47, bottom: 21),
+  ),
+  'promax': (Size(932, 430), EdgeInsets.only(left: 59, right: 59, bottom: 21)),
 };
 
 /// Decodes every image on screen for real, then paints [boundary] to
@@ -75,6 +78,7 @@ void main() {
       tester.view.padding = FakeViewPadding(
         left: insets.left * 2,
         right: insets.right * 2,
+        bottom: insets.bottom * 2,
       );
       addTearDown(tester.view.reset);
       final state = HighLowGameState(
@@ -125,6 +129,7 @@ void main() {
       tester.view.padding = FakeViewPadding(
         left: insets.left * 2,
         right: insets.right * 2,
+        bottom: insets.bottom * 2,
       );
       addTearDown(tester.view.reset);
       final state = HighLowGameState(
@@ -195,6 +200,7 @@ void main() {
         tester.view.padding = FakeViewPadding(
           left: insets.left * 2,
           right: insets.right * 2,
+          bottom: insets.bottom * 2,
         );
         addTearDown(tester.view.reset);
         final boundary = GlobalKey();
@@ -234,6 +240,7 @@ void main() {
           tester.view.padding = FakeViewPadding(
             left: insets.left * 2,
             right: insets.right * 2,
+            bottom: insets.bottom * 2,
           );
           addTearDown(tester.view.reset);
 

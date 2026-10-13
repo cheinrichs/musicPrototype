@@ -117,12 +117,12 @@ void main() {
       tester,
     ) async {
       final state = await pumpOrdering(tester);
-      expect(find.text('?'), findsNWidgets(3));
+      expect(find.byIcon(Icons.music_note_rounded), findsNWidgets(3));
 
       await dragNoteToSlot(tester, 0, 1);
       await tester.pump(const Duration(milliseconds: 400));
 
-      expect(find.text('?'), findsNWidgets(2));
+      expect(find.byIcon(Icons.music_note_rounded), findsNWidgets(2));
       state.dispose();
     });
 
@@ -199,7 +199,8 @@ void main() {
       for (final n in [1, 2]) {
         final feet = layout.stumpFeet(n);
         final instrumentInstance = r.notes[n].instrument;
-        final size = layout.stumpInstrumentSize * instrumentInstance.displaySizeScale;
+        final size =
+            layout.stumpInstrumentSize * instrumentInstance.displaySizeScale;
         final lift = size * instrumentInstance.floatFraction;
         final box = tester.getRect(instrument(n));
         expect(box.bottomCenter.dx, closeTo(feet.dx, 1.0), reason: 'note $n');
@@ -239,7 +240,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 500));
 
       // Two platforms went back to empty (a "?" each).
-      expect(find.text('?'), findsNWidgets(2));
+      expect(find.byIcon(Icons.music_note_rounded), findsNWidgets(2));
       state.dispose();
     });
 

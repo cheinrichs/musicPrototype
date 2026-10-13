@@ -21,6 +21,11 @@ void main() {
   // pose's own scale-up, whichever is larger.
   final grow = max(SpeakingPulse.maxScaleDelta, 0.08);
 
+  test('the layout\'s own growth allowance covers the pulse and the '
+      'celebration', () {
+    expect(SceneLayout.maxCharacterGrowth, greaterThanOrEqualTo(grow));
+  });
+
   for (final entry in cases.entries) {
     final (size, insets) = entry.value;
     group('SceneLayout — ${entry.key}', () {
@@ -72,14 +77,14 @@ void main() {
         expect(l.platform(1).dy, lessThan(l.platform(2).dy));
       });
 
-      test('CLEF\'S SEAT FOLLOWS THE INSTRUMENT COUNT (Trello card 188): with '
-          'two he sits on the top platform, taking it — "this one is taken", '
-          'with no UI — and is fully on screen and inside the safe area even '
-          'at the peak of the speaking pulse', () {
+      test('CLEF\'S SEAT FOLLOWS THE INSTRUMENT COUNT (Trello cards 188, '
+          '214): with two he sits on the MIDDLE platform — the reference '
+          'point, high above him and low below — and is fully on screen and '
+          'inside the safe area even at the peak of the speaking pulse', () {
         final l = two();
         expect(l.clefOnBranch, isFalse);
-        expect(l.clefPerch, l.platform(0));
-        expect(l.freePlatforms, [1, 2]);
+        expect(l.clefPerch, l.platform(1));
+        expect(l.freePlatforms, [0, 2]);
         final clef = l.clefBounds(pulse: grow);
         expect(clef.top, greaterThan(0));
         expect(clef.right, lessThanOrEqualTo(size.width - insets.right));
@@ -97,11 +102,22 @@ void main() {
         expect(l.clefPerch.dx, greaterThan(l.treeRect.left));
       });
 
-      test('either way Clef stays high: above every free platform', () {
-        for (final l in [two(), three()]) {
-          for (final p in l.freePlatforms) {
-            expect(l.clefPerch.dy, lessThan(l.platform(p).dy));
-          }
+      test('with two, high is truly above Clef and low truly below him — '
+          '"put the higher one up on top" is true of the screen', () {
+        final l = two();
+        final high = l.slotPlatformFor(isPiperTarget: false);
+        final low = l.slotPlatformFor(isPiperTarget: true);
+        expect(
+          l.slotRect(high).bottom,
+          lessThanOrEqualTo(l.clefBounds(pulse: grow).top),
+        );
+        expect(l.platform(low).dy, greaterThan(l.clefPerch.dy));
+      });
+
+      test('with three he is on the branch, above every platform', () {
+        final l = three();
+        for (final p in l.freePlatforms) {
+          expect(l.clefPerch.dy, lessThan(l.platform(p).dy));
         }
       });
 
@@ -195,11 +211,10 @@ void main() {
       });
 
       group('the tree slot (the drop target, not a character)', () {
-        test('two instruments: Clef has the top, so HIGH is the middle '
-            'platform and LOW the bottom — relative, the higher of the two '
-            'available is up (Trello card 188)', () {
+        test('two instruments: Clef has the middle, so HIGH is the top '
+            'platform and LOW the bottom (Trello card 214)', () {
           final l = two();
-          expect(l.slotPlatformFor(isPiperTarget: false), 1);
+          expect(l.slotPlatformFor(isPiperTarget: false), 0);
           expect(l.slotPlatformFor(isPiperTarget: true), 2);
         });
 
@@ -279,13 +294,6 @@ void main() {
         expect(l.meadowRight, lessThan(l.platformColumnLeftX));
       });
 
-      test('the earned arrow sits between the last instrument and the '
-          'platform column', () {
-        final l = two();
-        expect(l.arrowCentre.dx - 36, greaterThan(l.instrumentsRight - 40));
-        expect(l.arrowCentre.dx + 36, lessThan(l.platformColumnLeftX));
-      });
-
       test('three instruments are the same composition with one more: same '
           'tree, same Piper, same floor — only Clef moves, up to the '
           'branch — all clear of each other and of the tree, and fixed for '
@@ -307,12 +315,12 @@ void main() {
       });
 
       group('the ordering screen is the same tree (Trello card 188)', () {
-        test('its slots are the free platforms, highest first: the two under '
-            'Clef with two notes, all three with three', () {
+        test('its slots are the free platforms, highest first: above and '
+            'below Clef with two notes, all three with three', () {
           final o2 = OrderingLayout(size, insets: insets, noteCount: 2);
-          expect(o2.slotCentre(0), o2.platform(1));
+          expect(o2.slotCentre(0), o2.platform(0));
           expect(o2.slotCentre(1), o2.platform(2));
-          expect(o2.clefFeet, o2.platform(0));
+          expect(o2.clefFeet, o2.platform(1));
           final o3 = OrderingLayout(size, insets: insets, noteCount: 3);
           for (var s = 0; s < 3; s++) {
             expect(o3.slotCentre(s), o3.platform(s));

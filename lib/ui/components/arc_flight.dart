@@ -42,11 +42,13 @@ class ArcFlight extends StatefulWidget {
   /// arriving at [to] moving sideways — sliding onto a shelf rather than
   /// dropping onto it from above.
   ///
-  /// Why sideways: with two instruments Clef sits on the top platform
-  /// directly above the middle one (Trello card 188), so anything that came
-  /// down onto the middle platform from above passed through him. Arriving
-  /// level with the platform never rises above it. An earlier version that
-  /// lifted over the top and set down swept through Clef on every phone.
+  /// Why sideways: the platforms are stacked with something on the one above
+  /// (Clef, or an instrument already placed), so anything that came down onto
+  /// a platform from above passed through it. Arriving level with the
+  /// platform never rises above it. An earlier version that lifted over the
+  /// top and set down swept through Clef on every phone (Trello card 188);
+  /// with Clef on the middle shelf (card 214) the same shape carries the
+  /// high instrument in over his head.
   static const double riseShare = 0.35;
 
   /// The point [t] (0..1) of the way along the arc from [from] to [to]: a

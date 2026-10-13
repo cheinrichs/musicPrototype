@@ -31,15 +31,18 @@ void main() {
         );
       });
 
-      test('the dial is as big as fits, never over the approved 92% of the '
-          'height, standing on the bottom of the screen — in practice 56-76%: '
-          'the touch floor and the slip gap to the quiet slot both outrank '
-          'its size (for Cooper to judge)', () {
-        final d = l().dialRect;
-        expect(d.height, lessThanOrEqualTo(size.height * 0.92 + 0.01));
-        expect(d.height, greaterThan(size.height * 0.5));
-        expect(d.bottom, closeTo(size.height, 0.01));
-      });
+      test(
+        'the dial is as big as fits, never over the approved 92% of the '
+        'height, standing on the bottom of the screen — in practice 49-69% '
+        'since Piper grew (card 209): the touch floor, the slip gap to the '
+        'quiet slot and Piper\'s size all outrank it (for Cooper to judge)',
+        () {
+          final d = l().dialRect;
+          expect(d.height, lessThanOrEqualTo(size.height * 0.92 + 0.01));
+          expect(d.height, greaterThan(size.height * 0.45));
+          expect(d.bottom, closeTo(size.height, 0.01));
+        },
+      );
 
       test('every platform is on screen and inside the safe area — the loud '
           'end is pushed right only as far as that allows', () {
@@ -105,7 +108,10 @@ void main() {
           final layout = l();
           final piper = layout.piperBounds(pulse: grow);
           expect(piper.left, greaterThanOrEqualTo(insets.left - 0.5));
-          expect(layout.piperHeight, greaterThanOrEqualTo(size.height * 0.5));
+          expect(
+            layout.piperHeight,
+            greaterThanOrEqualTo(size.height * LoudQuietLayout.piperShare),
+          );
           expect(layout.piperHeight, lessThanOrEqualTo(size.height * 0.75));
           expect(
             layout.piperFeetY - size.height,
@@ -171,17 +177,6 @@ void main() {
         final layout = l();
         expect(layout.meadowRight, layout.dialRect.left);
       });
-
-      test(
-        'the arrow sits between the last instrument and the dial\'s arc',
-        () {
-          final layout = l();
-          expect(
-            layout.arrowCentre.dx,
-            greaterThan(layout.instrumentBox(1).right),
-          );
-        },
-      );
     });
   }
 

@@ -142,7 +142,7 @@ class LoudQuietLayout {
 
   // ---- the dial ----
 
-  double get dialHeight => _dialHeightFor(screen.height * 0.5);
+  double get dialHeight => _dialHeightFor(screen.height * piperShare);
 
   /// The tallest dial, up to 92% of the height, that leaves room for two
   /// instruments at the floor beside a Piper of [piperHeight].
@@ -227,8 +227,12 @@ class LoudQuietLayout {
 
   Offset get clefPerch => platform(clefPlatform);
 
+  /// Piper's height, as a share of the screen's, that the dial is sized to
+  /// leave room for (Trello card 209, Cooper: "Piper could be bigger").
+  static const double piperShare = 0.6;
+
   /// Piper: as big as the room the dial leaves, up to three-quarters of the
-  /// height, never less than half.
+  /// height, never less than [piperShare].
   double get piperHeight {
     final room =
         _bandRightFor(dialHeight) -
@@ -238,7 +242,7 @@ class LoudQuietLayout {
         _needForInstruments;
     final widestPerHeight = _widestPose(CharacterArt.piper, 1);
     return math.max(
-      screen.height * 0.5,
+      screen.height * piperShare,
       math.min(screen.height * 0.75, room / widestPerHeight),
     );
   }
@@ -291,9 +295,6 @@ class LoudQuietLayout {
   /// on High vs Low's tree measures on screen (0.15 of the screen's height),
   /// since only one ever lands here and there is nothing to stack against.
   double get placedSize => dialHeight * 0.22;
-
-  Size get slotSize =>
-      Size(platformWidths.reduce(math.min) * dialWidth, dialHeight * 0.06);
 
   /// The drop target over platform [index], generous as on the tree.
   Rect slotRect(int index) => _slotRectFor(dialHeight, index);
@@ -361,13 +362,5 @@ class LoudQuietLayout {
     ),
     width: instrumentSize,
     height: instrumentSize,
-  );
-
-  /// Where Observe's earned arrow sits: between the last instrument and the
-  /// dial's arc.
-  static const double arrowSize = 72;
-  Offset get arrowCentre => Offset(
-    (instrumentBox(1).right + dialRect.left + _faceFreeLeft * dialWidth) / 2,
-    screen.height - groundY - instrumentSize * 0.4,
   );
 }

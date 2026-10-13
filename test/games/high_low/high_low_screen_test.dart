@@ -1807,7 +1807,7 @@ void main() {
 
     testWidgets('the arrow goes once it has sent the instruments flying; '
         'each lands on a free platform, lowest on the bottom, highest on the '
-        'middle — Clef has the top with two instruments (card 188) — and '
+        'top — Clef has the middle with two instruments (card 214) — and '
         'both rest there before the round turns', (tester) async {
       final state = await pumpObserve(tester);
       state.tapInstrument(0);
@@ -1826,7 +1826,7 @@ void main() {
       await frames(tester, HighLowGameState.observeFlightStepDuration * 2);
       expect(state.isObserveFlying, isTrue, reason: 'in the hold');
       expect(ring, findsNothing, reason: 'nothing left on the stumps');
-      for (final (side, platform) in [(low, 2), (high, 1)]) {
+      for (final (side, platform) in [(low, 2), (high, 0)]) {
         final feet = instrumentRect(tester, state, side).bottomCenter;
         expect(
           (feet - layout.platform(platform)).distance,
@@ -1845,8 +1845,8 @@ void main() {
       ('SE', tightViewport),
     ]) {
       testWidgets('no flying instrument ever crosses Clef, on any frame — '
-          'with two instruments he sits on the top platform right above '
-          'where the higher one lands ($name)', (tester) async {
+          'with two instruments he sits on the middle platform, between '
+          'where the two land (Trello card 214) ($name)', (tester) async {
         final state = await pumpObserve(tester, viewport: viewport);
         state.tapInstrument(0);
         state.tapInstrument(1);
