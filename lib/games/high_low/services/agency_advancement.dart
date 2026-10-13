@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import '../../../models/agency_stage.dart';
 import '../models/round_instrumentation.dart';
 
@@ -56,12 +58,23 @@ class AgencyEvaluation {
 /// stateless evaluator has no way to arrange or to know was already tried,
 /// so it holds rather than guessing.
 class AgencyAdvancement {
-  /// How many of the session's most recent qualifying rounds must agree
-  /// before a change is recommended. "A few rounds," per the card, without
-  /// a specific number — 3 is a judgment call: enough that one unusual
-  /// round can't flip a recommendation, short enough that a real pattern is
-  /// still noticed within a single 5-round session.
+  /// How many of the most recent completed rounds must agree before a
+  /// DEMOTION is recommended. "A few rounds," per the card, without a
+  /// specific number — 3 is a judgment call: enough that one unusual round
+  /// can't flip a recommendation. Demotion only happens at Decide, whose sets
+  /// are the longest (5), so this still leaves slack.
   static const int roundsRequired = 3;
+
+  /// The share of a set's rounds that must qualify for a PROMOTION (Trello
+  /// card 213). A proportion, not a count: the old bare "three in a row" was
+  /// chosen when every set was five rounds, and when sets became 3/4/5 by
+  /// agency (card 196) it silently became "every round" at Observe. 60% is
+  /// what three of five was; XP went the same way, to 80% of the set.
+  static const double promotionShare = 0.6;
+
+  /// Never fewer than this many qualifying rounds, however short a set is
+  /// made on the dev screen: one round alone never moves a child.
+  static const int _promotionFloor = 2;
 
   /// Explore→Drag's "consistently" tolerance: up to this many wrong taps in
   /// a round still counts as hitting the sparkle consistently. Zero
@@ -76,28 +89,20 @@ class AgencyAdvancement {
 
   const AgencyAdvancement._();
 
+  /// How many qualifying rounds a set of [setLength] rounds needs to promote.
+  static int promotionNeeds(int setLength) =>
+      math.max(_promotionFloor, (setLength * promotionShare - 1e-9).ceil());
+
   static AgencyEvaluation evaluate({
     required AgencyStage current,
     required List<RoundInstrumentation> instrumentation,
   }) {
-    // Moving UP needs the last few rounds to be completed ones, back to back:
-    // a skipped round (logged since 2026-10-12, Trello card 173) breaks the
-    // streak. Before skips were logged they left no trace, so "consecutive
-    // rounds completed without being skipped" was not actually enforced.
     if (current != AgencyStage.decide) {
-      if (instrumentation.length < roundsRequired) return AgencyEvaluation.hold;
-      final recent = instrumentation.sublist(
-        instrumentation.length - roundsRequired,
-      );
-      if (recent.any((r) => r.skipped)) return AgencyEvaluation.hold;
-      return current == AgencyStage.observe
-          ? _observeToExplore(recent)
-          : _exploreToDecide(recent) ?? AgencyEvaluation.hold;
+      return _promotion(current, instrumentation) ?? AgencyEvaluation.hold;
     }
 
-    // Moving DOWN reads completed rounds only, exactly as before skips were
-    // logged. Whether skips should count toward demotion is a product
-    // question, not decided here.
+    // Moving DOWN reads completed rounds only. Whether skips should count
+    // toward demotion is a product question, not decided here.
     final completed = [
       for (final r in instrumentation)
         if (!r.skipped) r,
@@ -107,31 +112,49 @@ class AgencyAdvancement {
     return _decideDemotion(recent) ?? AgencyEvaluation.hold;
   }
 
-  /// Observe's own completion criterion (tapping both instruments) is what
-  /// gets a round recorded as completed — [HighLowGameState.tapArrow] only
-  /// ever fires once [HighLowGameState.showArrow] is true, and a skipped
-  /// round is recorded as skipped (see [RoundInstrumentation.skipped]), which
-  /// [evaluate] has already ruled out of the window. So [roundsRequired]
-  /// completed rounds already *is* "the child taps each instrument, across a
-  /// few rounds" — there is nothing further to check per round.
-  static AgencyEvaluation _observeToExplore(
-    List<RoundInstrumentation> recent,
-  ) => AgencyEvaluation(
-    AgencyChange.advance,
-    '$roundsRequired consecutive Observe rounds completed '
-    '(both instruments tapped) without being skipped',
-  );
-
-  static AgencyEvaluation? _exploreToDecide(List<RoundInstrumentation> recent) {
-    final consistent = recent.every(
-      (r) => r.wrongTapCount <= _exploreNoiseTolerance,
-    );
-    if (!consistent) return null;
+  /// Moving UP (Trello card 213): enough of the set's rounds qualify,
+  /// [promotionShare] of them, **in any order**.
+  ///
+  /// - **A skip is neutral.** Skip is the ADULT's control (card xpAkja5b):
+  ///   bored, dinner, a sibling grabbed the iPad. It is not evidence about the
+  ///   child, so it neither counts as a qualifying round nor breaks anything.
+  ///   It still counts in the set's length, so a set the adult mostly skipped
+  ///   has too few qualifying rounds and holds — neutral, not free. (It stays
+  ///   in the instrumentation as evidence of difficulty for the tracking
+  ///   log.)
+  /// - **No streak.** Consecutiveness guards against guessing, which is real
+  ///   for a two-way choice — but agency asks whether the child can perform
+  ///   the gesture, and you cannot luck your way into one. That argument
+  ///   belongs to concept tier.
+  static AgencyEvaluation? _promotion(
+    AgencyStage current,
+    List<RoundInstrumentation> set,
+  ) {
+    if (set.isEmpty) return null;
+    final completed = [
+      for (final r in set)
+        if (!r.skipped) r,
+    ];
+    final qualifying = current == AgencyStage.observe
+        ? completed
+        : [
+            for (final r in completed)
+              if (r.wrongTapCount <= _exploreNoiseTolerance) r,
+          ];
+    final needed = promotionNeeds(set.length);
+    if (qualifying.length < needed) return null;
+    final skipped = set.length - completed.length;
+    final skipNote = skipped == 0
+        ? ''
+        : ' ($skipped skipped by the adult, counted neither way)';
     return AgencyEvaluation(
       AgencyChange.advance,
-      '$roundsRequired consecutive Explore rounds hit the correct '
-      '(sparkling) instrument with $_exploreNoiseTolerance or fewer wrong '
-      'taps each',
+      current == AgencyStage.observe
+          ? '${qualifying.length} of ${set.length} Observe rounds completed '
+                '(both instruments tapped), $needed needed$skipNote'
+          : '${qualifying.length} of ${set.length} Explore rounds hit the '
+                'correct (sparkling) instrument with $_exploreNoiseTolerance '
+                'or fewer wrong taps, $needed needed$skipNote',
     );
   }
 

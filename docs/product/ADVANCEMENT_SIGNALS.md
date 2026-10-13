@@ -213,9 +213,20 @@ profile once a session completes.
   rounds answered before either note finished playing (no evidence existed — the
   same signal the invalid-round rule above already computes, reused here as a
   demotion pattern rather than invented separately).
-- **"A few rounds"** (the cards' own phrase, no number given) is 3 consecutive
-  qualifying rounds within the same session — a judgment call, documented in the
-  code as such, not a value handed down by any card.
+- **Promotion is a share of the set, in any order (Trello card 213):** 60% of the
+  set's rounds must qualify (never fewer than two) — 2 of an Observe set's 3, 3 of
+  an Explore set's 4. It was "3 consecutive" until sets became 3/4/5 by agency, which
+  silently turned it into "every round" at Observe. No streak: consecutiveness
+  guards against guessing, which belongs to concept tier; nobody lucks into a
+  gesture. **A skip is neutral** — the adult's control, not evidence about the
+  child: it neither qualifies nor blocks, but it still counts in the set's length,
+  so a mostly-skipped set holds.
+- **Demotion** still reads the 3 most recent completed rounds, which must all agree
+  — a judgment call ("a few rounds", no number given), skips excluded.
+- ⚠️ **Open (card 213): Explore → Decide is driven by correctness.** Its qualifying
+  test is "no more than two taps on the wrong instrument", i.e. whether the child
+  can tell which one is high — the tier axis. Nothing at Explore observes a drag.
+  Reported, not changed.
 
 **Deliberately not built:**
 - **Explore → Observe demotion.** The card says to be cautious: Observe removes the

@@ -36,13 +36,25 @@ void main() {
   );
 
   group('AgencyAdvancement (Trello card 172)', () {
-    test('holds with fewer than roundsRequired rounds recorded', () {
+    test('one round alone never moves a child, however short the set', () {
+      expect(AgencyAdvancement.promotionNeeds(1), 2);
       final result = AgencyAdvancement.evaluate(
         current: AgencyStage.observe,
-        instrumentation: [observeRound(), observeRound()],
+        instrumentation: [observeRound()],
       );
       expect(result.change, AgencyChange.hold);
     });
+
+    test(
+      'PROMOTION IS A SHARE OF THE SET, not a bare count (Trello card '
+      '213): 60% — what three of five was — so a three-round Observe set '
+      'needs two, a four-round Explore set three, a five-round set three',
+      () {
+        expect(AgencyAdvancement.promotionNeeds(3), 2);
+        expect(AgencyAdvancement.promotionNeeds(4), 3);
+        expect(AgencyAdvancement.promotionNeeds(5), 3);
+      },
+    );
 
     test('Observe advances to Explore once enough rounds were completed '
         'without being skipped — completion at Observe already means both '
@@ -59,27 +71,40 @@ void main() {
     });
 
     group('skipped rounds (logged since 2026-10-12, Trello card 173)', () {
-      test('a skip inside the recent window holds Observe where it is — the '
-          'rule always said "consecutive rounds completed without being '
-          'skipped"; logging skips is what makes it true', () {
-        final rounds = [
-          for (var i = 0; i < AgencyAdvancement.roundsRequired; i++)
-            observeRound(n: i),
-        ];
-        rounds[rounds.length - 2] = observeRound(skipped: true);
+      test('A SKIP IS NEUTRAL for promotion (Trello card 213): it is the '
+          'adult\'s control, not evidence about the child — a three-round '
+          'Observe set with one skip still promotes on the other two', () {
         final result = AgencyAdvancement.evaluate(
           current: AgencyStage.observe,
-          instrumentation: rounds,
+          instrumentation: [
+            observeRound(n: 0),
+            observeRound(n: 1, skipped: true),
+            observeRound(n: 2),
+          ],
+        );
+        expect(result.change, AgencyChange.advance);
+        expect(result.reason, contains('skipped'));
+      });
+
+      test('…but neutral is not free: a skip does not count as a qualifying '
+          'round, so a set the adult mostly skipped holds', () {
+        final result = AgencyAdvancement.evaluate(
+          current: AgencyStage.observe,
+          instrumentation: [
+            observeRound(n: 0, skipped: true),
+            observeRound(n: 1, skipped: true),
+            observeRound(n: 2),
+          ],
         );
         expect(result.change, AgencyChange.hold);
       });
 
-      test('…and a skip inside the window holds Explore too', () {
+      test('…and the same at Explore: a skip in a four-round set does not '
+          'block three clean rounds', () {
         final result = AgencyAdvancement.evaluate(
           current: AgencyStage.explore,
           instrumentation: [
-            for (var i = 0; i < AgencyAdvancement.roundsRequired - 1; i++)
-              exploreRound(),
+            exploreRound(),
             RoundInstrumentation(
               promptNumber: 9,
               waitedForPlaythrough: true,
@@ -87,19 +112,8 @@ void main() {
               listenAgainCount: 0,
               skipped: true,
             ),
-          ],
-        );
-        expect(result.change, AgencyChange.hold);
-      });
-
-      test('a full window of completed rounds after an older skip still '
-          'advances — only the recent window counts', () {
-        final result = AgencyAdvancement.evaluate(
-          current: AgencyStage.observe,
-          instrumentation: [
-            observeRound(skipped: true),
-            for (var i = 0; i < AgencyAdvancement.roundsRequired; i++)
-              observeRound(n: i),
+            exploreRound(),
+            exploreRound(),
           ],
         );
         expect(result.change, AgencyChange.advance);
@@ -158,23 +172,39 @@ void main() {
         expect(result.change, AgencyChange.hold);
       });
 
-      test('a single noisy round among otherwise-clean ones holds — the '
-          'window requires ALL recent rounds to agree', () {
-        final rounds = [
-          exploreRound(wrongTapCount: 0),
-          exploreRound(wrongTapCount: 10),
-          exploreRound(wrongTapCount: 0),
-        ];
-        expect(rounds.length, AgencyAdvancement.roundsRequired);
+      test(
+        'NO STREAK (Trello card 213): one noisy round in the middle of a '
+        'four-round set does not hold back three clean ones — agency asks '
+        'whether the child can do the gesture, and nobody lucks into one',
+        () {
+          final result = AgencyAdvancement.evaluate(
+            current: AgencyStage.explore,
+            instrumentation: [
+              exploreRound(wrongTapCount: 0),
+              exploreRound(wrongTapCount: 10),
+              exploreRound(wrongTapCount: 0),
+              exploreRound(wrongTapCount: 0),
+            ],
+          );
+          expect(result.change, AgencyChange.advance);
+        },
+      );
+
+      test('two noisy rounds in four leave too few qualifying, and hold', () {
         final result = AgencyAdvancement.evaluate(
           current: AgencyStage.explore,
-          instrumentation: rounds,
+          instrumentation: [
+            exploreRound(wrongTapCount: 0),
+            exploreRound(wrongTapCount: 10),
+            exploreRound(wrongTapCount: 10),
+            exploreRound(wrongTapCount: 0),
+          ],
         );
         expect(result.change, AgencyChange.hold);
       });
 
-      test('only the most recent roundsRequired rounds are considered — an '
-          'old noisy round outside the window does not block advancement', () {
+      test('one noisy round at the start of a set does not block '
+          'advancement either', () {
         final rounds = [
           exploreRound(wrongTapCount: 50),
           ...List.generate(
