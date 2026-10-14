@@ -13,13 +13,22 @@ import '../theme/theme.dart';
 /// Sage green: outside the dial's cream-gold-orange loudness ramp, so it
 /// never reads as part of Loud or Quiet's scale, and warm enough for the
 /// meadow. Shared by every game.
+///
+/// **Short and chunky** (card 216): a third of the row it used to fill, so
+/// every step is a third of the distance — a fifth of it at a five-round
+/// Decide set is a small movement for a three-year-old. So it is taller than
+/// it was, and each step is a visible motion: [fillDuration] long, with a
+/// slight overshoot, rather than a quick slide.
 class RoundSetProgressBar extends StatelessWidget {
   /// 0 to 1.
   final double progress;
 
   const RoundSetProgressBar({super.key, required this.progress});
 
-  static const double height = 16;
+  static const double height = 22;
+
+  /// How long one step's fill takes.
+  static const Duration fillDuration = Duration(milliseconds: 700);
 
   @override
   Widget build(BuildContext context) {
@@ -44,13 +53,13 @@ class RoundSetProgressBar extends StatelessWidget {
         padding: const EdgeInsets.all(2),
         child: TweenAnimationBuilder<double>(
           tween: Tween(end: progress.clamp(0.0, 1.0)),
-          duration: AppAnimations.medium,
-          curve: Curves.easeOutCubic,
+          duration: fillDuration,
+          curve: Curves.easeOutBack,
           builder: (context, value, _) => Align(
             alignment: Alignment.centerLeft,
             child: FractionallySizedBox(
               key: const ValueKey('round-set-progress-fill'),
-              widthFactor: value,
+              widthFactor: value.clamp(0.0, 1.0),
               heightFactor: 1,
               child: DecoratedBox(
                 decoration: BoxDecoration(

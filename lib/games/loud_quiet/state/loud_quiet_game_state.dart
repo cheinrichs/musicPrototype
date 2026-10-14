@@ -213,12 +213,12 @@ class LoudQuietGameState extends ChangeNotifier {
     if (round == null) return null;
     final pole = round.asksLoud ? 'loud' : 'quiet';
     return switch (agencyStage) {
-      AgencyStage.observe => 'Let them tap each one and watch the dial.',
-      AgencyStage.explore => 'Let them tap both and find the $pole one.',
+      AgencyStage.observe => 'Watch the dial as they tap.',
+      AgencyStage.explore => 'Find the $pole one.',
       AgencyStage.decide =>
         round.asksLoud
-            ? 'Help them put the loud one over at the far side.'
-            : 'Help them put the quiet one over at the near side.',
+            ? 'Loud one to the loud end.'
+            : 'Quiet one to the quiet end.',
     };
   }
 
@@ -230,8 +230,7 @@ class LoudQuietGameState extends ChangeNotifier {
         _status != GameStatus.awaitingInput) {
       return null;
     }
-    return 'Encourage them to keep tapping the '
-        '${asksLoud ? 'loud' : 'quiet'} one.';
+    return 'Keep tapping the ${asksLoud ? 'loud' : 'quiet'} one.';
   }
 
   // ---- the session ----

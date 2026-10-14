@@ -172,11 +172,6 @@ void main() {
           }
         }
       });
-
-      test('the caption\'s meadow ends at the dial', () {
-        final layout = l();
-        expect(layout.meadowRight, layout.dialRect.left);
-      });
     });
   }
 

@@ -189,9 +189,6 @@ class LoudQuietLayout {
   /// The middle of platform [index]'s face (0 = quiet end, 2 = loud end).
   Offset platform(int index) => _onFace(platformCentres[index]);
 
-  /// Where the caption's meadow ends: the dial's left edge.
-  double get meadowRight => dialRect.left;
-
   // ---- the needle ----
 
   /// The needle's drawn size: its pivot-to-tip is [_needleReach] of the

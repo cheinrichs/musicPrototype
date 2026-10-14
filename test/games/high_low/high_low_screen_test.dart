@@ -5,6 +5,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:ear_trainer/ui/theme/theme.dart';
+import 'package:ear_trainer/ui/components/round_set_progress_bar.dart';
 import 'package:ear_trainer/app/config.dart';
 import 'package:ear_trainer/app/router.dart';
 import 'package:ear_trainer/app/state/dev_settings_state.dart';
@@ -132,31 +134,34 @@ void main() {
 
       expect(tester.takeException(), isNull);
       expect(find.byType(Draggable<int>), findsNWidgets(2));
-      expect(find.textContaining('higher'), findsOneWidget);
+      expect(
+        find.textContaining(RegExp('higher', caseSensitive: false)),
+        findsOneWidget,
+      );
     },
   );
 
-  testWidgets('the caption never renders flush against the close button — '
-      'regression test for Trello card hIKjobsB, found driving the '
-      'simulator: a long Trigger caption ("Help them drag the higher '
-      'instrument up the tree.") needs nearly the full width Expanded gives '
-      'it, and with no explicit margin its own left edge landed exactly on '
-      'the close button\'s right edge — no true overlap, but no breathing '
-      'room either, which reads as the caption running underneath the '
-      'button', (tester) async {
+  testWidgets('on an SE the one-line caption sits clear of the bar and fits '
+      'whole — written short, never cut (cards 216, hIKjobsB)', (tester) async {
     await pumpAndFinishIntro(tester, viewport: tightViewport);
-
-    final closeRect = tester.getRect(find.byTooltip('Close'));
-    final captionRect = tester.getRect(find.textContaining('higher'));
-
-    // Since the progress bar took the top row (Trello card 196) the caption
-    // sits on the row beneath the close, so it can't run under it; a margin
-    // below replaces the margin beside.
-    expect(
-      captionRect.top - closeRect.bottom,
-      greaterThanOrEqualTo(4.0),
-      reason: 'a real margin below the close, not just adjacency',
+    final bar = tester.getRect(
+      find.byKey(const ValueKey('round-set-progress')),
     );
+    final plate = tester.getRect(
+      find
+          .descendant(
+            of: find.byType(HighLowCaption),
+            matching: find.byType(DecoratedBox),
+          )
+          .first,
+    );
+    expect(plate.left - bar.right, greaterThanOrEqualTo(4.0));
+    // The test font draws every glyph a full em wide, so measure against
+    // the real face instead: Nunito at 15 px averages well under 0.55 em a
+    // character. The longest caption either game shows must fit the plate's
+    // inside at that width.
+    final inner = plate.width - 2 * AppSpacing.md;
+    expect(inner, greaterThan(HighLowCaption.maxLength * 15 * 0.55));
   });
 
   testWidgets('the skip pill is always enabled, even mid-intro', (
@@ -1155,10 +1160,9 @@ void main() {
       }
     });
 
-    testWidgets('the layout: close, the progress bar and Skip share the top '
-        'row and the bar dominates (Trello card 196); the caption is centred '
-        'over the MEADOW on its plate beneath them (card 187: screen-centred '
-        'text lands in the canopy)', (tester) async {
+    testWidgets('the top row (Trello card 216): close on its plate, a SHORT '
+        'bar, the one-line caption, then Skip — all in one row at the top, '
+        'and no game title', (tester) async {
       await pumpAndFinishIntro(tester, viewport: roomyViewport);
       final size = roomyViewport;
 
@@ -1172,23 +1176,25 @@ void main() {
             )
             .first,
       );
-      final meadowRight = SceneLayout(size, noteCount: 2).meadowRight;
-
-      expect(close.left, lessThan(size.width * 0.1));
-      expect(close.center.dy, lessThan(size.height * 0.25));
-      expect(skip.right, greaterThan(size.width * 0.9));
-      expect(skip.center.dy, lessThan(size.height * 0.25));
-      expect(skip.height, lessThanOrEqualTo(44));
       final bar = tester.getRect(
         find.byKey(const ValueKey('round-set-progress')),
       );
-      expect(bar.width, greaterThan(size.width * 0.6), reason: 'it dominates');
+
+      expect(close.left, lessThan(size.width * 0.1));
+      expect(close.center.dy, lessThan(size.height * 0.2));
+      expect(skip.right, greaterThan(size.width * 0.9));
+      expect(skip.height, lessThanOrEqualTo(44));
+      // Left to right, one row.
       expect(bar.left, greaterThan(close.right));
-      expect(bar.right, lessThan(skip.left));
-      expect((bar.center.dy - close.center.dy).abs(), lessThan(4));
-      expect(plate.top, greaterThan(close.bottom), reason: 'the row beneath');
-      expect(plate.right, lessThanOrEqualTo(meadowRight + 0.5));
-      expect(plate.center.dx, closeTo((close.right + meadowRight) / 2, 8.0));
+      expect(plate.left, greaterThan(bar.right));
+      expect(skip.left, greaterThan(plate.right));
+      for (final r in [bar, plate, skip]) {
+        expect((r.center.dy - close.center.dy).abs(), lessThan(4));
+      }
+      // A third of the row it used to fill.
+      expect(bar.width, lessThan(size.width * 0.3));
+      expect(bar.height, greaterThanOrEqualTo(RoundSetProgressBar.height));
+      expect(find.text('High vs Low'), findsNothing, reason: 'no title');
       expect(
         find.byType(ProgressDots),
         findsNothing,
@@ -1287,10 +1293,7 @@ void main() {
         await tester.pump();
         await tester.pump(Duration.zero);
 
-        expect(
-          find.text('Encourage them to tap each instrument.'),
-          findsOneWidget,
-        );
+        expect(find.text('Encourage them to tap both.'), findsOneWidget);
         await tester.pumpWidget(const SizedBox());
       },
     );

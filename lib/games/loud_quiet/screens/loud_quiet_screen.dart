@@ -49,8 +49,6 @@ class LoudQuietScreen extends StatefulWidget {
 
   const LoudQuietScreen({super.key, this.gameState, this.entry});
 
-  static const String title = 'Loud or Quiet';
-
   @override
   State<LoudQuietScreen> createState() => _LoudQuietScreenState();
 }
@@ -182,7 +180,6 @@ class _LoudQuietScreenState extends State<LoudQuietScreen> {
             ],
           ),
           header: HighLowHeader(
-            title: LoudQuietScreen.title,
             onClose: () {
               // Leaving is its own logged event (card 196).
               _game.leaveSet();
@@ -193,11 +190,6 @@ class _LoudQuietScreenState extends State<LoudQuietScreen> {
             guidanceText: _game.guidanceText,
             skipEnabled: _game.status != GameStatus.completed,
             onSkip: _game.escape,
-            captionPadding: HighLowHeader.meadowCaptionPadding(
-              screen: size,
-              insets: insets,
-              meadowRight: layout.meadowRight,
-            ),
           ),
           body: const SizedBox.shrink(),
           scrollableBody: false,

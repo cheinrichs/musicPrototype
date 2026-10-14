@@ -278,16 +278,17 @@ void main() {
     await finish(tester);
   });
 
-  testWidgets('the close sits small beside the bar, its tap target still '
-      'full size, and leaving logs its own event (card 196)', (tester) async {
+  testWidgets('the close sits on its own solid plate beside the bar (card '
+      '216), the whole plate takes the tap, and leaving logs its own event '
+      '(card 196)', (tester) async {
     await mount(tester);
-    final close = tester.getRect(find.byKey(const ValueKey('quiet-close')));
+    final close = tester.getRect(find.byKey(const ValueKey('close-plate')));
     final bar = tester.getRect(
       find.byKey(const ValueKey('round-set-progress')),
     );
     expect(close.width, greaterThanOrEqualTo(44));
     expect(close.height, greaterThanOrEqualTo(44));
-    expect(bar.width, greaterThan(667 * 0.6), reason: 'the bar dominates');
+    expect(bar.width, lessThan(667 * 0.3), reason: 'a third of what it was');
     expect((close.center.dy - bar.center.dy).abs(), lessThan(4));
     // The whole of the close takes a tap, corner to corner.
     for (final p in [

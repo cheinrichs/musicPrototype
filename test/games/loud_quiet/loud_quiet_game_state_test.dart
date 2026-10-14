@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ear_trainer/games/high_low/widgets/high_low_caption.dart';
 import 'package:ear_trainer/audio/audio_controller.dart';
 import 'package:ear_trainer/audio/sfx_type.dart';
 import 'package:ear_trainer/audio/spoken_line.dart';
@@ -68,6 +69,25 @@ Future<void> _playThrough(WidgetTester tester) => tester.pump(
 );
 
 void main() {
+  testWidgets('every caption fits the top row on an SE: '
+      '${HighLowCaption.maxLength} characters at most, written short rather '
+      'than set small (card 216)', (tester) async {
+    for (final stage in AgencyStage.values) {
+      final game = _game(_RecordingAudio(), stage: stage)..startGame();
+      await tester.pump();
+      for (var i = 0; i < game.totalPrompts - 1; i++) {
+        expect(
+          game.captionText!.length,
+          lessThanOrEqualTo(HighLowCaption.maxLength),
+        );
+        game.escape();
+        await tester.pump();
+      }
+      game.dispose();
+      await tester.pump(const Duration(seconds: 5));
+    }
+  });
+
   group('LoudQuietRound', () {
     test('both sides play the same note; only the gain differs', () {
       final random = math.Random(3);

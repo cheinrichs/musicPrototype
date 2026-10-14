@@ -441,16 +441,8 @@ class _HighLowScreenState extends State<HighLowScreen> {
               // 193). See [HighLowGameState.secondaryCaptionText].
               captionText: _gameState.captionText,
               guidanceText: _gameState.secondaryCaptionText,
-              // Skip top-right, Listen Again centred under the caption; no
-              // progress indicator (it is always five rounds, so it told
-              // the child nothing — see docs/product/HIGH_LOW_SCREEN_LAYOUT.md
-              // for what would bring it back).
               skipEnabled: _gameState.status != GameStatus.completed,
               onSkip: _gameState.escape,
-              captionPadding: _captionPadding(context),
-              // Listen Again no longer lives here — see [_buildScene], which
-              // places it below the stumps instead (2026-09-28, Cooper: "I
-              // like listen again below the stumps").
             ),
             // The middle holds only the caption and Listen Again (both in the
             // header); the scene is the background.
@@ -514,17 +506,6 @@ class _HighLowScreenState extends State<HighLowScreen> {
             ),
         ],
       ),
-    );
-  }
-
-  /// The caption over the meadow — see [HighLowHeader.meadowCaptionPadding].
-  EdgeInsets _captionPadding(BuildContext context) {
-    final size = MediaQuery.sizeOf(context);
-    final insets = MediaQuery.paddingOf(context);
-    return HighLowHeader.meadowCaptionPadding(
-      screen: size,
-      insets: insets,
-      meadowRight: SceneLayout(size, insets: insets, noteCount: 2).meadowRight,
     );
   }
 

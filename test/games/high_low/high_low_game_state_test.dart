@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ear_trainer/games/high_low/widgets/high_low_caption.dart';
 import 'package:ear_trainer/audio/audio_controller.dart';
 import 'package:ear_trainer/audio/sfx_type.dart';
 import 'package:ear_trainer/audio/shared_voice_line.dart';
@@ -20,6 +21,37 @@ import 'package:ear_trainer/games/high_low/state/high_low_game_state.dart';
 // (see AudioController.playNoteForScale's `if (!_isInitialized) return;`
 // guard), so these tests never touch a real audio plugin.
 void main() {
+  testWidgets('every caption fits the top row on an SE: '
+      '${HighLowCaption.maxLength} characters at most (card 216)', (
+    tester,
+  ) async {
+    for (final stage in AgencyStage.values) {
+      final state = HighLowGameState(
+        totalPrompts: 4,
+        agencyStage: stage,
+        roundOrder: RoundOrder.blocked,
+      )..startGame();
+      await tester.pump();
+      for (var i = 0; i < 3; i++) {
+        expect(
+          state.captionText!.length,
+          lessThanOrEqualTo(HighLowCaption.maxLength),
+          reason: state.captionText,
+        );
+        state.escape();
+        await tester.pump();
+      }
+      state.dispose();
+      await tester.pump(const Duration(seconds: 5));
+    }
+    for (final pole in ['higher', 'lower']) {
+      expect(
+        'Keep tapping the $pole one.'.length,
+        lessThanOrEqualTo(HighLowCaption.maxLength),
+      );
+    }
+  });
+
   group('HighLowGameState — Observe (A0)', () {
     testWidgets('a tap never cuts the intro, scores, or advances', (
       tester,
@@ -465,7 +497,7 @@ void main() {
         // name, since 2026-09-27 (see HighLowGameState.captionText's doc
         // comment) — it still agrees with the pole, just via direction
         // wording rather than naming Clef/Piper.
-        expect(state.captionText, contains('higher'));
+        expect(state.captionText!.toLowerCase(), contains('higher'));
 
         // ...then a "lower" target — this is the branch the reported bug
         // (Trello card 101) was actually in: Piper spoke while Clef stayed
@@ -479,7 +511,7 @@ void main() {
           isTrue,
           reason: 'Piper owns the low pole, so she is the one asking',
         );
-        expect(state.captionText, contains('lower'));
+        expect(state.captionText!.toLowerCase(), contains('lower'));
         state.dispose();
       },
     );
@@ -778,7 +810,7 @@ void main() {
         state.startGame();
         await tester.pump();
 
-        expect(state.captionText, 'Encourage them to tap each instrument.');
+        expect(state.captionText, 'Encourage them to tap both.');
         expect(state.captionText, isNot(contains('Clef')));
         expect(state.captionText, isNot(contains('Piper')));
 
@@ -786,7 +818,7 @@ void main() {
         await tester.pump();
         expect(
           state.captionText,
-          'Encourage them to tap each instrument.',
+          'Encourage them to tap both.',
           reason: 'the low-pole round gets the identical caption',
         );
         state.dispose();
@@ -831,7 +863,7 @@ void main() {
 
         await tester.pump(const Duration(seconds: 6));
         expect(state.secondaryCaptionText, isNotNull);
-        expect(state.secondaryCaptionText, contains('Encourage them'));
+        expect(state.secondaryCaptionText, contains('Keep tapping'));
       },
     );
   });
@@ -1240,16 +1272,13 @@ void main() {
       );
       state.startGame();
       await tester.pump();
-      expect(state.captionText, 'Help them put the higher one up on top.');
+      expect(state.captionText, 'Higher one goes on top.');
       state.escape();
       await tester.pump();
-      expect(
-        state.captionText,
-        'Help them put the lower one down at the bottom.',
-      );
+      expect(state.captionText, 'Lower one goes below.');
       for (final caption in [
-        'Help them put the higher one up on top.',
-        'Help them put the lower one down at the bottom.',
+        'Higher one goes on top.',
+        'Lower one goes below.',
       ]) {
         expect(caption, isNot(contains('drag')));
         expect(caption, isNot(contains('tree')));

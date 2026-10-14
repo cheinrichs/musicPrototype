@@ -527,11 +527,9 @@ class HighLowGameState extends ChangeNotifier {
       // rather than a silent detector — a screen can't tell an adult's
       // finger from a child's, so it never tries to; it tells the adult
       // what to encourage instead.
-      AgencyStage.observe => 'Encourage them to tap each instrument.',
+      AgencyStage.observe => 'Encourage them to tap both.',
       AgencyStage.explore =>
-        isHigh
-            ? 'Let them tap both and find the higher one.'
-            : 'Let them tap both and find the lower one.',
+        isHigh ? 'Find the higher one.' : 'Find the lower one.',
       // 2026-09-27: the drop target became a slot on the tree, not a
       // character (see docs/product/HIGH_LOW_SCREEN_LAYOUT.md) — "to Clef"/
       // "to Piper" would now describe the wrong mechanic. The caption is a
@@ -539,9 +537,7 @@ class HighLowGameState extends ChangeNotifier {
       // (the watching adult, not the child), so it doesn't need the voice
       // line's social "by me" framing — just an accurate instruction.
       AgencyStage.decide =>
-        isHigh
-            ? 'Help them put the higher one up on top.'
-            : 'Help them put the lower one down at the bottom.',
+        isHigh ? 'Higher one goes on top.' : 'Lower one goes below.',
     };
   }
 
@@ -566,8 +562,8 @@ class HighLowGameState extends ChangeNotifier {
     final prompt = currentPrompt;
     if (prompt == null) return null;
     return prompt.targetDirection == PitchDirection.higher
-        ? 'Encourage them to keep tapping the higher one.'
-        : 'Encourage them to keep tapping the lower one.';
+        ? 'Keep tapping the higher one.'
+        : 'Keep tapping the lower one.';
   }
 
   /// Whether the child can drag an instrument onto the tree slot right now.

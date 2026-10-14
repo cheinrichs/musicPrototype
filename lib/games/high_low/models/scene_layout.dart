@@ -330,14 +330,6 @@ class SceneLayout {
     return Rect.fromLTWH(centre - w / 2, piperFeetY - h, w, h);
   }
 
-  // ---- the caption ----
-
-  /// Where the meadow ends on the right: the tree's own left edge (its
-  /// canopy reaches all the way to the image's left edge). The caption is
-  /// centred over the meadow, not the screen — the composition is no longer
-  /// symmetric, and screen-centred text lands in the canopy.
-  double get meadowRight => treeRect.left;
-
   // ---- the instruments ----
 
   /// Distance from the bottom of the screen up to every stump's surface.

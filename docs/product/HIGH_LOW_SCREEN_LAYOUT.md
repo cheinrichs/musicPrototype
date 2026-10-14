@@ -16,12 +16,11 @@ things in it**:
 - **Piper on the ground at the left edge**, at foreground scale.
 - **The instruments on stumps through the middle**, set back in space.
 - **The tree on the right** (`PitchTree_v2.png`), full screen height with a
-  quarter of its width off the right edge, with **Clef on the top platform
-  when two instruments are in play, and on the branch reaching left when
-  three are** (see "Clef's seat" below).
-- **The game's name and the round instruction on a cream plate, centred over
-  the meadow** (see "The caption" below). Listen Again below the stumps.
-- **Close top-left, Skip top-right.**
+  quarter of its width off the right edge, with **Clef on the middle platform
+  when two instruments are in play (card 214: high above him, low below), and
+  on the branch reaching left when three are** (see "Clef's seat" below).
+- **One top row** (card 216): Close on a cream plate, a short progress bar,
+  the round's one-line instruction on its plate, Skip. No game name.
 
 The high/low reading survives the recomposition: Clef is up the tree, Piper is
 on the ground.
@@ -33,15 +32,20 @@ choosing and another while ordering learns that less firmly, not more.
 
 ## Clef's seat says how many slots are in play
 
-Decided by Cooper, 2026-10-07 (Trello card 188):
+Decided by Cooper, 2026-10-07 (Trello card 188), revised 2026-10-12 (card 214):
 
-- **Two instruments:** Clef sits on the **top platform**. Only the bottom two
-  are available.
+- **Two instruments:** Clef sits on the **middle platform**. High goes above
+  him, low below. A clef is a reference pitch — the thing every other note is
+  placed relative to — and it is where he sits over the Loud or Quiet dial too.
+  It also makes "on top" true of the screen; with him on the top platform it was
+  not. Still one slot per round.
 - **Three instruments:** Clef moves to the **branch**, freeing all three.
 
-Clef sitting on a platform says "this one is taken" with no UI at all, and
-where he sits tells you how many slots are in play. He stays high in both
-seats, so "Clef is high" still holds.
+**He is sized to fit between the shelves** (`SceneLayout.characterHeight`): the
+gap from the middle platform up to the top slot, at his largest pose. The shelves
+are about a sixth of the screen apart and he used to be a quarter of it tall, so
+at his old size his head stood in the top slot. That is about half his old
+height, one size in either seat — for Cooper to judge on device.
 
 **A platform with Clef on it must look clearly unlike a live drop slot**, or a
 child will try to put an instrument where he is sitting. Slots carry a visible
@@ -133,11 +137,11 @@ last thing they watch is the highest one rising.
   wherever a child meets it (the drag-demonstration card is next). The arc
   **rises first and then slides level onto the platform**, finishing its
   shrink before the final approach. It used to lift over and drop down onto
-  the platform, which with two instruments passed straight through Clef on
-  the top platform, directly above where the higher one lands; a test now
-  checks every frame of the flight against him.
+  the platform, which passed straight through Clef when he sat on the top
+  platform; a test checks every frame of the flight against him, and with him
+  on the middle shelf the same shape carries the high one in over his head.
 - **Where they land:** the free platforms, bottom up — with two instruments
-  the bottom and the middle (Clef has the top), with three all three.
+  the bottom and the top (Clef has the middle), with three all three.
 - **They rest there for a beat** (`HighLowGameState.observeFlightHold`, 1.2 s)
   before the next round, or the highest one would be swept away the instant
   it arrived.
@@ -235,9 +239,9 @@ text. Platform and perch positions were measured off the art on a grid; see
 
 1. **The tree is full height with a quarter off the right; every platform face
    is on screen and inside the safe area.**
-2. **Clef's seat follows the instrument count** — the top platform with two,
-   the branch with three — fully on screen, above every free platform, and
-   never on a slot.
+2. **Clef's seat follows the instrument count** — the middle platform with
+   two (high slot above him, low below), the branch with three — fully on
+   screen, and never on or in a slot.
 3. **Piper stands at the left, inside the safe area**, clearly larger than Clef,
    cropped at the ankles at most.
 4. **The instruments stand between them**, clear of each other, of both
@@ -302,56 +306,29 @@ text. Platform and perch positions were measured off the art on a grid; see
 
 ## The caption
 
-Decided 2026-09-27 (Cooper: "game name large, parent instruction smaller
-beneath it, both inside the tan bubble"). This game's name is **"High vs
-Low"**.
+**In the top row, one line, adult-facing** (Trello card 216, 2026-10-13). It sits
+between the bar and Skip. The child can't read it; the voice carries the
+instruction and the caption is quiet redundancy for the adult alongside (card 211).
 
-**Both lines are adult-facing.** The child can't read either one — the name
-is orientation for whoever's sitting alongside, not a heading for the player,
-same audience as the instruction beneath it.
-
-**The name is constant; only the instruction changes per round**, so only the
-instruction crossfades between rounds — the plate and the name never rebuild
-for that (`HighLowCaption`). The instruction's own wording changed too, now
-that the target is a slot rather than a character: "Help them put the higher one
-up on top" (reworded 2026-10-05 from "drag ... up the tree", which named a direction
-of travel and was wrong for the lower pole), not "...to Clef." The caption is a separate string
-from the voice line and has a different audience (the watching adult, not the
-child) — it doesn't need the voice line's social "by me" framing, just an
-accurate instruction. Don't let one drive the other's wording.
-
-**Grows taller, never wider.** A second line was the reason for this
-restructure; solving it by growing the bubble sideways instead would crowd the
-close button on one side and Skip on the other. `HighLowHeader` reserves a
-fixed width on each side regardless of what the caption contains — it only
-ever asks for more *height*.
-
-**Parent guidance joins the instruction; it never replaces it** (2026-10-08,
-Trello card 193, Cooper: the instruction "changes after a while; it should
-stay put"). Explore's six-second guidance ("Encourage them to keep tapping the
-higher one.") used to take the instruction's place. It now fades in as a
-quieter warm-grey line beneath it, on the same plate, which grows taller for
-it. The timing stays deliberate: guidance on screen from the start is noise;
-arriving just as a parent starts wondering, it is help.
-
-**Centred over the meadow, not the screen** (Trello card 187). The composition
-is no longer symmetric, and screen-centred text lands in the tree's canopy.
-`HighLowScreen` passes `HighLowHeader` a caption span from just right of Close
-to the tree's left edge (`SceneLayout.meadowRight`); Close and Skip stay at the
-edges. On a phone whose meadow is narrower than 280 px — an iPhone SE — the
-plate reaches into the canopy rather than squeeze the instruction onto three
-lines; it can, because the plate is opaque. Without a span, `HighLowHeader`
-still centres the caption on the screen between equal `sideWidth` columns.
-
-- **Skip** is a small cream pill: the icon and the word, nothing else. It was
-  far too large, with a subtitle; Cooper is fine losing the text for now.
-- **Caption plate** is a switch (`HighLowCaption.defaultPlate`), not a layout:
-  on or off, the padding is identical, so flipping it moves nothing. On = the
-  cream plaque with warm dark brown text; off = white text with a soft shadow.
-  **On** (Trello card 187, 2026-10-06). It was switched off on 2026-09-28
-  while the text sat on open sky; with the tree behind part of it, plain text
-  doesn't read, and it was already low-contrast against pale sky before the
-  new tree (confirmed on device).
+- **No game name.** "High vs Low" and "Loud or Quiet" came off: a non-reader cannot
+  use them, and a child looking at the screen knows what they are playing.
+- **Written short, never set small.** A row-height slot takes one line, so every
+  caption is at most `HighLowCaption.maxLength` (30) characters, which fits whole on
+  an SE; the games' tests hold the copy to it. Current copy: "Encourage them to tap
+  both." / "Find the higher one." / "Higher one goes on top." / "Lower one goes
+  below." The caption is a separate string from the voice line, with a different
+  audience; don't let one drive the other's wording.
+- **Guidance joins beneath, never replaces** (card 193). Explore's six-second line
+  ("Keep tapping the higher one.") fades in under the instruction; the plate grows
+  downward and nothing else in the row moves. Out of the scene, it can no longer
+  push the caption over Piper's head on an SE.
+- **The plate is a switch** (`HighLowCaption.defaultPlate`), not a layout: off draws
+  white text with a soft shadow at identical size. On since card 187.
+- **Skip** is a small cream pill: the icon and the word, nothing else.
+- **Close sits on a solid cream plate** with a bold warm-brown cross — the same
+  backing as Skip. A light glyph with no backing vanished into the art (the third
+  time: card 150's credits button, card 215's "?"). The whole plate takes the tap,
+  and nothing in the row is moved by a translate (that once left most of Close dead).
 
 ## The progress bar is back (Trello card 196, 2026-10-12)
 
@@ -363,9 +340,11 @@ tells him the thing will end. For a three-year-old the bar is a contract, not a 
 - **One continuous bar, not pips.** It fills a step as each round ends. It lives in
   `RoundSetProgressBar`, shared by High vs Low and Loud or Quiet through
   `HighLowHeader.progress`.
-- **The X, the bar and Skip share the top row, and the bar dominates.** The X is
-  small and grey, but its tap target is still 44 px; leaving is the quieter of the
-  two, never harder to reach. The caption sits on the row beneath.
+- **Short and chunky** (card 216, superseding "the bar dominates"): a third of the
+  row it used to fill, 22 px tall, and each step fills over 0.7 s with a slight
+  overshoot, so a step reads as motion. At a five-round set a step is about 26 px
+  on an SE — `test/render/progress_bar_steps_render_test.dart` draws every step of
+  3-, 4- and 5-round sets.
 - **A full bar really ends the set.** After a short beat it goes to the games screen
   (`RoundSetEnd`), never a silent restart and no longer the reward screen with
   "play again". Once stones exist, the ending becomes the stone's celebration and

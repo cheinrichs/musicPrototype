@@ -288,12 +288,6 @@ void main() {
         });
       });
 
-      test('the caption\'s meadow ends at the tree, before any platform', () {
-        final l = two();
-        expect(l.meadowRight, l.treeRect.left);
-        expect(l.meadowRight, lessThan(l.platformColumnLeftX));
-      });
-
       test('three instruments are the same composition with one more: same '
           'tree, same Piper, same floor — only Clef moves, up to the '
           'branch — all clear of each other and of the tree, and fixed for '

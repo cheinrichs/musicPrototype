@@ -1,90 +1,53 @@
 import 'package:flutter/material.dart';
 import '../../../ui/theme/theme.dart';
 
-/// The top of [HighLowScreen]'s header: the game's name, large, with the
-/// round's parent instruction smaller beneath it — both inside the same
-/// plate (2026-09-27, Cooper: "game name large, parent instruction smaller
-/// beneath it, both inside the tan bubble").
+/// The round's parent instruction, on its cream plate in the top row
+/// (Trello card 216). **Adult-facing** — the child can't read it; the voice
+/// carries the instruction, and this is quiet redundancy for whoever is
+/// sitting alongside (card 211).
 ///
-/// **Both lines are adult-facing.** The child can't read either one — the
-/// name is orientation for whoever's sitting alongside ("what game is
-/// this?"), not a heading for the player, same audience as the instruction
-/// it sits above.
-///
-/// **The name is constant; only the instruction changes per round**, so
-/// only the instruction crossfades between rounds (the plate itself, and
-/// the name, never rebuild for that). Reserves the instruction's own
-/// two-line height even when [text] is null (briefly, before the intro
-/// finishes) so the plate doesn't resize as it toggles on.
-///
-/// **Grows taller, never wider.** A second line of text was the reason for
-/// this restructure in the first place; if it were solved by growing the
-/// bubble sideways instead, it would crowd the close button on one side and
-/// Skip on the other (Cooper's own warning). [HighLowHeader] reserves a
-/// fixed width on each side regardless of what this contains — this widget
-/// only ever asks for *height*.
-///
-/// **The plate is a switch, not a layout.** With [plate] on, both lines sit
-/// on the same cream plaque as the other controls; off, they're bare text
-/// with a soft shadow. Both use identical padding regardless, so flipping
-/// [defaultPlate] cannot move or resize anything, in either dimension.
-///
-/// **On by default again (Trello card 187, 2026-10-06).** It was dropped on
-/// 2026-09-28 (Cooper: "no tan bubble — plain text, legibility via colour
-/// choice, not a plate") while the text sat on open sky. With the tree's
-/// canopy now behind part of it, plain text does not read — and it was
-/// already low-contrast against pale sky before the new tree (confirmed on
-/// device). Both lines stay at the smaller sizes from that same note: this is
-/// adult-facing orientation copy, not something a child reads.
+/// - **One line.** It sits in a row-height slot, so the copy is written short
+///   rather than set smaller; anything longer is cut with an ellipsis, never
+///   wrapped. The game's name is gone (card 216): a non-reader cannot use it.
+/// - **The instruction only crossfades between rounds**; the plate itself
+///   never rebuilds for that, and it reserves its line even when [text] is
+///   null (briefly, before the intro finishes), so nothing resizes.
+/// - **Guidance joins beneath, never replaces** (card 193): the plate grows
+///   downward by one line when it arrives. Nothing else in the row moves.
+/// - **The plate is a switch, not a layout**: [plate] off draws bare text
+///   with a soft shadow, at identical size.
 class HighLowCaption extends StatelessWidget {
   /// The one place to flip the plate for the whole app.
   static const bool defaultPlate = true;
 
-  /// This game's name, shown above the round instruction every round.
-  static const String gameName = 'High vs Low';
+  static const double _fontSize = 15;
 
-  /// Font sizes with the plate gone (2026-09-28) — down from [heading2]'s 36
-  /// and [bodyLarge]'s 20; same families/weights via `.copyWith`, so this is
-  /// a size change only, not a restyle.
-  static const double _gameNameFontSize = 22;
-  static const double _instructionFontSize = 15;
+  /// The longest caption, in characters, that fits whole on an SE (about
+  /// 260 px inside the plate). Every game's copy stays at or under it —
+  /// checked in each game's tests.
+  static const int maxLength = 30;
 
-  /// The round's parent instruction — the smaller, second line. Null only
-  /// briefly, before the intro has a round to describe.
+  /// The instruction line's height: the same as the row's controls, so the
+  /// plate lines up with Close and Skip.
+  static const double lineHeight = 44;
+
+  /// The round's parent instruction. Null only briefly, before the intro has
+  /// a round to describe.
   final String? text;
 
   /// Parent guidance that arrives partway through a round (Explore's
-  /// six-second line), shown **beneath** [text], never in place of it
-  /// (Trello card 193, Cooper: the instruction "changes after a while; it
-  /// should stay put"). The timing stays: guidance on screen from the start
-  /// is noise, arriving as a parent starts wondering it is help. The plate
-  /// grows taller for it, never wider.
+  /// six-second line), shown **beneath** [text], never in place of it. The
+  /// timing stays: guidance on screen from the start is noise, arriving as a
+  /// parent starts wondering it is help.
   final String? guidance;
   final bool plate;
-
-  /// The name on the first line. High vs Low's by default; Loud or Quiet
-  /// passes its own (the first thing this widget needed parameterised for a
-  /// second game).
-  final String title;
 
   const HighLowCaption({
     super.key,
     required this.text,
     this.guidance,
     this.plate = defaultPlate,
-    this.title = gameName,
   });
-
-  static double get _nameHeight =>
-      _gameNameFontSize * AppTypography.heading2.height!;
-
-  // Two lines of the instruction, plus the plate's own padding/border, so a
-  // two-line instruction is never clipped by the switcher's bounds (it was:
-  // the descenders of the second line were cut off).
-  static double get _instructionHeight =>
-      _instructionFontSize * AppTypography.bodyLarge.height! * 2;
-
-  static const double _gap = AppSpacing.xs;
 
   @override
   Widget build(BuildContext context) {
@@ -94,102 +57,71 @@ class HighLowCaption extends StatelessWidget {
     final shadows = plate
         ? null
         : const [Shadow(color: Color(0xCC2E2116), blurRadius: 6)];
-    final guidanceHeight = guidance == null ? 0.0 : _gap + _instructionHeight;
+    TextStyle style(Color color) => AppTypography.bodyLarge.copyWith(
+      fontSize: _fontSize,
+      color: color,
+      shadows: shadows,
+    );
 
-    return SizedBox(
-      height:
-          _nameHeight +
-          _gap +
-          _instructionHeight +
-          guidanceHeight +
-          2 * AppSpacing.sm +
-          3,
-      child: Center(
-        child: DecoratedBox(
-          decoration: plate
-              ? BoxDecoration(
-                  gradient: AppColors.cardGradient,
-                  borderRadius: BorderRadius.circular(AppSpacing.radiusRound),
-                  border: Border.all(color: AppColors.cardEdge, width: 1.5),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: AppColors.shadow,
-                      blurRadius: 8,
-                      offset: Offset(0, 4),
-                    ),
-                  ],
-                )
-              : const BoxDecoration(),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppSpacing.md,
-              vertical: AppSpacing.sm,
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  title,
-                  style: AppTypography.heading2.copyWith(
-                    fontSize: _gameNameFontSize,
-                    color: textColor,
-                    shadows: shadows,
-                  ),
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
+    return DecoratedBox(
+      decoration: plate
+          ? BoxDecoration(
+              gradient: AppColors.cardGradient,
+              borderRadius: BorderRadius.circular(lineHeight / 2),
+              border: Border.all(color: AppColors.cardEdge, width: 1.5),
+              boxShadow: const [
+                BoxShadow(
+                  color: AppColors.shadow,
+                  blurRadius: 6,
+                  offset: Offset(0, 3),
                 ),
-                const SizedBox(height: _gap),
-                SizedBox(
-                  height: _instructionHeight,
-                  child: Center(
-                    child: AnimatedSwitcher(
-                      duration: AppAnimations.medium,
-                      child: text == null
-                          ? const SizedBox.shrink(key: ValueKey('instr-empty'))
-                          : Text(
-                              text!,
-                              key: ValueKey('instr-$text'),
-                              style: AppTypography.bodyLarge.copyWith(
-                                fontSize: _instructionFontSize,
-                                color: textColor,
-                                shadows: shadows,
-                              ),
-                              textAlign: TextAlign.center,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                    ),
-                  ),
-                ),
-                if (guidance != null) ...[
-                  const SizedBox(height: _gap),
-                  SizedBox(
-                    height: _instructionHeight,
-                    child: Center(
-                      child: TweenAnimationBuilder<double>(
-                        tween: Tween(begin: 0, end: 1),
-                        duration: AppAnimations.medium,
-                        builder: (context, opacity, child) =>
-                            Opacity(opacity: opacity, child: child),
-                        child: Text(
-                          guidance!,
-                          key: const ValueKey('caption-guidance'),
-                          style: AppTypography.bodyLarge.copyWith(
-                            fontSize: _instructionFontSize,
-                            color: guidanceColor,
-                            shadows: shadows,
-                          ),
+              ],
+            )
+          : const BoxDecoration(),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              height: lineHeight,
+              child: Center(
+                child: AnimatedSwitcher(
+                  duration: AppAnimations.medium,
+                  child: text == null
+                      ? const SizedBox.shrink(key: ValueKey('instr-empty'))
+                      : Text(
+                          text!,
+                          key: ValueKey('instr-$text'),
+                          style: style(textColor),
                           textAlign: TextAlign.center,
-                          maxLines: 2,
+                          maxLines: 1,
+                          softWrap: false,
                           overflow: TextOverflow.ellipsis,
                         ),
-                      ),
-                    ),
-                  ),
-                ],
-              ],
+                ),
+              ),
             ),
-          ),
+            if (guidance != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                child: TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0, end: 1),
+                  duration: AppAnimations.medium,
+                  builder: (context, opacity, child) =>
+                      Opacity(opacity: opacity, child: child),
+                  child: Text(
+                    guidance!,
+                    key: const ValueKey('caption-guidance'),
+                    style: style(guidanceColor),
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    softWrap: false,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
     );

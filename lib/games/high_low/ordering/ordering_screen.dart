@@ -43,7 +43,7 @@ class OrderingScreen extends StatefulWidget {
   /// position cue for a child re-finding an instrument.
   static const ghostOpacity = 0.35;
 
-  static const caption = 'Help them order the sounds, highest at the top.';
+  static const caption = 'Order them, highest on top.';
 
   final ConceptTier tier;
 
@@ -191,16 +191,6 @@ class _OrderingScreenState extends State<OrderingScreen> {
         skipEnabled: _state.status != GameStatus.completed,
         onSkip: _state.escape,
         below: _buildReplay(),
-        // Over the meadow, as on the play screens (Trello card 188).
-        captionPadding: HighLowHeader.meadowCaptionPadding(
-          screen: MediaQuery.sizeOf(context),
-          insets: MediaQuery.paddingOf(context),
-          meadowRight: OrderingLayout(
-            MediaQuery.sizeOf(context),
-            insets: MediaQuery.paddingOf(context),
-            noteCount: 2,
-          ).meadowRight,
-        ),
       ),
       body: const SizedBox.shrink(),
       scrollableBody: false,
