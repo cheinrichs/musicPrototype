@@ -232,16 +232,24 @@ class _HighLowScreenState extends State<HighLowScreen> {
     // Once per set: the screen now stays up for the full bar's beat, so
     // later notifications must not complete the session twice.
     if (_gameState.status == GameStatus.completed && _setEndTimer == null) {
-      // Counted, and agency advanced, the way every game's set is.
-      GameSession.recordFinishedSet(
-        context,
-        SetReport(
-          gameType: 'high_low',
-          agency: _gameState.agencyStage,
-          rounds: _gameState.instrumentation,
-          correctCount: _gameState.correctCount,
-        ),
+      final report = SetReport(
+        gameType: 'high_low',
+        agency: _gameState.agencyStage,
+        rounds: _gameState.instrumentation,
+        correctCount: _gameState.correctCount,
       );
+      // Hosted (a stone): the report goes back to the host, which records
+      // it and decides what comes next. Off the listener, and only once.
+      final onFinished = widget.entry?.onFinished;
+      if (onFinished != null) {
+        _setEndTimer = Timer(Duration.zero, () {
+          if (mounted) onFinished(report);
+        });
+        setState(() {});
+        return;
+      }
+      // Counted, and agency advanced, the way every game's set is.
+      GameSession.recordFinishedSet(context, report);
       // Four of five, before sets varied in length (card 196): the same
       // 80%, so a three-round Observe set can still earn it.
       if (_gameState.correctCount * 5 >= _gameState.totalPrompts * 4) {

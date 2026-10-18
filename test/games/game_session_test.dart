@@ -5,6 +5,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ear_trainer/app/state/dev_settings_state.dart';
 import 'package:ear_trainer/app/state/profile_state.dart';
 import 'package:ear_trainer/app/state/progress_state.dart';
+import 'package:ear_trainer/curriculum/curriculum.dart';
+import 'package:ear_trainer/games/game_catalogue.dart';
 import 'package:ear_trainer/games/game_session.dart';
 import 'package:ear_trainer/games/high_low/models/round_instrumentation.dart';
 import 'package:ear_trainer/games/high_low/services/agency_advancement.dart';
@@ -111,5 +113,44 @@ void main() {
     );
     expect(report.completed, 2);
     expect(report.skipped, 1);
+  });
+
+  for (final id in gameScreens.keys) {
+    testWidgets('HOSTED, $id hands its report back and neither records the '
+        'set nor leaves — a stone decides what comes next', (tester) async {
+      tester.view.physicalSize = const Size(844, 390);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final reports = <SetReport>[];
+      await tester.pumpWidget(
+        MaterialApp(
+          home: gameScreens[id]!(
+            GameEntry(
+              agency: AgencyStage.observe,
+              rounds: 1,
+              onFinished: reports.add,
+            ),
+          ),
+        ),
+      );
+      for (var i = 0; i < 6; i++) {
+        await tester.pump(const Duration(seconds: 1));
+      }
+      await tester.tap(find.byTooltip('Skip'));
+      for (var i = 0; i < 4; i++) {
+        await tester.pump(const Duration(milliseconds: 500));
+      }
+      expect(reports, hasLength(1));
+      expect(reports.single.gameType, id);
+      expect(reports.single.rounds, hasLength(1));
+      expect(reports.single.skipped, 1);
+      expect(find.byType(MaterialApp), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump(const Duration(seconds: 5));
+    });
+  }
+
+  test('the catalogue opens exactly the built games', () {
+    expect(gameScreens.keys.toSet(), {for (final g in builtGames) g.id});
   });
 }

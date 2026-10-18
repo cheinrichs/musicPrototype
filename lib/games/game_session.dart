@@ -20,13 +20,26 @@ import 'high_low/services/agency_advancement.dart';
 /// - [rounds] is how many rounds the set runs. A stone will ask for exact
 ///   counts (one Observe round, one Explore round); the games screen asks
 ///   for the per-agency length (card 196).
+/// - [onFinished], when given, is where the set's [SetReport] goes INSTEAD of
+///   the game recording it and leaving. A stone hosts games this way: it
+///   needs the rounds back, to judge promotion over the whole stone (without
+///   its intro rounds) and to choose what comes next.
 @immutable
 class GameEntry {
   final AgencyStage agency;
   final ConceptTier? tier;
   final int rounds;
+  final void Function(SetReport report)? onFinished;
 
-  const GameEntry({required this.agency, this.tier, required this.rounds});
+  const GameEntry({
+    required this.agency,
+    this.tier,
+    required this.rounds,
+    this.onFinished,
+  });
+
+  /// Whether something hosts this set and takes its report.
+  bool get hosted => onFinished != null;
 
   /// The active child's own set: their agency (Observe with no profile — the
   /// least demanding level), at the live per-agency round count.

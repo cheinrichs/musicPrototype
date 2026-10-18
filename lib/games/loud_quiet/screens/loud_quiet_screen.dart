@@ -125,17 +125,25 @@ class _LoudQuietScreenState extends State<LoudQuietScreen> {
     }
     // Once per set — the screen stays up for the full bar's beat.
     if (_game.status == GameStatus.completed && _setEndTimer == null) {
+      final report = SetReport(
+        gameType: 'loud_quiet',
+        agency: _game.agencyStage,
+        rounds: _game.records,
+        correctCount: _game.correctCount,
+      );
+      // Hosted (a stone): the report goes back to the host, which records
+      // it and decides what comes next. Off the listener, and only once.
+      final onFinished = widget.entry?.onFinished;
+      if (onFinished != null) {
+        _setEndTimer = Timer(Duration.zero, () {
+          if (mounted) onFinished(report);
+        });
+        setState(() {});
+        return;
+      }
       // Counted, and agency advanced, the way every game's set is: the
       // child's agency is one value, whichever game moves it.
-      GameSession.recordFinishedSet(
-        context,
-        SetReport(
-          gameType: 'loud_quiet',
-          agency: _game.agencyStage,
-          rounds: _game.records,
-          correctCount: _game.correctCount,
-        ),
-      );
+      GameSession.recordFinishedSet(context, report);
       // The bar is full: show it so for a beat, then the set really ends
       // (Trello card 196) — to the games screen, never a silent restart.
       _setEndTimer = Timer(RoundSetEnd.beat, () {
