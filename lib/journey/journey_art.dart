@@ -119,76 +119,83 @@ int avatarIndexFor(String? profileId) {
   return h % 16;
 }
 
-/// A reward as it flies and arrives. The object itself says WHAT was
-/// earned (the destination only says where it lives — songs and
-/// instruments share Playground): a song is a card with a music note, an
-/// instrument is the instrument. Games, crafts and decorations are still
-/// grey PLACEHOLDERS until their reward art exists.
+/// A reward as it flies and arrives: its type's diamond token (see the
+/// catalogue in reward_catalogue.dart), or a plain diamond for a type with
+/// no art yet.
 class RewardItem extends StatelessWidget {
   final Reward reward;
   final double size;
   const RewardItem({super.key, required this.reward, required this.size});
 
-  /// The instruments a reward can be, in the order they are handed out.
-  static const instruments = [
-    'assets/images/characters/instruments/Guitar1.png',
-    'assets/images/characters/instruments/Trumpet1.png',
-    'assets/images/characters/instruments/Violin1.png',
-    'assets/images/characters/instruments/Drum1.png',
-    'assets/images/characters/instruments/Flute1.png',
-    'assets/images/characters/instruments/Bell1.png',
-  ];
+  @override
+  Widget build(BuildContext context) {
+    final token = reward.type.token;
+    return SizedBox.square(
+      dimension: size,
+      child: token == null
+          ? const _PlainDiamond()
+          : ImageRegion(
+              asset: token.asset,
+              image: token.image,
+              region: token.region,
+            ),
+    );
+  }
+}
+
+/// A region of an image, scaled to fill the box (the box should share the
+/// region's aspect).
+class ImageRegion extends StatelessWidget {
+  final String asset;
+  final Size image;
+  final Rect region;
+  const ImageRegion({
+    super.key,
+    required this.asset,
+    required this.image,
+    required this.region,
+  });
 
   @override
-  Widget build(BuildContext context) => SizedBox.square(
-    dimension: size,
-    child: switch (reward.kind) {
-      RewardKind.song => _songCard(),
-      RewardKind.instrument => DecoratedBox(
-        decoration: const BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: RadialGradient(
-            colors: [Color(0xAAFFF3C4), Color(0x00FFF3C4)],
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, c) {
+      final sx = c.maxWidth / region.width;
+      final sy = c.maxHeight / region.height;
+      return ClipRect(
+        child: OverflowBox(
+          alignment: Alignment.topLeft,
+          minWidth: image.width * sx,
+          maxWidth: image.width * sx,
+          minHeight: image.height * sy,
+          maxHeight: image.height * sy,
+          child: Transform.translate(
+            offset: Offset(-region.left * sx, -region.top * sy),
+            child: Image.asset(asset, fit: BoxFit.fill),
           ),
         ),
-        child: Padding(
-          padding: EdgeInsets.all(size * 0.06),
-          child: Image.asset(
-            instruments[reward.index % instruments.length],
-            fit: BoxFit.contain,
-          ),
-        ),
-      ),
-      _ => _placeholder(),
+      );
     },
   );
+}
 
-  // As in Cooper's composite: a cream card, a purple note.
-  Widget _songCard() => Transform.rotate(
-    angle: -0.08,
-    child: Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFFFBF1D6),
-        borderRadius: BorderRadius.circular(size * 0.14),
-        border: Border.all(color: const Color(0xFFD9B66A), width: 3),
-        boxShadow: const [BoxShadow(blurRadius: 6, color: Colors.black38)],
-      ),
-      child: Icon(
-        Icons.music_note_rounded,
-        size: size * 0.62,
-        color: const Color(0xFF7E57C2),
+/// A reward type with no art yet: a plain cream diamond.
+class _PlainDiamond extends StatelessWidget {
+  const _PlainDiamond();
+
+  @override
+  Widget build(BuildContext context) => Transform.rotate(
+    angle: 0.785398,
+    child: FractionallySizedBox(
+      widthFactor: 0.68,
+      heightFactor: 0.68,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: const Color(0xFFF6E7BF),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: const Color(0xFFE0A92E), width: 3),
+        ),
       ),
     ),
-  );
-
-  Widget _placeholder() => Container(
-    decoration: BoxDecoration(
-      color: const Color(0xFFBDBDBD),
-      borderRadius: BorderRadius.circular(size * 0.18),
-      border: Border.all(color: Colors.white, width: 3),
-      boxShadow: const [BoxShadow(blurRadius: 6, color: Colors.black38)],
-    ),
-    child: Icon(reward.kind.icon, size: size * 0.55, color: Colors.white),
   );
 }
 

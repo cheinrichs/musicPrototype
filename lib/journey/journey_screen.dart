@@ -421,7 +421,7 @@ class _JourneyScreenState extends State<JourneyScreen> {
     final rail = RailLayout(g.size, g.padding);
     for (var i = 0; i < n; i++) {
       final r = rewards[i];
-      final dest = r.kind.destination;
+      final dest = r.type.destination;
       final to = dest == null
           ? g.decorationSpot(r) - _scrollOffset
           : rail.landingOf(dest);
@@ -1060,7 +1060,9 @@ class _MapGeometry {
       stoneCentre(r.stone) +
       Offset(-spacing * (r.stone.isEven ? 0.45 : 0.55), stoneWidth * 0.55);
 
-  double get rewardSize => math.max(56, size.height * 0.13);
+  /// A token's box: the diamond fills its square, so a little larger than
+  /// a square item would be.
+  double get rewardSize => math.max(64, size.height * 0.16);
 
   // Piper and Clef by the pin, on the walked side.
   double get companionHeight => stoneWidth * 1.05;

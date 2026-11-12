@@ -1,45 +1,18 @@
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart' show IconData, Icons;
 
-import '../app/rail_destination.dart';
 import '../models/agency_stage.dart';
+import 'reward_catalogue.dart';
 
-/// What a reward IS — and from that, where it lives.
-///
-/// The rail is top-level navigation (Journey, Games, Crafts, Playground).
-/// Songs and new instruments both live in Playground, so the destination no
-/// longer tells a child what they earned: the flying object must (see
-/// `RewardItem`). Decorations fly onto the map; WHERE on the map is open,
-/// awaiting Cooper.
-///
-/// The icons are for the reward items still drawn as PLACEHOLDERS.
-enum RewardKind {
-  song(RailDestination.playground, Icons.music_note_rounded),
-  instrument(RailDestination.playground, Icons.piano_rounded),
-  game(RailDestination.games, Icons.extension_rounded),
-  craft(RailDestination.crafts, Icons.content_cut_rounded),
-  decoration(null, Icons.local_florist_rounded);
-
-  /// Null: onto the map.
-  final RailDestination? destination;
-  final IconData icon;
-  const RewardKind(this.destination, this.icon);
-
-  bool get onMap => destination == null;
-
-  /// The rail rewards, in the order they are handed out (a PLACEHOLDER
-  /// catalogue).
-  static const rail = [song, instrument, game, craft];
-}
-
-/// One earned reward. [stone] is the stone it was earned on; [index] picks
-/// which one of its kind (which instrument, say).
+/// One earned reward: its type (see the catalogue in reward_catalogue.dart),
+/// the stone it was earned on, and which one of its type it is.
 @immutable
 class Reward {
-  final RewardKind kind;
+  final String typeId;
   final int stone;
   final int index;
-  const Reward(this.kind, this.stone, [this.index = 0]);
+  const Reward(this.typeId, this.stone, [this.index = 0]);
+
+  RewardType get type => rewardTypeOf(typeId);
 }
 
 /// One game's share of a stone: which game, how many rounds.
@@ -102,33 +75,31 @@ class JourneyState extends ChangeNotifier {
     return s;
   }
 
-  int countOf(RewardKind k) => _p.rewards.where((r) => r.kind == k).length;
+  int countOf(String typeId) =>
+      _p.rewards.where((r) => r.typeId == typeId).length;
 
   /// The decorations on the map.
   List<Reward> get decorations =>
-      _p.rewards.where((r) => r.kind.onMap).toList();
+      _p.rewards.where((r) => r.type.onMap).toList();
 
   /// What finishing the current stone earns: one rail reward for a regular
-  /// stone; two rail rewards and a decoration for a milestone, handed out
-  /// in turn. PLACEHOLDER catalogue — the real one is card 204's open
-  /// question.
+  /// stone; two rail rewards and a decoration for a milestone, following
+  /// [railRewardRotation].
   List<Reward> rewardsForCurrent() {
-    final railSoFar = _p.rewards.where((r) => !r.kind.onMap).length;
+    final railSoFar = _p.rewards.where((r) => !r.type.onMap).length;
     final earned = <Reward>[];
-    Reward next(RewardKind k) {
-      final r = Reward(
-        k,
+    void next(String id) => earned.add(
+      Reward(
+        id,
         current,
-        countOf(k) + earned.where((e) => e.kind == k).length,
-      );
-      earned.add(r);
-      return r;
-    }
+        countOf(id) + earned.where((e) => e.typeId == id).length,
+      ),
+    );
 
-    next(RewardKind.rail[railSoFar % RewardKind.rail.length]);
+    next(railRewardRotation[railSoFar % railRewardRotation.length]);
     if (isMilestone(current)) {
-      next(RewardKind.rail[(railSoFar + 1) % RewardKind.rail.length]);
-      next(RewardKind.decoration);
+      next(railRewardRotation[(railSoFar + 1) % railRewardRotation.length]);
+      next(milestoneDecoration);
     }
     return earned;
   }

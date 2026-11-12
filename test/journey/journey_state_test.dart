@@ -1,5 +1,6 @@
 import 'package:ear_trainer/app/rail_destination.dart';
 import 'package:ear_trainer/journey/journey_state.dart';
+import 'package:ear_trainer/journey/reward_catalogue.dart';
 import 'package:ear_trainer/models/agency_stage.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -42,23 +43,24 @@ void main() {
     test('a regular stone earns one rail reward, a milestone two and a '
         'decoration', () {
       final j = JourneyState();
-      expect(j.rewardsForCurrent().map((r) => r.kind), [RewardKind.song]);
+      expect(j.rewardsForCurrent().map((r) => r.typeId), ['song']);
       for (var i = 0; i < 4; i++) {
         j.completeStone(j.rewardsForCurrent());
       }
       final m = j.rewardsForCurrent();
-      expect(m.where((r) => !r.kind.onMap), hasLength(2));
-      expect(m.where((r) => r.kind.onMap), hasLength(1));
+      expect(m.where((r) => !r.type.onMap), hasLength(2));
+      expect(m.where((r) => r.type.onMap), hasLength(1));
       expect(m.every((r) => r.stone == 4), isTrue);
     });
 
     test('songs and new instruments both live in Playground; games and '
         'crafts in theirs; decorations on the map', () {
-      expect(RewardKind.song.destination, RailDestination.playground);
-      expect(RewardKind.instrument.destination, RailDestination.playground);
-      expect(RewardKind.game.destination, RailDestination.games);
-      expect(RewardKind.craft.destination, RailDestination.crafts);
-      expect(RewardKind.decoration.onMap, isTrue);
+      RailDestination? to(String id) => rewardTypeOf(id).destination;
+      expect(to('song'), RailDestination.playground);
+      expect(to('instrument'), RailDestination.playground);
+      expect(to('game_unlock'), RailDestination.games);
+      expect(to('craft'), RailDestination.crafts);
+      expect(rewardTypeOf('decoration').onMap, isTrue);
     });
 
     test('each reward of a kind is a different one (the next instrument)', () {
@@ -66,7 +68,7 @@ void main() {
       final instruments = <int>[];
       for (var i = 0; i < 12; i++) {
         for (final r in j.rewardsForCurrent()) {
-          if (r.kind == RewardKind.instrument) instruments.add(r.index);
+          if (r.typeId == 'instrument') instruments.add(r.index);
         }
         j.completeStone(j.rewardsForCurrent());
       }
@@ -80,7 +82,7 @@ void main() {
         j.completeStone(j.rewardsForCurrent());
       }
       expect(j.decorations, hasLength(1));
-      expect(RewardKind.rail, isNot(contains(RewardKind.decoration)));
+      expect(railRewardRotation, isNot(contains(milestoneDecoration)));
     });
   });
 
@@ -127,6 +129,32 @@ void main() {
       expect(j.current, 0);
       j.useProfile('a');
       expect(j.current, 1);
+    });
+  });
+
+  group('the reward catalogue is data', () {
+    test('every type in the schedule exists, ids are unique', () {
+      final ids = rewardTypes.map((t) => t.id).toList();
+      expect(ids.toSet(), hasLength(ids.length));
+      for (final id in [...railRewardRotation, milestoneDecoration]) {
+        expect(() => rewardTypeOf(id), returnsNormally, reason: id);
+      }
+      expect(() => rewardTypeOf('nope'), throwsArgumentError);
+    });
+
+    test("every token's region lies inside its image", () {
+      for (final t in rewardTypes) {
+        final token = t.token;
+        if (token == null) continue;
+        final bounds = Offset.zero & token.image;
+        expect(bounds.contains(token.region.topLeft), isTrue, reason: t.id);
+        expect(
+          token.region.right <= bounds.right &&
+              token.region.bottom <= bounds.bottom,
+          isTrue,
+          reason: t.id,
+        );
+      }
     });
   });
 }
