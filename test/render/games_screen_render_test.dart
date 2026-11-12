@@ -8,7 +8,6 @@ import 'package:ear_trainer/ui/screens/home_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:provider/provider.dart';
 
 const _outDir = String.fromEnvironment('RENDER_DIR');
 
