@@ -11,6 +11,7 @@ import '../app/rail_shell.dart';
 import '../app/state/profile_state.dart';
 import '../audio/audio_controller.dart';
 import '../audio/sfx_type.dart';
+import '../audio/sound_registry.dart';
 import '../games/game_catalogue.dart';
 import '../games/game_session.dart';
 import '../games/high_low/models/round_instrumentation.dart';
@@ -22,6 +23,7 @@ import '../models/agency_stage.dart';
 import '../ui/components/circle_icon_button.dart';
 import 'journey_art.dart';
 import 'journey_state.dart';
+import 'map_decoration.dart';
 
 /// Every beat's timing, in one place so Cooper's pacing notes are one-line
 /// changes. ROUGH: first guesses, to be judged on a device.
@@ -179,6 +181,16 @@ class _JourneyScreenState extends State<JourneyScreen> {
       _MapGeometry(MediaQuery.sizeOf(context), MediaQuery.paddingOf(context));
 
   Future<void> _wait(Duration d) => Future.delayed(d);
+
+  /// A decoration's poke: its non-pitched sound, if one is recorded —
+  /// silent otherwise, never an error.
+  void _pokeSound(String soundId) {
+    final path = Sounds.pathOf(soundId);
+    if (path == null) return;
+    unawaited(
+      AudioController.instance.playClip(path).catchError((Object _) {}),
+    );
+  }
 
   void _sfx(SfxType type) {
     unawaited(AudioController.instance.playSfx(type).catchError((Object _) {}));
@@ -653,9 +665,12 @@ class _JourneyScreenState extends State<JourneyScreen> {
                   width: g.rewardSize,
                   height: g.rewardSize,
                 ),
-                RewardItem(
-                  reward: d,
+                // Tappable: it reacts when poked and returns to rest.
+                MapDecoration(
+                  key: ValueKey('decoration-${d.stone}-${d.index}'),
+                  name: MapDecoration.nameOf(d.artId),
                   size: g.rewardSize,
+                  onPoke: _pokeSound,
                 ).animate().scaleXY(begin: 1.4, end: 1, duration: 400.ms),
               ),
             // The chest sits behind its stone, so it is drawn first.

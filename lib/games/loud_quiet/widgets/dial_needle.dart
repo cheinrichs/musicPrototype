@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../../../ui/theme/theme.dart';
 import '../models/loud_quiet_layout.dart';
 import '../state/loud_quiet_game_state.dart';
+import '../../../ui/components/house_wobble.dart';
 
 /// The dial's needle (Trello card 208). Every [NeedleSwing] is one complete
 /// gesture — swing out to the sound's level, wobble on arrival, home to rest
@@ -56,8 +57,7 @@ class DialNeedle extends StatefulWidget {
     if (t < swing + wobble) {
       final w = (t - swing) / wobble;
       final amplitude = wobbleShare * (target - start);
-      return target +
-          amplitude * math.sin(2 * math.pi * 2.5 * w) * math.pow(1 - w, 2);
+      return target + amplitude * HouseWobble.at(w);
     }
     if (t < end) {
       final u = (t - swing - wobble) / (end - swing - wobble);
