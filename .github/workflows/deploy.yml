@@ -27,7 +27,13 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
+          # Pinned to the version development runs, so CI checks what was
+          # tested. Floating on "stable" let 3.50.0 in unannounced, and its
+          # deprecation of package:flutter/material.dart (70 analyzer infos)
+          # failed a build with no code change behind it. Upgrade on purpose,
+          # with the material_ui migration, not by accident.
           channel: stable
+          flutter-version: 3.47.2
 
       - name: Install Flutter dependencies
         run: flutter pub get
