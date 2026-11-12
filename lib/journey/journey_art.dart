@@ -1,4 +1,8 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
+
+import '../app/art_registry.dart';
 
 import 'journey_state.dart';
 
@@ -119,9 +123,9 @@ int avatarIndexFor(String? profileId) {
   return h % 16;
 }
 
-/// A reward as it flies and arrives: its type's diamond token (see the
-/// catalogue in reward_catalogue.dart), or a plain diamond for a type with
-/// no art yet.
+/// A reward as it flies and arrives: the thing itself (its type's art for
+/// this reward, by id), in the diamond frame unless the art is already a
+/// diamond token. Rewards are diamonds — never a rail shape.
 class RewardItem extends StatelessWidget {
   final Reward reward;
   final double size;
@@ -129,73 +133,44 @@ class RewardItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final token = reward.type.token;
+    final type = reward.type;
+    final art = ArtImage(reward.artId);
     return SizedBox.square(
       dimension: size,
-      child: token == null
-          ? const _PlainDiamond()
-          : ImageRegion(
-              asset: token.asset,
-              image: token.image,
-              region: token.region,
-            ),
+      child: type.framed ? RewardDiamond(child: art) : art,
     );
   }
 }
 
-/// A region of an image, scaled to fill the box (the box should share the
-/// region's aspect).
-class ImageRegion extends StatelessWidget {
-  final String asset;
-  final Size image;
-  final Rect region;
-  const ImageRegion({
-    super.key,
-    required this.asset,
-    required this.image,
-    required this.region,
-  });
+/// The reward frame: a cream diamond with a gold edge, drawn, with the
+/// referenced art standing in it.
+class RewardDiamond extends StatelessWidget {
+  final Widget child;
+  const RewardDiamond({super.key, required this.child});
 
   @override
-  Widget build(BuildContext context) => LayoutBuilder(
-    builder: (context, c) {
-      final sx = c.maxWidth / region.width;
-      final sy = c.maxHeight / region.height;
-      return ClipRect(
-        child: OverflowBox(
-          alignment: Alignment.topLeft,
-          minWidth: image.width * sx,
-          maxWidth: image.width * sx,
-          minHeight: image.height * sy,
-          maxHeight: image.height * sy,
-          child: Transform.translate(
-            offset: Offset(-region.left * sx, -region.top * sy),
-            child: Image.asset(asset, fit: BoxFit.fill),
+  Widget build(BuildContext context) => Stack(
+    alignment: Alignment.center,
+    children: [
+      Transform.rotate(
+        angle: math.pi / 4,
+        child: FractionallySizedBox(
+          widthFactor: 0.7,
+          heightFactor: 0.7,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: const Color(0xFFF6E7BF),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: const Color(0xFFE0A92E), width: 3),
+              boxShadow: const [
+                BoxShadow(blurRadius: 6, color: Color(0x55000000)),
+              ],
+            ),
           ),
         ),
-      );
-    },
-  );
-}
-
-/// A reward type with no art yet: a plain cream diamond.
-class _PlainDiamond extends StatelessWidget {
-  const _PlainDiamond();
-
-  @override
-  Widget build(BuildContext context) => Transform.rotate(
-    angle: 0.785398,
-    child: FractionallySizedBox(
-      widthFactor: 0.68,
-      heightFactor: 0.68,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: const Color(0xFFF6E7BF),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: const Color(0xFFE0A92E), width: 3),
-        ),
       ),
-    ),
+      FractionallySizedBox(widthFactor: 0.56, heightFactor: 0.56, child: child),
+    ],
   );
 }
 

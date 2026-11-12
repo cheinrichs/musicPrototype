@@ -228,6 +228,7 @@ class _JourneyScreenState extends State<JourneyScreen> {
   void _startStone() {
     if (_beat != _Beat.none || _panning) return;
     _sfx(SfxType.tap);
+    _journey.meet(_part.gameId);
     setState(() {
       _arrowFrom = null;
       _gameVisible = true;
@@ -268,6 +269,7 @@ class _JourneyScreenState extends State<JourneyScreen> {
     final plan = _journey.planFor(_agency);
     if (_journey.partsDone < plan.length) {
       await _wait(JourneyTiming.betweenGames);
+      _journey.meet(_part.gameId);
       if (mounted) setState(() => _segment++);
       return;
     }

@@ -1,27 +1,17 @@
-import 'package:flutter/widgets.dart';
+import 'package:flutter/foundation.dart';
 
 import '../app/rail_destination.dart';
 
-/// Where a reward token's art is: a region of an image. A whole file is a
-/// region covering all of it, so a sheet of tokens and one-file-per-token
-/// both fit.
-@immutable
-class TokenArt {
-  final String asset;
-
-  /// The image's pixel size.
-  final Size image;
-
-  /// The token's region in it, in pixels.
-  final Rect region;
-
-  const TokenArt(this.asset, {required this.image, required this.region});
-}
-
-/// One kind of reward: what it is, where it lives, what it looks like.
+/// One kind of reward: where it lives, and the things it can be.
+///
+/// **A reward is depicted by the thing itself, not by a symbol for its
+/// category** (Cooper, 2026-11). So a token is a FRAME plus a REFERENCED
+/// ART ID (see `Art` in lib/app/art_registry.dart), not per-reward art: an
+/// instrument reward is the instrument's own art in a diamond, the same art
+/// the games and the Playground use.
 ///
 /// Rewards are DIAMONDS — never the rail's circles or rounded squares, so a
-/// reward never reads as a navigation item. The token itself says what was
+/// reward never reads as a navigation item. The token says what was
 /// earned; the destination only says where it lives (songs and instruments
 /// share Playground, where songs are played on the instruments).
 @immutable
@@ -31,55 +21,86 @@ class RewardType {
   /// The rail destination it flies to; null flies onto the map.
   final RailDestination? destination;
 
-  /// Null: no art yet (drawn as a plain diamond).
-  final TokenArt? token;
+  /// The things a reward of this type can be, as art ids, handed out in
+  /// order.
+  final List<String> items;
 
-  const RewardType(this.id, {required this.destination, this.token});
+  /// Whether the item is drawn inside the diamond frame. False where the
+  /// referenced art is already a diamond token.
+  final bool framed;
+
+  const RewardType(
+    this.id, {
+    required this.destination,
+    required this.items,
+    this.framed = true,
+  });
 
   bool get onMap => destination == null;
+
+  /// The art for the [index]th reward of this type.
+  String artFor(int index) => items[index % items.length];
 }
 
 // --- The catalogue -----------------------------------------------------------
 //
-// DATA: adding a reward type is a row here; replacing its art is changing
-// its `token`. Nothing else in the app names a reward image.
-//
-// reward_tokens_placeholder_x4.png is Cooper's PLACEHOLDER art (it will
-// change): four 543×724 cells, each a 543-square diamond centred in it.
+// DATA: adding a reward type is a row here; adding a thing it can be is an
+// art id in its list. Game unlocks are RETIRED (Cooper, 2026-11): a game
+// joins the library once the child has met it in the Journey, never as a
+// reward.
 
-const _sheet = 'assets/images/journey/reward_tokens_placeholder_x4.png';
-const _sheetSize = Size(2172, 724);
-TokenArt _cell(int i) => TokenArt(
-  _sheet,
-  image: _sheetSize,
-  region: Rect.fromLTWH(i * 543.0, 90.5, 543, 543),
-);
-
-final List<RewardType> rewardTypes = [
+const List<RewardType> rewardTypes = [
+  // Placeholder art for both (Cooper: will change) — already diamonds.
   RewardType(
-    'game_unlock',
-    destination: RailDestination.games,
-    token: _cell(0),
+    'song',
+    destination: RailDestination.playground,
+    items: ['token.song'],
+    framed: false,
   ),
-  RewardType('craft', destination: RailDestination.crafts, token: _cell(1)),
-  RewardType('song', destination: RailDestination.playground, token: _cell(2)),
+  RewardType(
+    'craft',
+    destination: RailDestination.crafts,
+    items: ['token.craft'],
+    framed: false,
+  ),
   RewardType(
     'instrument',
     destination: RailDestination.playground,
-    token: _cell(3),
+    items: [
+      'instrument.piano',
+      'instrument.guitar',
+      'instrument.trumpet',
+      'instrument.violin',
+      'instrument.drum',
+      'instrument.flute',
+      'instrument.bell',
+    ],
   ),
-  // No art yet; WHERE on the map it lands is open, awaiting Cooper.
-  const RewardType('decoration', destination: null),
+  // Decorations fly onto the map, as themselves, and live there as
+  // tappable things. Objects and creatures alternate.
+  RewardType(
+    'decoration',
+    destination: null,
+    items: [
+      'decoration.bluebird.rest',
+      'decoration.mushroom.rest',
+      'decoration.frog.rest',
+      'decoration.acorn.rest',
+      'decoration.butterfly.rest',
+      'decoration.daisy.rest',
+      'decoration.chipmunk.rest',
+      'decoration.pine_cone.rest',
+      'decoration.ladybird.rest',
+      'decoration.bluebells.rest',
+      'decoration.snail.rest',
+      'decoration.dragonfly.rest',
+    ],
+  ),
 ];
 
 /// The rail rewards, in the order a child is given them — a placeholder
 /// schedule until the reward catalogue (card 204's open question) exists.
-const List<String> railRewardRotation = [
-  'song',
-  'instrument',
-  'game_unlock',
-  'craft',
-];
+const List<String> railRewardRotation = ['song', 'instrument', 'craft'];
 
 /// What a milestone adds to the map.
 const String milestoneDecoration = 'decoration';

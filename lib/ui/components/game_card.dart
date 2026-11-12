@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../app/art_registry.dart';
 import '../theme/theme.dart';
 import 'squishy_button.dart';
 
@@ -9,8 +10,11 @@ import 'squishy_button.dart';
 /// replacing the previous flat white Material card.
 class GameCard extends StatelessWidget {
   final String title;
-  final String subtitle;
   final IconData icon;
+
+  /// The game's painted icon, by art id; [icon] stands in where a game has
+  /// none yet.
+  final String? artId;
   final Color accentColor;
   final VoidCallback? onTap;
   final bool isLocked;
@@ -18,8 +22,8 @@ class GameCard extends StatelessWidget {
   const GameCard({
     super.key,
     required this.title,
-    required this.subtitle,
     required this.icon,
+    this.artId,
     this.accentColor = AppColors.primary,
     this.onTap,
     this.isLocked = false,
@@ -39,54 +43,49 @@ class GameCard extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Flexible(
-            flex: 2,
-            child: Container(
-              constraints: const BoxConstraints(
-                minWidth: 22,
-                minHeight: 22,
-                maxWidth: 30,
-                maxHeight: 30,
-              ),
-              decoration: BoxDecoration(
-                color: isLocked
-                    ? AppColors.textSecondary.withValues(alpha: 0.2)
-                    : accentColor.withValues(alpha: 0.15),
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: isLocked
-                      ? AppColors.textSecondary.withValues(alpha: 0.3)
-                      : accentColor.withValues(alpha: 0.5),
-                  width: 1,
-                ),
-              ),
-              child: Icon(
-                isLocked ? Icons.lock_outline : icon,
-                size: 16,
-                color: isLocked ? AppColors.textSecondary : accentColor,
-              ),
-            ),
+          Expanded(
+            child: artId != null
+                ? ArtImage(artId!)
+                : Center(
+                    child: Container(
+                      constraints: const BoxConstraints(
+                        minWidth: 22,
+                        minHeight: 22,
+                        maxWidth: 34,
+                        maxHeight: 34,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isLocked
+                            ? AppColors.textSecondary.withValues(alpha: 0.2)
+                            : accentColor.withValues(alpha: 0.15),
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: isLocked
+                              ? AppColors.textSecondary.withValues(alpha: 0.3)
+                              : accentColor.withValues(alpha: 0.5),
+                          width: 1,
+                        ),
+                      ),
+                      child: Icon(
+                        isLocked ? Icons.lock_outline : icon,
+                        size: 18,
+                        color: isLocked ? AppColors.textSecondary : accentColor,
+                      ),
+                    ),
+                  ),
           ),
           const SizedBox(height: 4),
+          // The game's name only — no subtitle (Cooper: "the game names are
+          // enough").
           Text(
             title,
             style: AppTypography.bodyLarge.copyWith(
               color: isLocked ? AppColors.textSecondary : AppColors.textPrimary,
-              fontSize: 12,
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
             ),
             textAlign: TextAlign.center,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 1),
-          Text(
-            subtitle,
-            style: AppTypography.bodyMedium.copyWith(
-              color: AppColors.textSecondary,
-              fontSize: 10,
-            ),
-            textAlign: TextAlign.center,
-            maxLines: 1,
+            maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
         ],

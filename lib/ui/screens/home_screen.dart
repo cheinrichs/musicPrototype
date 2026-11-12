@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+import '../../app/art_registry.dart';
 import '../../app/router.dart';
+import '../../app/state/profile_state.dart';
+import '../../games/game_library.dart';
+import '../../journey/journey_state.dart';
 import '../components/circle_icon_button.dart';
 import '../components/game_card.dart';
 import '../theme/theme.dart';
@@ -97,80 +102,107 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  static const _games = [
+  static const List<_Game> _games = [
     (
+      id: 'high_low',
       title: 'High vs Low',
-      subtitle: 'Which note is higher?',
       icon: Icons.swap_vert_rounded,
       color: AppColors.primary,
       route: AppRoutes.highLow,
     ),
     (
+      id: 'loud_quiet',
       title: 'Loud or Quiet',
-      subtitle: 'Which one is louder?',
       icon: Icons.volume_up_rounded,
       color: AppColors.gold,
       route: AppRoutes.loudQuiet,
     ),
     (
+      id: 'scale_direction',
       title: 'Scale Direction',
-      subtitle: 'Up or down?',
       icon: Icons.stairs_rounded,
       color: AppColors.secondary,
       route: AppRoutes.scaleDirection,
     ),
     (
+      id: 'match_note',
       title: 'Match the Note',
-      subtitle: 'Find the matching sound',
       icon: Icons.music_note_rounded,
       color: AppColors.gold,
       route: AppRoutes.matchNote,
     ),
     (
+      id: 'interval_id',
       title: 'Intervals',
-      subtitle: 'Name the interval',
       icon: Icons.straighten_rounded,
       color: AppColors.higherButton,
       route: AppRoutes.intervalId,
     ),
     (
+      id: 'chord_id',
       title: 'Chords',
-      subtitle: 'Major or minor?',
       icon: Icons.piano_rounded,
       color: AppColors.lowerButton,
       route: AppRoutes.chordId,
     ),
     (
+      id: 'same_different',
       title: 'Same or Different',
-      subtitle: 'Listen & compare',
       icon: Icons.compare_rounded,
       color: AppColors.correct,
       route: AppRoutes.sameDifferent,
     ),
     (
+      id: 'timbre_id',
       title: 'Which Instrument?',
-      subtitle: 'Name the sound',
       icon: Icons.spatial_audio_rounded,
       color: Color(0xFF74B9FF),
       route: AppRoutes.timbreId,
     ),
     (
+      id: 'rhythm_id',
       title: 'Same Beat?',
-      subtitle: 'Match the rhythm',
       icon: Icons.av_timer_rounded,
       color: Color(0xFFE17055),
       route: AppRoutes.rhythmId,
     ),
     (
+      id: 'pitch_name',
       title: 'Name That Note',
-      subtitle: 'Do Re Mi...',
       icon: Icons.record_voice_over_rounded,
       color: AppColors.primaryLight,
       route: AppRoutes.pitchName,
     ),
   ];
 
+  /// The games this profile's library shows. Cooper's adult profile sees
+  /// every game (the dev door). A child sees [GameLibrary.defaults] plus the
+  /// games they have met in the Journey; the rest are HIDDEN, not shown
+  /// locked. This never touches the Journey's own game pool.
+  List<_Game> _visibleGames(BuildContext context) {
+    ProfileState? profiles;
+    JourneyState? journey;
+    try {
+      profiles = context.watch<ProfileState>();
+    } on ProviderNotFoundException {
+      profiles = null;
+    }
+    try {
+      journey = context.watch<JourneyState>();
+    } on ProviderNotFoundException {
+      journey = null;
+    }
+    final profile = profiles?.activeProfile;
+    final gated = profile != null && !profile.isAdult;
+    final met = journey?.gamesMet ?? const <String>{};
+    return [
+      for (final g in _games)
+        if (GameLibrary.available(g.id, gated: gated, metInJourney: met)) g,
+    ];
+  }
+
   Widget _buildGameSelection(BuildContext context) {
+    final games = _visibleGames(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -187,7 +219,9 @@ class HomeScreen extends StatelessWidget {
               // instead of stretching edge-to-edge. Cards are ~50% smaller
               // than their original 170px target (Trello card 50) so more
               // are visible at once — the grid still scrolls for the rest.
-              const targetCardWidth = 85.0;
+              // Big enough for the painted icons to read (Cooper's mockup:
+              // about seven across).
+              const targetCardWidth = 120.0;
               final crossAxisCount =
                   (constraints.maxWidth / (targetCardWidth + AppSpacing.sm))
                       .floor()
@@ -198,15 +232,18 @@ class HomeScreen extends StatelessWidget {
                   crossAxisCount: crossAxisCount,
                   crossAxisSpacing: AppSpacing.sm,
                   mainAxisSpacing: AppSpacing.sm,
-                  childAspectRatio: 1.1,
+                  childAspectRatio: 0.85,
                 ),
-                itemCount: _games.length,
+                itemCount: games.length,
                 itemBuilder: (context, i) {
-                  final game = _games[i];
+                  final game = games[i];
                   return GameCard(
+                        key: ValueKey('game-${game.id}'),
                         title: game.title,
-                        subtitle: game.subtitle,
                         icon: game.icon,
+                        artId: Art.has('game.${game.id}')
+                            ? 'game.${game.id}'
+                            : null,
                         accentColor: game.color,
                         onTap: () => context.go(game.route),
                       )
@@ -226,3 +263,11 @@ class HomeScreen extends StatelessWidget {
     );
   }
 }
+
+typedef _Game = ({
+  String id,
+  String title,
+  IconData icon,
+  Color color,
+  String route,
+});

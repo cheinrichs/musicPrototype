@@ -13,6 +13,9 @@ class Reward {
   const Reward(this.typeId, this.stone, [this.index = 0]);
 
   RewardType get type => rewardTypeOf(typeId);
+
+  /// The art for this reward: the thing itself, by id.
+  String get artId => type.artFor(index);
 }
 
 /// One game's share of a stone: which game, how many rounds.
@@ -130,6 +133,15 @@ class JourneyState extends ChangeNotifier {
     return parts;
   }
 
+  /// The games the child has met in the Journey — what lets a game into
+  /// their Games library (see `GameLibrary`). Recording a meeting never
+  /// changes which games a stone can draw: [games] is fixed.
+  Set<String> get gamesMet => Set.unmodifiable(_p.gamesMet);
+
+  void meet(String gameId) {
+    if (_p.gamesMet.add(gameId)) notifyListeners();
+  }
+
   /// How many of the current stone's parts are finished.
   int get partsDone => _p.partsDone;
 
@@ -162,4 +174,5 @@ class _Progress {
   final List<Reward> rewards = [];
   List<StonePart>? plan;
   int partsDone = 0;
+  final Set<String> gamesMet = {};
 }

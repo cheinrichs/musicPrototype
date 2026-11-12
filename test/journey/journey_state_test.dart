@@ -1,3 +1,4 @@
+import 'package:ear_trainer/app/art_registry.dart';
 import 'package:ear_trainer/app/rail_destination.dart';
 import 'package:ear_trainer/journey/journey_state.dart';
 import 'package:ear_trainer/journey/reward_catalogue.dart';
@@ -58,7 +59,11 @@ void main() {
       RailDestination? to(String id) => rewardTypeOf(id).destination;
       expect(to('song'), RailDestination.playground);
       expect(to('instrument'), RailDestination.playground);
-      expect(to('game_unlock'), RailDestination.games);
+      expect(
+        rewardTypes.map((t) => t.id),
+        isNot(contains('game_unlock')),
+        reason: 'a game joins the library by being met, never as a reward',
+      );
       expect(to('craft'), RailDestination.crafts);
       expect(rewardTypeOf('decoration').onMap, isTrue);
     });
@@ -142,17 +147,31 @@ void main() {
       expect(() => rewardTypeOf('nope'), throwsArgumentError);
     });
 
-    test("every token's region lies inside its image", () {
+    test('a reward is the thing itself: every item is registered art, '
+        'and an instrument reward is the instrument', () {
       for (final t in rewardTypes) {
-        final token = t.token;
-        if (token == null) continue;
-        final bounds = Offset.zero & token.image;
-        expect(bounds.contains(token.region.topLeft), isTrue, reason: t.id);
+        for (final id in t.items) {
+          expect(Art.has(id), isTrue, reason: '${t.id}: $id');
+        }
+      }
+      expect(
+        rewardTypeOf(
+          'instrument',
+        ).items.every((id) => id.startsWith('instrument.')),
+        isTrue,
+      );
+    });
+
+    test('every registered region lies inside its image', () {
+      for (final id in Art.ids) {
+        final art = Art.of(id);
+        final bounds = Offset.zero & art.image;
         expect(
-          token.region.right <= bounds.right &&
-              token.region.bottom <= bounds.bottom,
+          bounds.contains(art.region.topLeft) &&
+              art.region.right <= bounds.right + 0.001 &&
+              art.region.bottom <= bounds.bottom + 0.001,
           isTrue,
-          reason: t.id,
+          reason: id,
         );
       }
     });
