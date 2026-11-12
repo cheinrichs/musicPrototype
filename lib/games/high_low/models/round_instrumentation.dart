@@ -85,6 +85,14 @@ class RoundInstrumentation {
   /// app has. Never scored. See docs/product/ADVANCEMENT_SIGNALS.md.
   final bool leftSet;
 
+  /// Every drag released this round too far from any slot to land, as its
+  /// distance in points from the dragged instrument's centre to the nearest
+  /// slot's edge (Trello card 221). Not a wrong answer and never scored —
+  /// it is what turns the accept radius (`DropSnap.radiusFor`) from a guess
+  /// into a measurement: a cluster just past the radius says it is too
+  /// tight.
+  final List<double> missedDropDistances;
+
   const RoundInstrumentation({
     required this.promptNumber,
     required this.waitedForPlaythrough,
@@ -97,5 +105,6 @@ class RoundInstrumentation {
     this.observeFlightOrder = const [],
     this.skipped = false,
     this.leftSet = false,
+    this.missedDropDistances = const [],
   });
 }

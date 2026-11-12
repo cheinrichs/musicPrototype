@@ -10,6 +10,7 @@ import '../../../models/concept_tier.dart';
 import '../../../models/game_status.dart';
 import '../../../models/musical_skill.dart';
 import '../../../ui/components/drifting_notes.dart';
+import '../../../ui/components/drop_snap.dart';
 import '../../../ui/components/game_screen_layout.dart';
 import '../../../ui/theme/theme.dart';
 import '../models/scene_layout.dart';
@@ -278,36 +279,49 @@ class _OrderingScreenState extends State<OrderingScreen> {
         : SlotState.filled;
   }
 
+  /// Platform [slot]'s drawn outline and drop area — the band belonging to
+  /// this platform, wider than its face. What lands on it is decided by
+  /// [DropSnap] from the dragged instrument's own position (card 221), see
+  /// [_slotFor].
+  Rect _slotRect(OrderingLayout layout, int slot) =>
+      layout.slotRect(layout.freePlatforms[slot]);
+
   Widget _buildSlot(OrderingLayout layout, int slot) {
-    final c = layout.slotCentre(slot);
-    // A generous target — the whole band belonging to this platform, wider
-    // than its face — so a small child's aim doesn't have to be exact.
-    final w = layout.slotSize.width * 1.35;
-    final h = layout.placedSize;
-    return Positioned(
-      left: c.dx - w / 2,
-      top: c.dy - h * 0.8,
-      width: w,
-      height: h,
-      child: DragTarget<int>(
-        onWillAcceptWithDetails: (_) => _state.occupantOf(slot) == null,
-        onAcceptWithDetails: (d) {
-          setState(() => _hoverSlot = null);
-          _state.dropOnSlot(d.data, slot);
-        },
-        onMove: (_) {
-          if (_hoverSlot != slot) setState(() => _hoverSlot = slot);
-        },
-        onLeave: (_) {
-          if (_hoverSlot == slot) setState(() => _hoverSlot = null);
-        },
-        builder: (context, _, _) => OrderingSlot(
-          key: ValueKey('slot-$slot'),
-          state: _slotState(slot),
-          size: Size(w, h),
-        ),
+    final rect = _slotRect(layout, slot);
+    return Positioned.fromRect(
+      rect: rect,
+      child: OrderingSlot(
+        key: ValueKey('slot-$slot'),
+        state: _slotState(slot),
+        size: rect.size,
       ),
     );
+  }
+
+  /// The platform an instrument [size] wide with its top-left at
+  /// [globalTopLeft] would land on, or null. Judged among ALL this round's
+  /// platforms, so a release nearest an occupied one is refused rather than
+  /// snapped to a neighbour the child didn't aim at; the highlight uses the
+  /// same answer, so a lit platform always accepts.
+  int? _slotFor(OrderingLayout layout, Offset globalTopLeft, double size) {
+    final hit = _nearestSlot(layout, globalTopLeft, size);
+    if (hit == null || hit.distance > DropSnap.radiusFor(size)) return null;
+    return _state.occupantOf(hit.index) == null ? hit.index : null;
+  }
+
+  ({int index, double distance})? _nearestSlot(
+    OrderingLayout layout,
+    Offset globalTopLeft,
+    double size,
+  ) {
+    final scene = _sceneKey.currentContext?.findRenderObject();
+    final round = _state.round;
+    if (scene is! RenderBox || !scene.hasSize || round == null) return null;
+    final centre =
+        scene.globalToLocal(globalTopLeft) + Offset(size / 2, size / 2);
+    return DropSnap.nearest(centre, {
+      for (final s in round.activeSlots) s: _slotRect(layout, s),
+    });
   }
 
   String _assetFor(OrderingLayout layout, int note) {
@@ -459,9 +473,32 @@ class _OrderingScreenState extends State<OrderingScreen> {
           setState(() => _dragging.add(note));
           _state.lift(note);
         },
+        // The finger holds the middle, so the pointer IS the sprite's
+        // centre here — but the drop is still judged by [DropSnap], with the
+        // same answer lighting the platform as landing on it (card 221).
+        onDragUpdate: (d) {
+          final topLeft =
+              d.globalPosition - Offset(stumpSize / 2, stumpSize / 2);
+          final slot = _slotFor(layout, topLeft, stumpSize);
+          if (_hoverSlot != slot) setState(() => _hoverSlot = slot);
+        },
         onDragEnd: (details) {
-          setState(() => _dragging.remove(note));
-          if (!details.wasAccepted) _returnMissed(layout, note, details.offset);
+          final slot = _slotFor(layout, details.offset, stumpSize);
+          setState(() {
+            _dragging.remove(note);
+            _hoverSlot = null;
+          });
+          if (slot != null && _state.dropOnSlot(note, slot)) return;
+          final miss = _nearestSlot(layout, details.offset, stumpSize);
+          if (miss != null) {
+            debugPrint(
+              'Missed drop: ordering, note $note, '
+              '${miss.distance.toStringAsFixed(0)} pt from platform '
+              '${miss.index}'
+              '${_state.occupantOf(miss.index) != null ? ' (occupied)' : ''}',
+            );
+          }
+          _returnMissed(layout, note, details.offset);
         },
         child: body,
       );

@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -10,6 +11,7 @@ import 'package:ear_trainer/games/high_low/ordering/ordering_slot.dart';
 import 'package:ear_trainer/games/high_low/services/prompt_generator.dart';
 import 'package:ear_trainer/games/high_low/widgets/retry_settle.dart';
 import 'package:ear_trainer/models/concept_tier.dart';
+import 'package:ear_trainer/ui/components/drop_snap.dart';
 import 'package:ear_trainer/ui/theme/theme.dart';
 
 const viewport = Size(844, 390);
@@ -259,6 +261,117 @@ void main() {
       expect(state.placements, isEmpty);
       expect(find.byType(RetrySettle), findsOneWidget);
       state.dispose();
+    });
+
+    // Card 221: the drop is judged by where the instrument is, with the same
+    // test lighting a platform as landing on it.
+    group('card 221: where a drop on a platform lands', () {
+      Rect slotRect(OrderingGameState state, int slot) {
+        final layout = OrderingLayout(
+          viewport,
+          noteCount: state.round!.notes.length,
+        );
+        return layout.slotRect(layout.freePlatforms[slot]);
+      }
+
+      /// Drags [note] so the instrument's centre ends at [to] (the finger
+      /// holds its middle here), and reports which platform was lit just
+      /// before release.
+      Future<int?> dragLit(WidgetTester tester, int note, Offset to) async {
+        final from = tester.getCenter(instrument(note));
+        final gesture = await tester.startGesture(from);
+        await tester.pump(const Duration(milliseconds: 20));
+        for (var i = 1; i <= 8; i++) {
+          await gesture.moveTo(Offset.lerp(from, to, i / 8)!);
+          await tester.pump(const Duration(milliseconds: 20));
+        }
+        int? lit;
+        for (var s = 0; s < 3; s++) {
+          final f = slot(s);
+          if (f.evaluate().isEmpty) continue;
+          if (tester.widget<OrderingSlot>(f).state == SlotState.hovering) {
+            lit = s;
+          }
+        }
+        await gesture.up();
+        await tester.pump();
+        await tester.pump(Duration.zero);
+        return lit;
+      }
+
+      for (final s in [0, 1, 2]) {
+        final near = <String, Offset Function(Rect, double)>{
+          'on it': (r, _) => r.center,
+          'just left of it': (r, rad) => r.centerLeft - Offset(rad * 0.9, 0),
+          'just right of it': (r, rad) => r.centerRight + Offset(rad * 0.9, 0),
+        };
+        for (final MapEntry(key: name, value: at) in near.entries) {
+          // The platforms zig-zag up the trunk, so beside one can be nearer
+          // its neighbour: whichever is nearest is the one that lights, and
+          // the one it lands on.
+          testWidgets('platform $s, released $name: the nearest platform '
+              'lights, and it lands there', (tester) async {
+            final state = await pumpOrdering(tester);
+            final size = tester.getSize(instrument(0)).width;
+            final radius = DropSnap.radiusFor(size);
+            final to = at(slotRect(state, s), radius);
+            final expected = DropSnap.resolve(to, {
+              for (final i in state.round!.activeSlots) i: slotRect(state, i),
+            }, radius);
+            expect(expected, isNotNull, reason: 'within reach of a platform');
+            if (name == 'on it') expect(expected, s);
+            final lit = await dragLit(tester, 0, to);
+            expect(lit, expected);
+            expect(state.placements, {0: expected});
+            state.dispose();
+          });
+        }
+      }
+
+      testWidgets('released past the radius: never lit, and goes home', (
+        tester,
+      ) async {
+        final state = await pumpOrdering(tester);
+        final size = tester.getSize(instrument(0)).width;
+        final r = slotRect(state, 1);
+        final lit = await dragLit(
+          tester,
+          0,
+          r.centerLeft - Offset(DropSnap.radiusFor(size) * 1.2, 0),
+        );
+        expect(lit, isNull);
+        expect(state.placements, isEmpty);
+        state.dispose();
+      });
+
+      testWidgets('between two platforms, it lands on the nearer one', (
+        tester,
+      ) async {
+        final state = await pumpOrdering(tester);
+        final a = slotRect(state, 0);
+        final b = slotRect(state, 1);
+        // A third of the way from platform 1's edge to platform 0's.
+        final gapTop = math.min(a.bottom, b.bottom);
+        final gapBottom = math.max(a.top, b.top);
+        final nearB = b.top > a.top
+            ? Offset(b.center.dx, gapTop + (gapBottom - gapTop) * 0.7)
+            : Offset(b.center.dx, gapBottom - (gapBottom - gapTop) * 0.7);
+        final lit = await dragLit(tester, 0, nearB);
+        expect(lit, 1);
+        expect(state.placements, {0: 1});
+        state.dispose();
+      });
+
+      testWidgets('dropped on a taken platform, it is refused — never '
+          'snapped onto a neighbour the child did not aim at', (tester) async {
+        final state = await pumpOrdering(tester);
+        await dragNoteToSlot(tester, 0, 0);
+        expect(state.placements, {0: 0});
+        final lit = await dragLit(tester, 1, slotRect(state, 0).center);
+        expect(lit, isNull, reason: 'a taken platform never lights up');
+        expect(state.placements, {0: 0});
+        state.dispose();
+      });
     });
 
     testWidgets('the hint for the grown-up is on screen from the start and '

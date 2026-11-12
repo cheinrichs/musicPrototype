@@ -712,6 +712,7 @@ class HighLowGameState extends ChangeNotifier {
     _firstResponseCorrect = null;
     _firstResponseHeardBothNotes = null;
     _listenAgainCount = 0;
+    _missedDrops.clear();
     _correctTapCumulative = 0;
     _wrongTapCount = 0;
     _tappedSidesObserve.clear();
@@ -1104,7 +1105,27 @@ class HighLowGameState extends ChangeNotifier {
         observeFlightOrder: observeFlightOrder,
         skipped: skipped,
         leftSet: leftSet,
+        missedDropDistances: List.unmodifiable(_missedDrops),
       ),
+    );
+  }
+
+  /// Every drag this round released too far from the slot to land — see
+  /// [RoundInstrumentation.missedDropDistances].
+  final List<double> _missedDrops = [];
+  List<double> get missedDrops => List.unmodifiable(_missedDrops);
+
+  /// A drag released too far from the tree slot to land (card 221) —
+  /// [distance] in points from the instrument's centre to the slot's edge.
+  /// Not a wrong answer: nothing is scored and nothing on screen changes.
+  /// Recorded with the round and printed (no persisted log yet, card 128),
+  /// so the accept radius can be set from real releases.
+  void missDrop(int side, double distance) {
+    if (!canDrop) return;
+    _missedDrops.add(distance);
+    debugPrint(
+      'Missed drop: High vs Low, round ${_currentPromptIndex + 1}, side '
+      '$side, ${distance.toStringAsFixed(0)} pt from the slot',
     );
   }
 

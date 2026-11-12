@@ -30,6 +30,7 @@ import 'package:ear_trainer/games/high_low/widgets/high_low_caption.dart';
 import 'package:ear_trainer/models/agency_stage.dart';
 import 'package:ear_trainer/models/game_status.dart';
 import 'package:ear_trainer/models/round_order.dart';
+import 'package:ear_trainer/ui/components/drop_snap.dart';
 import 'package:ear_trainer/ui/components/progress_dots.dart';
 
 void main() {
@@ -210,8 +211,9 @@ void main() {
     'tight landscape (iPhone SE)': tightViewport,
     'roomier landscape (iPhone 14)': roomyViewport,
   }.entries) {
-    testWidgets('both draggable instruments and the single drop target are '
-        'hit-testable on a ${entry.key} viewport — regression test for the '
+    testWidgets('both draggable instruments are hit-testable, and the single '
+        'drop slot is shown, on a ${entry.key} viewport — regression test for '
+        'the '
         "body's SingleChildScrollView sitting in front of the scene in "
         "GameScreenLayout's background layer and silently absorbing every "
         'touch before it reached the drag interaction (a Scrollable '
@@ -225,17 +227,16 @@ void main() {
         findsNWidgets(2),
         reason: 'both draggable instruments must be reachable by touch',
       );
-      expect(
-        find.byType(DragTarget<int>).hitTestable(),
-        findsOneWidget,
-        reason: 'the one tree slot must be reachable by touch',
-      );
+      // The slot itself takes no touches: a drop is judged from where the
+      // dragged instrument is (card 221, DropSnap), so only the
+      // instruments have to be reachable.
+      expect(find.byKey(const ValueKey('tree-slot')), findsOneWidget);
     });
   }
 
   testWidgets(
     'dragging an instrument onto the tree slot and releasing completes a '
-    'round — proves the touch actually lands on the DragTarget end-to-end, '
+    'round — proves the drop actually lands on the slot end-to-end, '
     "not just that the widgets are hit-testable in isolation. The round's "
     "target side is unseeded/random, so this drags one instrument and, if "
     "that wasn't the target (a gentle retry, not a failure state), "
@@ -246,7 +247,7 @@ void main() {
       await pumpAndFinishIntro(tester);
 
       final instruments = find.byType(Draggable<int>);
-      final target = find.byType(DragTarget<int>);
+      final target = find.byKey(const ValueKey('tree-slot'));
       expect(instruments, findsNWidgets(2));
       expect(target, findsOneWidget);
 
@@ -291,6 +292,115 @@ void main() {
     },
   );
 
+  // Card 221: held anywhere on the instrument, released anywhere around the
+  // slot — a drop counts (right or wrong) exactly when the slot lit up, and
+  // when it doesn't the miss is recorded with its distance. Before this, the
+  // finger had to be inside the slot, so an instrument held by its base could
+  // cover the slot and still spring back.
+  group('card 221: where a drop on the tree lands', () {
+    Future<({bool lit, bool counted, List<double> misses})> release(
+      WidgetTester tester, {
+      required int side,
+      required Offset grip,
+      required Offset Function(Rect slot, double radius) at,
+    }) async {
+      await pumpAndFinishIntro(tester);
+      final layout = SceneLayout(tightViewport, noteCount: 2);
+      final slot = layout.slotRect(
+        layout.slotPlatformFor(
+          isPiperTarget: screenState.targetCharacterIsPiper,
+        ),
+      );
+      final box = tester.getRect(find.byType(Draggable<int>).at(side));
+      final radius = DropSnap.radiusFor(box.width);
+      final g = Offset(grip.dx * box.width, grip.dy * box.height);
+      final from = box.center + g;
+      final to = at(slot, radius) + g;
+      final gesture = await tester.startGesture(from);
+      await tester.pump(const Duration(milliseconds: 20));
+      for (var i = 1; i <= 10; i++) {
+        await gesture.moveTo(Offset.lerp(from, to, i / 10)!);
+        await tester.pump(const Duration(milliseconds: 20));
+      }
+      final lit =
+          tester
+              .widget<OrderingSlot>(
+                find.descendant(
+                  of: find.byKey(const ValueKey('tree-slot')),
+                  matching: find.byType(OrderingSlot),
+                ),
+              )
+              .state ==
+          SlotState.hovering;
+      await gesture.up();
+      await tester.pump();
+      await tester.pump(Duration.zero);
+      return (
+        lit: lit,
+        counted: screenState.dragFeedback != DragFeedback.none,
+        misses: screenState.missedDrops,
+      );
+    }
+
+    const grips = {
+      'by the middle': Offset.zero,
+      'by the base': Offset(0, 0.4),
+      'by the top': Offset(0, -0.4),
+      'low and off-centre': Offset(0.12, 0.3),
+    };
+    for (final side in [0, 1]) {
+      for (final MapEntry(key: name, value: grip) in grips.entries) {
+        testWidgets('instrument $side held $name, centred on the slot: lit, '
+            'and counted', (tester) async {
+          final r = await release(
+            tester,
+            side: side,
+            grip: grip,
+            at: (s, _) => s.center,
+          );
+          expect(r.lit, isTrue);
+          expect(r.counted, isTrue);
+          expect(r.misses, isEmpty);
+        });
+      }
+    }
+
+    final near = <String, Offset Function(Rect, double)>{
+      'just left of it': (s, r) => s.centerLeft - Offset(r * 0.9, 0),
+      'just below it': (s, r) => s.bottomCenter + Offset(0, r * 0.9),
+      'off its lower left corner': (s, r) =>
+          s.bottomLeft + Offset(-r * 0.6, r * 0.6),
+    };
+    for (final MapEntry(key: name, value: at) in near.entries) {
+      testWidgets('held by the base, released $name: lit, and counted', (
+        tester,
+      ) async {
+        final r = await release(
+          tester,
+          side: 1,
+          grip: const Offset(0, 0.4),
+          at: at,
+        );
+        expect(r.lit, isTrue);
+        expect(r.counted, isTrue);
+      });
+    }
+
+    testWidgets('released past the radius: never lit, not counted, and the '
+        'miss is logged with its distance', (tester) async {
+      final r = await release(
+        tester,
+        side: 1,
+        grip: const Offset(0, 0.4),
+        at: (s, r) => s.centerLeft - Offset(r * 1.2, 0),
+      );
+      expect(r.lit, isFalse);
+      expect(r.counted, isFalse);
+      expect(r.misses, hasLength(1));
+      expect(r.misses.single, greaterThan(0));
+    });
+  });
+
   testWidgets(
     'the tree slot\'s hitbox is generous — wider than the platform\'s own '
     'face, matching the A4 ordering screen\'s slots, so a four-year-old\'s '
@@ -302,7 +412,7 @@ void main() {
     (tester) async {
       await pumpAndFinishIntro(tester, viewport: roomyViewport);
 
-      final target = find.byType(DragTarget<int>);
+      final target = find.byKey(const ValueKey('tree-slot'));
       expect(target, findsOneWidget);
       final targetSize = tester.getSize(target);
 
@@ -784,7 +894,7 @@ void main() {
         expect(find.textContaining("aren't built yet"), findsOneWidget);
         expect(find.text('Dev: agency setup'), findsNothing);
         expect(
-          find.byType(DragTarget<int>),
+          find.byKey(const ValueKey('tree-slot')),
           findsNothing,
           reason: 'no game state was started, so no drop target either',
         );
@@ -933,7 +1043,7 @@ void main() {
 
     Future<void> dragSide(WidgetTester tester, int side) async {
       final start = tester.getCenter(find.byType(Draggable<int>).at(side));
-      final end = tester.getCenter(find.byType(DragTarget<int>));
+      final end = tester.getCenter(find.byKey(const ValueKey('tree-slot')));
       final gesture = await tester.startGesture(start);
       await tester.pump(const Duration(milliseconds: 20));
       for (var i = 1; i <= 8; i++) {
@@ -1324,7 +1434,7 @@ void main() {
         await tester.pump(Duration.zero);
 
         // Drag is the only stage with a drop target.
-        expect(find.byType(DragTarget<int>), findsOneWidget);
+        expect(find.byKey(const ValueKey('tree-slot')), findsOneWidget);
       },
     );
 

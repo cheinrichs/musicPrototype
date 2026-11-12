@@ -24,6 +24,7 @@ import '../../../ui/components/dev_setup_overlay.dart';
 import '../../../ui/components/round_set_end.dart';
 import '../../../models/round_set_length.dart';
 import '../../../ui/components/drifting_notes.dart';
+import '../../../ui/components/drop_snap.dart';
 import '../../../ui/components/game_screen_layout.dart';
 import '../../../ui/components/glow_wiggle_character.dart';
 import '../../../ui/theme/theme.dart';
@@ -151,6 +152,12 @@ class _HighLowScreenState extends State<HighLowScreen> {
   /// [HighLowGameState]. A single bool, not a per-side flag: there is only
   /// ever one slot live at once (2026-09-27 — see [_buildTreeSlot]).
   bool _dragHovering = false;
+
+  /// The scene's own box, for turning a drag's global position into the
+  /// layout's coordinates, and where on the instrument the finger holds it
+  /// (card 221: the drop is judged by the instrument, not the finger).
+  final GlobalKey _sceneKey = GlobalKey();
+  final SpriteGrip _grip = SpriteGrip();
 
   /// Boundary for "Report this round"'s screenshot — see
   /// [RoundReportService.shareReport]. Wraps the whole screen (below), not
@@ -315,25 +322,23 @@ class _HighLowScreenState extends State<HighLowScreen> {
   /// the instrument actually travelled from where it rests.
   final List<GlobalKey> _instrumentSlotKeys = [GlobalKey(), GlobalKey()];
 
-  /// Called only once the tree slot's own [DragTarget] has *accepted* a
-  /// release — i.e. the drag genuinely reached the slot (Flutter only
-  /// calls this when the release point is within the slot's positioned
-  /// bounds). A short accidental slide (a finger sliding during a tap,
-  /// Trello card L00pxs7q) can no longer reach a slot positioned up near
-  /// the tree, so unlike the old screen-spanning drop zone this no longer
-  /// needs its own distance heuristic to tell a real drag from a tap —
-  /// geometry does that instead. A drop that misses the slot entirely
-  /// isn't reported here at all: [Draggable]'s own "return to child" is
-  /// silent and correct, since the instrument never visually left its
-  /// stump during the drag (see [_buildInstrumentSlot]'s `childWhenDragging`).
-  void _onInstrumentDropped(DragTargetDetails<int> details) {
-    final side = details.data;
+  /// Called only once a release has landed on the tree slot — judged by
+  /// [DropSnap] from where the dragged INSTRUMENT is, not the finger (card
+  /// 221). A short accidental slide (a finger sliding during a tap, Trello
+  /// card L00pxs7q) still can't reach a slot up near the tree: the accept
+  /// radius is well short of the distance from a stump. A drop that misses
+  /// isn't an attempt: it is only logged ([HighLowGameState.missDrop]), and
+  /// [Draggable]'s own "return to child" is silent and correct, since the
+  /// instrument never visually left its stump during the drag (see
+  /// [_buildInstrumentSlot]'s `childWhenDragging`). [feedbackTopLeft] is
+  /// the dragged sprite's global top-left at release.
+  void _onInstrumentDropped(int side, Offset feedbackTopLeft) {
     final box = _instrumentSlotKeys[side].currentContext?.findRenderObject();
     // Where relative to the STUMP this landed — RetrySettle's start point
     // for a wrong-instrument-on-the-right-slot retry (see
     // [_buildInstrumentSlot]). Not used to gate whether this counts.
     _lastDropFrom = box is RenderBox && box.hasSize
-        ? details.offset - box.localToGlobal(Offset.zero)
+        ? feedbackTopLeft - box.localToGlobal(Offset.zero)
         : Offset.zero;
     _dropSerial++;
     _gameState.dropInstrument(side);
@@ -733,6 +738,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
     final landing = layout.platform(slotPlatform);
 
     return Stack(
+      key: _sceneKey,
       clipBehavior: Clip.none,
       children: [
         if (!leftIsPiano)
@@ -865,27 +871,27 @@ class _HighLowScreenState extends State<HighLowScreen> {
   Widget _buildTreeSlot(SceneLayout layout, int platformIndex) {
     final celebratingHere = _gameState.dragFeedback == DragFeedback.correct;
     return Positioned.fromRect(
+      key: const ValueKey('tree-slot'),
       rect: layout.slotRect(platformIndex),
-      child: DragTarget<int>(
-        onWillAcceptWithDetails: (_) => _gameState.canDrop,
-        onAcceptWithDetails: (details) {
-          setState(() => _dragHovering = false);
-          _onInstrumentDropped(details);
-        },
-        onMove: (_) {
-          if (!_dragHovering) setState(() => _dragHovering = true);
-        },
-        onLeave: (_) {
-          if (_dragHovering) setState(() => _dragHovering = false);
-        },
-        builder: (context, candidateData, rejectedData) => celebratingHere
-            ? const SizedBox.shrink()
-            : OrderingSlot(
-                state: _dragHovering ? SlotState.hovering : SlotState.empty,
-                size: layout.slotRect(platformIndex).size,
-              ),
-      ),
+      child: celebratingHere
+          ? const SizedBox.shrink()
+          : OrderingSlot(
+              state: _dragHovering ? SlotState.hovering : SlotState.empty,
+              size: layout.slotRect(platformIndex).size,
+            ),
     );
+  }
+
+  /// Where the centre of a [box]-sized instrument whose top-left is at
+  /// [globalTopLeft] sits, in the layout's coordinates.
+  Offset? _sceneCentre(Offset globalTopLeft, double box) {
+    final scene = _sceneKey.currentContext?.findRenderObject();
+    if (scene is! RenderBox || !scene.hasSize) return null;
+    return scene.globalToLocal(globalTopLeft) + Offset(box / 2, box / 2);
+  }
+
+  void _setDragHovering(bool hovering) {
+    if (_dragHovering != hovering) setState(() => _dragHovering = hovering);
   }
 
   /// One stump prop, centered under an instrument at [centerX] and
@@ -1135,8 +1141,35 @@ class _HighLowScreenState extends State<HighLowScreen> {
     if (isTrigger &&
         !celebratingThis &&
         _gameState.dragFeedback != DragFeedback.correct) {
+      // Card 221: the one slot, judged against the dragged instrument's
+      // centre — the same test for the highlight and the release.
+      final slotPlatform = layout.slotPlatformFor(
+        isPiperTarget: _gameState.targetCharacterIsPiper,
+      );
+      final slots = {slotPlatform: layout.slotRect(slotPlatform)};
+      final radius = DropSnap.radiusFor(charSize);
+      int? landsOn(Offset globalTopLeft) {
+        if (!_gameState.canDrop) return null;
+        final centre = _sceneCentre(globalTopLeft, charSize);
+        return centre == null ? null : DropSnap.resolve(centre, slots, radius);
+      }
+
       button = Draggable<int>(
         data: side,
+        dragAnchorStrategy: _grip.anchor,
+        onDragUpdate: (d) => _setDragHovering(
+          landsOn(_grip.topLeftFor(d.globalPosition)) != null,
+        ),
+        onDragEnd: (d) {
+          _setDragHovering(false);
+          if (landsOn(d.offset) != null) {
+            _onInstrumentDropped(side, d.offset);
+            return;
+          }
+          final centre = _sceneCentre(d.offset, charSize);
+          final miss = centre == null ? null : DropSnap.nearest(centre, slots);
+          if (miss != null) _gameState.missDrop(side, miss.distance);
+        },
         feedback: Opacity(
           opacity: 0.85,
           child: Image.asset(

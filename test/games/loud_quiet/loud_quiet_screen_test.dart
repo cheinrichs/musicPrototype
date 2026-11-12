@@ -8,12 +8,14 @@ import 'package:ear_trainer/app/router.dart';
 import 'package:ear_trainer/audio/audio_controller.dart';
 import 'package:ear_trainer/audio/sfx_type.dart';
 import 'package:ear_trainer/audio/spoken_line.dart';
+import 'package:ear_trainer/games/high_low/ordering/ordering_slot.dart';
 import 'package:ear_trainer/games/loud_quiet/models/loud_quiet_layout.dart';
 import 'package:ear_trainer/games/loud_quiet/models/loud_quiet_round.dart';
 import 'package:ear_trainer/games/loud_quiet/screens/loud_quiet_screen.dart';
 import 'package:ear_trainer/games/loud_quiet/state/loud_quiet_game_state.dart';
 import 'package:ear_trainer/models/agency_stage.dart';
 import 'package:ear_trainer/models/game_status.dart';
+import 'package:ear_trainer/ui/components/drop_snap.dart';
 
 class _QuietAudio implements AudioController {
   int notes = 0;
@@ -89,6 +91,13 @@ void main() {
     for (var i = 0; i < 340; i++) {
       await tester.pump(const Duration(milliseconds: 16));
     }
+    // A real-time wait for the art to decode: an image not yet sized takes
+    // no touches, so a drag on it would never start (as in High vs Low's
+    // tests).
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 50)),
+    );
+    await tester.pump();
   }
 
   /// Unmounts and lets the last timers run out, so none is left pending.
@@ -246,6 +255,131 @@ void main() {
     }
     expect(tester.takeException(), isNull);
     await finish(tester);
+  });
+
+  testWidgets('Decide: held low down, the instrument covering the slot '
+      'lands — the drop is judged by where the instrument is, not where the '
+      'finger is (card 221)', (tester) async {
+    await mount(tester, stage: AgencyStage.decide);
+    final target = game.currentRound!.targetSide;
+    final layout = LoudQuietLayout(const Size(667, 375));
+    final slot = layout
+        .slotRect(layout.slotPlatformFor(loud: game.asksLoud))
+        .center;
+    final box = tester.getRect(find.byKey(ValueKey('lq-instrument-$target')));
+    // Grabbed near its base, as a small child grabs a tall instrument.
+    final grip = Offset(0, box.height * 0.4);
+    final from = box.center + grip;
+    // The finger ends a grip's height below the slot; the instrument is on it.
+    final to = slot + grip;
+    final gesture = await tester.startGesture(from);
+    for (var i = 1; i <= 20; i++) {
+      await gesture.moveTo(Offset.lerp(from, to, i / 20)!);
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    await gesture.up();
+    await tester.pump();
+    expect(game.drop, LoudQuietDrop.correct);
+    for (var i = 0; i < 50; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    await finish(tester);
+  });
+
+  // Card 221: held anywhere on the instrument, released anywhere around the
+  // slot — it lands exactly when the slot lit up, and when it doesn't, the
+  // miss is recorded with its distance.
+  group('card 221: where a drop lands', () {
+    Future<({bool lit, bool landed, List<double> misses})> release(
+      WidgetTester tester, {
+      required Offset grip,
+      required Offset Function(Rect slot, double radius) at,
+    }) async {
+      await mount(tester, stage: AgencyStage.decide);
+      final target = game.currentRound!.targetSide;
+      final layout = LoudQuietLayout(const Size(667, 375));
+      final slot = layout.slotRect(layout.slotPlatformFor(loud: game.asksLoud));
+      final box = tester.getRect(find.byKey(ValueKey('lq-instrument-$target')));
+      final radius = DropSnap.radiusFor(box.width);
+      // Held [grip] (a fraction of its size) from its centre, so the finger
+      // ends that far from where the instrument's centre lands.
+      final g = Offset(grip.dx * box.width, grip.dy * box.height);
+      final from = box.center + g;
+      final to = at(slot, radius) + g;
+      final gesture = await tester.startGesture(from);
+      for (var i = 1; i <= 20; i++) {
+        await gesture.moveTo(Offset.lerp(from, to, i / 20)!);
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      final lit =
+          tester
+              .widget<OrderingSlot>(find.byKey(const ValueKey('lq-slot')))
+              .state ==
+          SlotState.hovering;
+      await gesture.up();
+      await tester.pump();
+      final result = (
+        lit: lit,
+        landed: game.drop == LoudQuietDrop.correct,
+        misses: game.missedDrops,
+      );
+      for (var i = 0; i < 50; i++) {
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      await finish(tester);
+      return result;
+    }
+
+    // On the drawn art: the tall instruments are narrower than their square
+    // box, and a touch in the empty margin beside one picks nothing up.
+    const grips = {
+      'by the middle': Offset.zero,
+      'by the base': Offset(0, 0.4),
+      'by the top': Offset(0, -0.4),
+      'low and off-centre': Offset(0.12, 0.3),
+      'high and off-centre': Offset(-0.12, -0.3),
+    };
+    for (final MapEntry(key: name, value: grip) in grips.entries) {
+      testWidgets('held $name, centred on the slot: lit, and lands', (
+        tester,
+      ) async {
+        final r = await release(tester, grip: grip, at: (s, _) => s.center);
+        expect(r.lit, isTrue);
+        expect(r.landed, isTrue);
+        expect(r.misses, isEmpty);
+      });
+    }
+
+    final near = <String, Offset Function(Rect, double)>{
+      'just above it': (s, r) => s.topCenter - Offset(0, r * 0.9),
+      'just below it': (s, r) => s.bottomCenter + Offset(0, r * 0.9),
+      'just left of it': (s, r) => s.centerLeft - Offset(r * 0.9, 0),
+      'just right of it': (s, r) => s.centerRight + Offset(r * 0.9, 0),
+    };
+    for (final MapEntry(key: name, value: at) in near.entries) {
+      testWidgets('held by the base, released $name: lit, and lands', (
+        tester,
+      ) async {
+        final r = await release(tester, grip: const Offset(0, 0.4), at: at);
+        expect(r.lit, isTrue);
+        expect(r.landed, isTrue);
+      });
+    }
+
+    final far = <String, Offset Function(Rect, double)>{
+      'above it': (s, r) => s.topCenter - Offset(0, r * 1.2),
+      'left of it': (s, r) => s.centerLeft - Offset(r * 1.2, 0),
+    };
+    for (final MapEntry(key: name, value: at) in far.entries) {
+      testWidgets('released past the radius $name: never lit, never lands, '
+          'and the miss is logged with its distance', (tester) async {
+        final r = await release(tester, grip: const Offset(0, 0.4), at: at);
+        expect(r.lit, isFalse);
+        expect(r.landed, isFalse);
+        expect(r.misses, hasLength(1));
+        expect(r.misses.single, greaterThan(0));
+      });
+    }
   });
 
   double barFill(WidgetTester tester) {

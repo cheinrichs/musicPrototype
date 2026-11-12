@@ -15,6 +15,7 @@ import '../../../ui/components/continue_bar.dart';
 import '../../../ui/components/instrument_sparkle.dart';
 import '../../../ui/components/dev_setup_overlay.dart';
 import '../../../ui/components/drifting_notes.dart';
+import '../../../ui/components/drop_snap.dart';
 import '../../../ui/components/game_screen_layout.dart';
 import '../../../ui/components/round_set_end.dart';
 import '../../../ui/theme/theme.dart';
@@ -60,6 +61,12 @@ class _LoudQuietScreenState extends State<LoudQuietScreen> {
   int _lastConfetti = 0;
   bool _showDevGate = false;
   bool _hovering = false;
+
+  /// The scene's own box, for turning a drag's global position into the
+  /// layout's coordinates, and where on the instrument the finger holds it
+  /// (card 221: the drop is judged by the instrument, not the finger).
+  final GlobalKey _sceneKey = GlobalKey();
+  final SpriteGrip _grip = SpriteGrip();
 
   @override
   void initState() {
@@ -222,6 +229,7 @@ class _LoudQuietScreenState extends State<LoudQuietScreen> {
     final isDecide = _game.agencyStage == AgencyStage.decide;
     final slotPlatform = layout.slotPlatformFor(loud: _game.asksLoud);
     return Stack(
+      key: _sceneKey,
       clipBehavior: Clip.none,
       children: [
         Positioned.fromRect(
@@ -294,27 +302,31 @@ class _LoudQuietScreenState extends State<LoudQuietScreen> {
     );
   }
 
+  /// The slot is drawn here, but what lands on it is decided by [DropSnap]
+  /// from the dragged instrument's own position (card 221) — see
+  /// [_buildInstrument]'s drag callbacks. Its highlight comes from the same
+  /// test, so a lit slot always accepts.
   Widget _buildSlot(LoudQuietLayout layout, int platform) {
     return Positioned.fromRect(
       rect: layout.slotRect(platform),
-      child: DragTarget<int>(
-        onWillAcceptWithDetails: (_) => _game.canDrop,
-        onAcceptWithDetails: (d) {
-          setState(() => _hovering = false);
-          _game.dropInstrument(d.data);
-        },
-        onMove: (_) {
-          if (!_hovering) setState(() => _hovering = true);
-        },
-        onLeave: (_) {
-          if (_hovering) setState(() => _hovering = false);
-        },
-        builder: (context, candidate, rejected) => OrderingSlot(
-          state: _hovering ? SlotState.hovering : SlotState.empty,
-          size: layout.slotRect(platform).size,
-        ),
+      child: OrderingSlot(
+        key: const ValueKey('lq-slot'),
+        state: _hovering ? SlotState.hovering : SlotState.empty,
+        size: layout.slotRect(platform).size,
       ),
     );
+  }
+
+  /// Where the centre of a [box]-sized instrument whose top-left is at
+  /// [globalTopLeft] sits, in the layout's coordinates.
+  Offset? _sceneCentre(Offset globalTopLeft, double box) {
+    final scene = _sceneKey.currentContext?.findRenderObject();
+    if (scene is! RenderBox || !scene.hasSize) return null;
+    return scene.globalToLocal(globalTopLeft) + Offset(box / 2, box / 2);
+  }
+
+  void _setHovering(bool hovering) {
+    if (_hovering != hovering) setState(() => _hovering = hovering);
   }
 
   Widget _buildInstrument(LoudQuietLayout layout, int side, int slotPlatform) {
@@ -388,8 +400,28 @@ class _LoudQuietScreenState extends State<LoudQuietScreen> {
     }
 
     if (_game.canDrop) {
+      final slots = {slotPlatform: layout.slotRect(slotPlatform)};
+      final radius = DropSnap.radiusFor(box);
+      int? landsOn(Offset globalTopLeft) {
+        final centre = _sceneCentre(globalTopLeft, box);
+        return centre == null ? null : DropSnap.resolve(centre, slots, radius);
+      }
+
       button = Draggable<int>(
         data: side,
+        dragAnchorStrategy: _grip.anchor,
+        onDragUpdate: (d) =>
+            _setHovering(landsOn(_grip.topLeftFor(d.globalPosition)) != null),
+        onDragEnd: (d) {
+          _setHovering(false);
+          if (landsOn(d.offset) != null) {
+            _game.dropInstrument(side);
+            return;
+          }
+          final centre = _sceneCentre(d.offset, box);
+          final miss = centre == null ? null : DropSnap.nearest(centre, slots);
+          if (miss != null) _game.missDrop(side, miss.distance);
+        },
         feedback: Opacity(
           opacity: 0.85,
           child: Image.asset(

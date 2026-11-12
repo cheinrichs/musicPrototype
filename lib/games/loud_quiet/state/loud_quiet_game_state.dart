@@ -143,6 +143,7 @@ class LoudQuietGameState extends ChangeNotifier {
   int? _lastDropSide;
   bool _considering = false;
   int _replays = 0;
+  final List<double> _missedDrops = [];
   bool _waitedForPlaythrough = true;
   int? _firstResponseSide;
   bool _roundRecorded = false;
@@ -273,6 +274,7 @@ class LoudQuietGameState extends ChangeNotifier {
     _lastDropSide = null;
     _considering = false;
     _replays = 0;
+    _missedDrops.clear();
     _waitedForPlaythrough = true;
     _firstResponseSide = null;
     _roundRecorded = false;
@@ -400,6 +402,22 @@ class LoudQuietGameState extends ChangeNotifier {
         break;
     }
     notifyListeners();
+  }
+
+  /// Decide: a drag released too far from the slot to land (card 221) —
+  /// [distance] in points from the instrument's centre to the slot's edge.
+  /// Not a wrong answer: nothing is scored and nothing on screen changes.
+  /// Recorded with the round and printed, so the accept radius can be set
+  /// from real releases.
+  List<double> get missedDrops => List.unmodifiable(_missedDrops);
+
+  void missDrop(int side, double distance) {
+    if (!canDrop) return;
+    _missedDrops.add(distance);
+    debugPrint(
+      'Missed drop: Loud or Quiet, round ${_index + 1}, side $side, '
+      '${distance.toStringAsFixed(0)} pt from the slot',
+    );
   }
 
   /// Decide: the child dropped instrument [side] on the slot.
@@ -582,6 +600,7 @@ class LoudQuietGameState extends ChangeNotifier {
         observeTapSequence: List.unmodifiable(_tapSequence),
         skipped: skipped,
         leftSet: leftSet,
+        missedDropDistances: List.unmodifiable(_missedDrops),
       ),
     );
   }
