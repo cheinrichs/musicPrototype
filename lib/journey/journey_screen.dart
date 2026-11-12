@@ -243,6 +243,17 @@ class _JourneyScreenState extends State<JourneyScreen> {
     return plan[_journey.partsDone.clamp(0, plan.length - 1)];
   }
 
+  /// The stone's progress for the part being played: every round of the
+  /// stone is one step, whichever game it belongs to.
+  ProgressSource get _stoneProgress {
+    final plan = _journey.planFor(_agency);
+    final index = _journey.partsDone.clamp(0, plan.length - 1);
+    return ProgressSource.stone(
+      total: plan.fold(0, (n, p) => n + p.rounds),
+      doneBefore: plan.take(index).fold(0, (n, p) => n + p.rounds),
+    );
+  }
+
   /// The X: back to the map, the stone keeps its place.
   void _leaveStone() => setState(() {
     _beat = _Beat.none;
@@ -840,6 +851,8 @@ class _JourneyScreenState extends State<JourneyScreen> {
                   GameEntry(
                     agency: _agency,
                     rounds: part.rounds,
+                    // The bar counts the stone, not this game's share.
+                    progress: _stoneProgress,
                     onFinished: _onPartFinished,
                     onLeave: _leaveStone,
                   ),

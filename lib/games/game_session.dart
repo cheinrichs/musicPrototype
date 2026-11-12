@@ -24,11 +24,63 @@ import 'high_low/services/agency_advancement.dart';
 ///   the game recording it and leaving. A stone hosts games this way: it
 ///   needs the rounds back, to judge promotion over the whole stone (without
 ///   its intro rounds) and to choose what comes next.
+/// What the progress bar counts — said where the game is entered, never
+/// inferred (Cooper on device: inside a stone each game started its own
+/// count, and the bar fought the stone).
+///
+/// - [ProgressSource.ownSet]: entered from the library. The bar counts the
+///   game's own round set (card 196's 3/4/5 by agency).
+/// - [ProgressSource.stone]: entered from a Journey stone. The bar counts
+///   the STONE: [total] is the stone's round count, [doneBefore] the rounds
+///   its earlier games already played, and a round of any game moves it
+///   exactly one step. Per-game set counting does not apply inside a stone.
+@immutable
+class ProgressSource {
+  final int? total;
+  final int doneBefore;
+
+  const ProgressSource.ownSet() : total = null, doneBefore = 0;
+
+  const ProgressSource.stone({
+    required int this.total,
+    required this.doneBefore,
+  }) : assert(doneBefore <= total);
+
+  bool get isStone => total != null;
+
+  /// The bar's fill, 0 to 1, given how far the game is through its own
+  /// rounds: [ownFraction] (its own set's fill) and [roundsDone] of
+  /// [rounds].
+  double fill({
+    required double ownFraction,
+    required int roundsDone,
+    required int rounds,
+  }) {
+    final t = total;
+    if (t == null) return ownFraction;
+    if (t == 0) return 1;
+    return ((doneBefore + roundsDone.clamp(0, rounds)) / t).clamp(0.0, 1.0);
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      other is ProgressSource &&
+      other.total == total &&
+      other.doneBefore == doneBefore;
+
+  @override
+  int get hashCode => Object.hash(total, doneBefore);
+}
+
 @immutable
 class GameEntry {
   final AgencyStage agency;
   final ConceptTier? tier;
   final int rounds;
+
+  /// What the progress bar counts — required, so every way into a game
+  /// says which.
+  final ProgressSource progress;
   final void Function(SetReport report)? onFinished;
 
   /// Where the X goes when something hosts this set, instead of home: a
@@ -40,6 +92,7 @@ class GameEntry {
     required this.agency,
     this.tier,
     required this.rounds,
+    required this.progress,
     this.onFinished,
     this.onLeave,
   });
@@ -56,7 +109,11 @@ class GameEntry {
     final lengths =
         _read<DevSettingsState>(context)?.roundSetLength ??
         RoundSetLength.standard;
-    return GameEntry(agency: agency, rounds: lengths.lengthFor(agency));
+    return GameEntry(
+      agency: agency,
+      rounds: lengths.lengthFor(agency),
+      progress: const ProgressSource.ownSet(),
+    );
   }
 
   @override
@@ -64,10 +121,11 @@ class GameEntry {
       other is GameEntry &&
       other.agency == agency &&
       other.tier == tier &&
-      other.rounds == rounds;
+      other.rounds == rounds &&
+      other.progress == progress;
 
   @override
-  int get hashCode => Object.hash(agency, tier, rounds);
+  int get hashCode => Object.hash(agency, tier, rounds, progress);
 
   @override
   String toString() => 'GameEntry($agency, $tier, $rounds rounds)';

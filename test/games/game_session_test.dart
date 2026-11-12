@@ -11,6 +11,7 @@ import 'package:ear_trainer/games/game_session.dart';
 import 'package:ear_trainer/games/high_low/models/round_instrumentation.dart';
 import 'package:ear_trainer/games/high_low/services/agency_advancement.dart';
 import 'package:ear_trainer/models/agency_stage.dart';
+import 'package:ear_trainer/ui/components/round_set_progress_bar.dart';
 
 RoundInstrumentation _round({bool skipped = false}) => RoundInstrumentation(
   promptNumber: 1,
@@ -44,6 +45,33 @@ Future<void> _withContext(
 }
 
 void main() {
+  group('the progress bar counts what it was entered with', () {
+    test("own set: the game's own fill, untouched", () {
+      const own = ProgressSource.ownSet();
+      expect(own.fill(ownFraction: 0.25, roundsDone: 1, rounds: 4), 0.25);
+    });
+
+    test('a stone of 2 + 2 + 1 rounds across games: one step per round of '
+        'any game, never restarting at a new game', () {
+      final fills = <double>[];
+      var before = 0;
+      for (final part in [2, 2, 1]) {
+        final source = ProgressSource.stone(total: 5, doneBefore: before);
+        for (var done = 0; done <= part; done++) {
+          fills.add(
+            source.fill(
+              ownFraction: done / part,
+              roundsDone: done,
+              rounds: part,
+            ),
+          );
+        }
+        before += part;
+      }
+      expect(fills, [0, 0.2, 0.4, 0.4, 0.6, 0.8, 0.8, 1.0]);
+    });
+  });
+
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
   testWidgets('with no child chosen, a set opens at Observe with the '
@@ -116,6 +144,35 @@ void main() {
   });
 
   for (final id in gameScreens.keys) {
+    testWidgets("HOSTED in a stone, $id shows the stone's progress, not its "
+        "own set's", (tester) async {
+      tester.view.physicalSize = const Size(844, 390);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: gameScreens[id]!(
+            GameEntry(
+              agency: AgencyStage.observe,
+              rounds: 2,
+              progress: const ProgressSource.stone(total: 5, doneBefore: 2),
+              onFinished: (_) {},
+            ),
+          ),
+        ),
+      );
+      await tester.pump(const Duration(seconds: 1));
+      expect(
+        tester
+            .widget<RoundSetProgressBar>(find.byType(RoundSetProgressBar))
+            .progress,
+        0.4,
+        reason: "two of the stone's five rounds already played",
+      );
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump(const Duration(seconds: 5));
+    });
+
     testWidgets('HOSTED, $id hands its report back and neither records the '
         'set nor leaves — a stone decides what comes next', (tester) async {
       tester.view.physicalSize = const Size(844, 390);
@@ -128,6 +185,7 @@ void main() {
             GameEntry(
               agency: AgencyStage.observe,
               rounds: 1,
+              progress: const ProgressSource.ownSet(),
               onFinished: reports.add,
             ),
           ),

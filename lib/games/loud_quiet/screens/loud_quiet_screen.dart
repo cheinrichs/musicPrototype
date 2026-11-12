@@ -163,6 +163,21 @@ class _LoudQuietScreenState extends State<LoudQuietScreen> {
   /// Ends the set once its bar has shown full — see [_onChanged].
   Timer? _setEndTimer;
 
+  /// The progress bar's fill, from the source the game was entered with:
+  /// its own set (the library), or the stone it is one part of — where a
+  /// round of any game is one step of the stone's total.
+  double get _barFill {
+    final g = _game;
+    final done = g.status == GameStatus.completed
+        ? g.totalPrompts
+        : g.currentPromptIndex;
+    return (widget.entry?.progress ?? const ProgressSource.ownSet()).fill(
+      ownFraction: g.setProgress,
+      roundsDone: done,
+      rounds: g.totalPrompts,
+    );
+  }
+
   @override
   void dispose() {
     _setEndTimer?.cancel();
@@ -202,7 +217,7 @@ class _LoudQuietScreenState extends State<LoudQuietScreen> {
               if (onLeave != null) return onLeave();
               context.go(AppRoutes.home);
             },
-            progress: _game.setProgress,
+            progress: _barFill,
             captionText: _game.captionText,
             guidanceText: _game.guidanceText,
             skipEnabled: _game.status != GameStatus.completed,

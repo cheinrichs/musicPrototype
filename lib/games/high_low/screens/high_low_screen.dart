@@ -222,6 +222,21 @@ class _HighLowScreenState extends State<HighLowScreen> {
     }
   }
 
+  /// The progress bar's fill, from the source the game was entered with:
+  /// its own set (the library), or the stone it is one part of — where a
+  /// round of any game is one step of the stone's total.
+  double get _barFill {
+    final g = _gameState;
+    final done = g.status == GameStatus.completed
+        ? g.totalPrompts
+        : g.currentPromptIndex;
+    return (widget.entry?.progress ?? const ProgressSource.ownSet()).fill(
+      ownFraction: g.setProgress,
+      roundsDone: done,
+      rounds: g.totalPrompts,
+    );
+  }
+
   @override
   void dispose() {
     _setEndTimer?.cancel();
@@ -450,7 +465,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
                 }
                 context.go(AppRoutes.home);
               },
-              progress: _gameState.setProgress,
+              progress: _barFill,
               // The instruction stays put; Explore's six-second guidance
               // joins it as a line beneath, never replaces it (Trello card
               // 193). See [HighLowGameState.secondaryCaptionText].
