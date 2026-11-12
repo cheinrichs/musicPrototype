@@ -406,6 +406,59 @@ void main() {
       game.dispose();
     });
 
+    // Every interaction must behave correctly when tapped as fast as a child
+    // can tap (docs/product/STANDING_RULES.md).
+    testWidgets('Explore, tapped faster than the celebration: taps after the '
+        'fifth still sound but cannot delay, re-score or re-record the '
+        'round, which still advances', (tester) async {
+      final audio = _RecordingAudio();
+      final game = _game(audio, stage: AgencyStage.explore)..startGame();
+      await _playThrough(tester);
+      final target = game.currentRound!.targetSide;
+      for (var i = 0; i < 5; i++) {
+        game.tapInstrument(target);
+      }
+      expect(game.advanceUnderway, isTrue);
+      final confetti = game.confettiTrigger;
+      final notesBefore = audio.notes.length;
+      // 40 taps, 20 ms apart: 800 ms of spam, then until the celebration's
+      // end, both sides.
+      for (var i = 0; i < 40; i++) {
+        game.tapInstrument(i.isEven ? target : 1 - target);
+        await tester.pump(const Duration(milliseconds: 20));
+        if (game.currentPromptIndex == 1) break;
+      }
+      expect(
+        audio.notes.length,
+        greaterThan(notesBefore),
+        reason: 'a tap still plays the instrument',
+      );
+      await tester.pump(LoudQuietGameState.celebration);
+      expect(game.currentPromptIndex, 1, reason: 'the round still advances');
+      expect(game.records, hasLength(1), reason: 'recorded once');
+      expect(game.records.single.correctTapCount, 5);
+      expect(game.correctCount, 1, reason: 'counted once');
+      expect(game.confettiTrigger, confetti, reason: 'no second burst');
+      game.dispose();
+    });
+
+    testWidgets('Observe: tapping after both are heard stays fully live — '
+        'nothing is underway until the arrow', (tester) async {
+      final audio = _RecordingAudio();
+      final game = _game(audio)..startGame();
+      await _playThrough(tester);
+      for (var i = 0; i < 20; i++) {
+        game.tapInstrument(i % 2);
+        await tester.pump(const Duration(milliseconds: 20));
+      }
+      expect(game.showArrow, isTrue);
+      expect(game.advanceUnderway, isFalse);
+      expect(game.currentPromptIndex, 0, reason: 'the child decides when');
+      game.tapArrow();
+      expect(game.currentPromptIndex, 1);
+      game.dispose();
+    });
+
     testWidgets('Explore: five taps on the wrong one bring a nudge in the '
         'asking character\'s voice, with the thinking pose', (tester) async {
       final audio = _RecordingAudio();

@@ -914,6 +914,86 @@ void main() {
       state.dispose();
     });
 
+    // Every interaction must behave correctly when tapped as fast as a child
+    // can tap (docs/product/STANDING_RULES.md). Cooper on device: spamming
+    // the right instrument after the confetti hung the round.
+    testWidgets('tapped far faster than the celebration: taps after the '
+        'fifth still sound but cannot delay, re-score or re-record the '
+        'round, which still advances', (tester) async {
+      final state = HighLowGameState(
+        totalPrompts: 2,
+        agencyStage: AgencyStage.explore,
+      );
+      state.startGame();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 4700));
+      final target = state.currentPrompt!.targetSide;
+      for (var i = 0; i < 5; i++) {
+        state.tapInstrument(target);
+        await tester.pump();
+      }
+      expect(state.advanceUnderway, isTrue);
+      expect(state.confettiTrigger, 1);
+
+      // A tap mid-celebration still makes its instrument ring.
+      state.tapInstrument(1 - target);
+      expect(state.playingIndex, 1 - target);
+
+      // 60 taps, 30 ms apart — 1.8 s of spam, longer than the 1.2 s
+      // celebration, which used to restart on every one.
+      // Stops at the advance: taps after it belong to the next round, which
+      // is live and would rightly count.
+      var advancedAt = -1;
+      for (var i = 0; i < 60; i++) {
+        state.tapInstrument(target);
+        await tester.pump(const Duration(milliseconds: 30));
+        if (state.currentPromptIndex == 1) {
+          advancedAt = i;
+          break;
+        }
+      }
+      expect(advancedAt, isNot(-1), reason: 'the round still advances');
+      expect(
+        advancedAt * 30,
+        lessThan(1300),
+        reason: 'on time, not delayed by the taps',
+      );
+      expect(state.correctCount, 1, reason: 'counted once');
+      expect(state.confettiTrigger, 1, reason: 'no second burst');
+      expect(state.instrumentation.first.correctTapCount, 5);
+      state.dispose();
+    });
+
+    testWidgets('Observe: tapping after both are heard stays fully live; '
+        'once the arrow sends them flying, taps cannot stop the advance', (
+      tester,
+    ) async {
+      final state = HighLowGameState(
+        totalPrompts: 2,
+        agencyStage: AgencyStage.observe,
+      )..observeFlight = true;
+      state.startGame();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 4700));
+      for (var i = 0; i < 20; i++) {
+        state.tapInstrument(i % 2);
+        await tester.pump(const Duration(milliseconds: 30));
+      }
+      expect(state.showArrow, isTrue);
+      expect(state.advanceUnderway, isFalse);
+      expect(state.currentPromptIndex, 0, reason: 'the child decides when');
+
+      state.tapArrow();
+      expect(state.advanceUnderway, isTrue);
+      for (var i = 0; i < 120; i++) {
+        state.tapInstrument(i % 2);
+        await tester.pump(const Duration(milliseconds: 30));
+      }
+      expect(state.currentPromptIndex, 1);
+      expect(state.instrumentation, hasLength(1));
+      state.dispose();
+    });
+
     testWidgets(
       'the count is cumulative, not consecutive — wrong taps in between '
       'do not reset it, and five total resolves the round with a '

@@ -8,6 +8,12 @@ A separate design/curriculum handoff packet lives under `docs/`. It describes a 
 - Read `docs/product/IMPLEMENTATION_NOTES.md` before treating any of it as a rewrite mandate — it explicitly says to reconcile with, not replace, the app that already exists.
 - Curriculum data (nodes, skills, tiers, agency, age bands) lives as CSVs in `docs/curriculum/`. The Google Sheet named in `docs/product/HANDOFF_README.md` remains the live source of truth for curriculum data; the CSVs are a cleaned snapshot.
 
+**Read `docs/product/STANDING_RULES.md` before building anything interactive.**
+It holds rules decided once for everything: rapid-tap correctness, input never
+interfering with an advance underway, locked content never revealing what it
+is, art and voice being provisional (timings from real playback, assets by id,
+graceful absence of unrecorded lines), and dev screens compiled out of release.
+
 This section and the MVP-focused guidance below it are both authoritative — the handoff packet is aspirational/architectural context, this file (and the rest of this document) is the current build's operating guardrails.
 
 ## WHAT (Project Goal)

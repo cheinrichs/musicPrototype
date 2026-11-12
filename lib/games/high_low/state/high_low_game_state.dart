@@ -849,6 +849,21 @@ class HighLowGameState extends ChangeNotifier {
     final prompt = currentPrompt;
     if (prompt == null) return;
 
+    // INPUT MAY NOT INTERFERE WITH AN ADVANCE ALREADY UNDERWAY (Cooper,
+    // 2026-11: a child spamming the right instrument at Explore hung the
+    // round — every tap past the fifth re-ran the celebration, which bumped
+    // the round token and so cancelled the advance the fifth had scheduled).
+    // Once the round is resolved and on its way out, a tap still plays the
+    // instrument — the apparatus answers honestly when touched (card 212) —
+    // but it counts for nothing: no scoring, no criterion, no narration, no
+    // intro cut, nothing that touches the advance. At Observe nothing is
+    // underway until the arrow is pressed, so tapping stays fully live
+    // before that.
+    if (advanceUnderway) {
+      _soundTap(side, prompt);
+      return;
+    }
+
     // Captured before `_finishIntro` (below) can flip it — the tap that
     // cuts the intro short is exactly "the tap before Clef sparkles" the
     // instrumentation cares about, so it must be judged against the hint
@@ -939,6 +954,18 @@ class HighLowGameState extends ChangeNotifier {
       }
     }
 
+    _soundTap(side, prompt);
+  }
+
+  /// The round is resolved and leaving: a correct answer's celebration is
+  /// running, or Observe's arrow has sent the instruments flying. See
+  /// [tapInstrument].
+  bool get advanceUnderway =>
+      _dragFeedback == DragFeedback.correct || isObserveFlying;
+
+  /// What a tap sounds like, and nothing else: the instrument plays its note
+  /// and rings. Never touches scoring or advancement.
+  void _soundTap(int side, HighLowPrompt prompt) {
     _playingIndex = side;
     notifyListeners();
 
@@ -1025,6 +1052,9 @@ class HighLowGameState extends ChangeNotifier {
   void _celebrateCorrect(int side) {
     final prompt = currentPrompt;
     if (prompt == null) return;
+    // Once per round: a second call would bump the token and cancel the
+    // advance already scheduled (the spam-tap hang).
+    if (_dragFeedback == DragFeedback.correct) return;
     _cancelNudgeTimer();
     _nudgeVisible = false;
     final token = ++_roundToken;

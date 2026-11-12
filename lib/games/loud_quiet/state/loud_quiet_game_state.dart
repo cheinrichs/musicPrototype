@@ -369,6 +369,14 @@ class LoudQuietGameState extends ChangeNotifier {
         _status == GameStatus.completed) {
       return;
     }
+    // INPUT MAY NOT INTERFERE WITH AN ADVANCE ALREADY UNDERWAY — as High vs
+    // Low (the spam-tap hang): once the round is resolved, a tap still plays
+    // the instrument and swings the needle, but counts for nothing.
+    if (advanceUnderway) {
+      _ring(side);
+      unawaited(_playSide(side));
+      return;
+    }
     if (_status == GameStatus.playing) {
       _waitedForPlaythrough = false;
       _timer?.cancel();
@@ -439,6 +447,8 @@ class LoudQuietGameState extends ChangeNotifier {
     // "not that one" on screen. A new round cancels it in [_cancelTimers].
     _retryTimer?.cancel();
     _retryTimer = Timer(retryMinimum, () {
+      // Only a retry clears: a correct drop since must not be undone.
+      if (_drop != LoudQuietDrop.retry) return;
       _drop = LoudQuietDrop.none;
       notifyListeners();
     });
@@ -473,7 +483,13 @@ class LoudQuietGameState extends ChangeNotifier {
     _considering = false;
   }
 
+  /// The round is resolved and on its way out — see [tapInstrument].
+  bool get advanceUnderway => _drop == LoudQuietDrop.correct;
+
   void _celebrate(int side) {
+    // Once per round: a second call would cancel the scheduled advance and
+    // count the round twice.
+    if (advanceUnderway) return;
     final token = ++_token;
     _guidanceTimer?.cancel();
     _guidanceVisible = false;
