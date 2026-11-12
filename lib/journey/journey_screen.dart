@@ -82,9 +82,9 @@ enum _Beat {
 /// horizontal painted surface, a stone played in place, and the two
 /// celebrations.
 ///
-/// **ROUGH BUILD for judging timing and sequence.** Placeholders: the open
-/// chest, every reward item, the rail's category icons, the decorations and
-/// the painted path (a dashed line). No iris transition yet (card 218).
+/// **ROUGH BUILD for judging timing and sequence.** Placeholders: every
+/// reward item, the rail's category icons, the decorations and the painted
+/// path (a dashed line). No iris transition yet (card 218).
 class JourneyScreen extends StatefulWidget {
   const JourneyScreen({super.key});
 
@@ -361,7 +361,11 @@ class _JourneyScreenState extends State<JourneyScreen> {
     _sparkles.play();
     await _wait(JourneyTiming.chestOpenToPresents);
     if (!mounted) return;
-    final chest = g.chestRect(stone, lifted: true).center - _scrollOffset;
+    // Out of the chest's opening, not its middle.
+    final r = g.chestRect(stone, lifted: true);
+    final chest =
+        Offset(r.center.dx, r.top + r.height * OpenChestArt.mouth) -
+        _scrollOffset;
     await _presentsOut(chest, rewards, g);
   }
 
@@ -376,6 +380,9 @@ class _JourneyScreenState extends State<JourneyScreen> {
     _MapGeometry g,
   ) async {
     final n = rewards.length;
+    // Kept clear of the top edge at its popped (1.2×) size: on a phone the
+    // lifted chest is high enough to push the fan off screen.
+    final topmost = g.padding.top + g.rewardSize * 0.6 + 8;
     final fan = [
       for (var i = 0; i < n; i++)
         from +
@@ -384,7 +391,7 @@ class _JourneyScreenState extends State<JourneyScreen> {
               -g.rewardSize *
                   (n == 1 ? 1.3 : 1.6 - 0.3 * (i - (n - 1) / 2).abs()),
             ),
-    ];
+    ].map((p) => Offset(p.dx, math.max(p.dy, topmost))).toList();
     setState(() {
       for (var i = 0; i < n; i++) {
         _flights.add(
@@ -708,8 +715,8 @@ class _JourneyScreenState extends State<JourneyScreen> {
       fit: StackFit.expand,
       children: [
         if (_chestOpened)
-          OpenChestPlaceholder(size: r.width).animate().scaleXY(
-            begin: 0.8,
+          const OpenChestArt().animate().scaleXY(
+            begin: 0.85,
             end: 1,
             duration: 300.ms,
             curve: Curves.easeOutBack,

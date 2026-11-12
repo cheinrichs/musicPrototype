@@ -12,6 +12,7 @@ abstract final class JourneyArt {
   static const pins = '$_dir/avatars_pins_16.png';
   static const chestPlain = '$_dir/chest_closed_plain.png';
   static const chestGlow = '$_dir/chest_closed_glow.png';
+  static const chestOpen = '$_dir/chest_open_burst.png';
   static const giftPlain = '$_dir/gift_closed_plain.png';
   static const giftGlow = '$_dir/gift_closed_glow.png';
   static const giftOpen = '$_dir/gift_open_burst.png';
@@ -212,64 +213,28 @@ class RailIconPlaceholder extends StatelessWidget {
   }
 }
 
-/// PLACEHOLDER: the open chest does not exist yet. A grey base with its lid
-/// tipped back, sized to stand where the chest art does.
-class OpenChestPlaceholder extends StatelessWidget {
-  final double size;
-  const OpenChestPlaceholder({super.key, required this.size});
+/// The opened chest (chest_open_burst), drawn so its body stands where the
+/// closed chest's did: its body is about 8% wider and sits lower in its
+/// square (foot at 79% against 76%), so it is scaled by 0.92 about the
+/// point that maps one foot onto the other.
+class OpenChestArt extends StatelessWidget {
+  const OpenChestArt({super.key});
+
+  /// Scaling by k about y = a takes the open foot (0.79) to the closed one
+  /// (0.76): a = (0.76 - 0.92 * 0.79) / (1 - 0.92) ≈ 0.415 of the height.
+  static const double scale = 0.92;
+  static const Alignment anchor = Alignment(0, 2 * 0.415 - 1);
+
+  /// Where the opening is, as a fraction of the square's height — where
+  /// the presents come out.
+  static const double mouth = 0.42;
 
   @override
-  Widget build(BuildContext context) {
-    const grey = Color(0xFF9E9E9E);
-    final border = Border.all(color: Colors.white, width: 3);
-    return Stack(
-      children: [
-        // The base: the chest body's footprint in the closed art.
-        Positioned(
-          left: size * 0.17,
-          right: size * 0.17,
-          top: size * 0.46,
-          height: size * 0.3,
-          child: Container(
-            decoration: BoxDecoration(
-              color: grey,
-              border: border,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            alignment: Alignment.center,
-            child: Text(
-              'open chest',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: size * 0.07,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ),
-        // The lid, tipped back.
-        Positioned(
-          left: size * 0.2,
-          right: size * 0.2,
-          top: size * 0.24,
-          height: size * 0.17,
-          child: Transform.rotate(
-            angle: -0.35,
-            alignment: Alignment.bottomLeft,
-            child: Container(
-              decoration: BoxDecoration(
-                color: grey,
-                border: border,
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(30),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
+  Widget build(BuildContext context) => Transform.scale(
+    scale: scale,
+    alignment: anchor,
+    child: Image.asset(JourneyArt.chestOpen, fit: BoxFit.contain),
+  );
 }
 
 /// PLACEHOLDER speech: no "That was brilliant!" recording yet.
