@@ -16,6 +16,7 @@ abstract final class JourneyArt {
   static const giftPlain = '$_dir/gift_closed_plain.png';
   static const giftGlow = '$_dir/gift_closed_glow.png';
   static const giftOpen = '$_dir/gift_open_burst.png';
+  static const railIcons = '$_dir/rail_icons_2treatments.png';
 
   /// The pin sheet is a 4×4 grid of 1306×1205.
   static const pinCell = Size(1306 / 4, 1205 / 4);
@@ -142,75 +143,21 @@ class RewardPlaceholder extends StatelessWidget {
   );
 }
 
-/// PLACEHOLDER rail destination: a translucent disc on the scene (card 204:
-/// no solid dark panel), popping in when the category first appears.
-class RailIconPlaceholder extends StatelessWidget {
-  final RewardCategory category;
-  final int count;
-  const RailIconPlaceholder({
-    super.key,
-    required this.category,
-    required this.count,
-  });
+/// One of the rail's four circle icons, label included (the top row of
+/// rail_icons_2treatments — the circles, not the rounded squares).
+class RailIcon extends StatelessWidget {
+  /// 0 Journey, 1 Games, 2 Crafts, 3 Playground.
+  final int destination;
+  const RailIcon({super.key, required this.destination});
 
   @override
-  Widget build(BuildContext context) {
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0, end: 1),
-      duration: const Duration(milliseconds: 450),
-      curve: Curves.easeOutBack,
-      builder: (context, t, child) => Transform.scale(scale: t, child: child),
-      child: LayoutBuilder(
-        builder: (context, c) {
-          final s = c.maxWidth;
-          return Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Container(
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white.withValues(alpha: 0.55),
-                  border: Border.all(color: Colors.white, width: 2),
-                ),
-                alignment: Alignment.center,
-                child: Icon(
-                  category.icon,
-                  size: s * 0.55,
-                  color: const Color(0xFF8A8A8A),
-                ),
-              ),
-              if (count > 0)
-                Positioned(
-                  right: -4,
-                  top: -4,
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 250),
-                    transitionBuilder: (c, a) =>
-                        ScaleTransition(scale: a, child: c),
-                    child: Container(
-                      key: ValueKey(count),
-                      padding: const EdgeInsets.all(5),
-                      decoration: const BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: Color(0xFFFFB300),
-                      ),
-                      child: Text(
-                        '$count',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          );
-        },
-      ),
-    );
-  }
+  Widget build(BuildContext context) => SpriteCell(
+    asset: JourneyArt.railIcons,
+    columns: 4,
+    rows: 2,
+    column: destination,
+    row: 0,
+  );
 }
 
 /// The opened chest (chest_open_burst), drawn so its body stands where the

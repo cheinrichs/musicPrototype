@@ -10,7 +10,7 @@ import 'dart:io';
 import 'dart:ui' as ui;
 
 import 'package:ear_trainer/app/config.dart';
-import 'package:ear_trainer/journey/journey_screen.dart';
+import 'package:ear_trainer/app/rail_shell.dart';
 import 'package:ear_trainer/journey/journey_state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -77,7 +77,7 @@ void main() {
           value: journey,
           child: MaterialApp(
             debugShowCheckedModeBanner: false,
-            home: RepaintBoundary(key: boundary, child: const JourneyScreen()),
+            home: RepaintBoundary(key: boundary, child: const RailShell()),
           ),
         ),
       );

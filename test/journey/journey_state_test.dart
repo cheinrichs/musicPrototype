@@ -42,7 +42,7 @@ void main() {
         'decoration', () {
       final j = JourneyState();
       expect(j.rewardsForCurrent().map((r) => r.category), [
-        RewardCategory.songs,
+        RewardCategory.playground,
       ]);
       for (var i = 0; i < 4; i++) {
         j.completeStone(j.rewardsForCurrent());
@@ -53,13 +53,17 @@ void main() {
       expect(m.every((r) => r.stone == 4), isTrue);
     });
 
-    test('the rail grows one category at a time, never starts full', () {
-      final j = JourneyState();
-      expect(j.railCategories, isEmpty);
-      j.completeStone(j.rewardsForCurrent());
-      expect(j.railCategories, [RewardCategory.songs]);
-      j.completeStone(j.rewardsForCurrent());
-      expect(j.railCategories, [RewardCategory.songs, RewardCategory.games]);
+    test('rail rewards go to Games, Crafts or Playground — songs have no '
+        'shelf of their own, they land in Playground', () {
+      expect(RewardCategory.rail, [
+        RewardCategory.playground,
+        RewardCategory.games,
+        RewardCategory.crafts,
+      ]);
+      expect(
+        RewardCategory.values.map((c) => c.name),
+        isNot(contains('songs')),
+      );
     });
 
     test('decorations go to the map, not the rail', () {
@@ -68,7 +72,7 @@ void main() {
         j.completeStone(j.rewardsForCurrent());
       }
       expect(j.decorations, hasLength(1));
-      expect(j.railCategories, isNot(contains(RewardCategory.decoration)));
+      expect(RewardCategory.rail, isNot(contains(RewardCategory.decoration)));
     });
   });
 

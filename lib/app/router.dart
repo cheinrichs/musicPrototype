@@ -1,6 +1,6 @@
 import 'package:go_router/go_router.dart';
+import 'rail_shell.dart';
 import '../ui/screens/credits_screen.dart';
-import '../ui/screens/main_shell.dart';
 import '../ui/screens/profile_picker_screen.dart';
 import '../ui/screens/songstone_home_screen.dart';
 import '../games/high_low/screens/high_low_screen.dart';
@@ -13,7 +13,6 @@ import '../games/same_different/screens/same_different_screen.dart';
 import '../games/timbre_id/screens/timbre_screen.dart';
 import '../games/rhythm_id/screens/rhythm_screen.dart';
 import '../games/pitch_name/screens/pitch_name_screen.dart';
-import '../journey/journey_screen.dart';
 import '../rewards/screens/reward_screen.dart';
 import '../ui/screens/skill_profile_screen.dart';
 
@@ -55,8 +54,17 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: AppRoutes.home,
       builder: (context, state) {
+        // The rail is the top level now (Cooper's composite). The old tab
+        // indices still arrive from the landing screen and from games
+        // leaving: 0 Games, 1 the path (now the Journey), 2 Playground.
         final extra = state.extra as Map<String, dynamic>?;
-        return MainShell(initialTabIndex: extra?['initialTab'] as int? ?? 0);
+        return RailShell(
+          initial: switch (extra?['initialTab'] as int? ?? 0) {
+            1 => RailDestination.journey,
+            2 => RailDestination.playground,
+            _ => RailDestination.games,
+          },
+        );
       },
     ),
     GoRoute(
@@ -105,7 +113,7 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: AppRoutes.journey,
-      builder: (context, state) => const JourneyScreen(),
+      builder: (context, state) => const RailShell(),
     ),
     GoRoute(
       path: AppRoutes.credits,

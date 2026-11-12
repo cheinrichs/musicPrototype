@@ -3,16 +3,18 @@ import 'package:flutter/material.dart' show IconData, Icons;
 
 import '../models/agency_stage.dart';
 
-/// Where an earned reward goes (card 204). Every category but [decoration]
-/// is a destination in the side rail; decorations fly onto the map.
+/// Where an earned reward goes. Every category but [decoration] is one of
+/// the rail's destinations (the rail is top-level navigation: Journey,
+/// Games, Crafts, Playground — Cooper's composite, superseding card 204's
+/// shelves). Songs have no shelf of their own: they land in Playground.
+/// Decorations fly onto the map, on ground already walked.
 ///
-/// The labels and icons are PLACEHOLDERS until the rail art and the reward
-/// catalogue exist.
+/// The icons are for the PLACEHOLDER reward items until the reward
+/// catalogue exists.
 enum RewardCategory {
-  songs('Songs', Icons.music_note_rounded),
+  playground('Playground', Icons.music_note_rounded),
   games('Games', Icons.extension_rounded),
   crafts('Crafts', Icons.content_cut_rounded),
-  sounds('Sounds', Icons.graphic_eq_rounded),
   decoration('Map', Icons.local_florist_rounded);
 
   final String label;
@@ -21,10 +23,8 @@ enum RewardCategory {
 
   bool get onMap => this == decoration;
 
-  /// The rail's categories, in the order they are handed out — so the rail
-  /// grows one destination per stone at first (card 204: a category appears
-  /// when the child first earns something in it).
-  static const rail = [songs, games, crafts, sounds];
+  /// The rail categories, in the order they are handed out.
+  static const rail = [playground, games, crafts];
 }
 
 /// One earned reward. [stone] is the stone it was earned on — where a
@@ -95,16 +95,6 @@ class JourneyState extends ChangeNotifier {
     }
     return s;
   }
-
-  /// The rail categories the child has earned something in, in the order
-  /// they first appeared.
-  List<RewardCategory> get railCategories => [
-    for (final c in RewardCategory.rail)
-      if (_p.rewards.any((r) => r.category == c)) c,
-  ]..sort((a, b) => _firstEarned(a).compareTo(_firstEarned(b)));
-
-  int _firstEarned(RewardCategory c) =>
-      _p.rewards.indexWhere((r) => r.category == c);
 
   int countIn(RewardCategory c) =>
       _p.rewards.where((r) => r.category == c).length;

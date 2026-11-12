@@ -7,6 +7,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 
 import '../app/config.dart';
+import '../app/rail_shell.dart';
 import '../app/state/profile_state.dart';
 import '../audio/audio_controller.dart';
 import '../audio/sfx_type.dart';
@@ -128,11 +129,13 @@ class _JourneyScreenState extends State<JourneyScreen> {
   bool _chestHidden = false;
   bool _chestDropping = false;
 
-  // Rewards in flight, and those landed but not yet banked.
-  final List<_Flight> _flights = [];
-  final List<Reward> _landed = [];
-  final Set<RewardCategory> _railIncoming = {};
+  /// Decorations landed on the map but not yet banked.
   final List<Reward> _decorationsLanded = [];
+
+  /// The shell's rail; standalone (tests) the screen keeps its own, and
+  /// draws the flights itself.
+  late final RailController _rail;
+  RailController? _ownRail;
 
   /// The stone the arrow points on from, once a stone is done.
   int? _arrowFrom;
@@ -145,6 +148,11 @@ class _JourneyScreenState extends State<JourneyScreen> {
     _sparkles = ConfettiController(duration: const Duration(seconds: 1));
     _journey = context.read<JourneyState>()
       ..useProfile(_profiles()?.activeProfile?.id);
+    try {
+      _rail = context.read<RailController>();
+    } on ProviderNotFoundException {
+      _rail = _ownRail = RailController();
+    }
     WidgetsBinding.instance.addPostFrameCallback((_) => _openingPan());
   }
 
@@ -152,6 +160,7 @@ class _JourneyScreenState extends State<JourneyScreen> {
   void dispose() {
     _scroll.dispose();
     _sparkles.dispose();
+    _ownRail?.dispose();
     super.dispose();
   }
 
@@ -181,7 +190,7 @@ class _JourneyScreenState extends State<JourneyScreen> {
 
   double _offsetFor(_MapGeometry g, int stone, {double at = 0.4}) {
     final max = _scroll.hasClients ? _scroll.position.maxScrollExtent : 0.0;
-    return (g.stoneX(stone) - g.size.width * at).clamp(0.0, max);
+    return (g.stoneX(stone) - g.visibleWidth * at).clamp(0.0, max);
   }
 
   bool _onScreen(_MapGeometry g, double x) {
@@ -392,57 +401,67 @@ class _JourneyScreenState extends State<JourneyScreen> {
                   (n == 1 ? 1.3 : 1.6 - 0.3 * (i - (n - 1) / 2).abs()),
             ),
     ].map((p) => Offset(p.dx, math.max(p.dy, topmost))).toList();
-    setState(() {
-      for (var i = 0; i < n; i++) {
-        _flights.add(
-          _Flight(
-            rewards[i],
-            from,
-            fan[i],
-            JourneyTiming.presentsPop,
-            fromScale: 0.2,
-            toScale: 1.2,
-            lift: 0,
-          ),
-        );
-      }
-    });
+    final pops = [
+      for (var i = 0; i < n; i++)
+        RewardFlight(
+          child: _rewardItem(rewards[i], g),
+          from: from,
+          to: fan[i],
+          duration: JourneyTiming.presentsPop,
+          size: g.rewardSize,
+          fromScale: 0.2,
+          toScale: 1.2,
+          lift: 0,
+        ),
+    ];
+    pops.forEach(_rail.fly);
     await _wait(JourneyTiming.presentsPop + JourneyTiming.presentsHold);
     if (!mounted) return;
 
+    final rail = RailLayout(g.size, g.padding);
     for (var i = 0; i < n; i++) {
       final r = rewards[i];
-      final to = r.category.onMap
-          ? g.decorationSpot(r.stone) - _scrollOffset
-          : g.railSlot(_railOrderWith(r.category));
-      setState(() {
-        _flights.removeWhere((f) => f.reward == r);
-        if (!r.category.onMap) _railIncoming.add(r.category);
-        _flights.add(
-          _Flight(
-            r,
-            fan[i],
-            to,
-            JourneyTiming.rewardFlight,
-            fromScale: 1.2,
-            toScale: 0.6,
-            lift: g.rewardSize * 1.5,
-            onLanded: () {
-              if (!mounted) return;
-              setState(() {
-                _flights.removeWhere((f) => f.reward == r);
-                _landed.add(r);
-                if (r.category.onMap) _decorationsLanded.add(r);
-              });
-            },
-          ),
-        );
-      });
+      final dest = _destinationOf(r.category);
+      final to = dest == null
+          ? g.decorationSpot(r) - _scrollOffset
+          : rail.landingOf(dest);
+      late final RewardFlight flight;
+      flight = RewardFlight(
+        child: _rewardItem(r, g),
+        from: fan[i],
+        to: to,
+        duration: JourneyTiming.rewardFlight,
+        size: g.rewardSize,
+        fromScale: 1.2,
+        toScale: dest == null ? 1 : 0.45,
+        lift: g.rewardSize * 1.5,
+        trail: dest != null,
+        onLanded: () {
+          _rail.land(flight);
+          if (dest != null) _rail.pulse(dest);
+          if (dest == null && mounted) {
+            setState(() => _decorationsLanded.add(r));
+          }
+        },
+      );
+      _rail
+        ..land(pops[i])
+        ..fly(flight);
       if (i < n - 1) await _wait(JourneyTiming.presentStagger);
       if (!mounted) return;
     }
     await _wait(JourneyTiming.rewardFlight + JourneyTiming.rewardHold);
   }
+
+  static RailDestination? _destinationOf(RewardCategory c) => switch (c) {
+    RewardCategory.playground => RailDestination.playground,
+    RewardCategory.games => RailDestination.games,
+    RewardCategory.crafts => RailDestination.crafts,
+    RewardCategory.decoration => null,
+  };
+
+  Widget _rewardItem(Reward r, _MapGeometry g) =>
+      RewardPlaceholder(category: r.category, size: g.rewardSize);
 
   /// Back on the path: the stone turns rainbow, the pin steps on, an arrow
   /// points onward; after a milestone a new chest appears at the next one.
@@ -459,8 +478,6 @@ class _JourneyScreenState extends State<JourneyScreen> {
     setState(() {
       _layerUp = false;
       _hasGame = false;
-      _landed.clear();
-      _railIncoming.clear();
       _decorationsLanded.clear();
       _giftShown = false;
       _giftGlow = false;
@@ -545,23 +562,18 @@ class _JourneyScreenState extends State<JourneyScreen> {
   // Build
   // ---------------------------------------------------------------------------
 
-  int _railOrderWith(RewardCategory c) {
-    final shown = _railShown();
-    final i = shown.indexOf(c);
-    return i == -1 ? shown.length : i;
-  }
-
-  List<RewardCategory> _railShown() => [
-    ..._journey.railCategories,
-    for (final c in _railIncoming)
-      if (!_journey.railCategories.contains(c)) c,
-  ];
-
   @override
   Widget build(BuildContext context) {
     context.watch<JourneyState>();
     final g = _geometry();
     final inStone = _beat != _Beat.none;
+    // The rail slides away while a game plays.
+    final immersive = _beat == _Beat.playing;
+    if (_rail.immersive != immersive) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _rail.immersive = immersive;
+      });
+    }
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -582,14 +594,17 @@ class _JourneyScreenState extends State<JourneyScreen> {
                 child: _buildStoneLayer(g),
               ),
             ),
-          for (final f in _flights)
-            _FlightView(key: ObjectKey(f), flight: f, size: g.rewardSize),
-          // The rail: hidden while a game plays.
-          AnimatedOpacity(
-            opacity: _beat == _Beat.playing ? 0 : 1,
-            duration: const Duration(milliseconds: 300),
-            child: IgnorePointer(child: _buildRail(g)),
-          ),
+          if (_ownRail != null)
+            ListenableBuilder(
+              listenable: _ownRail!,
+              builder: (context, _) => Stack(
+                fit: StackFit.expand,
+                children: [
+                  for (final f in _ownRail!.flights)
+                    RewardFlightView(key: ObjectKey(f), flight: f),
+                ],
+              ),
+            ),
           if (!inStone)
             Positioned(
               left: g.padding.left + 12,
@@ -628,7 +643,7 @@ class _JourneyScreenState extends State<JourneyScreen> {
             for (final d in [..._journey.decorations, ..._decorationsLanded])
               _placed(
                 Rect.fromCenter(
-                  center: g.decorationSpot(d.stone),
+                  center: g.decorationSpot(d),
                   width: g.rewardSize,
                   height: g.rewardSize,
                 ),
@@ -640,8 +655,9 @@ class _JourneyScreenState extends State<JourneyScreen> {
             // The chest sits behind its stone, so it is drawn first.
             if (!_chestHidden) _buildChest(g, chestStone),
             for (var i = 0; i < count; i++) _buildStone(g, i, current),
-            if (_arrowFrom != null && _arrowFrom! + 1 < count)
+            if (_arrowFrom != null && _arrowFrom! + 2 < count)
               _buildArrow(g, _arrowFrom!),
+            ..._buildCompanions(g, current),
             _buildPin(g, current),
           ],
         ),
@@ -782,9 +798,11 @@ class _JourneyScreenState extends State<JourneyScreen> {
     );
   }
 
+  /// Onward: from the child's new stone toward the one after it — the
+  /// walked side behind is where Piper and Clef stand.
   Widget _buildArrow(_MapGeometry g, int from) {
-    final a = g.stoneCentre(from);
-    final b = g.stoneCentre(from + 1);
+    final a = g.stoneCentre(from + 1);
+    final b = g.stoneCentre(from + 2);
     final mid = Offset.lerp(a, b, 0.5)! - Offset(0, g.stoneWidth * 0.25);
     final s = g.stoneWidth * 0.45;
     return _placed(
@@ -942,27 +960,37 @@ class _JourneyScreenState extends State<JourneyScreen> {
     );
   }
 
-  Widget _buildRail(_MapGeometry g) {
-    final shown = _railShown();
-    return Stack(
-      children: [
-        for (var i = 0; i < shown.length; i++)
-          Positioned.fromRect(
-            rect: Rect.fromCenter(
-              center: g.railSlot(i),
-              width: g.railIcon,
-              height: g.railIcon,
-            ),
-            child: RailIconPlaceholder(
-              key: ValueKey('rail-${shown[i].name}'),
-              category: shown[i],
-              count:
-                  _journey.countIn(shown[i]) +
-                  _landed.where((r) => r.category == shown[i]).length,
-            ),
+  /// Piper and Clef stand on the walked side of the child's stone, beside
+  /// the avatar pin, and walk on with it (the cards; absent from Cooper's
+  /// composite, built to the cards until he says otherwise).
+  List<Widget> _buildCompanions(_MapGeometry g, int stone) {
+    Widget one(CharacterArt art, Offset feet, String key) {
+      final h = g.companionHeight;
+      final w = art.frameSize.width * h / art.frameSize.height;
+      return AnimatedPositioned(
+        key: ValueKey(key),
+        duration: JourneyTiming.pinMoves,
+        curve: Curves.easeInOutCubic,
+        left: feet.dx - w / 2,
+        top: feet.dy - h,
+        width: w,
+        height: h,
+        child: IgnorePointer(
+          child: CharacterSprite(
+            art: art,
+            pose: CharacterPose.speaking,
+            mouth: MouthFrame.closed,
+            height: h,
           ),
-      ],
-    );
+        ),
+      );
+    }
+
+    // Clef further back, so drawn first.
+    return [
+      one(CharacterArt.clef, g.clefFeet(stone), 'map-clef'),
+      one(CharacterArt.piper, g.piperFeet(stone), 'map-piper'),
+    ];
   }
 
   Widget _buildDevBar(_MapGeometry g) {
@@ -991,7 +1019,7 @@ class _JourneyScreenState extends State<JourneyScreen> {
 
 /// The map's geometry, all from the screen size: stones on a gentle wave
 /// along one horizontal surface (card 200), the chest behind its stone, the
-/// pin above the child's, the rail down the right edge.
+/// pin above the child's, all clear of the rail's panel on the right.
 class _MapGeometry {
   final Size size;
   final EdgeInsets padding;
@@ -1029,83 +1057,28 @@ class _MapGeometry {
     return Rect.fromLTWH(tip.dx - w / 2, tip.dy - h * 0.9, w, h);
   }
 
-  Offset decorationSpot(int stone) =>
-      stoneCentre(stone) + Offset(-spacing * 0.45, stoneWidth * 0.42);
+  /// Earned decorations go on ground already walked: behind the stone
+  /// they were earned on, below the path, so the road behind the child is
+  /// visibly richer than the road ahead.
+  Offset decorationSpot(Reward r) =>
+      stoneCentre(r.stone) +
+      Offset(-spacing * (r.stone.isEven ? 0.45 : 0.55), stoneWidth * 0.55);
 
   double get rewardSize => math.max(56, size.height * 0.13);
 
-  // Regular stone's gift, right of Piper.
-  double get giftSize => math.min(size.height * 0.5, size.width * 0.3);
-  Offset get giftCentre => Offset(size.width * 0.62, size.height * 0.6);
+  // Piper and Clef by the pin, on the walked side.
+  double get companionHeight => stoneWidth * 1.05;
+  Offset piperFeet(int i) =>
+      stoneCentre(i) + Offset(-stoneWidth * 0.62, stoneWidth * 0.2);
+  Offset clefFeet(int i) =>
+      stoneCentre(i) + Offset(-stoneWidth * 0.98, stoneWidth * 0.05);
 
-  // The rail: icons down the right edge, on the scene (no dark panel).
-  double get railIcon => math.max(52, size.height * 0.12);
-  double get railRight => size.width - padding.right - 12;
-  Offset railSlot(int i) => Offset(
-    railRight - railIcon / 2,
-    padding.top + 16 + railIcon / 2 + i * (railIcon + 10),
-  );
+  /// The map width not under the rail's panel.
+  double get visibleWidth => size.width - RailLayout(size, padding).panelWidth;
 
-  /// The map width not under the rail.
-  double get visibleWidth => size.width - railIcon - 24;
-}
-
-/// A reward on its way somewhere.
-class _Flight {
-  final Reward reward;
-  final Offset from;
-  final Offset to;
-  final Duration duration;
-  final double fromScale;
-  final double toScale;
-  final double lift;
-  final VoidCallback? onLanded;
-  _Flight(
-    this.reward,
-    this.from,
-    this.to,
-    this.duration, {
-    required this.fromScale,
-    required this.toScale,
-    required this.lift,
-    this.onLanded,
-  });
-}
-
-class _FlightView extends StatelessWidget {
-  final _Flight flight;
-  final double size;
-  const _FlightView({super.key, required this.flight, required this.size});
-
-  @override
-  Widget build(BuildContext context) {
-    final f = flight;
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0, end: 1),
-      duration: f.duration,
-      curve: Curves.easeInOutCubic,
-      onEnd: f.onLanded,
-      builder: (context, t, child) {
-        // A lifted arc: a quadratic through a point above the midpoint.
-        final control = Offset.lerp(f.from, f.to, 0.5)! - Offset(0, f.lift);
-        final p =
-            f.from * ((1 - t) * (1 - t)) +
-            control * (2 * (1 - t) * t) +
-            f.to * (t * t);
-        final s = f.fromScale + (f.toScale - f.fromScale) * t;
-        return Positioned(
-          left: p.dx - size / 2,
-          top: p.dy - size / 2,
-          width: size,
-          height: size,
-          child: IgnorePointer(
-            child: Transform.scale(scale: s, child: child),
-          ),
-        );
-      },
-      child: RewardPlaceholder(category: f.reward.category, size: size),
-    );
-  }
+  // Regular stone's gift, right of Piper, clear of the rail.
+  double get giftSize => math.min(size.height * 0.5, visibleWidth * 0.3);
+  Offset get giftCentre => Offset(visibleWidth * 0.62, size.height * 0.6);
 }
 
 class _Backdrop extends StatelessWidget {
