@@ -24,6 +24,7 @@ import '../ui/components/circle_icon_button.dart';
 import 'journey_art.dart';
 import 'journey_state.dart';
 import 'map_decoration.dart';
+import 'path_profile.dart';
 
 /// Every beat's timing, in one place so Cooper's pacing notes are one-line
 /// changes. ROUGH: first guesses, to be judged on a device.
@@ -207,7 +208,7 @@ class _JourneyScreenState extends State<JourneyScreen> {
 
   bool _onScreen(_MapGeometry g, double x) {
     final o = _scroll.offset;
-    return x > o + g.stoneWidth * 0.5 && x < o + g.visibleWidth - g.stoneWidth;
+    return x > o + g.margin && x < o + g.visibleWidth - g.margin;
   }
 
   Future<void> _panTo(double offset, Duration d) => _scroll.hasClients
@@ -650,36 +651,33 @@ class _JourneyScreenState extends State<JourneyScreen> {
         child: Stack(
           clipBehavior: Clip.none,
           children: [
-            _Backdrop(width: width, height: g.size.height),
-            Positioned.fill(
-              child: CustomPaint(
-                painter: _PathPainter([
-                  for (var i = 0; i < count; i++) g.stoneCentre(i),
-                ]),
-              ),
-            ),
+            _Backdrop(width: width, g: g),
             for (final d in [..._journey.decorations, ..._decorationsLanded])
               _placed(
                 Rect.fromCenter(
                   center: g.decorationSpot(d),
-                  width: g.rewardSize,
-                  height: g.rewardSize,
+                  width: g.decorationSize,
+                  height: g.decorationSize,
                 ),
                 // Tappable: it reacts when poked and returns to rest.
                 MapDecoration(
                   key: ValueKey('decoration-${d.stone}-${d.index}'),
                   name: MapDecoration.nameOf(d.artId),
-                  size: g.rewardSize,
+                  size: g.decorationSize,
                   onPoke: _pokeSound,
                 ).animate().scaleXY(begin: 1.4, end: 1, duration: 400.ms),
               ),
-            // The chest sits behind its stone, so it is drawn first.
-            if (!_chestHidden) _buildChest(g, chestStone),
+            // Clef stands beyond the path's far edge, and the chest behind
+            // its stone: both drawn before the stones — until the chest
+            // wakes and lifts off, when it is drawn over everything.
+            _buildCompanion(g, current, clef: true),
+            if (!_chestHidden && !_chestAwake) _buildChest(g, chestStone),
             for (var i = 0; i < count; i++) _buildStone(g, i, current),
             if (_arrowFrom != null && _arrowFrom! + 2 < count)
               _buildArrow(g, _arrowFrom!),
-            ..._buildCompanions(g, current),
+            _buildCompanion(g, current, clef: false),
             _buildPin(g, current),
+            if (!_chestHidden && _chestAwake) _buildChest(g, chestStone),
           ],
         ),
       ),
@@ -711,7 +709,7 @@ class _JourneyScreenState extends State<JourneyScreen> {
         key: ValueKey(state),
         state: state,
         variant: i % 3,
-        size: g.stoneWidth,
+        size: g.stoneSize(i),
       ),
     );
     return _placed(
@@ -824,8 +822,9 @@ class _JourneyScreenState extends State<JourneyScreen> {
   Widget _buildArrow(_MapGeometry g, int from) {
     final a = g.stoneCentre(from + 1);
     final b = g.stoneCentre(from + 2);
-    final mid = Offset.lerp(a, b, 0.5)! - Offset(0, g.stoneWidth * 0.25);
-    final s = g.stoneWidth * 0.45;
+    final st = g.stoneSize(from + 1);
+    final mid = Offset.lerp(a, b, 0.5)! - Offset(0, st * 0.35);
+    final s = st * 0.6;
     return _placed(
       Rect.fromCenter(center: mid, width: s, height: s),
       Transform.rotate(
@@ -983,37 +982,31 @@ class _JourneyScreenState extends State<JourneyScreen> {
     );
   }
 
-  /// Piper and Clef stand on the walked side of the child's stone, beside
-  /// the avatar pin, and walk on with it (the cards; absent from Cooper's
-  /// composite, built to the cards until he says otherwise).
-  List<Widget> _buildCompanions(_MapGeometry g, int stone) {
-    Widget one(CharacterArt art, Offset feet, String key) {
-      final h = g.companionHeight;
-      final w = art.frameSize.width * h / art.frameSize.height;
-      return AnimatedPositioned(
-        key: ValueKey(key),
-        duration: JourneyTiming.pinMoves,
-        curve: Curves.easeInOutCubic,
-        left: feet.dx - w / 2,
-        top: feet.dy - h,
-        width: w,
-        height: h,
-        child: IgnorePointer(
-          child: CharacterSprite(
-            art: art,
-            pose: CharacterPose.speaking,
-            mouth: MouthFrame.closed,
-            height: h,
-          ),
+  /// Piper and Clef strung along the path with the child — a party walking
+  /// it, not a huddle on one spot (Cooper, 2026-11). They walk on with the
+  /// pin. Built to the cards (the composite's Journey was illustrative).
+  Widget _buildCompanion(_MapGeometry g, int stone, {required bool clef}) {
+    final art = clef ? CharacterArt.clef : CharacterArt.piper;
+    final feet = clef ? g.clefFeet(stone) : g.piperFeet(stone);
+    final h = g.companionHeight;
+    final w = art.frameSize.width * h / art.frameSize.height;
+    return AnimatedPositioned(
+      key: ValueKey(clef ? 'map-clef' : 'map-piper'),
+      duration: JourneyTiming.pinMoves,
+      curve: Curves.easeInOutCubic,
+      left: feet.dx - w / 2,
+      top: feet.dy - h,
+      width: w,
+      height: h,
+      child: IgnorePointer(
+        child: CharacterSprite(
+          art: art,
+          pose: CharacterPose.speaking,
+          mouth: MouthFrame.closed,
+          height: h,
         ),
-      );
-    }
-
-    // Clef further back, so drawn first.
-    return [
-      one(CharacterArt.clef, g.clefFeet(stone), 'map-clef'),
-      one(CharacterArt.piper, g.piperFeet(stone), 'map-piper'),
-    ];
+      ),
+    );
   }
 
   Widget _buildDevBar(_MapGeometry g) {
@@ -1040,66 +1033,134 @@ class _JourneyScreenState extends State<JourneyScreen> {
   }
 }
 
-/// The map's geometry, all from the screen size: stones on a gentle wave
-/// along one horizontal surface (card 200), the chest behind its stone, the
-/// pin above the child's, all clear of the rail's panel on the right.
+/// The map's geometry, all from the screen size and the backdrop's painted
+/// path (card 200: one horizontal surface). Stones are laid ALONG THE PATH,
+/// on its centre line and sized to its width there, so they shrink as it
+/// recedes and the far ones take less room. The chest stands behind its
+/// stone, the pin on the child's, all clear of the rail's panel.
 class _MapGeometry {
   final Size size;
   final EdgeInsets padding;
   _MapGeometry(this.size, this.padding);
 
-  double get stoneWidth => size.height * 0.27;
-  double get spacing => stoneWidth * 1.75;
+  /// The backdrop's painted path (one backdrop for now).
+  final PathProfile path = forestPath;
 
-  /// Far enough in that Piper and Clef fit behind the first stone.
+  // The backdrop: tiles of the strip, its painted band filling the screen,
+  // mirrored every other one.
+  double get tileHeight => size.height / path.bandHeight;
+  double get tileWidth => tileHeight * path.aspect;
+  double get tileTop => -tileHeight * path.bandTop;
+
+  /// The path at map x: its centre line's y and its depth on screen.
+  (double y, double depth) pathAt(double x) {
+    final tile = (x / tileWidth).floor();
+    var u = (x - tile * tileWidth) / tileWidth;
+    if (tile.isOdd) u = 1 - u;
+    final (c, d) = path.at(u);
+    return (tileTop + c * tileHeight, d * tileHeight);
+  }
+
+  /// A stone's cell at a point of the path: the stone's ellipse is about
+  /// 45% of its cell's height, and fills ~95% of the path's depth.
+  double stoneSizeAt(double x) => pathAt(x).$2 / 0.45 * 0.95;
+
+  /// Gap between stones, as a share of a stone's cell.
+  static const double step = 1.15;
+
+  /// Far enough in that Piper fits behind the first stone.
   double get startX =>
-      padding.left + math.max(size.width * 0.22, stoneWidth * 1.45);
+      padding.left + math.max(size.width * 0.16, size.height * 0.34);
 
-  double stoneX(int i) => startX + i * spacing;
-  Offset stoneCentre(int i) =>
-      Offset(stoneX(i), size.height * (0.68 + 0.1 * math.sin(i * 1.15)));
+  final List<double> _xs = [];
+
+  double stoneX(int i) {
+    if (_xs.isEmpty) _xs.add(startX);
+    while (_xs.length <= i) {
+      final x = _xs.last;
+      _xs.add(x + stoneSizeAt(x) * step);
+    }
+    return _xs[i];
+  }
+
+  double stoneSize(int i) => stoneSizeAt(stoneX(i));
+
+  Offset stoneCentre(int i) {
+    final x = stoneX(i);
+    return Offset(x, pathAt(x).$1);
+  }
 
   Rect stoneRect(int i) => Rect.fromCenter(
     center: stoneCentre(i),
-    width: stoneWidth,
-    height: stoneWidth,
+    width: stoneSize(i),
+    height: stoneSize(i),
   );
 
-  /// The chest stands behind and a little right of its stone, its body's
-  /// foot (76% down its square art) on the stone's back edge. Lifted, it
-  /// rises by half its height.
+  /// The stride from stone [i] to the next.
+  double stride(int i) => stoneX(i + 1) - stoneX(i);
+
+  /// A margin for "is it on screen".
+  double get margin => size.height * 0.1;
+
+  /// The chest stands behind and to the right of its stone, its body's
+  /// foot (76% down its square art) on the stone's back edge. LIFTED (awake,
+  /// waiting for the tap, opening) it rises up and out to the right, clear
+  /// of the pin — which is the biggest thing on the map and would otherwise
+  /// cover the very chest the child has to tap.
   Rect chestRect(int i, {bool lifted = false}) {
-    final s = stoneWidth * 1.15;
-    final foot = stoneCentre(i) + Offset(stoneWidth * 0.3, -stoneWidth * 0.12);
-    final top = foot.dy - s * 0.76 - (lifted ? s * 0.45 : 0);
-    return Rect.fromLTWH(foot.dx - s / 2, top, s, s);
+    final st = stoneSize(i);
+    final s = st * 1.35;
+    if (lifted) {
+      final pin = pinRect(i);
+      final centre = Offset(pin.right + s * 0.45, pin.center.dy);
+      return Rect.fromCenter(center: centre, width: s * 1.15, height: s * 1.15);
+    }
+    final foot = stoneCentre(i) + Offset(st * 0.55, -st * 0.14);
+    return Rect.fromLTWH(foot.dx - s / 2, foot.dy - s * 0.76, s, s);
   }
 
-  /// The avatar pin: its tip on the stone's top, a little left of centre.
+  /// The avatar pin: the child, so the dominant figure on screen — taller
+  /// than Piper and Clef — its tip on the stone.
   Rect pinRect(int i) {
-    final w = stoneWidth * 0.55;
-    final h = w * JourneyArt.pinCell.height / JourneyArt.pinCell.width;
-    final tip = stoneCentre(i) + Offset(-stoneWidth * 0.12, -stoneWidth * 0.08);
-    return Rect.fromLTWH(tip.dx - w / 2, tip.dy - h * 0.9, w, h);
+    final h = size.height * 0.28;
+    final w = h * JourneyArt.pinCell.width / JourneyArt.pinCell.height;
+    final tip = stoneCentre(i) - Offset(0, stoneSize(i) * 0.08);
+    return Rect.fromLTWH(tip.dx - w / 2, tip.dy - h * 0.92, w, h);
   }
 
   /// Where an earned decoration lands: beside the stone it was earned on,
-  /// below the path. PROVISIONAL — placement is open, awaiting Cooper
+  /// just below the path. PROVISIONAL — placement is open, awaiting Cooper
   /// (whether walked ground should be visibly richer is his call).
-  Offset decorationSpot(Reward r) =>
-      stoneCentre(r.stone) +
-      Offset(-spacing * (r.stone.isEven ? 0.45 : 0.55), stoneWidth * 0.55);
+  Offset decorationSpot(Reward r) {
+    final x = stoneX(r.stone) - stride(r.stone) * 0.5;
+    final (y, depth) = pathAt(x);
+    return Offset(x, y + depth * 0.5 + decorationSize * 0.42);
+  }
+
+  double get decorationSize => math.max(56, size.height * 0.14);
 
   /// A token's box: the diamond fills its square, so a little larger than
   /// a square item would be.
   double get rewardSize => math.max(64, size.height * 0.16);
 
-  // Piper and Clef by the pin, on the walked side.
-  double get companionHeight => stoneWidth * 1.05;
-  Offset piperFeet(int i) =>
-      stoneCentre(i) + Offset(-stoneWidth * 0.62, stoneWidth * 0.2);
-  Offset clefFeet(int i) =>
-      stoneCentre(i) + Offset(-stoneWidth * 0.98, stoneWidth * 0.05);
+  // Piper and Clef strung along the path with the child: Piper on the
+  // walked path just behind, Clef just ahead but BESIDE the path (its far
+  // edge), so she never seems to stand on an unplayed stone.
+  double get companionHeight => size.height * 0.22;
+
+  Offset piperFeet(int i) {
+    final x = stoneX(i) - stoneSize(i) * 0.75;
+    final (y, depth) = pathAt(x);
+    return Offset(x, y + depth * 0.3);
+  }
+
+  Offset clefFeet(int i) {
+    // A full stride on, past the far edge: clear of the pin, and standing
+    // behind the next stone rather than on it.
+    final x = stoneX(i) + stride(i) * 1.05;
+    final (y, depth) = pathAt(x);
+    return Offset(x, y - depth * 0.6);
+  }
 
   /// The map width not under the rail's panel.
   double get visibleWidth => size.width - RailLayout(size, padding).panelWidth;
@@ -1111,68 +1172,33 @@ class _MapGeometry {
 
 class _Backdrop extends StatelessWidget {
   final double width;
-  final double height;
-  const _Backdrop({required this.width, required this.height});
+  final _MapGeometry g;
+  const _Backdrop({required this.width, required this.g});
 
   @override
   Widget build(BuildContext context) {
-    // The strip's painted band runs from about 24% to 78% of its height,
-    // with white paper above and below: scale the band to fill the screen.
-    final tileHeight = height / 0.54;
-    final tile = tileHeight * 1.5;
-    final n = (width / tile).ceil() + 1;
+    final n = (width / g.tileWidth).ceil() + 1;
     return Positioned(
       left: 0,
-      top: -tileHeight * 0.24,
-      height: tileHeight,
-      width: n * tile,
+      top: g.tileTop,
+      height: g.tileHeight,
+      width: n * g.tileWidth,
       child: Row(
         children: [
           for (var i = 0; i < n; i++)
             SizedBox(
-              width: tile,
-              height: tileHeight,
+              width: g.tileWidth,
+              height: g.tileHeight,
               // Mirrored every other tile so the seams meet themselves.
               child: Transform.flip(
                 flipX: i.isOdd,
-                child: Image.asset(
-                  'assets/images/backgrounds/learning_paths/Forest.png',
-                  fit: BoxFit.cover,
-                ),
+                child: Image.asset(g.path.asset, fit: BoxFit.fill),
               ),
             ),
         ],
       ),
     );
   }
-}
-
-/// PLACEHOLDER for the painted path: a dashed trail stone to stone.
-class _PathPainter extends CustomPainter {
-  final List<Offset> points;
-  _PathPainter(this.points);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = const Color(0xCCF3E3C0)
-      ..strokeWidth = 7
-      ..strokeCap = StrokeCap.round;
-    for (var i = 0; i + 1 < points.length; i++) {
-      final a = points[i], b = points[i + 1];
-      const dashes = 9;
-      for (var d = 1; d < dashes; d += 2) {
-        canvas.drawLine(
-          Offset.lerp(a, b, d / dashes)!,
-          Offset.lerp(a, b, (d + 0.6) / dashes)!,
-          paint,
-        );
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(_PathPainter old) => old.points != points;
 }
 
 Path _starPath(Size size) {
