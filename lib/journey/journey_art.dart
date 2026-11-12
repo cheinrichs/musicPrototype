@@ -119,36 +119,88 @@ int avatarIndexFor(String? profileId) {
   return h % 16;
 }
 
-/// PLACEHOLDER reward item: a grey card with its category's icon.
-class RewardPlaceholder extends StatelessWidget {
-  final RewardCategory category;
+/// A reward as it flies and arrives. The object itself says WHAT was
+/// earned (the destination only says where it lives — songs and
+/// instruments share Playground): a song is a card with a music note, an
+/// instrument is the instrument. Games, crafts and decorations are still
+/// grey PLACEHOLDERS until their reward art exists.
+class RewardItem extends StatelessWidget {
+  final Reward reward;
   final double size;
-  const RewardPlaceholder({
-    super.key,
-    required this.category,
-    required this.size,
-  });
+  const RewardItem({super.key, required this.reward, required this.size});
+
+  /// The instruments a reward can be, in the order they are handed out.
+  static const instruments = [
+    'assets/images/characters/instruments/Guitar1.png',
+    'assets/images/characters/instruments/Trumpet1.png',
+    'assets/images/characters/instruments/Violin1.png',
+    'assets/images/characters/instruments/Drum1.png',
+    'assets/images/characters/instruments/Flute1.png',
+    'assets/images/characters/instruments/Bell1.png',
+  ];
 
   @override
-  Widget build(BuildContext context) => Container(
-    width: size,
-    height: size,
+  Widget build(BuildContext context) => SizedBox.square(
+    dimension: size,
+    child: switch (reward.kind) {
+      RewardKind.song => _songCard(),
+      RewardKind.instrument => DecoratedBox(
+        decoration: const BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: RadialGradient(
+            colors: [Color(0xAAFFF3C4), Color(0x00FFF3C4)],
+          ),
+        ),
+        child: Padding(
+          padding: EdgeInsets.all(size * 0.06),
+          child: Image.asset(
+            instruments[reward.index % instruments.length],
+            fit: BoxFit.contain,
+          ),
+        ),
+      ),
+      _ => _placeholder(),
+    },
+  );
+
+  // As in Cooper's composite: a cream card, a purple note.
+  Widget _songCard() => Transform.rotate(
+    angle: -0.08,
+    child: Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFFFBF1D6),
+        borderRadius: BorderRadius.circular(size * 0.14),
+        border: Border.all(color: const Color(0xFFD9B66A), width: 3),
+        boxShadow: const [BoxShadow(blurRadius: 6, color: Colors.black38)],
+      ),
+      child: Icon(
+        Icons.music_note_rounded,
+        size: size * 0.62,
+        color: const Color(0xFF7E57C2),
+      ),
+    ),
+  );
+
+  Widget _placeholder() => Container(
     decoration: BoxDecoration(
       color: const Color(0xFFBDBDBD),
       borderRadius: BorderRadius.circular(size * 0.18),
       border: Border.all(color: Colors.white, width: 3),
       boxShadow: const [BoxShadow(blurRadius: 6, color: Colors.black38)],
     ),
-    child: Icon(category.icon, size: size * 0.55, color: Colors.white),
+    child: Icon(reward.kind.icon, size: size * 0.55, color: Colors.white),
   );
 }
 
-/// One of the rail's four circle icons, label included (the top row of
-/// rail_icons_2treatments — the circles, not the rounded squares).
+/// One of the rail's four icons, label included, from
+/// rail_icons_2treatments. The two rows are a STATE PAIR: the rounded square
+/// (bottom row) is the page the child is on, the circle (top row) every
+/// other destination.
 class RailIcon extends StatelessWidget {
   /// 0 Journey, 1 Games, 2 Crafts, 3 Playground.
   final int destination;
-  const RailIcon({super.key, required this.destination});
+  final bool selected;
+  const RailIcon({super.key, required this.destination, this.selected = false});
 
   @override
   Widget build(BuildContext context) => SpriteCell(
@@ -156,7 +208,7 @@ class RailIcon extends StatelessWidget {
     columns: 4,
     rows: 2,
     column: destination,
-    row: 0,
+    row: selected ? 1 : 0,
   );
 }
 

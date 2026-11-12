@@ -4,13 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../journey/journey_art.dart';
+import 'rail_destination.dart';
+
+export 'rail_destination.dart';
 import '../journey/journey_screen.dart';
 import '../ui/screens/home_screen.dart';
 import '../ui/screens/playground_screen.dart';
-
-/// The rail's four destinations, top to bottom — and their column in the
-/// icon sheet.
-enum RailDestination { journey, games, crafts, playground }
 
 /// The rail's geometry, shared so the Journey can aim a reward at an icon
 /// and keep its map clear of the panel.
@@ -265,36 +264,22 @@ class _RailItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        // The selected destination sits on a cream plate (the composite's
-        // Journey). Drawn, not the rounded-square icon art.
-        AnimatedOpacity(
-          opacity: selected ? 1 : 0,
-          duration: const Duration(milliseconds: 200),
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: const Color(0xFFF4E6BF),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: const Color(0xFFD9B66A), width: 2),
-            ),
-          ),
+    // Bounces each time a reward lands on it. The icon is a state pair:
+    // the rounded square is the page the child is on, circles the rest.
+    return TweenAnimationBuilder<double>(
+      key: ValueKey(pulses),
+      tween: Tween(begin: pulses == 0 ? 1 : 1.18, end: 1),
+      duration: const Duration(milliseconds: 450),
+      curve: Curves.elasticOut,
+      builder: (context, s, child) => Transform.scale(scale: s, child: child),
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 200),
+        child: RailIcon(
+          key: ValueKey(selected),
+          destination: destination.index,
+          selected: selected,
         ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(6, 4, 6, 4),
-          // Bounces each time a reward lands on it.
-          child: TweenAnimationBuilder<double>(
-            key: ValueKey(pulses),
-            tween: Tween(begin: pulses == 0 ? 1 : 1.18, end: 1),
-            duration: const Duration(milliseconds: 450),
-            curve: Curves.elasticOut,
-            builder: (context, s, child) =>
-                Transform.scale(scale: s, child: child),
-            child: RailIcon(destination: destination.index),
-          ),
-        ),
-      ],
+      ),
     );
   }
 }

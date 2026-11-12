@@ -1,39 +1,45 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' show IconData, Icons;
 
+import '../app/rail_destination.dart';
 import '../models/agency_stage.dart';
 
-/// Where an earned reward goes. Every category but [decoration] is one of
-/// the rail's destinations (the rail is top-level navigation: Journey,
-/// Games, Crafts, Playground — Cooper's composite, superseding card 204's
-/// shelves). Songs have no shelf of their own: they land in Playground.
-/// Decorations fly onto the map, on ground already walked.
+/// What a reward IS — and from that, where it lives.
 ///
-/// The icons are for the PLACEHOLDER reward items until the reward
-/// catalogue exists.
-enum RewardCategory {
-  playground('Playground', Icons.music_note_rounded),
-  games('Games', Icons.extension_rounded),
-  crafts('Crafts', Icons.content_cut_rounded),
-  decoration('Map', Icons.local_florist_rounded);
+/// The rail is top-level navigation (Journey, Games, Crafts, Playground).
+/// Songs and new instruments both live in Playground, so the destination no
+/// longer tells a child what they earned: the flying object must (see
+/// `RewardItem`). Decorations fly onto the map; WHERE on the map is open,
+/// awaiting Cooper.
+///
+/// The icons are for the reward items still drawn as PLACEHOLDERS.
+enum RewardKind {
+  song(RailDestination.playground, Icons.music_note_rounded),
+  instrument(RailDestination.playground, Icons.piano_rounded),
+  game(RailDestination.games, Icons.extension_rounded),
+  craft(RailDestination.crafts, Icons.content_cut_rounded),
+  decoration(null, Icons.local_florist_rounded);
 
-  final String label;
+  /// Null: onto the map.
+  final RailDestination? destination;
   final IconData icon;
-  const RewardCategory(this.label, this.icon);
+  const RewardKind(this.destination, this.icon);
 
-  bool get onMap => this == decoration;
+  bool get onMap => destination == null;
 
-  /// The rail categories, in the order they are handed out.
-  static const rail = [playground, games, crafts];
+  /// The rail rewards, in the order they are handed out (a PLACEHOLDER
+  /// catalogue).
+  static const rail = [song, instrument, game, craft];
 }
 
-/// One earned reward. [stone] is the stone it was earned on — where a
-/// decoration lands on the map.
+/// One earned reward. [stone] is the stone it was earned on; [index] picks
+/// which one of its kind (which instrument, say).
 @immutable
 class Reward {
-  final RewardCategory category;
+  final RewardKind kind;
   final int stone;
-  const Reward(this.category, this.stone);
+  final int index;
+  const Reward(this.kind, this.stone, [this.index = 0]);
 }
 
 /// One game's share of a stone: which game, how many rounds.
@@ -96,25 +102,35 @@ class JourneyState extends ChangeNotifier {
     return s;
   }
 
-  int countIn(RewardCategory c) =>
-      _p.rewards.where((r) => r.category == c).length;
+  int countOf(RewardKind k) => _p.rewards.where((r) => r.kind == k).length;
 
   /// The decorations on the map.
   List<Reward> get decorations =>
-      _p.rewards.where((r) => r.category.onMap).toList();
+      _p.rewards.where((r) => r.kind.onMap).toList();
 
   /// What finishing the current stone earns: one rail reward for a regular
-  /// stone; two rail rewards and a decoration for a milestone. The rail
-  /// categories are handed out in turn, so each new one is an event.
-  /// PLACEHOLDER catalogue — the real one is card 204's open question.
+  /// stone; two rail rewards and a decoration for a milestone, handed out
+  /// in turn. PLACEHOLDER catalogue — the real one is card 204's open
+  /// question.
   List<Reward> rewardsForCurrent() {
-    final railSoFar = _p.rewards.where((r) => !r.category.onMap).length;
-    Reward railAt(int k) => Reward(
-      RewardCategory.rail[(railSoFar + k) % RewardCategory.rail.length],
-      current,
-    );
-    if (!isMilestone(current)) return [railAt(0)];
-    return [railAt(0), railAt(1), Reward(RewardCategory.decoration, current)];
+    final railSoFar = _p.rewards.where((r) => !r.kind.onMap).length;
+    final earned = <Reward>[];
+    Reward next(RewardKind k) {
+      final r = Reward(
+        k,
+        current,
+        countOf(k) + earned.where((e) => e.kind == k).length,
+      );
+      earned.add(r);
+      return r;
+    }
+
+    next(RewardKind.rail[railSoFar % RewardKind.rail.length]);
+    if (isMilestone(current)) {
+      next(RewardKind.rail[(railSoFar + 1) % RewardKind.rail.length]);
+      next(RewardKind.decoration);
+    }
+    return earned;
   }
 
   /// How many rounds a stone is, by the child's agency (3/4/5).

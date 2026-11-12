@@ -421,7 +421,7 @@ class _JourneyScreenState extends State<JourneyScreen> {
     final rail = RailLayout(g.size, g.padding);
     for (var i = 0; i < n; i++) {
       final r = rewards[i];
-      final dest = _destinationOf(r.category);
+      final dest = r.kind.destination;
       final to = dest == null
           ? g.decorationSpot(r) - _scrollOffset
           : rail.landingOf(dest);
@@ -453,15 +453,8 @@ class _JourneyScreenState extends State<JourneyScreen> {
     await _wait(JourneyTiming.rewardFlight + JourneyTiming.rewardHold);
   }
 
-  static RailDestination? _destinationOf(RewardCategory c) => switch (c) {
-    RewardCategory.playground => RailDestination.playground,
-    RewardCategory.games => RailDestination.games,
-    RewardCategory.crafts => RailDestination.crafts,
-    RewardCategory.decoration => null,
-  };
-
   Widget _rewardItem(Reward r, _MapGeometry g) =>
-      RewardPlaceholder(category: r.category, size: g.rewardSize);
+      RewardItem(reward: r, size: g.rewardSize);
 
   /// Back on the path: the stone turns rainbow, the pin steps on, an arrow
   /// points onward; after a milestone a new chest appears at the next one.
@@ -647,8 +640,8 @@ class _JourneyScreenState extends State<JourneyScreen> {
                   width: g.rewardSize,
                   height: g.rewardSize,
                 ),
-                RewardPlaceholder(
-                  category: d.category,
+                RewardItem(
+                  reward: d,
                   size: g.rewardSize,
                 ).animate().scaleXY(begin: 1.4, end: 1, duration: 400.ms),
               ),
@@ -1027,7 +1020,10 @@ class _MapGeometry {
 
   double get stoneWidth => size.height * 0.27;
   double get spacing => stoneWidth * 1.75;
-  double get startX => padding.left + size.width * 0.22;
+
+  /// Far enough in that Piper and Clef fit behind the first stone.
+  double get startX =>
+      padding.left + math.max(size.width * 0.22, stoneWidth * 1.45);
 
   double stoneX(int i) => startX + i * spacing;
   Offset stoneCentre(int i) =>
@@ -1057,9 +1053,9 @@ class _MapGeometry {
     return Rect.fromLTWH(tip.dx - w / 2, tip.dy - h * 0.9, w, h);
   }
 
-  /// Earned decorations go on ground already walked: behind the stone
-  /// they were earned on, below the path, so the road behind the child is
-  /// visibly richer than the road ahead.
+  /// Where an earned decoration lands: beside the stone it was earned on,
+  /// below the path. PROVISIONAL — placement is open, awaiting Cooper
+  /// (whether walked ground should be visibly richer is his call).
   Offset decorationSpot(Reward r) =>
       stoneCentre(r.stone) +
       Offset(-spacing * (r.stone.isEven ? 0.45 : 0.55), stoneWidth * 0.55);

@@ -51,10 +51,23 @@ void main() {
     }
     expect(rail(tester).selected, RailDestination.journey);
     expect(find.byType(JourneyScreen), findsOneWidget);
+    // A state pair: the page you are on is the rounded square, the rest
+    // circles.
+    bool square(RailDestination d) => tester
+        .widget<RailIcon>(
+          find.descendant(
+            of: find.byKey(ValueKey('rail-${d.name}')),
+            matching: find.byType(RailIcon),
+          ),
+        )
+        .selected;
+    expect(RailDestination.values.where(square), [RailDestination.journey]);
 
     await tester.tap(find.byKey(const ValueKey('rail-crafts')));
-    await tester.pump();
+    // Past the icons' crossfade (the map's own loops never settle).
+    await run(tester, const Duration(milliseconds: 500));
     expect(rail(tester).selected, RailDestination.crafts);
+    expect(RailDestination.values.where(square), [RailDestination.crafts]);
   });
 
   testWidgets('regular stone: waits for the tap, then the reward flies to '
@@ -69,15 +82,16 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('gift')));
     await run(tester, const Duration(seconds: 6));
     expect(journey.current, 1);
-    // The first reward is a song: it lands on Playground.
+    // The first reward is a song: a note card, landing on Playground.
     expect(rail(tester).pulsesOf(RailDestination.playground), 1);
     expect(rail(tester).flights, isEmpty);
     expect(find.byKey(const ValueKey('gift')), findsNothing);
   });
 
   testWidgets('milestone: the chest waits for the tap, then rewards go to '
-      'the rail and a decoration onto walked ground, and a new chest is '
-      'ahead', (tester) async {
+      'the rail and a decoration onto the map, and a new chest is ahead', (
+    tester,
+  ) async {
     await mount(tester);
     await tester.tap(find.text('DEV: to milestone'));
     await run(tester, const Duration(seconds: 2));
@@ -92,10 +106,5 @@ void main() {
     expect(journey.current, 5);
     expect(journey.decorations, hasLength(1));
     expect(journey.chestStone, 9);
-
-    // The decoration is behind the child, not on the road ahead.
-    final decoration = tester.getCenter(find.byType(RewardPlaceholder));
-    final pin = tester.getCenter(find.byType(AvatarPin));
-    expect(decoration.dx, lessThan(pin.dx));
   });
 }

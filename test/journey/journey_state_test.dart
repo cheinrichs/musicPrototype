@@ -1,3 +1,4 @@
+import 'package:ear_trainer/app/rail_destination.dart';
 import 'package:ear_trainer/journey/journey_state.dart';
 import 'package:ear_trainer/models/agency_stage.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -41,29 +42,36 @@ void main() {
     test('a regular stone earns one rail reward, a milestone two and a '
         'decoration', () {
       final j = JourneyState();
-      expect(j.rewardsForCurrent().map((r) => r.category), [
-        RewardCategory.playground,
-      ]);
+      expect(j.rewardsForCurrent().map((r) => r.kind), [RewardKind.song]);
       for (var i = 0; i < 4; i++) {
         j.completeStone(j.rewardsForCurrent());
       }
       final m = j.rewardsForCurrent();
-      expect(m.where((r) => !r.category.onMap), hasLength(2));
-      expect(m.where((r) => r.category.onMap), hasLength(1));
+      expect(m.where((r) => !r.kind.onMap), hasLength(2));
+      expect(m.where((r) => r.kind.onMap), hasLength(1));
       expect(m.every((r) => r.stone == 4), isTrue);
     });
 
-    test('rail rewards go to Games, Crafts or Playground — songs have no '
-        'shelf of their own, they land in Playground', () {
-      expect(RewardCategory.rail, [
-        RewardCategory.playground,
-        RewardCategory.games,
-        RewardCategory.crafts,
-      ]);
-      expect(
-        RewardCategory.values.map((c) => c.name),
-        isNot(contains('songs')),
-      );
+    test('songs and new instruments both live in Playground; games and '
+        'crafts in theirs; decorations on the map', () {
+      expect(RewardKind.song.destination, RailDestination.playground);
+      expect(RewardKind.instrument.destination, RailDestination.playground);
+      expect(RewardKind.game.destination, RailDestination.games);
+      expect(RewardKind.craft.destination, RailDestination.crafts);
+      expect(RewardKind.decoration.onMap, isTrue);
+    });
+
+    test('each reward of a kind is a different one (the next instrument)', () {
+      final j = JourneyState();
+      final instruments = <int>[];
+      for (var i = 0; i < 12; i++) {
+        for (final r in j.rewardsForCurrent()) {
+          if (r.kind == RewardKind.instrument) instruments.add(r.index);
+        }
+        j.completeStone(j.rewardsForCurrent());
+      }
+      expect(instruments, [for (var i = 0; i < instruments.length; i++) i]);
+      expect(instruments.length, greaterThan(1));
     });
 
     test('decorations go to the map, not the rail', () {
@@ -72,7 +80,7 @@ void main() {
         j.completeStone(j.rewardsForCurrent());
       }
       expect(j.decorations, hasLength(1));
-      expect(RewardCategory.rail, isNot(contains(RewardCategory.decoration)));
+      expect(RewardKind.rail, isNot(contains(RewardKind.decoration)));
     });
   });
 
