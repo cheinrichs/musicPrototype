@@ -31,11 +31,17 @@ class GameEntry {
   final int rounds;
   final void Function(SetReport report)? onFinished;
 
+  /// Where the X goes when something hosts this set, instead of home: a
+  /// stone takes the child back to the map, keeping their place so the
+  /// stone resumes rather than restarts.
+  final VoidCallback? onLeave;
+
   const GameEntry({
     required this.agency,
     this.tier,
     required this.rounds,
     this.onFinished,
+    this.onLeave,
   });
 
   /// Whether something hosts this set and takes its report.

@@ -13,6 +13,7 @@ import '../games/same_different/screens/same_different_screen.dart';
 import '../games/timbre_id/screens/timbre_screen.dart';
 import '../games/rhythm_id/screens/rhythm_screen.dart';
 import '../games/pitch_name/screens/pitch_name_screen.dart';
+import '../journey/journey_screen.dart';
 import '../rewards/screens/reward_screen.dart';
 import '../ui/screens/skill_profile_screen.dart';
 
@@ -34,6 +35,7 @@ class AppRoutes {
   static const String reward = '/reward';
   static const String skillProfile = '/skill-profile';
   static const String credits = '/credits';
+  static const String journey = '/journey';
 }
 
 /// Create the app router
@@ -100,6 +102,10 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: AppRoutes.skillProfile,
       builder: (context, state) => const SkillProfileScreen(),
+    ),
+    GoRoute(
+      path: AppRoutes.journey,
+      builder: (context, state) => const JourneyScreen(),
     ),
     GoRoute(
       path: AppRoutes.credits,

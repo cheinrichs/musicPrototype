@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import '../journey/journey_state.dart';
 import '../ui/theme/theme.dart';
 import 'router.dart';
 import 'state/dev_settings_state.dart';
@@ -24,6 +25,8 @@ class EarTrainerApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ProgressState()),
         ChangeNotifierProvider(create: (_) => SkillState()),
         ChangeNotifierProvider(create: (_) => DevSettingsState()),
+        // In memory for the rough Journey build — see [JourneyState].
+        ChangeNotifierProvider(create: (_) => JourneyState()),
       ],
       child: MaterialApp.router(
         title: 'Ear Trainer',

@@ -120,7 +120,8 @@ class SongStoneHomeScreen extends StatelessWidget {
         _MenuPill(
           label: 'Learning Path',
           delay: const Duration(milliseconds: 200),
-          onTap: () => context.go(AppRoutes.home, extra: {'initialTab': 1}),
+          // The Journey replaces the old node list (cards 200, 203).
+          onTap: () => context.go(AppRoutes.journey),
         ),
         const SizedBox(height: AppSpacing.md),
         _MenuPill(

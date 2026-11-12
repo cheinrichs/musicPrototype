@@ -441,6 +441,8 @@ class _HighLowScreenState extends State<HighLowScreen> {
               onClose: () {
                 // Leaving is its own logged event (card 196).
                 _gameState.leaveSet();
+                final onLeave = widget.entry?.onLeave;
+                if (onLeave != null) return onLeave();
                 final extra =
                     GoRouterState.of(context).extra as Map<String, dynamic>?;
                 if (extra?['fromPath'] == true) {

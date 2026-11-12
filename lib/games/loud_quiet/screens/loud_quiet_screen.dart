@@ -198,6 +198,8 @@ class _LoudQuietScreenState extends State<LoudQuietScreen> {
             onClose: () {
               // Leaving is its own logged event (card 196).
               _game.leaveSet();
+              final onLeave = widget.entry?.onLeave;
+              if (onLeave != null) return onLeave();
               context.go(AppRoutes.home);
             },
             progress: _game.setProgress,
