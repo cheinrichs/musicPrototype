@@ -91,6 +91,12 @@ class LoudQuietRound {
       if (i != HighLowInstrument.tuba) i,
   ];
 
+  /// How many instruments a round can compare today. The ladder's
+  /// three-instrument steps (T4–T6) wait on three-instrument rounds: three
+  /// instruments in the band left of the dial, and what three levels and
+  /// which platform a round of three means — see `LoudQuietGameState.playedStep`.
+  static const int maxInstruments = 2;
+
   /// The side the round asks for.
   int get targetSide => asksLoud ? loudSide : 1 - loudSide;
 

@@ -110,6 +110,26 @@ class LoudQuietGameState extends ChangeNotifier {
   DynamicLadder ladder;
   int step;
 
+  /// The step actually played: [step], brought down to what [agencyStage]
+  /// can reach (no three-instrument round below Decide — none at Observe in
+  /// either game), on every path, as High vs Low clamps its tiers. And until
+  /// three-instrument rounds exist, a three-instrument step plays as the
+  /// two-instrument step at the SAME distance, never a harder one.
+  int get playedStep {
+    final reachable = ladder.clampedTo(step, agencyStage);
+    if (ladder.instrumentCountAt(reachable) <= LoudQuietRound.maxInstruments) {
+      return reachable;
+    }
+    final distance = ladder[reachable].distanceId;
+    for (var i = 0; i < ladder.length; i++) {
+      if (ladder.steps[i].distanceId == distance &&
+          ladder.steps[i].instrumentCount <= LoudQuietRound.maxInstruments) {
+        return i;
+      }
+    }
+    return 0;
+  }
+
   /// A sample's length when audio can't say (it isn't running, as in
   /// tests): about what the note samples measure.
   static const fallbackNoteLength = Duration(milliseconds: 1650);
@@ -255,7 +275,7 @@ class LoudQuietGameState extends ChangeNotifier {
       _rounds.add(
         LoudQuietRound.generate(
           ladder: ladder,
-          step: step,
+          step: playedStep,
           asksLoud: asksLoud,
           random: _random,
         ),

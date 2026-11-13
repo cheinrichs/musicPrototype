@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../app/state/dev_settings_state.dart';
 import '../../games/loud_quiet/models/dynamic_ladder.dart';
+import '../../games/loud_quiet/models/loud_quiet_round.dart';
 import '../../models/agency_stage.dart';
 import '../../models/concept_tier.dart';
 import '../../models/round_order.dart';
@@ -101,7 +102,18 @@ class DevSetupOverlay extends StatelessWidget {
                                     i,
                                 ],
                                 labelOf: (i) =>
-                                    devSettings.loudQuietLadder[i].label,
+                                    devSettings.loudQuietLadder.labelAt(i),
+                                // As tiers: steps the agency can't reach are
+                                // shown disabled — and the three-instrument
+                                // steps until three-instrument rounds exist.
+                                isEnabled: (i) =>
+                                    devSettings.loudQuietLadder.isReachableAt(
+                                      i,
+                                      devSettings.agencyStage,
+                                    ) &&
+                                    devSettings.loudQuietLadder
+                                            .instrumentCountAt(i) <=
+                                        LoudQuietRound.maxInstruments,
                                 selected: devSettings.loudQuietStep,
                                 onSelected: devSettings.setLoudQuietStep,
                               )
@@ -228,7 +240,7 @@ class _GapStepper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final gap = ladder[step].gapDb;
+    final gap = ladder.gapDbAt(step);
     Widget button(String key, IconData icon, double to, bool enabled) =>
         IconButton(
           key: ValueKey(key),
@@ -267,7 +279,7 @@ class _GapStepper extends StatelessWidget {
           ],
         ),
         Text(
-          ladder.steps.map((s) => db(s.gapDb)).join(' · '),
+          ladder.distances.map((d) => db(d.gapDb)).join(' · '),
           key: const ValueKey('gap-table'),
           style: AppTypography.label.copyWith(fontSize: 10),
         ),

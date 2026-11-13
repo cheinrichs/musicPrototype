@@ -66,6 +66,7 @@ class DevSettingsState extends ChangeNotifier {
   void setAgencyStage(AgencyStage stage) {
     _agencyStage = stage;
     _conceptTier = _conceptTier.clampedTo(stage);
+    _loudQuietStep = _loudQuietLadder.clampedTo(_loudQuietStep, stage);
     notifyListeners();
   }
 
@@ -104,22 +105,29 @@ class DevSettingsState extends ChangeNotifier {
   DynamicLadder get loudQuietLadder => _loudQuietLadder;
   int get loudQuietStep => _loudQuietStep;
 
+  /// Ignored if [step] is beyond the current agency stage, as tiers are.
   void setLoudQuietStep(int step) {
+    if (!_loudQuietLadder.isReachableAt(step, _agencyStage)) return;
     _loudQuietStep = _loudQuietLadder.clampIndex(step);
     notifyListeners();
   }
 
-  /// Sets step [step]'s gap, in dB, and keeps it on this device.
+  /// Sets the gap of step [step]'s DISTANCE, in dB — so every step at that
+  /// distance changes with it — and keeps it on this device.
   void setLoudQuietGap(int step, double db) {
-    _loudQuietLadder = _loudQuietLadder.withGap(step, db);
+    _loudQuietLadder = _loudQuietLadder.withGap(
+      _loudQuietLadder.distanceOf(step).id,
+      db,
+    );
     notifyListeners();
     unawaited(_saveGaps());
   }
 
   static const _gapsKey = 'dev.loudQuiet.gapsDb';
 
-  /// Restores gaps tuned on this device, by step id — so a ladder that has
-  /// gained or lost a step since keeps the gaps of the steps it still has.
+  /// Restores gaps tuned on this device, by distance id — so a ladder that
+  /// has gained or lost steps since keeps the gaps of the distances it
+  /// still has.
   Future<void> load() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -129,9 +137,9 @@ class DevSettingsState extends ChangeNotifier {
         (k, v) => MapEntry(k, (v as num).toDouble()),
       );
       var ladder = _loudQuietLadder;
-      for (var i = 0; i < ladder.length; i++) {
-        final db = saved[ladder.steps[i].id];
-        if (db != null) ladder = ladder.withGap(i, db);
+      for (final d in ladder.distances) {
+        final db = saved[d.id];
+        if (db != null) ladder = ladder.withGap(d.id, db);
       }
       _loudQuietLadder = ladder;
       notifyListeners();
@@ -145,7 +153,7 @@ class DevSettingsState extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(
         _gapsKey,
-        jsonEncode({for (final s in _loudQuietLadder.steps) s.id: s.gapDb}),
+        jsonEncode({for (final d in _loudQuietLadder.distances) d.id: d.gapDb}),
       );
     } catch (e) {
       debugPrint('Could not save Loud or Quiet gaps: $e');

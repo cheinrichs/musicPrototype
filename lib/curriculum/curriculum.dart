@@ -61,10 +61,12 @@ final List<AgencyStage> _conceptTierLadder = [
     AgencyStage.values.firstWhere(tier.isReachableAt),
 ];
 
-/// Loud or Quiet's own ladder (card 220): its three dynamic-distance steps,
-/// none gated by agency — the game plays any step at any agency.
+/// Loud or Quiet's own ladder (card 220): dynamic distance × instrument
+/// count, its agency rule mirroring High vs Low's — no three-instrument step
+/// below Decide.
 final List<AgencyStage> _dynamicLadder = [
-  for (final _ in DynamicLadder.standard.steps) AgencyStage.observe,
+  for (var i = 0; i < DynamicLadder.standard.length; i++)
+    DynamicLadder.standard.minAgencyAt(i),
 ];
 
 /// The games the app has built and rebuilt with the agency levels. The seven

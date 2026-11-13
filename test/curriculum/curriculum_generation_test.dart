@@ -63,12 +63,12 @@ void main() {
   });
 
   test('at runtime, the built games run on their own ladders: High vs Low '
-      'its eight tiers, Loud or Quiet its three steps', () {
+      'its eight tiers, Loud or Quiet its six', () {
     Set<int> tiersOf(String game) => {
       for (final r in requirements)
         if (r.game == game) r.tier,
     };
     expect(tiersOf('Higher vs Lower'), {1, 2, 3, 4, 5, 6, 7, 8});
-    expect(tiersOf('Loud vs Soft'), {1, 2, 3});
+    expect(tiersOf('Loud vs Soft'), {1, 2, 3, 4, 5, 6});
   });
 }
