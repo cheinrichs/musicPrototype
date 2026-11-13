@@ -143,6 +143,7 @@ void main() {
     final replaced = parseCsvTable(
       csv,
     ).where((r) => builtGames.any((g) => g.name == r['Skill'])).length;
-    expect(rows.length, sheetRows - replaced + 16);
+    // High vs Low's eight tiers and Loud or Quiet's three steps.
+    expect(rows.length, sheetRows - replaced + 8 + 3);
   });
 }

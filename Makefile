@@ -1,4 +1,4 @@
-.PHONY: bootstrap test lint format run-ios run-ios-dev build-ios clean help
+.PHONY: bootstrap test lint format curriculum run-ios run-ios-dev build-ios clean help
 
 # Default target
 help:
@@ -7,6 +7,7 @@ help:
 	@echo "  make test       - Run all tests"
 	@echo "  make lint       - Run analyzer and check formatting"
 	@echo "  make format     - Apply dart formatting"
+	@echo "  make curriculum - Regenerate the curriculum Dart from docs/curriculum/"
 	@echo "  make run-ios    - Run on iOS simulator"
 	@echo "  make run-ios-dev - Run on iOS simulator with dev tools enabled"
 	@echo "  make build-ios  - Build iOS app"
@@ -23,11 +24,19 @@ test:
 	flutter test --coverage
 
 lint:
+	dart run tool/generate_curriculum.dart --check
 	flutter analyze
 	dart format --set-exit-if-changed .
 
 format:
 	dart format .
+
+# The curriculum is authored as CSVs in docs/curriculum/ and GENERATED into
+# lib/curriculum/curriculum_data.g.dart — never parsed on a device. Rerun
+# after editing a CSV; CI fails if the generated file is stale or a row is
+# malformed.
+curriculum:
+	dart run tool/generate_curriculum.dart
 
 # Embeds the checked-out commit into "Report this round" (Trello card
 # on0EymSu) via BuildInfo — see lib/app/build_info.dart and the matching

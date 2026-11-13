@@ -1,7 +1,8 @@
-import 'package:flutter/foundation.dart';
+/// Pure Dart (no Flutter import): the curriculum generator, a plain `dart
+/// run` script, reads this ladder through curriculum.dart.
+library;
 
 /// One step of Loud or Quiet's ladder (Trello card 220).
-@immutable
 class DynamicStep {
   final String id;
   final String label;
@@ -41,7 +42,6 @@ class DynamicStep {
 ///   `LoudQuietRound.playbackDbOf` — so the gap heard is the step's gap even
 ///   between two instruments.
 /// - Gaps are decibels.
-@immutable
 class DynamicLadder {
   final List<DynamicStep> steps;
 
@@ -88,7 +88,11 @@ class DynamicLadder {
 
   @override
   bool operator ==(Object other) =>
-      other is DynamicLadder && listEquals(other.steps, steps);
+      other is DynamicLadder &&
+      other.steps.length == steps.length &&
+      [
+        for (var i = 0; i < steps.length; i++) other.steps[i] == steps[i],
+      ].every((same) => same);
 
   @override
   int get hashCode => Object.hashAll(steps);

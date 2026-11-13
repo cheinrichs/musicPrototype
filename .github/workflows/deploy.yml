@@ -38,6 +38,12 @@ jobs:
       - name: Install Flutter dependencies
         run: flutter pub get
 
+      - name: Check the generated curriculum
+        # docs/curriculum/*.csv is generated into Dart at build time, so a
+        # malformed row or a CSV edited without regenerating fails HERE,
+        # never as a crash on a child's iPad. Fix: make curriculum.
+        run: dart run tool/generate_curriculum.dart --check
+
       - name: Analyze
         run: flutter analyze
 

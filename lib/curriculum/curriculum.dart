@@ -1,6 +1,8 @@
 import '../models/agency_stage.dart';
 import '../models/concept_tier.dart';
+import '../games/loud_quiet/models/dynamic_ladder.dart';
 import 'csv_table.dart';
+import 'curriculum_data.g.dart';
 
 /// The curriculum, read from the repo's data files (Trello card 219: the
 /// spreadsheet is retired; changes now go through CI).
@@ -52,11 +54,17 @@ class CurriculumGame {
   int get tierCount => tierMinAgency.length;
 }
 
-/// The lowest agency at which each [ConceptTier] is reachable — High vs Low's
-/// rule (and, for now, Loud or Quiet's, which plays the same ladder).
+/// The lowest agency at which each [ConceptTier] is reachable — High vs
+/// Low's rule.
 final List<AgencyStage> _conceptTierLadder = [
   for (final tier in ConceptTier.values)
     AgencyStage.values.firstWhere(tier.isReachableAt),
+];
+
+/// Loud or Quiet's own ladder (card 220): its three dynamic-distance steps,
+/// none gated by agency — the game plays any step at any agency.
+final List<AgencyStage> _dynamicLadder = [
+  for (final _ in DynamicLadder.standard.steps) AgencyStage.observe,
 ];
 
 /// The games the app has built and rebuilt with the agency levels. The seven
@@ -72,7 +80,7 @@ final List<CurriculumGame> builtGames = [
     id: 'loud_quiet',
     name: 'Loud vs Soft',
     skillNode: 'Sound Awareness',
-    tierMinAgency: _conceptTierLadder,
+    tierMinAgency: _dynamicLadder,
   ),
 ];
 
@@ -103,29 +111,26 @@ class GameRequirement {
 
 String tierToken(String game, int tier) => '${game}_T$tier';
 
-/// Reads the Skill Progression table (columns Node, Skill, Tier, MinAgency,
-/// MaxAgency, Prerequisite), remapping agency, then replaces the rows for
-/// [games] with rows written from each game's own ladder — the sheet's tier
-/// numbers do not describe the app's ladders.
-List<GameRequirement> parseSkillProgression(
-  String csv, {
-  List<CurriculumGame> games = const [],
-}) {
+/// The requirements table the app runs on: the authored sheet, GENERATED
+/// into Dart at build time (tool/generate_curriculum.dart — never a CSV
+/// parsed on a device), with the built games' rows written from their own
+/// ladders.
+final List<GameRequirement> requirements = withBuiltGames(
+  sheetRequirements,
+  builtGames,
+);
+
+/// [sheet] with the rows for [games] replaced by rows written from each
+/// game's own ladder — the sheet's tier numbers do not describe the app's
+/// ladders.
+List<GameRequirement> withBuiltGames(
+  List<GameRequirement> sheet,
+  List<CurriculumGame> games,
+) {
   final built = {for (final g in games) g.name};
-  final imported = [
-    for (final row in parseCsvTable(csv))
-      if (!built.contains(row['Skill']))
-        GameRequirement(
-          skillNode: row['Node']!,
-          game: row['Skill']!,
-          tier: int.parse(row['Tier']!),
-          minAgency: agencyFromSheet(row['MinAgency']!),
-          maxAgency: agencyFromSheet(row['MaxAgency']!),
-          sheetPrerequisite: row['Prerequisite'] ?? '',
-        ),
-  ];
   return [
-    ...imported,
+    for (final r in sheet)
+      if (!built.contains(r.game)) r,
     for (final g in games)
       for (var i = 0; i < g.tierCount; i++)
         GameRequirement(
@@ -137,6 +142,24 @@ List<GameRequirement> parseSkillProgression(
         ),
   ];
 }
+
+/// Reads the Skill Progression table (columns Node, Skill, Tier, MinAgency,
+/// MaxAgency, Prerequisite), remapping agency — at BUILD time, by the
+/// generator; and, given [games], replaces their rows as [withBuiltGames].
+List<GameRequirement> parseSkillProgression(
+  String csv, {
+  List<CurriculumGame> games = const [],
+}) => withBuiltGames([
+  for (final row in parseCsvTable(csv))
+    GameRequirement(
+      skillNode: row['Node']!,
+      game: row['Skill']!,
+      tier: int.parse(row['Tier']!),
+      minAgency: agencyFromSheet(row['MinAgency']!),
+      maxAgency: agencyFromSheet(row['MaxAgency']!),
+      sheetPrerequisite: row['Prerequisite'] ?? '',
+    ),
+], games);
 
 /// Card 201's eligibility filter: which built games a child can be given a
 /// round of right now, on three axes — agency, the child's tier in that game,
