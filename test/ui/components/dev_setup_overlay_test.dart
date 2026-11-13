@@ -64,6 +64,44 @@ void main() {
     expect(startButton.bottom, lessThanOrEqualTo(viewportHeight));
   });
 
+  testWidgets('Loud or Quiet\'s gate — gap AND quiet-lift steppers — fits '
+      'an iPhone SE too, and the lift lifts', (tester) async {
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    tester.view.devicePixelRatio = 2.0;
+    tester.view.physicalSize = const Size(1334, 750);
+    final devSettings = DevSettingsState();
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider<DevSettingsState>.value(
+        value: devSettings,
+        child: MaterialApp(
+          home: Scaffold(
+            body: DevSetupOverlay(onStart: () {}, loudQuiet: true),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    expect(tester.takeException(), isNull);
+    expect(find.byType(SingleChildScrollView), findsNothing);
+    final viewportHeight =
+        tester.view.physicalSize.height / tester.view.devicePixelRatio;
+    expect(
+      tester.getRect(find.text('Start')).bottom,
+      lessThanOrEqualTo(viewportHeight),
+    );
+
+    await tester.tap(find.byKey(const ValueKey('lift-plus')));
+    await tester.pump();
+    expect(devSettings.loudQuietLadder.liftDb, 1);
+    expect(
+      tester.widget<Text>(find.byKey(const ValueKey('lift-value'))).data,
+      '+1',
+    );
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('the Rounds row sets the round-set length for the agency '
       'picked above it, and only that one (Trello card 196)', (tester) async {
     final devSettings = DevSettingsState();

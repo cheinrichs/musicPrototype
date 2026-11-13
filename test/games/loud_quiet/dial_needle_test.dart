@@ -10,7 +10,7 @@ void main() {
   const rest = LoudQuietLayout.restDegrees;
   final loud = LoudQuietLayout.needleDegrees(1);
   final quiet = LoudQuietLayout.needleDegrees(
-    LoudQuietRound.needlePositionDb(DynamicLadder.quietDb),
+    LoudQuietRound.needlePositionDb(DynamicLadder.floorDb),
   );
   const length = Duration(milliseconds: 1700);
 

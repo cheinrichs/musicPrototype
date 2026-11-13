@@ -196,12 +196,13 @@ void main() {
         'quiet sound a short way, the tightest step\'s loud one past '
         'halfway, full gain all the way', () {
       expect(
-        LoudQuietRound.needlePositionDb(DynamicLadder.quietDb),
+        LoudQuietRound.needlePositionDb(DynamicLadder.floorDb),
         closeTo(2 / 14, 0.01),
       );
       expect(
         LoudQuietRound.needlePositionDb(DynamicLadder.standard.loudDbAt(2)),
-        closeTo(6 / 14, 0.01),
+        // T3 (8 dB): loud at -4, 10/14 of the way.
+        closeTo(10 / 14, 0.01),
       );
       expect(LoudQuietRound.needlePosition(1.0), closeTo(1, 1e-9));
       expect(

@@ -122,11 +122,23 @@ class DevSettingsState extends ChangeNotifier {
     unawaited(_saveGaps());
   }
 
-  static const _gapsKey = 'dev.loudQuiet.gapsDb';
+  /// Lifts Loud or Quiet's quiet sound [db] above the audibility floor,
+  /// keeping every gap; kept on this device.
+  void setLoudQuietLift(double db) {
+    _loudQuietLadder = _loudQuietLadder.withLift(db);
+    notifyListeners();
+    unawaited(_saveGaps());
+  }
+
+  /// v2 (2026-11-13): the table was recalibrated to 16/12/8 after Cooper's
+  /// device test, so gaps tuned against the old 12/8/4 table (the very
+  /// values he found unplayable) are left behind rather than carried over.
+  static const _gapsKey = 'dev.loudQuiet.gapsDb.v2';
+  static const _liftKey = '_lift';
 
   /// Restores gaps tuned on this device, by distance id — so a ladder that
   /// has gained or lost steps since keeps the gaps of the distances it
-  /// still has.
+  /// still has — and the quiet sound's lift.
   Future<void> load() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -142,6 +154,8 @@ class DevSettingsState extends ChangeNotifier {
         final three = saved['${d.id}.three'];
         if (three != null) ladder = ladder.withThreeGap(d.id, three);
       }
+      final lift = saved[_liftKey];
+      if (lift != null) ladder = ladder.withLift(lift);
       _loudQuietLadder = ladder;
       notifyListeners();
     } catch (e) {
@@ -159,6 +173,7 @@ class DevSettingsState extends ChangeNotifier {
             d.id: d.gapDb,
             if (d.threeGapDb != null) '${d.id}.three': d.threeGapDb,
           },
+          _liftKey: _loudQuietLadder.liftDb,
         }),
       );
     } catch (e) {

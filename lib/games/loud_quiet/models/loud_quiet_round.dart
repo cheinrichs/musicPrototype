@@ -16,9 +16,8 @@ class LoudQuietRound {
   final List<HighLowInstrument> instruments;
 
   /// Each side's intended level, in dB below full, BEFORE its instrument's
-  /// trim: what the dial shows. The quietest is [DynamicLadder.quietDb]; the
-  /// others stand a neighbour-gap above each other (card 220 — gaps close by
-  /// bringing the loud end down).
+  /// trim: what the dial shows. The quietest is the ladder's quiet level
+  /// (the floor plus any lift); see [DynamicLadder.levelsDbAt] for the rest.
   final List<double> levelsDb;
 
   /// The note every side plays. One pitch, so pitch never answers the
@@ -43,7 +42,7 @@ class LoudQuietRound {
     required int midi,
     required int loudSide,
     required double loudDb,
-    double quietDb = DynamicLadder.quietDb,
+    double quietDb = DynamicLadder.floorDb,
     required bool asksLoud,
   }) => LoudQuietRound.of(
     instruments: [leftInstrument, rightInstrument],
@@ -155,7 +154,7 @@ class LoudQuietRound {
   HighLowInstrument instrumentOf(int side) => instruments[side];
 
   /// Where the dial's zero sits, in dB below full: under the quietest sound
-  /// it shows ([DynamicLadder.quietDb], −12 dB), so even the quietest is a short movement up from
+  /// it shows ([DynamicLadder.floorDb], −12 dB), so even the quietest is a short movement up from
   /// rest and the loudest is the longest (card 208 — loudness is a
   /// magnitude, not a polarity).
   static const double dialFloorDb = -14;

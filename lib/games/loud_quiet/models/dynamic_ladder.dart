@@ -86,27 +86,58 @@ class DynamicLadder {
   final List<DynamicDistance> distances;
   final List<DynamicStep> steps;
 
-  const DynamicLadder({required this.distances, required this.steps});
+  /// How far above [floorDb] the quiet sound sits, in dB — tuned by ear on a
+  /// device (the dev gate's "Quiet +" control). Loudness discrimination
+  /// degrades near the hearing threshold, and at 0 the quiet sound sits ON
+  /// the audibility floor, the worst place to judge it from; lifting the
+  /// pair keeps every gap identical and may make a gap that is hard at the
+  /// floor comfortable above it. Every dB of lift is a dB less span above.
+  final double liftDb;
 
-  /// The quiet sound's level on every step, in dB below full (before its
-  /// instrument's trim): the level the game's quiet sound has always had.
-  static const double quietDb = -12;
+  const DynamicLadder({
+    required this.distances,
+    required this.steps,
+    this.liftDb = 0,
+  });
 
-  /// The widest gap there can be: loud at full. Loud never goes above 0 dB.
-  static const double maxGapDb = -quietDb;
+  /// The audibility floor, in dB below full (before trim): the level the
+  /// game's quiet sound has always had, never lowered (card 220).
+  static const double floorDb = -12;
+
+  /// The ceiling: full. The loudest samples in the pool already peak at
+  /// about −1 dBFS (bells, guitar, piano — measured 2026-11-13), so nothing
+  /// plays above it.
+  static const double ceilingDb = 0;
+
+  /// The quiet sound's level on every step: the floor, plus [liftDb].
+  double get quietDb => floorDb + liftDb;
+
+  /// The most the quiet sound may be lifted.
+  static const double maxLiftDb = 6;
 
   /// The narrowest a gap may be tuned to.
   static const double minGapDb = 1;
 
-  /// The starting table. The dB values are PLACEHOLDERS that happen to be
-  /// reasonable; Cooper sets the real ones by ear on a device (the dev
-  /// gate's "Gap" control). Expect them to end up unevenly spaced: even in
-  /// dB is not even in difficulty, and 8→4 is a far bigger jump than 12→8.
+  /// The widest a gap's FIGURE may be set to. A figure wider than the span
+  /// holds is compressed when played (see [playedGapDbAt]) and says so.
+  static const double maxFigureDb = 24;
+
+  /// The starting table — PLACEHOLDERS, tuned by ear on a device (the dev
+  /// gate's "Gap" control). Calibrated to Cooper's ear as the CEILING, not
+  /// the target: his ear is better than a three-year-old's, so anything he
+  /// finds "trickier" is beyond the children, and a gap he calls tricky is
+  /// the TOP of a children's ladder. On a device (2026-11-13) he found
+  /// 4 dB indistinguishable, 6 "very tricky", 8 "possible but definitely
+  /// trickier" — so 8 is the HARDEST rung here, not the middle one.
+  ///
+  /// The two-instrument and three-instrument gaps may DIVERGE: three need
+  /// more span than two, so the two-instrument tiers can go wider. That is
+  /// a real constraint, not a bug — never force them to match.
   static const DynamicLadder standard = DynamicLadder(
     distances: [
-      DynamicDistance('extreme', 'Extreme', 12),
-      DynamicDistance('moderate', 'Moderate', 8),
-      DynamicDistance('subtle', 'Subtle', 4),
+      DynamicDistance('extreme', 'Extreme', 16),
+      DynamicDistance('moderate', 'Moderate', 12),
+      DynamicDistance('subtle', 'Subtle', 8),
     ],
     steps: [
       DynamicStep('extreme', 2), // T1
@@ -138,11 +169,8 @@ class DynamicLadder {
   double gapDbAt(int index) =>
       distanceOf(index).gapFor(instrumentCountAt(index));
 
-  /// The whole span the levels can use: from [quietDb] (the audible floor,
-  /// never lowered — card 220) up to full. Full is the ceiling: the loudest
-  /// samples in the pool already peak at about -1 dBTP (bells, guitar, piano
-  /// — measured 2026-11-13), so nothing plays above full.
-  static const double spanDb = -quietDb;
+  /// The whole span the levels can use: from [quietDb] up to [ceilingDb].
+  double get spanDb => ceilingDb - quietDb;
 
   /// How far each extra instrument sits beyond the target's nearest
   /// competitor, in dB: small and FIXED. It only has to make that sound
@@ -152,7 +180,7 @@ class DynamicLadder {
 
   /// The widest gap a round of [count] instruments can play: the span, less
   /// what the extra instruments take.
-  static double maxGapDbFor(int count) =>
+  double maxGapDbFor(int count) =>
       spanDb - (count > 2 ? count - 2 : 0) * extraOffsetDb;
 
   /// The gap actually played at [index], in dB: between the TARGET and its
@@ -183,8 +211,8 @@ class DynamicLadder {
   bool isCompressedAt(int index) => playedGapDbAt(index) < gapDbAt(index);
 
   /// The levels a round at [index] plays, quietest first, in dB below full
-  /// (before trim). Quiet is at [quietDb] whatever is asked — the floor is
-  /// never lowered. Asking for the LOUDEST: the extras sit at the floor in
+  /// (before trim). Quiet is at [quietDb] whatever is asked — never below
+  /// the floor. Asking for the LOUDEST: the extras sit at quiet in
   /// [extraOffsetDb] steps, and the target the played gap above the
   /// highest of them. Asking for the QUIETEST, the mirror: the target at
   /// the floor, its competitor the gap above, the extras beyond.
@@ -218,18 +246,30 @@ class DynamicLadder {
     return 'T${i + 1} ${distanceOf(i).label} ×${steps[i].instrumentCount}';
   }
 
+  /// "4": the step's number alone, for a tight chip under a "Tier" title.
+  String shortLabelAt(int index) => '${clampIndex(index) + 1}';
+
   /// The gap each step actually plays, for reading off: "6" where it plays
   /// its figure, "12→6" where it is compressed.
-  String playedGapsLabel() {
-    String db(double v) =>
-        v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toStringAsFixed(1);
-    return [
-      for (var i = 0; i < length; i++)
-        isCompressedAt(i)
-            ? '${db(gapDbAt(i))}→${db(playedGapDbAt(i))}'
-            : db(gapDbAt(i)),
-    ].join(' · ');
-  }
+  String playedGapsLabel() => _gapsLabel(
+    ' · ',
+    (i) => isCompressedAt(i)
+        ? '${_dbText(gapDbAt(i))}→${_dbText(playedGapDbAt(i))}'
+        : _dbText(gapDbAt(i)),
+  );
+
+  /// [playedGapsLabel], short and steady in length for a tight screen: the
+  /// gap each step plays, starred where it is compressed below its figure.
+  String playedGapsShortLabel() => _gapsLabel(
+    '·',
+    (i) => '${_dbText(playedGapDbAt(i))}${isCompressedAt(i) ? '*' : ''}',
+  );
+
+  String _gapsLabel(String separator, String Function(int) entry) =>
+      [for (var i = 0; i < length; i++) entry(i)].join(separator);
+
+  static String _dbText(double v) =>
+      v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toStringAsFixed(1);
 
   /// The lowest agency step [index] is reachable at — mirroring High vs
   /// Low's rule exactly: Observe holds at the first step, Explore stops
@@ -258,28 +298,39 @@ class DynamicLadder {
   }
 
   /// A copy with distance [distanceId]'s gap set to [db], kept within
-  /// [minGapDb]–[maxGapDb]. Every two-instrument step at that distance
+  /// [minGapDb]–[maxFigureDb]. Every two-instrument step at that distance
   /// changes with it.
   DynamicLadder withGap(String distanceId, double db) => DynamicLadder(
     distances: [
       for (final d in distances)
         d.id == distanceId
-            ? d.withGap(db.clamp(minGapDb, maxGapDb).toDouble())
+            ? d.withGap(db.clamp(minGapDb, maxFigureDb).toDouble())
             : d,
     ],
     steps: steps,
+    liftDb: liftDb,
   );
 
   /// A copy with distance [distanceId]'s THREE-instrument target gap set to
-  /// [db], kept within [minGapDb] and what the span holds for three.
+  /// [db], kept within [minGapDb]–[maxFigureDb].
   DynamicLadder withThreeGap(String distanceId, double db) => DynamicLadder(
     distances: [
       for (final d in distances)
         d.id == distanceId
-            ? d.withThreeGap(db.clamp(minGapDb, maxGapDbFor(3)).toDouble())
+            ? d.withThreeGap(db.clamp(minGapDb, maxFigureDb).toDouble())
             : d,
     ],
     steps: steps,
+    liftDb: liftDb,
+  );
+
+  /// A copy with the quiet sound lifted [db] above the floor, kept within
+  /// 0–[maxLiftDb]. Every gap stays as it is (compressed where the span
+  /// above no longer holds it).
+  DynamicLadder withLift(double db) => DynamicLadder(
+    distances: distances,
+    steps: steps,
+    liftDb: db.clamp(0, maxLiftDb).toDouble(),
   );
 
   /// Sets the gap step [index] plays for its instrument count: the
@@ -294,6 +345,7 @@ class DynamicLadder {
   @override
   bool operator ==(Object other) =>
       other is DynamicLadder &&
+      other.liftDb == liftDb &&
       _same(other.distances, distances) &&
       _same(other.steps, steps);
 
@@ -303,5 +355,5 @@ class DynamicLadder {
 
   @override
   int get hashCode =>
-      Object.hash(Object.hashAll(distances), Object.hashAll(steps));
+      Object.hash(Object.hashAll(distances), Object.hashAll(steps), liftDb);
 }

@@ -91,7 +91,7 @@ class DevSetupOverlay extends StatelessWidget {
                       Expanded(
                         child: loudQuiet
                             ? _SettingRow<int>(
-                                title: 'Step',
+                                title: 'Tier',
                                 values: [
                                   for (
                                     var i = 0;
@@ -100,8 +100,13 @@ class DevSetupOverlay extends StatelessWidget {
                                   )
                                     i,
                                 ],
+                                // Short ("T4"): the full names stacked one
+                                // chip per line and the gate overflowed an
+                                // SE. The gap stepper says "Gap ×3" on a
+                                // three-instrument step, and the table
+                                // beneath it reads off each step's dB.
                                 labelOf: (i) =>
-                                    devSettings.loudQuietLadder.labelAt(i),
+                                    devSettings.loudQuietLadder.shortLabelAt(i),
                                 // As tiers: steps the agency can't reach are
                                 // shown disabled.
                                 isEnabled: (i) => devSettings.loudQuietLadder
@@ -147,6 +152,9 @@ class DevSetupOverlay extends StatelessWidget {
                           labelOf: (o) => o.label,
                           selected: devSettings.roundOrder,
                           onSelected: devSettings.setRoundOrder,
+                          // Narrow, as the toggles below, so its chips keep
+                          // to one line beside Loud or Quiet's gap column.
+                          titleWidth: 40,
                         ),
                       ),
                       // The selected step's gap, tuned by ear (card 220);
@@ -163,38 +171,50 @@ class DevSetupOverlay extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: AppSpacing.xs),
-                  // Two two-way toggles share one row, so the column still
-                  // fits an SE without scrolling.
-                  Row(
-                    children: [
-                      // Ordering is a separate skill, not a fourth
-                      // AgencyStage (Trello card 168) — this toggle stands in
-                      // for a real skill picker that doesn't exist yet.
-                      Expanded(
-                        child: _SettingRow<bool>(
-                          title: 'Skill',
-                          values: const [false, true],
-                          labelOf: (o) => o ? 'Order' : 'Pair',
-                          selected: devSettings.orderingSelected,
-                          onSelected: devSettings.setOrderingSelected,
-                          titleWidth: 40,
-                        ),
+                  // Loud or Quiet: the quiet sound's lift above the
+                  // audibility floor, in the row High vs Low's two toggles
+                  // take — neither does anything in Loud or Quiet.
+                  if (loudQuiet)
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: _LiftStepper(
+                        liftDb: devSettings.loudQuietLadder.liftDb,
+                        onChanged: devSettings.setLoudQuietLift,
                       ),
-                      const SizedBox(width: AppSpacing.sm),
-                      // Trello card 173: off until the flight has been seen on
-                      // a device; this is how it gets seen.
-                      Expanded(
-                        child: _SettingRow<bool>(
-                          title: 'Arrow',
-                          values: const [false, true],
-                          labelOf: (o) => o ? 'Fly' : 'Next',
-                          selected: devSettings.observeFlight,
-                          onSelected: devSettings.setObserveFlight,
-                          titleWidth: 40,
+                    )
+                  else
+                    // Two two-way toggles share one row, so the column still
+                    // fits an SE without scrolling.
+                    Row(
+                      children: [
+                        // Ordering is a separate skill, not a fourth
+                        // AgencyStage (Trello card 168) — this toggle stands in
+                        // for a real skill picker that doesn't exist yet.
+                        Expanded(
+                          child: _SettingRow<bool>(
+                            title: 'Skill',
+                            values: const [false, true],
+                            labelOf: (o) => o ? 'Order' : 'Pair',
+                            selected: devSettings.orderingSelected,
+                            onSelected: devSettings.setOrderingSelected,
+                            titleWidth: 40,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
+                        const SizedBox(width: AppSpacing.sm),
+                        // Trello card 173: off until the flight has been seen on
+                        // a device; this is how it gets seen.
+                        Expanded(
+                          child: _SettingRow<bool>(
+                            title: 'Arrow',
+                            values: const [false, true],
+                            labelOf: (o) => o ? 'Fly' : 'Next',
+                            selected: devSettings.observeFlight,
+                            onSelected: devSettings.setObserveFlight,
+                            titleWidth: 40,
+                          ),
+                        ),
+                      ],
+                    ),
                   const SizedBox(height: AppSpacing.sm),
                   SizedBox(
                     height: 40,
@@ -237,18 +257,9 @@ class _GapStepper extends StatelessWidget {
     final count = ladder.instrumentCountAt(step);
     final three = count >= 3;
     final gap = ladder.playedGapDbAt(step);
-    final most = DynamicLadder.maxGapDbFor(count);
+    final most = ladder.maxGapDbFor(count);
     Widget button(String key, IconData icon, double to, bool enabled) =>
-        IconButton(
-          key: ValueKey(key),
-          icon: Icon(icon, size: 18),
-          visualDensity: VisualDensity.compact,
-          padding: EdgeInsets.zero,
-          constraints: const BoxConstraints.tightFor(width: 32, height: 32),
-          onPressed: enabled ? () => onChanged(to) : null,
-        );
-    String db(double v) =>
-        v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toStringAsFixed(1);
+        _stepButton(key, icon, enabled ? () => onChanged(to) : null);
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -266,7 +277,7 @@ class _GapStepper extends StatelessWidget {
               gap > DynamicLadder.minGapDb,
             ),
             Text(
-              '${db(gap)} dB',
+              '${_db(gap)} dB',
               key: const ValueKey('gap-value'),
               style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
             ),
@@ -274,15 +285,64 @@ class _GapStepper extends StatelessWidget {
           ],
         ),
         Text(
-          // Per tier, the gap actually played ("12→6" where three levels
-          // had to be compressed to fit).
-          ladder.playedGapsLabel(),
+          // Per tier, the gap actually played, starred where the span would
+          // not hold the figure (the stepper above shows the selected
+          // step's "16→12"). Short and steady in length, so the column
+          // stays narrow enough for the Order chips to keep to one line on
+          // an SE whatever is tuned.
+          ladder.playedGapsShortLabel(),
           key: const ValueKey('gap-table'),
           style: AppTypography.label.copyWith(fontSize: 10),
         ),
       ],
     );
   }
+}
+
+Widget _stepButton(String key, IconData icon, VoidCallback? onPressed) =>
+    IconButton(
+      key: ValueKey(key),
+      icon: Icon(icon, size: 18),
+      visualDensity: VisualDensity.compact,
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints.tightFor(width: 32, height: 32),
+      onPressed: onPressed,
+    );
+
+String _db(double v) =>
+    v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toStringAsFixed(1);
+
+/// "Quiet − +n +": how far Loud or Quiet's quiet sound sits above the
+/// audibility floor, a decibel at a time. Every gap is kept; the span above
+/// shrinks with it, and the gap table shows what gets compressed.
+class _LiftStepper extends StatelessWidget {
+  final double liftDb;
+  final ValueChanged<double> onChanged;
+
+  const _LiftStepper({required this.liftDb, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Text('Quiet', style: AppTypography.label.copyWith(fontSize: 12)),
+      _stepButton(
+        'lift-minus',
+        Icons.remove_rounded,
+        liftDb > 0 ? () => onChanged(liftDb - 1) : null,
+      ),
+      Text(
+        '+${_db(liftDb)}',
+        key: const ValueKey('lift-value'),
+        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+      ),
+      _stepButton(
+        'lift-plus',
+        Icons.add_rounded,
+        liftDb < DynamicLadder.maxLiftDb ? () => onChanged(liftDb + 1) : null,
+      ),
+    ],
+  );
 }
 
 /// "Rounds − n +": the round-set length for the selected agency, within
