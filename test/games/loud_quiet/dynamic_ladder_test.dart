@@ -11,10 +11,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 void main() {
   const ladder = DynamicLadder.standard;
 
-  test('the starting table: extreme 12, moderate 8, subtle 4 dB, and the '
-      'phrase step marked unbuilt', () {
-    expect(ladder.steps.map((s) => s.gapDb).take(3), [12, 8, 4]);
-    expect(ladder.steps.last.built, isFalse);
+  test('three steps: extreme 12, moderate 8, subtle 4 dB — no phrase step, '
+      'which is its own game (Dynamics)', () {
+    expect(ladder.steps.map((s) => s.id), ['extreme', 'moderate', 'subtle']);
+    expect(ladder.steps.map((s) => s.gapDb), [12, 8, 4]);
   });
 
   test('TRAP 1: the gap closes by bringing LOUD down — quiet sits at the '
@@ -27,7 +27,7 @@ void main() {
         random: math.Random(i),
       );
       expect(r.quietDb, DynamicLadder.quietDb, reason: ladder[i].id);
-      expect(r.loudDb, DynamicLadder.quietDb + ladder.playedAt(i).gapDb);
+      expect(r.loudDb, DynamicLadder.quietDb + ladder[i].gapDb);
       expect(r.loudDb, lessThanOrEqualTo(0), reason: 'never above full');
     }
   });
@@ -73,18 +73,17 @@ void main() {
     expect(db, closeTo(6.5, 1e-9));
   });
 
-  test('an unbuilt step plays as the built step below it', () {
-    expect(ladder.playedAt(3).id, 'subtle');
-    expect(ladder.loudDbAt(3), ladder.loudDbAt(2));
-  });
-
-  test('LENGTH IS DATA: a three-step ladder is as valid as four, and a '
-      'step past the end clamps onto it', () {
-    final three = DynamicLadder(ladder.steps.take(3).toList());
-    expect(three.length, 3);
-    expect(three.playedAt(7).id, 'subtle');
+  test('LENGTH IS DATA: a two- or four-step ladder works as well as three, '
+      'and a step past the end clamps onto it', () {
+    final two = DynamicLadder(ladder.steps.take(2).toList());
+    expect(two[7].id, 'moderate');
+    final four = DynamicLadder([
+      ...ladder.steps,
+      const DynamicStep('x', 'X', 2),
+    ]);
+    expect(four.loudDbAt(3), DynamicLadder.quietDb + 2);
     final r = LoudQuietRound.generate(
-      ladder: three,
+      ladder: ladder,
       step: 9,
       asksLoud: false,
       random: math.Random(2),

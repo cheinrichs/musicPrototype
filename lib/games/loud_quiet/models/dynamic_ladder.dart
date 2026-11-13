@@ -10,32 +10,27 @@ class DynamicStep {
   /// gain multiplier (card 220).
   final double gapDb;
 
-  /// False for a step whose mechanic isn't built: it plays as the nearest
-  /// built step below it.
-  final bool built;
+  const DynamicStep(this.id, this.label, this.gapDb);
 
-  const DynamicStep(this.id, this.label, this.gapDb, {this.built = true});
-
-  DynamicStep withGap(double db) => DynamicStep(id, label, db, built: built);
+  DynamicStep withGap(double db) => DynamicStep(id, label, db);
 
   @override
   bool operator ==(Object other) =>
-      other is DynamicStep &&
-      other.id == id &&
-      other.gapDb == gapDb &&
-      other.built == built;
+      other is DynamicStep && other.id == id && other.gapDb == gapDb;
 
   @override
-  int get hashCode => Object.hash(id, gapDb, built);
+  int get hashCode => Object.hash(id, gapDb);
 }
 
 /// Loud or Quiet's own difficulty ladder: DYNAMIC DISTANCE, how far apart
 /// the loud and quiet sounds are (card 220). Interval width means nothing
 /// for loudness, so it no longer shares High vs Low's eight concept tiers.
 ///
-/// DATA THAT CAN GROW — and shrink: its length is the table's, never
-/// assumed (the fourth step may yet become a game of its own, leaving
-/// three). Easiest first.
+/// THREE STEPS, as DATA: its length is the table's, never assumed. It may
+/// grow later along other dimensions (instrument variety, note count), as
+/// High vs Low's did — never through musical context: hearing a dynamic
+/// change inside a phrase is its own game, Dynamics (Cooper, 2026-11), not
+/// a step of this one. Easiest first.
 ///
 /// The three traps (card 220):
 /// - The gap closes by bringing LOUD DOWN toward quiet, never by pushing
@@ -70,9 +65,6 @@ class DynamicLadder {
     DynamicStep('extreme', 'Extreme', 12),
     DynamicStep('moderate', 'Moderate', 8),
     DynamicStep('subtle', 'Subtle', 4),
-    // A dynamic change inside a melody. NOT BUILT: no phrase mechanic (and
-    // it may become its own game). Plays as Subtle.
-    DynamicStep('phrase', 'In a phrase', 4, built: false),
   ]);
 
   int get length => steps.length;
@@ -82,17 +74,8 @@ class DynamicLadder {
 
   int clampIndex(int index) => index.clamp(0, length - 1);
 
-  /// The step actually played at [index]: itself if built, else the nearest
-  /// built step below it.
-  DynamicStep playedAt(int index) {
-    for (var i = clampIndex(index); i >= 0; i--) {
-      if (steps[i].built) return steps[i];
-    }
-    return steps.firstWhere((s) => s.built, orElse: () => steps.first);
-  }
-
   /// The loud sound's level at [index], in dB below full (before trim).
-  double loudDbAt(int index) => quietDb + playedAt(index).gapDb;
+  double loudDbAt(int index) => quietDb + this[index].gapDb;
 
   /// A copy with step [index]'s gap set to [db], kept within
   /// [minGapDb]–[maxGapDb].

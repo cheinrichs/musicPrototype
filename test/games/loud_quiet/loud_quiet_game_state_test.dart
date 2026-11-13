@@ -103,7 +103,7 @@ void main() {
           );
           expect(r.leftInstrument, r.rightInstrument);
           expect(r.leftInstrument.availableMidis, contains(r.midi));
-          expect(r.gapDb, ladder.playedAt(step).gapDb);
+          expect(r.gapDb, ladder[step].gapDb);
         }
       }
     });

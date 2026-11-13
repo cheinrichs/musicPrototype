@@ -115,7 +115,7 @@ class LoudQuietRound {
       ((db - dialFloorDb) / -dialFloorDb).clamp(0.0, 1.0);
 
   /// A round at [step] of [ladder], asking about the loud pole if
-  /// [asksLoud]. An unbuilt step plays as the built one below it.
+  /// [asksLoud].
   factory LoudQuietRound.generate({
     required DynamicLadder ladder,
     required int step,

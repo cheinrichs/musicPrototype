@@ -100,14 +100,8 @@ class DevSetupOverlay extends StatelessWidget {
                                   )
                                     i,
                                 ],
-                                // An unbuilt step is starred: it plays as
-                                // the built one below it.
-                                labelOf: (i) {
-                                  final step = devSettings.loudQuietLadder[i];
-                                  return step.built
-                                      ? step.label
-                                      : '${step.label}*';
-                                },
+                                labelOf: (i) =>
+                                    devSettings.loudQuietLadder[i].label,
                                 selected: devSettings.loudQuietStep,
                                 onSelected: devSettings.setLoudQuietStep,
                               )
