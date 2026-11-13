@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ear_trainer/games/loud_quiet/models/loud_quiet_layout.dart';
+import 'package:ear_trainer/games/loud_quiet/models/dynamic_ladder.dart';
 import 'package:ear_trainer/games/loud_quiet/models/loud_quiet_round.dart';
 import 'package:ear_trainer/games/loud_quiet/widgets/dial_needle.dart';
 
@@ -9,7 +10,7 @@ void main() {
   const rest = LoudQuietLayout.restDegrees;
   final loud = LoudQuietLayout.needleDegrees(1);
   final quiet = LoudQuietLayout.needleDegrees(
-    LoudQuietRound.needlePosition(LoudQuietRound.wideQuietGain),
+    LoudQuietRound.needlePositionDb(DynamicLadder.quietDb),
   );
   const length = Duration(milliseconds: 1700);
 
@@ -30,7 +31,7 @@ void main() {
   test('each sound lands in its zone of the face — measured on the renders, '
       'the zone boundaries sit about 30° either side of straight up', () {
     final narrowQuiet = LoudQuietLayout.needleDegrees(
-      LoudQuietRound.needlePosition(LoudQuietRound.narrowQuietGain),
+      LoudQuietRound.needlePositionDb(-6),
     );
     expect(quiet, lessThan(-30 - 10), reason: 'wide quiet: the quiet zone');
     expect(narrowQuiet, inInclusiveRange(-30 + 10, 30 - 10), reason: 'middle');

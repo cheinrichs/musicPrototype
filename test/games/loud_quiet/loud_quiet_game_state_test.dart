@@ -9,7 +9,7 @@ import 'package:ear_trainer/games/high_low/models/high_low_instrument.dart';
 import 'package:ear_trainer/games/loud_quiet/models/loud_quiet_round.dart';
 import 'package:ear_trainer/games/loud_quiet/state/loud_quiet_game_state.dart';
 import 'package:ear_trainer/models/agency_stage.dart';
-import 'package:ear_trainer/models/concept_tier.dart';
+import 'package:ear_trainer/games/loud_quiet/models/dynamic_ladder.dart';
 import 'package:ear_trainer/models/game_status.dart';
 import 'package:ear_trainer/models/round_order.dart';
 import 'package:ear_trainer/models/round_set_length.dart';
@@ -54,13 +54,13 @@ class _RecordingAudio implements AudioController {
 LoudQuietGameState _game(
   _RecordingAudio audio, {
   AgencyStage stage = AgencyStage.observe,
-  ConceptTier tier = ConceptTier.t1,
+  int step = 0,
   int seed = 1,
 }) => LoudQuietGameState(
   audio: audio,
   random: math.Random(seed),
   agencyStage: stage,
-  conceptTier: tier,
+  step: step,
 );
 
 /// Lets the round's two opening sounds finish.
@@ -89,27 +89,21 @@ void main() {
   });
 
   group('LoudQuietRound', () {
-    test('both sides play the same note; only the gain differs', () {
+    test('both sides play the same note on the same instrument; only the '
+        'level differs, by the step\'s gap (card 220)', () {
       final random = math.Random(3);
-      for (final tier in ConceptTier.values) {
+      const ladder = DynamicLadder.standard;
+      for (var step = 0; step < ladder.length; step++) {
         for (var i = 0; i < 40; i++) {
           final r = LoudQuietRound.generate(
-            tier: tier,
+            ladder: ladder,
+            step: step,
             asksLoud: i.isEven,
             random: random,
           );
+          expect(r.leftInstrument, r.rightInstrument);
           expect(r.leftInstrument.availableMidis, contains(r.midi));
-          expect(r.rightInstrument.availableMidis, contains(r.midi));
-          expect(r.gainOf(r.loudSide), 1.0);
-          expect(
-            r.gainOf(1 - r.loudSide),
-            tier.isWide
-                ? LoudQuietRound.wideQuietGain
-                : LoudQuietRound.narrowQuietGain,
-          );
-          if (!tier.instrumentsVary) {
-            expect(r.leftInstrument, r.rightInstrument);
-          }
+          expect(r.gapDb, ladder.playedAt(step).gapDb);
         }
       }
     });
@@ -121,7 +115,7 @@ void main() {
         rightInstrument: i,
         midi: 72,
         loudSide: 0,
-        quietGain: LoudQuietRound.wideQuietGain,
+        loudDb: 0,
         asksLoud: true,
       );
       double trimDb(HighLowInstrument i) =>
@@ -153,10 +147,11 @@ void main() {
     test('the tuba is never drawn: too little of it reaches a phone '
         'speaker to survive the quiet end', () {
       final random = math.Random(9);
-      for (final tier in ConceptTier.values) {
+      for (var step = 0; step < DynamicLadder.standard.length; step++) {
         for (var i = 0; i < 60; i++) {
           final r = LoudQuietRound.generate(
-            tier: tier,
+            ladder: DynamicLadder.standard,
+            step: step,
             asksLoud: true,
             random: random,
           );
@@ -171,7 +166,8 @@ void main() {
       final sides = {
         for (var i = 0; i < 30; i++)
           LoudQuietRound.generate(
-            tier: ConceptTier.t1,
+            ladder: DynamicLadder.standard,
+            step: 0,
             asksLoud: true,
             random: random,
           ).loudSide,
@@ -181,13 +177,15 @@ void main() {
 
     test('target is the loud side when asking loud, the other when quiet', () {
       final loud = LoudQuietRound.generate(
-        tier: ConceptTier.t1,
+        ladder: DynamicLadder.standard,
+        step: 0,
         asksLoud: true,
         random: math.Random(1),
       );
       expect(loud.targetSide, loud.loudSide);
       final quiet = LoudQuietRound.generate(
-        tier: ConceptTier.t1,
+        ladder: DynamicLadder.standard,
+        step: 0,
         asksLoud: false,
         random: math.Random(1),
       );
@@ -195,15 +193,15 @@ void main() {
     });
 
     test('the dial reads up from zero below the quietest (card 208): the '
-        'quiet sound a short way, a narrow round\'s quiet one past halfway, '
-        'full gain all the way', () {
+        'quiet sound a short way, the tightest step\'s loud one past '
+        'halfway, full gain all the way', () {
       expect(
-        LoudQuietRound.needlePosition(LoudQuietRound.wideQuietGain),
+        LoudQuietRound.needlePositionDb(DynamicLadder.quietDb),
         closeTo(2 / 14, 0.01),
       );
       expect(
-        LoudQuietRound.needlePosition(LoudQuietRound.narrowQuietGain),
-        closeTo(8 / 14, 0.01),
+        LoudQuietRound.needlePositionDb(DynamicLadder.standard.loudDbAt(2)),
+        closeTo(6 / 14, 0.01),
       );
       expect(LoudQuietRound.needlePosition(1.0), closeTo(1, 1e-9));
       expect(

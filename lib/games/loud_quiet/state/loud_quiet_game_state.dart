@@ -6,12 +6,12 @@ import '../../../audio/audio_controller.dart';
 import '../../../audio/shared_voice_line.dart';
 import '../../../audio/sfx_type.dart';
 import '../../../models/agency_stage.dart';
-import '../../../models/concept_tier.dart';
 import '../../../models/game_status.dart';
 import '../../../models/round_order.dart';
 import '../../../models/round_set_length.dart';
 import '../../high_low/models/round_instrumentation.dart';
 import '../../shared/nudges.dart';
+import '../models/dynamic_ladder.dart';
 import '../models/loud_quiet_round.dart';
 
 /// What a Decide drop is showing: nothing, a correct landing, or a gentle
@@ -69,7 +69,8 @@ class LoudQuietGameState extends ChangeNotifier {
     this.roundSetLength = RoundSetLength.standard,
     int? totalPrompts,
     this.agencyStage = AgencyStage.observe,
-    this.conceptTier = ConceptTier.t1,
+    this.ladder = DynamicLadder.standard,
+    this.step = 0,
     this.roundOrder = RoundOrder.blocked,
     NudgePool? nudges,
   }) : _audio = audio ?? AudioController.instance,
@@ -100,8 +101,14 @@ class LoudQuietGameState extends ChangeNotifier {
 
   /// Settable before [startGame], like High vs Low's.
   AgencyStage agencyStage;
-  ConceptTier conceptTier;
   RoundOrder roundOrder;
+
+  /// Loud or Quiet's own ladder — dynamic distance (card 220), never High
+  /// vs Low's concept tiers — and the step this set plays at (an index into
+  /// it; clamped onto it, so a ladder of any length works). Settable before
+  /// [startGame].
+  DynamicLadder ladder;
+  int step;
 
   /// A sample's length when audio can't say (it isn't running, as in
   /// tests): about what the note samples measure.
@@ -247,7 +254,8 @@ class LoudQuietGameState extends ChangeNotifier {
       };
       _rounds.add(
         LoudQuietRound.generate(
-          tier: conceptTier,
+          ladder: ladder,
+          step: step,
           asksLoud: asksLoud,
           random: _random,
         ),

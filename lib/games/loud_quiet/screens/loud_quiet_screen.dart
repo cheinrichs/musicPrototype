@@ -79,6 +79,8 @@ class _LoudQuietScreenState extends State<LoudQuietScreen> {
         LoudQuietGameState(
           roundSetLength: _devSettings().roundSetLength,
           totalPrompts: widget.entry?.rounds,
+          // Its own ladder (card 220), with any gaps tuned on this device.
+          ladder: _devSettings().loudQuietLadder,
         );
     _game.addListener(_onChanged);
     _confetti = ConfettiController(duration: AppAnimations.confettiBurst);
@@ -91,7 +93,9 @@ class _LoudQuietScreenState extends State<LoudQuietScreen> {
         // The set asked for, or the child's own — as High vs Low does.
         final entry = widget.entry ?? GameEntry.forActiveChild(context);
         _game.agencyStage = entry.agency;
-        if (entry.tier != null) _game.conceptTier = entry.tier!;
+        // entry.tier is a concept tier — High vs Low's axis — and means
+        // nothing here: Loud or Quiet has its own ladder (card 220). The
+        // set plays at step 0 until per-game progression exists.
       }
       WidgetsBinding.instance.addPostFrameCallback((_) => _game.startGame());
     }
@@ -118,7 +122,8 @@ class _LoudQuietScreenState extends State<LoudQuietScreen> {
     final dev = context.read<DevSettingsState>();
     _game
       ..agencyStage = dev.agencyStage
-      ..conceptTier = dev.conceptTier
+      ..ladder = dev.loudQuietLadder
+      ..step = dev.loudQuietStep
       ..roundOrder = dev.roundOrder
       ..roundSetLength = dev.roundSetLength;
     setState(() => _showDevGate = false);
@@ -190,7 +195,9 @@ class _LoudQuietScreenState extends State<LoudQuietScreen> {
   @override
   Widget build(BuildContext context) {
     if (_showDevGate) {
-      return Scaffold(body: DevSetupOverlay(onStart: _startFromDevGate));
+      return Scaffold(
+        body: DevSetupOverlay(onStart: _startFromDevGate, loudQuiet: true),
+      );
     }
     final size = MediaQuery.sizeOf(context);
     final insets = MediaQuery.paddingOf(context);

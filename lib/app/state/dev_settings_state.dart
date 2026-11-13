@@ -1,4 +1,10 @@
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../../games/loud_quiet/models/dynamic_ladder.dart';
 import '../../models/agency_stage.dart';
 import '../../models/concept_tier.dart';
 import '../../models/round_order.dart';
@@ -83,6 +89,67 @@ class DevSettingsState extends ChangeNotifier {
   void setObserveFlight(bool on) {
     _observeFlight = on;
     notifyListeners();
+  }
+
+  /// Loud or Quiet's ladder, with any gaps tuned on this device (card 220:
+  /// Cooper sets the real values by ear). Read by every Loud or Quiet set,
+  /// a child's included — on an internal build, so tuning is heard at once.
+  /// A public build has no way to tune it, so it plays
+  /// [DynamicLadder.standard].
+  DynamicLadder _loudQuietLadder = DynamicLadder.standard;
+
+  /// The step the dev gate starts Loud or Quiet at.
+  int _loudQuietStep = 0;
+
+  DynamicLadder get loudQuietLadder => _loudQuietLadder;
+  int get loudQuietStep => _loudQuietStep;
+
+  void setLoudQuietStep(int step) {
+    _loudQuietStep = _loudQuietLadder.clampIndex(step);
+    notifyListeners();
+  }
+
+  /// Sets step [step]'s gap, in dB, and keeps it on this device.
+  void setLoudQuietGap(int step, double db) {
+    _loudQuietLadder = _loudQuietLadder.withGap(step, db);
+    notifyListeners();
+    unawaited(_saveGaps());
+  }
+
+  static const _gapsKey = 'dev.loudQuiet.gapsDb';
+
+  /// Restores gaps tuned on this device, by step id — so a ladder that has
+  /// gained or lost a step since keeps the gaps of the steps it still has.
+  Future<void> load() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_gapsKey);
+      if (raw == null) return;
+      final saved = (jsonDecode(raw) as Map<String, dynamic>).map(
+        (k, v) => MapEntry(k, (v as num).toDouble()),
+      );
+      var ladder = _loudQuietLadder;
+      for (var i = 0; i < ladder.length; i++) {
+        final db = saved[ladder.steps[i].id];
+        if (db != null) ladder = ladder.withGap(i, db);
+      }
+      _loudQuietLadder = ladder;
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Could not restore Loud or Quiet gaps: $e');
+    }
+  }
+
+  Future<void> _saveGaps() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(
+        _gapsKey,
+        jsonEncode({for (final s in _loudQuietLadder.steps) s.id: s.gapDb}),
+      );
+    } catch (e) {
+      debugPrint('Could not save Loud or Quiet gaps: $e');
+    }
   }
 
   /// Sets the round count for [stage] only; the others keep theirs.

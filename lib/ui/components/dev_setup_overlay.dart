@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../app/state/dev_settings_state.dart';
+import '../../games/loud_quiet/models/dynamic_ladder.dart';
 import '../../models/agency_stage.dart';
 import '../../models/concept_tier.dart';
 import '../../models/round_order.dart';
@@ -38,7 +39,15 @@ import '../theme/theme.dart';
 class DevSetupOverlay extends StatelessWidget {
   final VoidCallback onStart;
 
-  const DevSetupOverlay({super.key, required this.onStart});
+  /// In front of Loud or Quiet: its own ladder (card 220) — steps, and a
+  /// gap control to tune each by ear — in place of the concept tiers.
+  final bool loudQuiet;
+
+  const DevSetupOverlay({
+    super.key,
+    required this.onStart,
+    this.loudQuiet = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -80,18 +89,40 @@ class DevSetupOverlay extends StatelessWidget {
                   Row(
                     children: [
                       Expanded(
-                        child: _SettingRow<ConceptTier>(
-                          title: 'Tier',
-                          values: ConceptTier.values,
-                          labelOf: (t) => t.label,
-                          selected: devSettings.conceptTier,
-                          onSelected: devSettings.setConceptTier,
-                          // Tiers the chosen agency stage can't reach are
-                          // shown but disabled — see
-                          // ConceptTier.isReachableAt.
-                          isEnabled: (t) =>
-                              t.isReachableAt(devSettings.agencyStage),
-                        ),
+                        child: loudQuiet
+                            ? _SettingRow<int>(
+                                title: 'Step',
+                                values: [
+                                  for (
+                                    var i = 0;
+                                    i < devSettings.loudQuietLadder.length;
+                                    i++
+                                  )
+                                    i,
+                                ],
+                                // An unbuilt step is starred: it plays as
+                                // the built one below it.
+                                labelOf: (i) {
+                                  final step = devSettings.loudQuietLadder[i];
+                                  return step.built
+                                      ? step.label
+                                      : '${step.label}*';
+                                },
+                                selected: devSettings.loudQuietStep,
+                                onSelected: devSettings.setLoudQuietStep,
+                              )
+                            : _SettingRow<ConceptTier>(
+                                title: 'Tier',
+                                values: ConceptTier.values,
+                                labelOf: (t) => t.label,
+                                selected: devSettings.conceptTier,
+                                onSelected: devSettings.setConceptTier,
+                                // Tiers the chosen agency stage can't reach are
+                                // shown but disabled — see
+                                // ConceptTier.isReachableAt.
+                                isEnabled: (t) =>
+                                    t.isReachableAt(devSettings.agencyStage),
+                              ),
                       ),
                       // The round-set length for the agency picked above
                       // (Trello card 196) — one shared setting per agency,
@@ -109,12 +140,29 @@ class DevSetupOverlay extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: AppSpacing.xs),
-                  _SettingRow<RoundOrder>(
-                    title: 'Order',
-                    values: RoundOrder.values,
-                    labelOf: (o) => o.label,
-                    selected: devSettings.roundOrder,
-                    onSelected: devSettings.setRoundOrder,
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _SettingRow<RoundOrder>(
+                          title: 'Order',
+                          values: RoundOrder.values,
+                          labelOf: (o) => o.label,
+                          selected: devSettings.roundOrder,
+                          onSelected: devSettings.setRoundOrder,
+                        ),
+                      ),
+                      // The selected step's gap, tuned by ear (card 220);
+                      // kept on this device.
+                      if (loudQuiet)
+                        _GapStepper(
+                          ladder: devSettings.loudQuietLadder,
+                          step: devSettings.loudQuietStep,
+                          onChanged: (db) => devSettings.setLoudQuietGap(
+                            devSettings.loudQuietStep,
+                            db,
+                          ),
+                        ),
+                    ],
                   ),
                   const SizedBox(height: AppSpacing.xs),
                   // Two two-way toggles share one row, so the column still
@@ -167,6 +215,69 @@ class DevSetupOverlay extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// "Gap − n dB +": the selected Loud or Quiet step's gap, a decibel at a
+/// time, with the whole table beneath so the tuned values can be read off.
+class _GapStepper extends StatelessWidget {
+  final DynamicLadder ladder;
+  final int step;
+  final ValueChanged<double> onChanged;
+
+  const _GapStepper({
+    required this.ladder,
+    required this.step,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final gap = ladder[step].gapDb;
+    Widget button(String key, IconData icon, double to, bool enabled) =>
+        IconButton(
+          key: ValueKey(key),
+          icon: Icon(icon, size: 18),
+          visualDensity: VisualDensity.compact,
+          padding: EdgeInsets.zero,
+          constraints: const BoxConstraints.tightFor(width: 32, height: 32),
+          onPressed: enabled ? () => onChanged(to) : null,
+        );
+    String db(double v) =>
+        v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toStringAsFixed(1);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Gap', style: AppTypography.label.copyWith(fontSize: 12)),
+            button(
+              'gap-minus',
+              Icons.remove_rounded,
+              gap - 1,
+              gap > DynamicLadder.minGapDb,
+            ),
+            Text(
+              '${db(gap)} dB',
+              key: const ValueKey('gap-value'),
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+            ),
+            button(
+              'gap-plus',
+              Icons.add_rounded,
+              gap + 1,
+              gap < DynamicLadder.maxGapDb,
+            ),
+          ],
+        ),
+        Text(
+          ladder.steps.map((s) => db(s.gapDb)).join(' · '),
+          key: const ValueKey('gap-table'),
+          style: AppTypography.label.copyWith(fontSize: 10),
+        ),
+      ],
     );
   }
 }

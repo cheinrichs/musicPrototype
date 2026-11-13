@@ -1,12 +1,13 @@
 import 'dart:math' as math;
 
-import '../../../models/concept_tier.dart';
 import '../../high_low/models/high_low_instrument.dart';
+import 'dynamic_ladder.dart';
 
 /// One Loud or Quiet round (Trello card 162): two sounds that differ only in
-/// how loud they are — the same note, and (at the one-instrument tiers) the
-/// same instrument. Loudness is a playback gain on the existing samples, not
-/// a recording.
+/// how loud they are — the same note on the same instrument, so loudness is
+/// the only difference (card 220: the ladder's one axis is dynamic
+/// distance). Loudness is a playback level on the existing samples, not a
+/// recording.
 class LoudQuietRound {
   final HighLowInstrument leftInstrument;
   final HighLowInstrument rightInstrument;
@@ -18,9 +19,11 @@ class LoudQuietRound {
   /// Which side is the loud one.
   final int loudSide;
 
-  /// Gain of the quieter side, as a fraction of full (the loud side plays at
-  /// full).
-  final double quietGain;
+  /// The two sides' intended levels, in dB below full, BEFORE their
+  /// instruments' trims: what the dial shows. Loud is quiet plus the step's
+  /// gap (card 220 — the gap closes by bringing loud down).
+  final double loudDb;
+  final double quietDb;
 
   /// Which pole this round asks about: the loud one (Clef's) or the quiet
   /// one (Piper's).
@@ -31,19 +34,32 @@ class LoudQuietRound {
     required this.rightInstrument,
     required this.midi,
     required this.loudSide,
-    required this.quietGain,
+    required this.loudDb,
+    this.quietDb = DynamicLadder.quietDb,
     required this.asksLoud,
   });
 
-  /// The gain [side] stands for — 1 for the loud one, [quietGain] for the
-  /// quiet one. What the needle shows; see [playbackGainOf] for what plays.
-  double gainOf(int side) => side == loudSide ? 1.0 : quietGain;
+  /// The gap between the two, in dB.
+  double get gapDb => loudDb - quietDb;
 
-  /// What [side] actually plays at: [gainOf] with its instrument's
-  /// [perceptualTrimDb] on top, so a reedy oboe and a mellow cello at the
-  /// same intended level sound equally loud.
-  double playbackGainOf(int side) =>
-      gainOf(side) * dbToGain(perceptualTrimDb[instrumentOf(side)] ?? 0);
+  /// [side]'s intended level in dB — what the needle shows.
+  double levelDbOf(int side) => side == loudSide ? loudDb : quietDb;
+
+  /// [side]'s intended level as a gain (1 at full).
+  double gainOf(int side) => dbToGain(levelDbOf(side));
+
+  /// The quiet side's intended gain.
+  double get quietGain => dbToGain(quietDb);
+
+  /// What [side] actually plays at, in dB: its instrument's
+  /// [perceptualTrimDb] is its BASELINE, and the level goes on top of it
+  /// (card 220: trims before the gap), so two instruments at the same
+  /// intended level sound equally loud and the gap heard is the step's.
+  double playbackDbOf(int side) =>
+      (perceptualTrimDb[instrumentOf(side)] ?? 0) + levelDbOf(side);
+
+  /// [playbackDbOf] as a playback gain.
+  double playbackGainOf(int side) => dbToGain(playbackDbOf(side));
 
   /// Per-instrument trim in dB (Trello card 207), Loud or Quiet only — High
   /// vs Low shares the samples and its balance is right, so they are not
@@ -81,16 +97,8 @@ class LoudQuietRound {
   HighLowInstrument instrumentOf(int side) =>
       side == 0 ? leftInstrument : rightInstrument;
 
-  /// The gap between loud and quiet at a wide tier: 12 dB, a quarter of the
-  /// amplitude. ⚠️ Card 162: the quiet end must stay audible on a bad iPad
-  /// speaker in a noisy room — check on a device.
-  static const double wideQuietGain = 0.25;
-
-  /// …and at a narrow tier: 6 dB, half the amplitude.
-  static const double narrowQuietGain = 0.5;
-
   /// Where the dial's zero sits, in dB below full: under the quietest sound
-  /// it shows (−12 dB), so even the quietest is a short movement up from
+  /// it shows ([DynamicLadder.quietDb], −12 dB), so even the quietest is a short movement up from
   /// rest and the loudest is the longest (card 208 — loudness is a
   /// magnitude, not a polarity).
   static const double dialFloorDb = -14;
@@ -99,44 +107,33 @@ class LoudQuietRound {
   /// zero, below the quiet end), 1 at full, in decibels between — a wide
   /// round's quiet sound lands a seventh of the way, a narrow round's
   /// (−6 dB) a little past halfway.
-  static double needlePosition(double gain) {
-    final db = 20 * math.log(gain) / math.ln10;
-    return ((db - dialFloorDb) / -dialFloorDb).clamp(0.0, 1.0);
-  }
+  static double needlePosition(double gain) =>
+      needlePositionDb(20 * math.log(gain) / math.ln10);
 
-  /// A round at [tier], asking about the loud pole if [asksLoud]. Three-note
-  /// tiers are not built: they play as their two-note counterparts.
+  /// [needlePosition] for a level in dB.
+  static double needlePositionDb(double db) =>
+      ((db - dialFloorDb) / -dialFloorDb).clamp(0.0, 1.0);
+
+  /// A round at [step] of [ladder], asking about the loud pole if
+  /// [asksLoud]. An unbuilt step plays as the built one below it.
   factory LoudQuietRound.generate({
-    required ConceptTier tier,
+    required DynamicLadder ladder,
+    required int step,
     required bool asksLoud,
     required math.Random random,
   }) {
     final pool = LoudQuietRound.pool;
-    final left = pool[random.nextInt(pool.length)];
-    var right = left;
-    if (tier.instrumentsVary) {
-      final others = [
-        for (final i in pool)
-          if (i != left && _shared(left, i).isNotEmpty) i,
-      ];
-      if (others.isNotEmpty) right = others[random.nextInt(others.length)];
-    }
-    final notes = _shared(left, right);
+    final instrument = pool[random.nextInt(pool.length)];
+    final notes = instrument.availableMidis;
     final midi = notes[notes.length ~/ 2];
     return LoudQuietRound(
-      leftInstrument: left,
-      rightInstrument: right,
+      leftInstrument: instrument,
+      rightInstrument: instrument,
       midi: midi,
-      // Either side can be the loud one, so neither position nor (at the
-      // varying tiers) the instrument's own brightness answers it.
+      // Either side can be the loud one, so position never answers it.
       loudSide: random.nextInt(2),
-      quietGain: tier.isWide ? wideQuietGain : narrowQuietGain,
+      loudDb: ladder.loudDbAt(step),
       asksLoud: asksLoud,
     );
   }
-
-  static List<int> _shared(HighLowInstrument a, HighLowInstrument b) => [
-    for (final m in a.availableMidis)
-      if (b.availableMidis.contains(m)) m,
-  ];
 }

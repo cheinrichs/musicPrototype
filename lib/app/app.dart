@@ -24,7 +24,7 @@ class EarTrainerApp extends StatelessWidget {
         // it calls once a choice is made.
         ChangeNotifierProvider(create: (_) => ProgressState()),
         ChangeNotifierProvider(create: (_) => SkillState()),
-        ChangeNotifierProvider(create: (_) => DevSettingsState()),
+        ChangeNotifierProvider(create: (_) => DevSettingsState()..load()),
         // In memory for the rough Journey build — see [JourneyState].
         ChangeNotifierProvider(create: (_) => JourneyState()),
       ],
