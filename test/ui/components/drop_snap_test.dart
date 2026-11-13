@@ -104,18 +104,24 @@ void main() {
         }
       });
 
-      test('dial, $name', () {
-        final l = LoudQuietLayout(size, insets: insets);
-        final slots = [
-          l.slotRect(l.slotPlatformFor(loud: true)),
-          l.slotRect(l.slotPlatformFor(loud: false)),
-        ];
-        for (final side in [0, 1]) {
-          final feet = Offset(l.stumpAnchorX(side), size.height - l.groundY);
-          final w = worst(l.instrumentSize, feet, slots);
-          expect(w.clearance - w.radius, greaterThan(travel));
-        }
-      });
+      for (final count in [2, 3]) {
+        test('dial, $name, $count instruments', () {
+          final l = LoudQuietLayout(
+            size,
+            insets: insets,
+            instrumentCount: count,
+          );
+          final slots = [
+            l.slotRect(l.slotPlatformFor(loud: true)),
+            l.slotRect(l.slotPlatformFor(loud: false)),
+          ];
+          for (var side = 0; side < count; side++) {
+            final feet = Offset(l.stumpAnchorX(side), size.height - l.groundY);
+            final w = worst(l.instrumentSize, feet, slots);
+            expect(w.clearance - w.radius, greaterThan(travel));
+          }
+        });
+      }
     }
   });
 }

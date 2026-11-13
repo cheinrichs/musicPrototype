@@ -70,14 +70,71 @@ void main() {
     game.dispose();
   });
 
-  test('until three-instrument rounds exist, a three-instrument step plays '
-      'the two-instrument step at the SAME distance, never a harder one', () {
-    final game = LoudQuietGameState(agencyStage: AgencyStage.decide);
-    for (final (asked, played) in [(3, 0), (4, 1), (5, 2)]) {
-      game.step = asked;
-      expect(game.playedStep, played);
-    }
-    game.dispose();
+  group('three instruments', () {
+    LoudQuietRound round(int step, {bool asksLoud = true, int seed = 1}) =>
+        LoudQuietRound.generate(
+          ladder: ladder,
+          step: step,
+          asksLoud: asksLoud,
+          random: math.Random(seed),
+        );
+
+    test('three DISTINCT levels, quiet at the floor, the same instrument '
+        'and note on every side', () {
+      for (final step in [3, 4, 5]) {
+        final r = round(step);
+        expect(r.sideCount, 3);
+        expect(r.levelsDb.toSet(), hasLength(3));
+        expect(r.quietDb, DynamicLadder.quietDb);
+        expect(r.instruments.toSet(), hasLength(1));
+      }
+    });
+
+    test("the tier's dB is the gap between NEIGHBOURS, never the total "
+        'spread: T6 (subtle, 4) plays -12, -8, -4 — not -12, -10, -8', () {
+      expect([...round(5).levelsDb]..sort(), [-12, -8, -4]);
+      expect(round(5).gapDb, 4);
+    });
+
+    test('where the span will not hold the neighbour gap, it is COMPRESSED '
+        'and recorded — never a silent relabel: T4 12→6, T5 8→6', () {
+      expect(DynamicLadder.spanDb, 12);
+      expect(ladder.playedGapDbAt(3), 6);
+      expect(ladder.playedGapDbAt(4), 6);
+      expect(ladder.playedGapDbAt(5), 4);
+      expect(
+        [for (var i = 0; i < 6; i++) ladder.isCompressedAt(i)],
+        [false, false, false, true, true, false],
+      );
+      expect(ladder.playedGapsLabel(), '12 · 8 · 4 · 12→6 · 8→6 · 4');
+      for (var i = 0; i < ladder.length; i++) {
+        expect(ladder.loudDbAt(i), lessThanOrEqualTo(0), reason: 'no clip');
+      }
+    });
+
+    test('the child picks the loudest or the quietest — never odd-one-out', () {
+      for (var seed = 0; seed < 20; seed++) {
+        final loud = round(3, seed: seed);
+        expect(loud.levelDbOf(loud.targetSide), loud.levelsDb.reduce(math.max));
+        final quiet = round(3, asksLoud: false, seed: seed);
+        expect(
+          quiet.levelDbOf(quiet.targetSide),
+          quiet.levelsDb.reduce(math.min),
+        );
+      }
+    });
+
+    test('the loudest lands on every position over a session', () {
+      final sides = {for (var s = 0; s < 40; s++) round(4, seed: s).loudSide};
+      expect(sides, {0, 1, 2});
+    });
+
+    test('a Decide set at T4 plays three-instrument rounds', () {
+      final game = LoudQuietGameState(agencyStage: AgencyStage.decide, step: 3)
+        ..startGame();
+      expect(game.currentRound!.sideCount, 3);
+      game.dispose();
+    });
   });
 
   test('TRAP 1: the gap closes by bringing LOUD down — quiet sits at the '

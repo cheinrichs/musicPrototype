@@ -201,7 +201,12 @@ class _LoudQuietScreenState extends State<LoudQuietScreen> {
     }
     final size = MediaQuery.sizeOf(context);
     final insets = MediaQuery.paddingOf(context);
-    final layout = LoudQuietLayout(size, insets: insets);
+    final layout = LoudQuietLayout(
+      size,
+      insets: insets,
+      // Two or three instruments, fixed for the set (card 220).
+      instrumentCount: _game.ladder.instrumentCountAt(_game.playedStep),
+    );
 
     return Stack(
       children: [
@@ -265,13 +270,13 @@ class _LoudQuietScreenState extends State<LoudQuietScreen> {
         ),
         ..._buildNeedle(layout),
         if (round != null)
-          for (final side in [0, 1])
+          for (var side = 0; side < round.sideCount; side++)
             if (round.instrumentOf(side).name != 'piano')
               _buildStump(layout, side),
         if (isDecide && _game.drop != LoudQuietDrop.correct)
           _buildSlot(layout, slotPlatform),
         if (round != null)
-          for (final side in [0, 1])
+          for (var side = 0; side < round.sideCount; side++)
             _buildInstrument(layout, side, slotPlatform),
         _buildPiper(layout),
         _buildClef(layout),
@@ -310,7 +315,8 @@ class _LoudQuietScreenState extends State<LoudQuietScreen> {
   Widget _buildStump(LoudQuietLayout layout, int side) {
     const surface = 0.37;
     final width = layout.instrumentSize * 0.95;
-    final isA = side == 0;
+    // Alternating stumps, so neighbours never match.
+    final isA = side.isEven;
     final height = width * (isA ? 794 / 1512 : 781 / 1506);
     final groundTop = layout.screen.height - layout.groundY;
     return Positioned(
@@ -358,7 +364,7 @@ class _LoudQuietScreenState extends State<LoudQuietScreen> {
     final instrument = round.instrumentOf(side);
     final box = layout.instrumentSize * instrument.displaySizeScale;
     final lift = box * instrument.floatFraction;
-    final asset = side == 0
+    final asset = side.isEven
         ? instrument.leftAssetPath
         : instrument.rightAssetPath;
     final feet = Offset(

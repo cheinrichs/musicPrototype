@@ -3,47 +3,92 @@ import 'dart:math' as math;
 import '../../high_low/models/high_low_instrument.dart';
 import 'dynamic_ladder.dart';
 
-/// One Loud or Quiet round (Trello card 162): two sounds that differ only in
-/// how loud they are — the same note on the same instrument, so loudness is
-/// the only difference (card 220: the ladder's one axis is dynamic
-/// distance). Loudness is a playback level on the existing samples, not a
-/// recording.
+/// One Loud or Quiet round (Trello card 162): two or three sounds that
+/// differ only in how loud they are — the same note on the same
+/// instrument, so loudness is the only difference (card 220). Loudness is a
+/// playback level on the existing samples, not a recording.
+///
+/// Three sounds are three DISTINCT levels, and the child picks the loudest
+/// or the quietest — the shape of High vs Low's three-note rounds, never
+/// odd-one-out (that is same-versus-different, another game).
 class LoudQuietRound {
-  final HighLowInstrument leftInstrument;
-  final HighLowInstrument rightInstrument;
+  /// One instrument per side, left to right.
+  final List<HighLowInstrument> instruments;
 
-  /// The note both sides play. One pitch, so pitch never answers the
+  /// Each side's intended level, in dB below full, BEFORE its instrument's
+  /// trim: what the dial shows. The quietest is [DynamicLadder.quietDb]; the
+  /// others stand a neighbour-gap above each other (card 220 — gaps close by
+  /// bringing the loud end down).
+  final List<double> levelsDb;
+
+  /// The note every side plays. One pitch, so pitch never answers the
   /// question — a higher note sounds louder at the same level.
   final int midi;
 
-  /// Which side is the loud one.
-  final int loudSide;
-
-  /// The two sides' intended levels, in dB below full, BEFORE their
-  /// instruments' trims: what the dial shows. Loud is quiet plus the step's
-  /// gap (card 220 — the gap closes by bringing loud down).
-  final double loudDb;
-  final double quietDb;
-
-  /// Which pole this round asks about: the loud one (Clef's) or the quiet
-  /// one (Piper's).
+  /// Which pole this round asks about: the loudest (Clef's) or the quietest
+  /// (Piper's).
   final bool asksLoud;
 
-  const LoudQuietRound({
-    required this.leftInstrument,
-    required this.rightInstrument,
+  const LoudQuietRound.of({
+    required this.instruments,
+    required this.levelsDb,
     required this.midi,
-    required this.loudSide,
-    required this.loudDb,
-    this.quietDb = DynamicLadder.quietDb,
     required this.asksLoud,
-  });
+  }) : assert(instruments.length == levelsDb.length);
 
-  /// The gap between the two, in dB.
-  double get gapDb => loudDb - quietDb;
+  /// A two-sound round.
+  factory LoudQuietRound({
+    required HighLowInstrument leftInstrument,
+    required HighLowInstrument rightInstrument,
+    required int midi,
+    required int loudSide,
+    required double loudDb,
+    double quietDb = DynamicLadder.quietDb,
+    required bool asksLoud,
+  }) => LoudQuietRound.of(
+    instruments: [leftInstrument, rightInstrument],
+    levelsDb: [
+      for (var side = 0; side < 2; side++) side == loudSide ? loudDb : quietDb,
+    ],
+    midi: midi,
+    asksLoud: asksLoud,
+  );
+
+  /// How many sounds the round compares.
+  int get sideCount => instruments.length;
+
+  HighLowInstrument get leftInstrument => instruments.first;
+  HighLowInstrument get rightInstrument => instruments[1];
+
+  /// The loudest side and the quietest.
+  int get loudSide => _extreme(loudest: true);
+  int get quietSide => _extreme(loudest: false);
+
+  int _extreme({required bool loudest}) {
+    var best = 0;
+    for (var side = 1; side < sideCount; side++) {
+      final d = levelsDb[side] - levelsDb[best];
+      if (loudest ? d > 0 : d < 0) best = side;
+    }
+    return best;
+  }
+
+  double get loudDb => levelsDb[loudSide];
+  double get quietDb => levelsDb[quietSide];
+
+  /// The gap between NEIGHBOURING levels, in dB — the comparison the child
+  /// actually makes. For two sounds, simply loud minus quiet.
+  double get gapDb {
+    final sorted = [...levelsDb]..sort();
+    var least = double.infinity;
+    for (var i = 1; i < sorted.length; i++) {
+      least = math.min(least, sorted[i] - sorted[i - 1]);
+    }
+    return least;
+  }
 
   /// [side]'s intended level in dB — what the needle shows.
-  double levelDbOf(int side) => side == loudSide ? loudDb : quietDb;
+  double levelDbOf(int side) => levelsDb[side];
 
   /// [side]'s intended level as a gain (1 at full).
   double gainOf(int side) => dbToGain(levelDbOf(side));
@@ -86,22 +131,25 @@ class LoudQuietRound {
   /// reproduce it, so at the quiet end (−12 dB) it is the one most likely to
   /// vanish in a real room — and High vs Low already leaves it out of every
   /// tier.
-  static List<HighLowInstrument> get pool => [
+  static List<HighLowInstrument> get pool => poolFor(2);
+
+  /// The pool for a round of [count] instruments. Three leave out the
+  /// bells too: drawn at half size, they alone would need each instrument's
+  /// box twice as big to keep the touch floor, and three such boxes do not
+  /// fit beside the dial — the dial would shrink to a sliver on a phone.
+  /// Without them, three fit in the room two take, and the dial stays the
+  /// size it is in two-instrument rounds.
+  static List<HighLowInstrument> poolFor(int count) => [
     for (final i in HighLowInstrument.values)
-      if (i != HighLowInstrument.tuba) i,
+      if (i != HighLowInstrument.tuba &&
+          (count < 3 || i != HighLowInstrument.bells))
+        i,
   ];
 
-  /// How many instruments a round can compare today. The ladder's
-  /// three-instrument steps (T4–T6) wait on three-instrument rounds: three
-  /// instruments in the band left of the dial, and what three levels and
-  /// which platform a round of three means — see `LoudQuietGameState.playedStep`.
-  static const int maxInstruments = 2;
+  /// The side the round asks for: the loudest, or the quietest.
+  int get targetSide => asksLoud ? loudSide : quietSide;
 
-  /// The side the round asks for.
-  int get targetSide => asksLoud ? loudSide : 1 - loudSide;
-
-  HighLowInstrument instrumentOf(int side) =>
-      side == 0 ? leftInstrument : rightInstrument;
+  HighLowInstrument instrumentOf(int side) => instruments[side];
 
   /// Where the dial's zero sits, in dB below full: under the quietest sound
   /// it shows ([DynamicLadder.quietDb], −12 dB), so even the quietest is a short movement up from
@@ -121,24 +169,29 @@ class LoudQuietRound {
       ((db - dialFloorDb) / -dialFloorDb).clamp(0.0, 1.0);
 
   /// A round at [step] of [ladder], asking about the loud pole if
-  /// [asksLoud].
+  /// [asksLoud]: as many sounds as the step compares, at the step's PLAYED
+  /// neighbour gap (compressed where the span won't hold it — see
+  /// [DynamicLadder.playedGapDbAt]), the levels shuffled across the sides
+  /// so position never answers it.
   factory LoudQuietRound.generate({
     required DynamicLadder ladder,
     required int step,
     required bool asksLoud,
     required math.Random random,
   }) {
-    final pool = LoudQuietRound.pool;
+    final count = ladder.instrumentCountAt(step);
+    final pool = LoudQuietRound.poolFor(count);
     final instrument = pool[random.nextInt(pool.length)];
     final notes = instrument.availableMidis;
     final midi = notes[notes.length ~/ 2];
-    return LoudQuietRound(
-      leftInstrument: instrument,
-      rightInstrument: instrument,
+    final gap = ladder.playedGapDbAt(step);
+    final levels = [
+      for (var k = 0; k < count; k++) DynamicLadder.quietDb + k * gap,
+    ]..shuffle(random);
+    return LoudQuietRound.of(
+      instruments: List.filled(count, instrument),
+      levelsDb: levels,
       midi: midi,
-      // Either side can be the loud one, so position never answers it.
-      loudSide: random.nextInt(2),
-      loudDb: ladder.loudDbAt(step),
       asksLoud: asksLoud,
     );
   }

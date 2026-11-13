@@ -124,6 +124,20 @@ void main() {
           },
         ),
         'decide_slot': (AgencyStage.decide, (s, t) async {}),
+        // Card 220's T4: three instruments, the asked-for one to its end.
+        'decide_x3_slot': (AgencyStage.decide, (s, t) async {}),
+        'decide_x3_landed': (
+          AgencyStage.decide,
+          (s, t) async => s.dropInstrument(s.currentRound!.targetSide),
+        ),
+        'explore_x3_sparkles': (
+          AgencyStage.decide,
+          (s, t) async {
+            for (var i = 0; i < 2; i++) {
+              s.tapInstrument((s.currentRound!.targetSide + 1) % 3);
+            }
+          },
+        ),
         'decide_landed': (
           AgencyStage.decide,
           (s, t) async => s.dropInstrument(s.currentRound!.targetSide),
@@ -148,6 +162,7 @@ void main() {
           audio: _SilentAudio(),
           random: Random(1),
           agencyStage: stage,
+          step: scene.key.contains('x3') ? 3 : 0,
         );
         final boundary = GlobalKey();
         await tester.pumpWidget(
@@ -159,7 +174,11 @@ void main() {
             ),
           ),
         );
-        await _frames(tester, const Duration(milliseconds: 4800));
+        // Three sounds take a third longer to play through.
+        await _frames(
+          tester,
+          Duration(milliseconds: scene.key.contains('x3') ? 7200 : 4800),
+        );
         await act(state, tester);
         await _frames(tester, const Duration(milliseconds: 700));
         await _capture(tester, boundary, name);

@@ -1,7 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter/painting.dart';
-import '../../high_low/models/high_low_instrument.dart';
+import 'loud_quiet_round.dart';
 import '../../high_low/widgets/character_art.dart';
 
 /// Where everything in the Loud or Quiet scene sits (Trello card 162), as
@@ -119,7 +119,17 @@ class LoudQuietLayout {
   final Size screen;
   final EdgeInsets insets;
 
-  const LoudQuietLayout(this.screen, {this.insets = EdgeInsets.zero});
+  /// How many instruments stand in the band: two, or three at the ladder's
+  /// three-instrument tiers (card 220). Fixed for a whole set, so the scene
+  /// never resizes between rounds. With three, the dial is sized so all
+  /// three keep the touch floor — it can come out smaller on a narrow phone.
+  final int instrumentCount;
+
+  const LoudQuietLayout(
+    this.screen, {
+    this.insets = EdgeInsets.zero,
+    this.instrumentCount = 2,
+  });
 
   /// The smallest box a small child's finger can be expected to hit, as on
   /// High vs Low: the smallest instrument (bells, at half size) never falls
@@ -133,12 +143,19 @@ class LoudQuietLayout {
   double get _margin => screen.width * 0.02;
   double get _gap => _margin / 2;
 
-  static final double _smallestScale = HighLowInstrument.values
-      .map((i) => i.displaySizeScale)
-      .reduce(math.min);
+  /// The smallest any instrument a round of [count] can draw is drawn, as
+  /// a fraction of the instrument box.
+  static double _smallestScaleFor(int count) => LoudQuietRound.poolFor(
+    count,
+  ).map((i) => i.displaySizeScale).reduce(math.min);
 
-  /// The band two instruments need at the floor.
-  static double get _needForInstruments => 2 * minTouchTarget / _smallestScale;
+  /// The band the instruments need at the floor — never less than two need,
+  /// so the dial is the same size whether a set has two instruments or
+  /// three (three leave out the half-size bells, so they fit in that room).
+  double get _needForInstruments => math.max(
+    2 * minTouchTarget / _smallestScaleFor(2),
+    instrumentCount * minTouchTarget / _smallestScaleFor(instrumentCount),
+  );
 
   // ---- the dial ----
 
@@ -334,19 +351,22 @@ class LoudQuietLayout {
 
   /// Instrument box size: 0.38 of the height, as on High vs Low, capped so
   /// two fit the band without overlapping.
-  double get instrumentSize =>
-      math.min(screen.height * 0.38, (_bandRight - _bandLeft) / 2);
+  double get instrumentSize => math.min(
+    screen.height * 0.38,
+    (_bandRight - _bandLeft) / instrumentCount,
+  );
 
   double get _pitch {
-    final fit = _bandRight - _bandLeft - instrumentSize;
+    final fit =
+        (_bandRight - _bandLeft - instrumentSize) / (instrumentCount - 1);
     final airy = instrumentSize * 1.12;
     return fit < airy ? fit : airy;
   }
 
-  /// Horizontal centre of instrument [index]'s stump, the pair centred in
+  /// Horizontal centre of instrument [index]'s stump, the group centred in
   /// the band.
   double stumpAnchorX(int index) {
-    final groupWidth = instrumentSize + _pitch;
+    final groupWidth = instrumentSize + (instrumentCount - 1) * _pitch;
     final groupLeft = (_bandLeft + _bandRight - groupWidth) / 2;
     return groupLeft + instrumentSize / 2 + index * _pitch;
   }

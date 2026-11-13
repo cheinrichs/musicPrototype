@@ -112,23 +112,8 @@ class LoudQuietGameState extends ChangeNotifier {
 
   /// The step actually played: [step], brought down to what [agencyStage]
   /// can reach (no three-instrument round below Decide — none at Observe in
-  /// either game), on every path, as High vs Low clamps its tiers. And until
-  /// three-instrument rounds exist, a three-instrument step plays as the
-  /// two-instrument step at the SAME distance, never a harder one.
-  int get playedStep {
-    final reachable = ladder.clampedTo(step, agencyStage);
-    if (ladder.instrumentCountAt(reachable) <= LoudQuietRound.maxInstruments) {
-      return reachable;
-    }
-    final distance = ladder[reachable].distanceId;
-    for (var i = 0; i < ladder.length; i++) {
-      if (ladder.steps[i].distanceId == distance &&
-          ladder.steps[i].instrumentCount <= LoudQuietRound.maxInstruments) {
-        return i;
-      }
-    }
-    return 0;
-  }
+  /// either game), on every path, as High vs Low clamps its tiers.
+  int get playedStep => ladder.clampedTo(step, agencyStage);
 
   /// A sample's length when audio can't say (it isn't running, as in
   /// tests): about what the note samples measure.
@@ -309,7 +294,7 @@ class LoudQuietGameState extends ChangeNotifier {
     unawaited(_playRound(token));
   }
 
-  /// The round's two sounds, in order — at its start and on a replay. The
+  /// The round's sounds (two or three), in order — at its start and on a replay. The
   /// needle follows each (unless Decide's lock is shut) and is home at rest
   /// again by the next, never parked on the answer (card 208).
   Future<void> _playRound(int token) async {
@@ -317,7 +302,7 @@ class LoudQuietGameState extends ChangeNotifier {
     notifyListeners();
     final round = currentRound;
     if (round == null) return;
-    for (final side in [0, 1]) {
+    for (var side = 0; side < round.sideCount; side++) {
       if (token != _token) return;
       _ring(side);
       unawaited(_playSide(side));

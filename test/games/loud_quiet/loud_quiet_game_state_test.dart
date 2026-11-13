@@ -101,9 +101,9 @@ void main() {
             asksLoud: i.isEven,
             random: random,
           );
-          expect(r.leftInstrument, r.rightInstrument);
+          expect(r.instruments.toSet(), hasLength(1));
           expect(r.leftInstrument.availableMidis, contains(r.midi));
-          expect(r.gapDb, ladder.gapDbAt(step));
+          expect(r.gapDb, ladder.playedGapDbAt(step));
         }
       }
     });

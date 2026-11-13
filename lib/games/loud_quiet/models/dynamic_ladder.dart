@@ -117,8 +117,32 @@ class DynamicLadder {
   /// The gap at step [index], in dB.
   double gapDbAt(int index) => distanceOf(index).gapDb;
 
-  /// The loud sound's level at [index], in dB below full (before trim).
-  double loudDbAt(int index) => quietDb + gapDbAt(index);
+  /// The whole span the levels can use: from [quietDb] (the audible floor,
+  /// never lowered — card 220) up to full. Full is the ceiling: the loudest
+  /// samples in the pool already peak at about -1 dBTP (bells, guitar, piano
+  /// — measured 2026-11-13), so nothing plays above full.
+  static const double spanDb = -quietDb;
+
+  /// The NEIGHBOUR gap actually played at [index], in dB. A tier's dB figure
+  /// is the gap between NEIGHBOURING levels, never the total spread (Cooper:
+  /// spreading three across the figure would make the child's hardest
+  /// comparison half the label, and the three-instrument tier twice as hard
+  /// as its two-instrument twin). Three levels need twice the span; where
+  /// that won't fit under [spanDb], the gap is COMPRESSED to what fits —
+  /// [isCompressedAt] says so, and the dev gate shows both figures, so the
+  /// label never silently lies.
+  double playedGapDbAt(int index) {
+    final neighbours = instrumentCountAt(index) - 1;
+    final fits = spanDb / neighbours;
+    return gapDbAt(index) < fits ? gapDbAt(index) : fits;
+  }
+
+  /// Whether [index]'s played gap is less than its tier's figure.
+  bool isCompressedAt(int index) => playedGapDbAt(index) < gapDbAt(index);
+
+  /// The loudest sound's level at [index], in dB below full (before trim).
+  double loudDbAt(int index) =>
+      quietDb + playedGapDbAt(index) * (instrumentCountAt(index) - 1);
 
   int instrumentCountAt(int index) => this[index].instrumentCount;
 
@@ -126,6 +150,19 @@ class DynamicLadder {
   String labelAt(int index) {
     final i = clampIndex(index);
     return 'T${i + 1} ${distanceOf(i).label} ×${steps[i].instrumentCount}';
+  }
+
+  /// The gap each step actually plays, for reading off: "6" where it plays
+  /// its figure, "12→6" where it is compressed.
+  String playedGapsLabel() {
+    String db(double v) =>
+        v == v.roundToDouble() ? v.toStringAsFixed(0) : v.toStringAsFixed(1);
+    return [
+      for (var i = 0; i < length; i++)
+        isCompressedAt(i)
+            ? '${db(gapDbAt(i))}→${db(playedGapDbAt(i))}'
+            : db(gapDbAt(i)),
+    ].join(' · ');
   }
 
   /// The lowest agency step [index] is reachable at — mirroring High vs
