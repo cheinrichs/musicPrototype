@@ -232,7 +232,11 @@ class _GapStepper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final gap = ladder.gapDbAt(step);
+    // What the selected tier plays: for three instruments, the neighbour
+    // gap the span allows (at most half of it).
+    final three = ladder.instrumentCountAt(step) >= 3;
+    final gap = ladder.playedGapDbAt(step);
+    final most = three ? DynamicLadder.spanDb / 2 : DynamicLadder.maxGapDb;
     Widget button(String key, IconData icon, double to, bool enabled) =>
         IconButton(
           key: ValueKey(key),
@@ -250,7 +254,10 @@ class _GapStepper extends StatelessWidget {
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('Gap', style: AppTypography.label.copyWith(fontSize: 12)),
+            Text(
+              three ? 'Gap ×3' : 'Gap',
+              style: AppTypography.label.copyWith(fontSize: 12),
+            ),
             button(
               'gap-minus',
               Icons.remove_rounded,
@@ -262,12 +269,7 @@ class _GapStepper extends StatelessWidget {
               key: const ValueKey('gap-value'),
               style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
             ),
-            button(
-              'gap-plus',
-              Icons.add_rounded,
-              gap + 1,
-              gap < DynamicLadder.maxGapDb,
-            ),
+            button('gap-plus', Icons.add_rounded, gap + 1, gap < most),
           ],
         ),
         Text(

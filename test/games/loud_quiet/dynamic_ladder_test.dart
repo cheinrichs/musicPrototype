@@ -112,6 +112,18 @@ void main() {
       }
     });
 
+    test('the three-instrument spacing is tuned on its own: setting T5 to '
+        '5 dB leaves T2 at 8, separates T4 from T5, and is capped at what '
+        'the span holds', () {
+      final tuned = ladder.withGapAt(4, 5);
+      expect(tuned.playedGapDbAt(4), 5);
+      expect(tuned.isCompressedAt(4), isFalse);
+      expect(tuned.gapDbAt(1), 8, reason: 'its two-instrument twin');
+      expect(tuned.playedGapDbAt(3), 6, reason: 'T4 still at the cap');
+      expect(ladder.withGapAt(3, 9).playedGapDbAt(3), DynamicLadder.spanDb / 2);
+      expect(tuned.playedGapsLabel(), '12 · 8 · 4 · 12→6 · 5 · 4');
+    });
+
     test('the child picks the loudest or the quietest — never odd-one-out', () {
       for (var seed = 0; seed < 20; seed++) {
         final loud = round(3, seed: seed);
@@ -216,6 +228,19 @@ void main() {
 
   group('tuned on the device', () {
     setUp(() => SharedPreferences.setMockInitialValues({}));
+
+    test(
+      'a three-instrument gap set in the dev gate survives a relaunch',
+      () async {
+        final dev = DevSettingsState()..setAgencyStage(AgencyStage.decide);
+        dev.setLoudQuietGap(4, 5);
+        await Future<void>.delayed(Duration.zero);
+        final relaunched = DevSettingsState();
+        await relaunched.load();
+        expect(relaunched.loudQuietLadder.playedGapDbAt(4), 5);
+        expect(relaunched.loudQuietLadder.gapDbAt(1), 8);
+      },
+    );
 
     test('a gap set in the dev gate survives a relaunch, by distance id — '
         'so gaps tuned on the three-step ladder carry over', () async {

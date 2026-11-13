@@ -112,13 +112,12 @@ class DevSettingsState extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Sets the gap of step [step]'s DISTANCE, in dB — so every step at that
-  /// distance changes with it — and keeps it on this device.
+  /// Sets the gap step [step] plays, in dB — its distance's two-instrument
+  /// gap (every ×2 step at that distance moves with it) or, for a ×3 step,
+  /// its distance's three-instrument neighbour gap, tuned on its own — and
+  /// keeps it on this device.
   void setLoudQuietGap(int step, double db) {
-    _loudQuietLadder = _loudQuietLadder.withGap(
-      _loudQuietLadder.distanceOf(step).id,
-      db,
-    );
+    _loudQuietLadder = _loudQuietLadder.withGapAt(step, db);
     notifyListeners();
     unawaited(_saveGaps());
   }
@@ -140,6 +139,8 @@ class DevSettingsState extends ChangeNotifier {
       for (final d in ladder.distances) {
         final db = saved[d.id];
         if (db != null) ladder = ladder.withGap(d.id, db);
+        final three = saved['${d.id}.three'];
+        if (three != null) ladder = ladder.withThreeGap(d.id, three);
       }
       _loudQuietLadder = ladder;
       notifyListeners();
@@ -153,7 +154,12 @@ class DevSettingsState extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(
         _gapsKey,
-        jsonEncode({for (final d in _loudQuietLadder.distances) d.id: d.gapDb}),
+        jsonEncode({
+          for (final d in _loudQuietLadder.distances) ...{
+            d.id: d.gapDb,
+            if (d.threeGapDb != null) '${d.id}.three': d.threeGapDb,
+          },
+        }),
       );
     } catch (e) {
       debugPrint('Could not save Loud or Quiet gaps: $e');

@@ -9,18 +9,36 @@ import '../../../models/agency_stage.dart';
 class DynamicDistance {
   final String id;
   final String label;
+
+  /// The gap between the two sounds of a two-instrument round.
   final double gapDb;
 
-  const DynamicDistance(this.id, this.label, this.gapDb);
+  /// The NEIGHBOUR gap of a three-instrument round at this distance, tuned
+  /// on its own (Cooper sets it by ear on a device); null plays [gapDb] —
+  /// nearest-neighbour spacing, the principled default. Either way it is
+  /// capped to what the span holds (see [DynamicLadder.playedGapDbAt]).
+  final double? threeGapDb;
 
-  DynamicDistance withGap(double db) => DynamicDistance(id, label, db);
+  const DynamicDistance(this.id, this.label, this.gapDb, {this.threeGapDb});
+
+  /// The neighbour gap asked of a round of [count] instruments.
+  double gapFor(int count) => count >= 3 ? (threeGapDb ?? gapDb) : gapDb;
+
+  DynamicDistance withGap(double db) =>
+      DynamicDistance(id, label, db, threeGapDb: threeGapDb);
+
+  DynamicDistance withThreeGap(double db) =>
+      DynamicDistance(id, label, gapDb, threeGapDb: db);
 
   @override
   bool operator ==(Object other) =>
-      other is DynamicDistance && other.id == id && other.gapDb == gapDb;
+      other is DynamicDistance &&
+      other.id == id &&
+      other.gapDb == gapDb &&
+      other.threeGapDb == threeGapDb;
 
   @override
-  int get hashCode => Object.hash(id, gapDb);
+  int get hashCode => Object.hash(id, gapDb, threeGapDb);
 }
 
 /// One step of the ladder: a distance, and how many instruments are being
@@ -114,8 +132,10 @@ class DynamicLadder {
     );
   }
 
-  /// The gap at step [index], in dB.
-  double gapDbAt(int index) => distanceOf(index).gapDb;
+  /// The gap step [index] asks for, in dB: its distance's gap for its
+  /// instrument count.
+  double gapDbAt(int index) =>
+      distanceOf(index).gapFor(instrumentCountAt(index));
 
   /// The whole span the levels can use: from [quietDb] (the audible floor,
   /// never lowered — card 220) up to full. Full is the ceiling: the loudest
@@ -192,7 +212,8 @@ class DynamicLadder {
   }
 
   /// A copy with distance [distanceId]'s gap set to [db], kept within
-  /// [minGapDb]–[maxGapDb]. Every step at that distance changes with it.
+  /// [minGapDb]–[maxGapDb]. Every two-instrument step at that distance
+  /// changes with it.
   DynamicLadder withGap(String distanceId, double db) => DynamicLadder(
     distances: [
       for (final d in distances)
@@ -202,6 +223,27 @@ class DynamicLadder {
     ],
     steps: steps,
   );
+
+  /// A copy with distance [distanceId]'s THREE-instrument neighbour gap set
+  /// to [db], kept within [minGapDb] and what the span holds for three.
+  DynamicLadder withThreeGap(String distanceId, double db) => DynamicLadder(
+    distances: [
+      for (final d in distances)
+        d.id == distanceId
+            ? d.withThreeGap(db.clamp(minGapDb, spanDb / 2).toDouble())
+            : d,
+    ],
+    steps: steps,
+  );
+
+  /// Sets the gap step [index] plays for its instrument count: the
+  /// two-instrument gap, or the three-instrument one.
+  DynamicLadder withGapAt(int index, double db) {
+    final id = distanceOf(index).id;
+    return instrumentCountAt(index) >= 3
+        ? withThreeGap(id, db)
+        : withGap(id, db);
+  }
 
   @override
   bool operator ==(Object other) =>
