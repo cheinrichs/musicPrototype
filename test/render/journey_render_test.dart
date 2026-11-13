@@ -11,6 +11,7 @@ import 'dart:ui' as ui;
 
 import 'package:ear_trainer/app/config.dart';
 import 'package:ear_trainer/app/rail_shell.dart';
+import 'package:ear_trainer/journey/journey_art.dart';
 import 'package:ear_trainer/journey/journey_state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -59,6 +60,50 @@ Future<void> _run(WidgetTester tester, int ms) async {
 void main() {
   setUp(() => devToolsEnabled = true);
   tearDown(() => devToolsEnabled = false);
+
+  // All sixteen avatar pins, sliced as the map slices them, on a contrasting
+  // ground with each slice's edge outlined — a neighbour's sliver shows.
+  testWidgets('avatar_pins_all', skip: _outDir.isEmpty, (tester) async {
+    tester.view.physicalSize = const Size(4 * 130, 4 * 150);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final boundary = GlobalKey();
+    await tester.pumpWidget(
+      MaterialApp(
+        debugShowCheckedModeBanner: false,
+        home: RepaintBoundary(
+          key: boundary,
+          child: ColoredBox(
+            color: const Color(0xFF2E7D32),
+            child: Wrap(
+              children: [
+                for (var i = 0; i < 16; i++)
+                  Container(
+                    width: 130,
+                    height: 150,
+                    padding: const EdgeInsets.all(5),
+                    child: DecoratedBox(
+                      position: DecorationPosition.foreground,
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.white, width: 0.5),
+                      ),
+                      child: AvatarPin(index: i),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.runAsync(() async {
+      await precacheImage(
+        const AssetImage(JourneyArt.pins),
+        tester.element(find.byType(AvatarPin).first),
+      );
+    });
+    await _capture(tester, boundary, 'avatar_pins_all');
+  });
 
   for (final MapEntry(key: device, value: (size, insets)) in _devices.entries) {
     testWidgets('journey_$device', skip: _outDir.isEmpty, (tester) async {

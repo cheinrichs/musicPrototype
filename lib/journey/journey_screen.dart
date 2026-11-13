@@ -988,7 +988,7 @@ class _JourneyScreenState extends State<JourneyScreen> {
   Widget _buildCompanion(_MapGeometry g, int stone, {required bool clef}) {
     final art = clef ? CharacterArt.clef : CharacterArt.piper;
     final feet = clef ? g.clefFeet(stone) : g.piperFeet(stone);
-    final h = g.companionHeight;
+    final h = clef ? g.companionHeight : g.piperHeight;
     final w = art.frameSize.width * h / art.frameSize.height;
     return AnimatedPositioned(
       key: ValueKey(clef ? 'map-clef' : 'map-piper'),
@@ -1102,8 +1102,12 @@ class _MapGeometry {
   /// A margin for "is it on screen".
   double get margin => size.height * 0.1;
 
-  /// The chest stands behind and to the right of its stone, its body's
-  /// foot (76% down its square art) on the stone's back edge. LIFTED (awake,
+  /// The chest stands BEHIND its milestone stone (card 204), anchored to
+  /// it: centred on the stone, its body's foot (76% down its square art)
+  /// just inside the stone's back edge, so the stone's front overlaps its
+  /// base. Never out in the gap between stones — there, at about a stone's
+  /// size, it half-read as one of them (Cooper); behind one it is an object
+  /// BESIDE the path, not a thing ON it. LIFTED (awake,
   /// waiting for the tap, opening) it rises up and out to the right, clear
   /// of the pin — which is the biggest thing on the map and would otherwise
   /// cover the very chest the child has to tap.
@@ -1115,17 +1119,21 @@ class _MapGeometry {
       final centre = Offset(pin.right + s * 0.45, pin.center.dy);
       return Rect.fromCenter(center: centre, width: s * 1.15, height: s * 1.15);
     }
-    final foot = stoneCentre(i) + Offset(st * 0.55, -st * 0.14);
+    // The stone's ellipse is ~45% of its cell's height, so its back edge
+    // is ~0.22 of a cell above the centre.
+    final foot = stoneCentre(i) + Offset(st * 0.08, -st * 0.17);
     return Rect.fromLTWH(foot.dx - s / 2, foot.dy - s * 0.76, s, s);
   }
 
   /// The avatar pin: the child, so the dominant figure on screen — taller
   /// than Piper and Clef — its tip on the stone.
   Rect pinRect(int i) {
-    final h = size.height * 0.28;
+    // 0.257 of the screen: the avatar the size it was drawn at before its
+    // slice was tightened from an even grid cell (0.28 of a 301 px cell).
+    final h = size.height * 0.257;
     final w = h * JourneyArt.pinCell.width / JourneyArt.pinCell.height;
     final tip = stoneCentre(i) - Offset(0, stoneSize(i) * 0.08);
-    return Rect.fromLTWH(tip.dx - w / 2, tip.dy - h * 0.92, w, h);
+    return Rect.fromLTWH(tip.dx - w / 2, tip.dy - h * JourneyArt.pinTip, w, h);
   }
 
   /// Where an earned decoration lands: beside the stone it was earned on,
@@ -1147,6 +1155,9 @@ class _MapGeometry {
   // walked path just behind, Clef just ahead but BESIDE the path (its far
   // edge), so she never seems to stand on an unplayed stone.
   double get companionHeight => size.height * 0.22;
+
+  /// Piper, a quarter bigger than Clef on the map (Cooper, 2026-11-13).
+  double get piperHeight => companionHeight * 1.25;
 
   Offset piperFeet(int i) {
     final x = stoneX(i) - stoneSize(i) * 0.75;

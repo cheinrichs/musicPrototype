@@ -22,8 +22,57 @@ abstract final class JourneyArt {
   static const giftOpen = '$_dir/gift_open_burst.png';
   static const railIcons = '$_dir/rail_icons_2treatments.png';
 
-  /// The pin sheet is a 4×4 grid of 1306×1205.
-  static const pinCell = Size(1306 / 4, 1205 / 4);
+  /// The pin sheet, 1306×1205. Its sixteen avatars are NOT on an even 4×4
+  /// grid of the sheet: the art has margins (≈117 px at the sides, 35 at
+  /// the top) and uneven gutters, so even cells caught a sliver of a
+  /// neighbour on one side and clipped their own avatar on the other.
+  static const pinSheet = Size(1306, 1205);
+
+  /// Each avatar's visible bounds in the sheet (alpha > 8 — the sheet has
+  /// faint matte noise below that everywhere), in reading order, measured
+  /// 2026-11-13. test/journey/avatar_pin_slices_test.dart re-measures them
+  /// from the file, so a re-exported sheet that moves them fails the build.
+  static const pinBounds = [
+    Rect.fromLTRB(124, 35, 342, 309),
+    Rect.fromLTRB(414, 46, 633, 308),
+    Rect.fromLTRB(676, 46, 895, 308),
+    Rect.fromLTRB(962, 45, 1180, 308),
+    Rect.fromLTRB(121, 324, 347, 592),
+    Rect.fromLTRB(410, 324, 635, 592),
+    Rect.fromLTRB(675, 325, 900, 592),
+    Rect.fromLTRB(959, 324, 1187, 591),
+    Rect.fromLTRB(118, 609, 344, 872),
+    Rect.fromLTRB(405, 609, 634, 871),
+    Rect.fromLTRB(674, 609, 902, 872),
+    Rect.fromLTRB(961, 608, 1188, 871),
+    Rect.fromLTRB(117, 882, 347, 1147),
+    Rect.fromLTRB(408, 883, 635, 1148),
+    Rect.fromLTRB(671, 882, 901, 1148),
+    Rect.fromLTRB(959, 882, 1187, 1148),
+  ];
+
+  /// One slice size for all sixteen, so every pin draws at the same scale:
+  /// a little larger than the largest avatar, and small enough to stay
+  /// clear of every neighbour (the tightest gutter is 11 px, between rows
+  /// 3 and 4).
+  static const pinCell = Size(240, 276);
+
+  /// Of a slice's height, how far down the pin's tip is: each slice sits
+  /// [_pinFoot] px below its avatar's tip.
+  static const _pinFoot = 2.0;
+  static const pinTip = (276 - _pinFoot) / 276;
+
+  /// Avatar [index]'s slice: [pinCell], centred on the avatar, its tip
+  /// [_pinFoot] px above the slice's foot.
+  static Rect pinSlice(int index) {
+    final b = pinBounds[index % pinBounds.length];
+    return Rect.fromLTWH(
+      b.center.dx - pinCell.width / 2,
+      b.bottom + _pinFoot - pinCell.height,
+      pinCell.width,
+      pinCell.height,
+    );
+  }
 }
 
 enum StoneState { locked, current, done }
@@ -104,12 +153,12 @@ class AvatarPin extends StatelessWidget {
   const AvatarPin({super.key, required this.index});
 
   @override
-  Widget build(BuildContext context) => SpriteCell(
-    asset: JourneyArt.pins,
-    columns: 4,
-    rows: 4,
-    column: index % 4,
-    row: (index ~/ 4) % 4,
+  Widget build(BuildContext context) => ImageRegion(
+    art: ArtRef(
+      JourneyArt.pins,
+      image: JourneyArt.pinSheet,
+      region: JourneyArt.pinSlice(index),
+    ),
   );
 }
 
