@@ -76,13 +76,16 @@ class LoudQuietRound {
   double get loudDb => levelsDb[loudSide];
   double get quietDb => levelsDb[quietSide];
 
-  /// The gap between NEIGHBOURING levels, in dB — the comparison the child
-  /// actually makes. For two sounds, simply loud minus quiet.
+  /// The gap between the TARGET and its NEAREST COMPETITOR, in dB — the one
+  /// comparison picking the loudest (or quietest) turns on. For two sounds,
+  /// simply loud minus quiet. (How far apart the non-targets are is
+  /// irrelevant to it.)
   double get gapDb {
-    final sorted = [...levelsDb]..sort();
+    final target = levelsDb[targetSide];
     var least = double.infinity;
-    for (var i = 1; i < sorted.length; i++) {
-      least = math.min(least, sorted[i] - sorted[i - 1]);
+    for (var side = 0; side < sideCount; side++) {
+      if (side == targetSide) continue;
+      least = math.min(least, (target - levelsDb[side]).abs());
     }
     return least;
   }
@@ -169,10 +172,10 @@ class LoudQuietRound {
       ((db - dialFloorDb) / -dialFloorDb).clamp(0.0, 1.0);
 
   /// A round at [step] of [ladder], asking about the loud pole if
-  /// [asksLoud]: as many sounds as the step compares, at the step's PLAYED
-  /// neighbour gap (compressed where the span won't hold it — see
-  /// [DynamicLadder.playedGapDbAt]), the levels shuffled across the sides
-  /// so position never answers it.
+  /// [asksLoud]: as many sounds as the step compares, the target the step's
+  /// PLAYED gap from its nearest competitor (compressed where the span won't
+  /// hold it — see [DynamicLadder.levelsDbAt]), the levels shuffled across
+  /// the sides so position never answers it.
   factory LoudQuietRound.generate({
     required DynamicLadder ladder,
     required int step,
@@ -184,10 +187,7 @@ class LoudQuietRound {
     final instrument = pool[random.nextInt(pool.length)];
     final notes = instrument.availableMidis;
     final midi = notes[notes.length ~/ 2];
-    final gap = ladder.playedGapDbAt(step);
-    final levels = [
-      for (var k = 0; k < count; k++) DynamicLadder.quietDb + k * gap,
-    ]..shuffle(random);
+    final levels = ladder.levelsDbAt(step, asksLoud: asksLoud)..shuffle(random);
     return LoudQuietRound.of(
       instruments: List.filled(count, instrument),
       levelsDb: levels,

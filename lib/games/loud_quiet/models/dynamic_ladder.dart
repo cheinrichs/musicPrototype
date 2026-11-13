@@ -13,10 +13,11 @@ class DynamicDistance {
   /// The gap between the two sounds of a two-instrument round.
   final double gapDb;
 
-  /// The NEIGHBOUR gap of a three-instrument round at this distance, tuned
-  /// on its own (Cooper sets it by ear on a device); null plays [gapDb] —
-  /// nearest-neighbour spacing, the principled default. Either way it is
-  /// capped to what the span holds (see [DynamicLadder.playedGapDbAt]).
+  /// The target-to-nearest-competitor gap of a three-instrument round at
+  /// this distance, tuned on its own (Cooper sets it by ear on a device);
+  /// null plays [gapDb] — the same discrimination as the two-instrument
+  /// twin, the principled default. Either way it is capped to what the span
+  /// holds (see [DynamicLadder.playedGapDbAt]).
   final double? threeGapDb;
 
   const DynamicDistance(this.id, this.label, this.gapDb, {this.threeGapDb});
@@ -143,26 +144,71 @@ class DynamicLadder {
   /// — measured 2026-11-13), so nothing plays above full.
   static const double spanDb = -quietDb;
 
-  /// The NEIGHBOUR gap actually played at [index], in dB. A tier's dB figure
-  /// is the gap between NEIGHBOURING levels, never the total spread (Cooper:
-  /// spreading three across the figure would make the child's hardest
-  /// comparison half the label, and the three-instrument tier twice as hard
-  /// as its two-instrument twin). Three levels need twice the span; where
-  /// that won't fit under [spanDb], the gap is COMPRESSED to what fits —
-  /// [isCompressedAt] says so, and the dev gate shows both figures, so the
-  /// label never silently lies.
+  /// How far each extra instrument sits beyond the target's nearest
+  /// competitor, in dB: small and FIXED. It only has to make that sound
+  /// clearly not the answer; how far beyond is irrelevant to the
+  /// discrimination, so it spends as little of the span as it can.
+  static const double extraOffsetDb = 3;
+
+  /// The widest gap a round of [count] instruments can play: the span, less
+  /// what the extra instruments take.
+  static double maxGapDbFor(int count) =>
+      spanDb - (count > 2 ? count - 2 : 0) * extraOffsetDb;
+
+  /// The gap actually played at [index], in dB: between the TARGET and its
+  /// NEAREST COMPETITOR. The task is "pick the loudest" (or quietest), so
+  /// that one comparison is the whole difficulty — and a three-instrument
+  /// tier's discrimination is exactly its two-instrument twin's. What the
+  /// third instrument costs is a third thing to attend to, never a secretly
+  /// smaller gap (Cooper, after build 116: even spacing needed twice the
+  /// span, made T4 harder than T2 and T4 identical to T5, and broke the
+  /// zigzag).
+  ///
+  /// The span the round needs is gap + [extraOffsetDb] per extra
+  /// instrument. Where that won't fit under [spanDb], the gap is COMPRESSED
+  /// to what fits — [isCompressedAt] says so, and the dev gate shows both
+  /// figures, so the label never silently lies.
+  ///
+  /// NOT FOR ORDERING. A future "put them in order" task is set by its
+  /// SMALLEST adjacent gap, and there equal spacing is the optimum (it
+  /// maximises the smallest gap in a given span) — so ordering needs the
+  /// full double span, about 6 dB per gap on this hardware. See
+  /// docs/product/FUTURE_GAMES.md.
   double playedGapDbAt(int index) {
-    final neighbours = instrumentCountAt(index) - 1;
-    final fits = spanDb / neighbours;
+    final fits = maxGapDbFor(instrumentCountAt(index));
     return gapDbAt(index) < fits ? gapDbAt(index) : fits;
   }
 
   /// Whether [index]'s played gap is less than its tier's figure.
   bool isCompressedAt(int index) => playedGapDbAt(index) < gapDbAt(index);
 
-  /// The loudest sound's level at [index], in dB below full (before trim).
+  /// The levels a round at [index] plays, quietest first, in dB below full
+  /// (before trim). Quiet is at [quietDb] whatever is asked — the floor is
+  /// never lowered. Asking for the LOUDEST: the extras sit at the floor in
+  /// [extraOffsetDb] steps, and the target the played gap above the
+  /// highest of them. Asking for the QUIETEST, the mirror: the target at
+  /// the floor, its competitor the gap above, the extras beyond.
+  List<double> levelsDbAt(int index, {required bool asksLoud}) {
+    final count = instrumentCountAt(index);
+    final gap = playedGapDbAt(index);
+    final extras = count - 2;
+    return asksLoud
+        ? [
+            for (var k = 0; k <= extras; k++) quietDb + k * extraOffsetDb,
+            quietDb + extras * extraOffsetDb + gap,
+          ]
+        : [
+            quietDb,
+            for (var k = 0; k <= extras; k++) quietDb + gap + k * extraOffsetDb,
+          ];
+  }
+
+  /// The loudest sound's level at [index], in dB below full (before trim) —
+  /// the same whichever end is asked for.
   double loudDbAt(int index) =>
-      quietDb + playedGapDbAt(index) * (instrumentCountAt(index) - 1);
+      quietDb +
+      playedGapDbAt(index) +
+      (instrumentCountAt(index) - 2) * extraOffsetDb;
 
   int instrumentCountAt(int index) => this[index].instrumentCount;
 
@@ -224,13 +270,13 @@ class DynamicLadder {
     steps: steps,
   );
 
-  /// A copy with distance [distanceId]'s THREE-instrument neighbour gap set
-  /// to [db], kept within [minGapDb] and what the span holds for three.
+  /// A copy with distance [distanceId]'s THREE-instrument target gap set to
+  /// [db], kept within [minGapDb] and what the span holds for three.
   DynamicLadder withThreeGap(String distanceId, double db) => DynamicLadder(
     distances: [
       for (final d in distances)
         d.id == distanceId
-            ? d.withThreeGap(db.clamp(minGapDb, spanDb / 2).toDouble())
+            ? d.withThreeGap(db.clamp(minGapDb, maxGapDbFor(3)).toDouble())
             : d,
     ],
     steps: steps,

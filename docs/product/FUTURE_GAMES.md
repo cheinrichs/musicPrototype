@@ -42,6 +42,36 @@ telemetry). A phrase plays, then the child picks which position was
 different: that is **recall, not timing**, and works at Explore and Decide
 like the existing games.
 
+# Future task: ordering by loudness — a hard bound
+
+Decided with Cooper, 2026-11-13. **Not built.** It bounds a future
+feature, so it is written down here.
+
+Loud or Quiet's three-instrument tiers ask for the **loudest** (or quietest).
+Difficulty there is entirely **target versus nearest competitor**; the third
+sound only has to sit clearly beyond them, so it sits a small fixed offset
+away (`DynamicLadder.extraOffsetDb`, 3 dB), and the span a round needs is
+gap + offset, not 2 × gap. Cooper: "we only need the 3 instrument tiers to
+be equidistant when it moves to ordering."
+
+**Ordering is different.** Putting three sounds in order is set by the
+**smallest adjacent gap**, and equal spacing is what maximises the smallest
+gap within a given span — so equidistant is the *optimum* for ordering, not
+a style choice. Ordering therefore needs the **full double span**.
+
+On this hardware the span is 12 dB: the quiet floor is −12 dB (the audible
+floor on a phone speaker, never lowered — card 220) and the ceiling is full
+(the loudest samples already peak at about −1 dBTP). Three equally spaced
+levels get **about 6 dB per gap** — in two-instrument terms, between
+moderate (8) and subtle (4).
+
+- ⚠️ **Loud or Quiet ordering can never be an easy tier.** Its easiest
+  possible version is already a mid-ladder discrimination.
+- It may belong at a **higher agency** than ordering by pitch.
+- This is **specific to loudness**, squeezed by the audibility floor below
+  and the speaker above. High vs Low has no equivalent problem: pitch runs
+  across octaves.
+
 ## Other in-a-score tier-4 rows (flagged, not decided)
 
 The curriculum's other nodes have tier-4 (sometimes tier-3) steps that are

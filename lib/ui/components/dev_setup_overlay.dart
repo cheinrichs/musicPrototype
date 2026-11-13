@@ -232,11 +232,12 @@ class _GapStepper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // What the selected tier plays: for three instruments, the neighbour
-    // gap the span allows (at most half of it).
-    final three = ladder.instrumentCountAt(step) >= 3;
+    // What the selected tier plays: the target's gap from its nearest
+    // competitor, at most what the span holds beside the extra instruments.
+    final count = ladder.instrumentCountAt(step);
+    final three = count >= 3;
     final gap = ladder.playedGapDbAt(step);
-    final most = three ? DynamicLadder.spanDb / 2 : DynamicLadder.maxGapDb;
+    final most = DynamicLadder.maxGapDbFor(count);
     Widget button(String key, IconData icon, double to, bool enabled) =>
         IconButton(
           key: ValueKey(key),

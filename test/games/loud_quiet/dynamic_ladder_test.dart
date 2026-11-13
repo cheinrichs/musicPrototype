@@ -90,38 +90,65 @@ void main() {
       }
     });
 
-    test("the tier's dB is the gap between NEIGHBOURS, never the total "
-        'spread: T6 (subtle, 4) plays -12, -8, -4 — not -12, -10, -8', () {
-      expect([...round(5).levelsDb]..sort(), [-12, -8, -4]);
+    test("the tier's dB is the TARGET's gap from its NEAREST COMPETITOR; "
+        'the third sits a small fixed offset beyond — not even spacing', () {
+      // T6 (subtle, 4), asking loudest: -12, -9, then the target at -5.
+      expect([...round(5).levelsDb]..sort(), [-12, -9, -5]);
       expect(round(5).gapDb, 4);
+      // Asking quietest, the mirror: the target on the floor.
+      expect([...round(5, asksLoud: false).levelsDb]..sort(), [-12, -8, -5]);
+      expect(round(5, asksLoud: false).gapDb, 4);
     });
 
-    test('where the span will not hold the neighbour gap, it is COMPRESSED '
-        'and recorded — never a silent relabel: T4 12→6, T5 8→6', () {
-      expect(DynamicLadder.spanDb, 12);
-      expect(ladder.playedGapDbAt(3), 6);
-      expect(ladder.playedGapDbAt(4), 6);
-      expect(ladder.playedGapDbAt(5), 4);
-      expect(
-        [for (var i = 0; i < 6; i++) ladder.isCompressedAt(i)],
-        [false, false, false, true, true, false],
-      );
-      expect(ladder.playedGapsLabel(), '12 · 8 · 4 · 12→6 · 8→6 · 4');
-      for (var i = 0; i < ladder.length; i++) {
-        expect(ladder.loudDbAt(i), lessThanOrEqualTo(0), reason: 'no clip');
+    test('a three-instrument tier is exactly as hard to discriminate as its '
+        'two-instrument twin wherever the span holds it: T5 = T2 = 8, '
+        'T6 = T3 = 4', () {
+      expect(ladder.playedGapDbAt(4), ladder.playedGapDbAt(1));
+      expect(ladder.playedGapDbAt(5), ladder.playedGapDbAt(2));
+      for (final step in [3, 4, 5]) {
+        for (final asksLoud in [true, false]) {
+          for (var seed = 0; seed < 10; seed++) {
+            final r = round(step, asksLoud: asksLoud, seed: seed);
+            expect(r.gapDb, ladder.playedGapDbAt(step));
+          }
+        }
       }
     });
 
-    test('the three-instrument spacing is tuned on its own: setting T5 to '
-        '5 dB leaves T2 at 8, separates T4 from T5, and is capped at what '
-        'the span holds', () {
+    test('the zigzag holds: T4 (extreme ×3) is easier than T2, and T4, T5 '
+        'and T6 are all different', () {
+      final gaps = [for (var i = 0; i < 6; i++) ladder.playedGapDbAt(i)];
+      expect(gaps[3], greaterThan(gaps[1]));
+      expect({gaps[3], gaps[4], gaps[5]}, hasLength(3));
+    });
+
+    test('where the span will not hold gap + offset, it is COMPRESSED and '
+        'recorded — never a silent relabel: only T4, 12→9', () {
+      expect(DynamicLadder.spanDb, 12);
+      expect(DynamicLadder.maxGapDbFor(3), 9);
+      expect(
+        [for (var i = 0; i < 6; i++) ladder.isCompressedAt(i)],
+        [false, false, false, true, false, false],
+      );
+      expect(ladder.playedGapsLabel(), '12 · 8 · 4 · 12→9 · 8 · 4');
+      for (var i = 0; i < ladder.length; i++) {
+        for (final asksLoud in [true, false]) {
+          final levels = ladder.levelsDbAt(i, asksLoud: asksLoud);
+          expect(levels.first, DynamicLadder.quietDb, reason: 'floor');
+          expect(levels.last, lessThanOrEqualTo(0), reason: 'no clip');
+          expect(levels.last, ladder.loudDbAt(i));
+        }
+      }
+    });
+
+    test('the three-instrument gap is tuned on its own: setting T5 to 5 dB '
+        'leaves T2 at 8, and is capped at what the span holds', () {
       final tuned = ladder.withGapAt(4, 5);
       expect(tuned.playedGapDbAt(4), 5);
       expect(tuned.isCompressedAt(4), isFalse);
       expect(tuned.gapDbAt(1), 8, reason: 'its two-instrument twin');
-      expect(tuned.playedGapDbAt(3), 6, reason: 'T4 still at the cap');
-      expect(ladder.withGapAt(3, 9).playedGapDbAt(3), DynamicLadder.spanDb / 2);
-      expect(tuned.playedGapsLabel(), '12 · 8 · 4 · 12→6 · 5 · 4');
+      expect(ladder.withGapAt(3, 11).playedGapDbAt(3), 9);
+      expect(tuned.playedGapsLabel(), '12 · 8 · 4 · 12→9 · 5 · 4');
     });
 
     test('the child picks the loudest or the quietest — never odd-one-out', () {
