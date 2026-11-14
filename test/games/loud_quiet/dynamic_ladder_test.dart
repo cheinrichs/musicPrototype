@@ -120,42 +120,28 @@ void main() {
       expect(ladder.isCompressedAt(5), isFalse);
     });
 
-    test('THE TWO LADDERS DIVERGE: three need more span than two, so a ×3 '
-        'tier can play narrower than its ×2 twin — recorded, not forced to '
-        'match', () {
-      expect(ladder.maxGapDbFor(2), 12);
-      expect(ladder.maxGapDbFor(3), 9);
-      expect(ladder.playedGapDbAt(1), 12, reason: 'T2, moderate ×2');
-      expect(ladder.playedGapDbAt(4), 9, reason: 'T5, moderate ×3');
-      expect(ladder.isCompressedAt(4), isTrue);
-    });
-
-    test('where the span will not hold the figure, it is COMPRESSED and '
-        'recorded — never a silent relabel', () {
-      expect(ladder.spanDb, 12);
+    test("with each instrument's own room, nothing at the standard lift "
+        'is compressed: every tier plays its figure', () {
+      expect(ladder.maxGapDbFor(2), 24, reason: 'oboe: −12 up to +12');
+      expect(ladder.maxGapDbFor(3), 21);
+      expect([
+        for (var i = 0; i < 6; i++) ladder.isCompressedAt(i),
+      ], everyElement(isFalse));
+      expect(ladder.playedGapsLabel(), '16 · 12 · 8 · 16 · 12 · 8');
       expect(
-        [for (var i = 0; i < 6; i++) ladder.isCompressedAt(i)],
-        [true, false, false, true, true, false],
+        [for (var i = 0; i < 6; i++) ladder.loudDbAt(i)],
+        [4, 0, -4, 7, 3, -1],
       );
-      expect(ladder.playedGapsLabel(), '16→12 · 12 · 8 · 16→9 · 12→9 · 8');
-      for (var i = 0; i < ladder.length; i++) {
-        for (final asksLoud in [true, false]) {
-          final levels = ladder.levelsDbAt(i, asksLoud: asksLoud);
-          expect(levels.first, ladder.quietDb, reason: 'quiet');
-          expect(levels.last, lessThanOrEqualTo(0), reason: 'no clip');
-          expect(levels.last, ladder.loudDbAt(i));
-        }
-      }
     });
 
     test('the three-instrument gap is tuned on its own: setting T5 to 5 dB '
-        'leaves T2 at 12, and plays no wider than the span holds', () {
+        'leaves T2 at 12', () {
       final tuned = ladder.withGapAt(4, 5);
       expect(tuned.playedGapDbAt(4), 5);
       expect(tuned.isCompressedAt(4), isFalse);
       expect(tuned.gapDbAt(1), 12, reason: 'its two-instrument twin');
-      expect(ladder.withGapAt(3, 11).playedGapDbAt(3), 9);
-      expect(tuned.playedGapsLabel(), '16→12 · 12 · 8 · 16→9 · 5 · 8');
+      expect(ladder.withGapAt(3, 11).playedGapDbAt(3), 11);
+      expect(tuned.playedGapsLabel(), '16 · 12 · 8 · 16 · 5 · 8');
     });
 
     test('the child picks the loudest or the quietest — never odd-one-out', () {
@@ -194,7 +180,11 @@ void main() {
       );
       expect(r.quietDb, DynamicLadder.floorDb, reason: ladder.labelAt(i));
       expect(r.loudDb, DynamicLadder.floorDb + ladder.playedGapDbAt(i));
-      expect(r.loudDb, lessThanOrEqualTo(0), reason: 'never above full');
+      expect(
+        r.loudDb,
+        lessThanOrEqualTo(ladder.headroomOf(r.leftInstrument)),
+        reason: "never above the instrument's own ceiling",
+      );
     }
   });
 
@@ -256,10 +246,11 @@ void main() {
   });
 
   test('a tuned figure stays within the narrowest and the widest, and never '
-      'PLAYS above full', () {
+      "PLAYS above the roomiest instrument's ceiling", () {
     final wide = ladder.withGap('extreme', 30);
     expect(wide.gapDbAt(0), DynamicLadder.maxFigureDb);
-    expect(wide.loudDbAt(0), 0);
+    expect(wide.loudDbAt(0), 12);
+    expect(wide.eligibleAt(0), [HighLowInstrument.oboe]);
     expect(ladder.withGap('subtle', 0).gapDbAt(2), DynamicLadder.minGapDb);
   });
 
@@ -279,13 +270,23 @@ void main() {
       expect(r.gapDb, 8);
     });
 
-    test('the span above shrinks dB for dB, and what no longer fits is '
-        'compressed and says so', () {
+    test('the room above shrinks dB for dB: fewer instruments can play, '
+        'and only where none can is a gap compressed, saying so', () {
       final lifted = ladder.withLift(4);
-      expect(lifted.spanDb, 8);
-      expect(lifted.maxGapDbFor(2), 8);
-      expect(lifted.maxGapDbFor(3), 5);
-      expect(lifted.playedGapsLabel(), '16→8 · 12→8 · 8 · 16→5 · 12→5 · 8→5');
+      expect(lifted.maxGapDbFor(2), 20);
+      expect(lifted.maxGapDbFor(3), 17);
+      expect(lifted.playedGapsLabel(), '16 · 12 · 8 · 16 · 12 · 8');
+      expect(lifted.eligibleAt(0), [
+        HighLowInstrument.flute,
+        HighLowInstrument.oboe,
+        HighLowInstrument.trumpet,
+        HighLowInstrument.violin,
+      ]);
+      expect(lifted.eligibleAt(3), [HighLowInstrument.oboe]);
+      final top = ladder.withLift(6);
+      expect(top.playedGapsLabel(), '16 · 12 · 8 · 16→15 · 12 · 8');
+      expect(top.isCompressedAt(3), isTrue);
+      expect(top.eligibleAt(3), [HighLowInstrument.oboe]);
     });
 
     test('kept within 0 and the most it may be lifted', () {
@@ -299,8 +300,103 @@ void main() {
     });
   });
 
+  group("each instrument's own room — the tier-eligibility rule", () {
+    String names(List<HighLowInstrument> list) =>
+        list.map((x) => x.name).join(',');
+
+    test('an instrument plays a tier only if its ceiling reaches the loud '
+        'level — guitar and piano sit out the widest, not every tier', () {
+      expect(
+        [for (var s = 0; s < ladder.length; s++) ladder.eligibleAt(s).length],
+        [6, 8, 8, 4, 6, 7],
+        reason: 'the pool size the report gives Cooper, per tier',
+      );
+      expect(
+        names(ladder.eligibleAt(0)),
+        'bells,cello,flute,oboe,trumpet,violin',
+      );
+      expect(names(ladder.eligibleAt(3)), 'flute,oboe,trumpet,violin');
+      expect(ladder.eligibleAt(1), DynamicLadder.poolFor(2));
+    });
+
+    test('every generated round plays an instrument with the room for it, '
+        'and over a session each eligible one turns up', () {
+      for (var step = 0; step < ladder.length; step++) {
+        final seen = <HighLowInstrument>{};
+        for (var seed = 0; seed < 200; seed++) {
+          final r = LoudQuietRound.generate(
+            ladder: ladder,
+            step: step,
+            asksLoud: seed.isEven,
+            random: math.Random(seed),
+          );
+          expect(ladder.hasRoomFor(r.leftInstrument, step), isTrue);
+          expect(
+            r.loudDb,
+            lessThanOrEqualTo(ladder.headroomOf(r.leftInstrument)),
+          );
+          seen.add(r.leftInstrument);
+        }
+        expect(seen, ladder.eligibleAt(step).toSet(), reason: '$step');
+      }
+    });
+
+    test('EXCLUDED, never degraded: tuning an instrument down takes it out '
+        'of the tiers it no longer reaches and leaves every gap as it was', () {
+      final tuned = ladder.withHeadroom(HighLowInstrument.violin, 2);
+      expect(tuned.eligibleAt(0), isNot(contains(HighLowInstrument.violin)));
+      expect(tuned.eligibleAt(1), contains(HighLowInstrument.violin));
+      expect(tuned.playedGapsLabel(), ladder.playedGapsLabel());
+    });
+
+    test('tuned only DOWN from the measured clipping room, never past it', () {
+      final up = ladder.withHeadroom(HighLowInstrument.guitar, 9);
+      expect(up.headroomOf(HighLowInstrument.guitar), 1.5);
+      expect(
+        ladder
+            .withHeadroom(HighLowInstrument.oboe, -4)
+            .headroomOf(HighLowInstrument.oboe),
+        0,
+      );
+    });
+
+    test('the dial reaches its loud end at the widest PAIR, now loud may '
+        'sound above full; three-instrument tops land there too', () {
+      expect(ladder.dialTopDb, 4, reason: 'T1: −12 + 16');
+      expect(LoudQuietRound.needlePositionDb(4, topDb: ladder.dialTopDb), 1);
+      expect(
+        LoudQuietRound.needlePositionDb(
+          ladder.loudDbAt(3),
+          topDb: ladder.dialTopDb,
+        ),
+        1,
+        reason: 'T4 at +7',
+      );
+      expect(
+        LoudQuietRound.needlePositionDb(0, topDb: ladder.dialTopDb),
+        lessThan(1),
+        reason: "T2's loud is below T1's on the dial",
+      );
+    });
+  });
+
   group('tuned on the device', () {
     setUp(() => SharedPreferences.setMockInitialValues({}));
+
+    test("an instrument's room set in the dev gate survives a relaunch, and "
+        'only what was tuned is saved', () async {
+      final dev = DevSettingsState()
+        ..setLoudQuietHeadroom(HighLowInstrument.oboe, 5);
+      await Future<void>.delayed(Duration.zero);
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString('dev.loudQuiet.gapsDb.v2')!;
+      expect(raw, contains('"room.oboe":5'));
+      expect(raw, isNot(contains('room.flute')));
+      final relaunched = DevSettingsState();
+      await relaunched.load();
+      expect(relaunched.loudQuietLadder.headroomOf(HighLowInstrument.oboe), 5);
+      expect(dev.loudQuietLadder, relaunched.loudQuietLadder);
+    });
 
     test(
       'a three-instrument gap set in the dev gate survives a relaunch',

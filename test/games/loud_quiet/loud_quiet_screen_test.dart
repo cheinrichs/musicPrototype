@@ -178,7 +178,10 @@ void main() {
       needleDegrees(tester),
       closeTo(
         LoudQuietLayout.needleDegrees(
-          LoudQuietRound.needlePosition(game.currentRound!.quietGain),
+          LoudQuietRound.needlePosition(
+            game.currentRound!.quietGain,
+            topDb: game.ladder.dialTopDb,
+          ),
         ),
         6,
       ),

@@ -3,6 +3,7 @@
 library;
 
 import '../../../models/agency_stage.dart';
+import '../../high_low/models/high_low_instrument.dart';
 
 /// How far apart the loud and quiet sounds are (Trello card 220), IN
 /// DECIBELS — never a gain multiplier. Tunable by ear (the dev gate).
@@ -94,20 +95,96 @@ class DynamicLadder {
   /// floor comfortable above it. Every dB of lift is a dB less span above.
   final double liftDb;
 
+  /// How far above full (0 dB, the sample as normalised) each instrument's
+  /// loud sound may play, in dB — its OWN ceiling. Defaults to
+  /// [measuredHeadroomDb]; tunable DOWN from it in the dev gate (Cooper's
+  /// ear decides how much of the clipping room is usable before a sound
+  /// turns harsh), never up past it.
+  final Map<HighLowInstrument, double> headroomDb;
+
   const DynamicLadder({
     required this.distances,
     required this.steps,
     this.liftDb = 0,
+    this.headroomDb = measuredHeadroomDb,
   });
 
   /// The audibility floor, in dB below full (before trim): the level the
   /// game's quiet sound has always had, never lowered (card 220).
   static const double floorDb = -12;
 
-  /// The ceiling: full. The loudest samples in the pool already peak at
-  /// about −1 dBFS (bells, guitar, piano — measured 2026-11-13), so nothing
-  /// plays above it.
-  static const double ceilingDb = 0;
+  /// Each instrument's CLIPPING room on the note Loud or Quiet plays (the
+  /// middle of its range): how far its intended level may go above full
+  /// before the note's true peak, after its trim, reaches −1 dBTP. Measured
+  /// 2026-11-14 by tool/measure_dynamic_headroom.py, rounded DOWN to the
+  /// half-decibel.
+  ///
+  /// ⚠️ A HARD UPPER BOUND, NOT PERCEPTUAL ROOM. Peak room is not the room
+  /// before a sound turns harsh on a small speaker, and no meter we have
+  /// predicts that: presence-band energy, spectral centroid and crest
+  /// factor were all checked against Cooper's own trims (oboe, flute,
+  /// guitar sound too loud at matched LUFS) and none ranks them that way.
+  /// So these are a STARTING table, every boosted instrument awaits his ear
+  /// (the oboe first: it has the most room and already sounds hot), and the
+  /// dev gate tunes each down.
+  ///
+  /// Tuba has none: Loud or Quiet never plays it.
+  static const Map<HighLowInstrument, double> measuredHeadroomDb = {
+    HighLowInstrument.bells: 6.5, // F♯6, true peak −7.9
+    HighLowInstrument.cello: 4.5, // C5, −5.6
+    HighLowInstrument.flute: 9.0, // C5, −8.7, trim −1.5
+    HighLowInstrument.guitar: 1.5, // C4, −1.5, trim −1
+    HighLowInstrument.oboe: 12.0, // C5, −10.2, trim −3
+    HighLowInstrument.piano: 3.0, // C5, −4.1
+    HighLowInstrument.trumpet: 10.5, // C5, −11.5
+    HighLowInstrument.violin: 8.0, // C5, −9.3
+  };
+
+  /// [instrument]'s ceiling on this ladder, in dB above full.
+  double headroomOf(HighLowInstrument instrument) =>
+      headroomDb[instrument] ?? 0;
+
+  /// The instruments Loud or Quiet may draw from for a round of [count]:
+  /// all but the tuba. Its range here (G♯3–B3) puts only ≈60% of its energy
+  /// where a phone speaker can reproduce it, so at the quiet end it is the
+  /// one most likely to vanish in a real room — and High vs Low already
+  /// leaves it out of every tier. Three leave out the bells too: drawn at
+  /// half size, they alone would need each instrument's box twice as big to
+  /// keep the touch floor, and three such boxes do not fit beside the dial.
+  ///
+  /// This is who MAY play; [eligibleAt] is who CAN play a given step.
+  static List<HighLowInstrument> poolFor(int count) => [
+    for (final i in HighLowInstrument.values)
+      if (i != HighLowInstrument.tuba &&
+          (count < 3 || i != HighLowInstrument.bells))
+        i,
+  ];
+
+  /// The most room any instrument in [count]'s pool has, in dB above full.
+  double maxHeadroomFor(int count) => poolFor(
+    count,
+  ).map(headroomOf).fold(double.negativeInfinity, (a, b) => a > b ? a : b);
+
+  /// Whether [instrument] can play step [index] as asked: its ceiling
+  /// reaches the step's loud level. The mirror of High vs Low's
+  /// `HighLowInstrument.hasRangeFor` — the same shape in another
+  /// dimension: an instrument that can't produce a tier's demand is
+  /// EXCLUDED from that tier, never given a degraded round.
+  bool hasRoomFor(HighLowInstrument instrument, int index) =>
+      headroomOf(instrument) >= loudDbAt(index) - 1e-9;
+
+  /// The instruments that can play step [index]: [poolFor] its count,
+  /// filtered by [hasRoomFor]. Never empty — the played gap is at most what
+  /// the roomiest instrument holds ([maxGapDbFor]).
+  ///
+  /// ⚠️ It shrinks as steps get EASIER: the widest gap needs the most room,
+  /// so beginners get the fewest instruments. Every round plays one
+  /// instrument on every side, so this count is the round's whole variety
+  /// (one note each).
+  List<HighLowInstrument> eligibleAt(int index) => [
+    for (final i in poolFor(instrumentCountAt(index)))
+      if (hasRoomFor(i, index)) i,
+  ];
 
   /// The quiet sound's level on every step: the floor, plus [liftDb].
   double get quietDb => floorDb + liftDb;
@@ -169,19 +246,19 @@ class DynamicLadder {
   double gapDbAt(int index) =>
       distanceOf(index).gapFor(instrumentCountAt(index));
 
-  /// The whole span the levels can use: from [quietDb] up to [ceilingDb].
-  double get spanDb => ceilingDb - quietDb;
-
   /// How far each extra instrument sits beyond the target's nearest
   /// competitor, in dB: small and FIXED. It only has to make that sound
   /// clearly not the answer; how far beyond is irrelevant to the
   /// discrimination, so it spends as little of the span as it can.
   static const double extraOffsetDb = 3;
 
-  /// The widest gap a round of [count] instruments can play: the span, less
-  /// what the extra instruments take.
+  /// The widest gap a round of [count] instruments can play: from [quietDb]
+  /// up to the ROOMIEST instrument's ceiling, less what the extra
+  /// instruments take. Beyond it no instrument at all can play the step.
   double maxGapDbFor(int count) =>
-      spanDb - (count > 2 ? count - 2 : 0) * extraOffsetDb;
+      maxHeadroomFor(count) -
+      quietDb -
+      (count > 2 ? count - 2 : 0) * extraOffsetDb;
 
   /// The gap actually played at [index], in dB: between the TARGET and its
   /// NEAREST COMPETITOR. The task is "pick the loudest" (or quietest), so
@@ -193,9 +270,10 @@ class DynamicLadder {
   /// zigzag).
   ///
   /// The span the round needs is gap + [extraOffsetDb] per extra
-  /// instrument. Where that won't fit under [spanDb], the gap is COMPRESSED
-  /// to what fits — [isCompressedAt] says so, and the dev gate shows both
-  /// figures, so the label never silently lies.
+  /// instrument. Instruments whose ceiling can't hold it sit the step out
+  /// ([eligibleAt]); only where NO instrument can is the gap COMPRESSED, to
+  /// what the roomiest holds — [isCompressedAt] says so, and the dev gate
+  /// shows both figures, so the label never silently lies.
   ///
   /// NOT FOR ORDERING. A future "put them in order" task is set by its
   /// SMALLEST adjacent gap, and there equal spacing is the optimum (it
@@ -300,38 +378,68 @@ class DynamicLadder {
   /// A copy with distance [distanceId]'s gap set to [db], kept within
   /// [minGapDb]–[maxFigureDb]. Every two-instrument step at that distance
   /// changes with it.
-  DynamicLadder withGap(String distanceId, double db) => DynamicLadder(
+  DynamicLadder withGap(String distanceId, double db) => _copy(
     distances: [
       for (final d in distances)
         d.id == distanceId
             ? d.withGap(db.clamp(minGapDb, maxFigureDb).toDouble())
             : d,
     ],
-    steps: steps,
-    liftDb: liftDb,
   );
 
   /// A copy with distance [distanceId]'s THREE-instrument target gap set to
   /// [db], kept within [minGapDb]–[maxFigureDb].
-  DynamicLadder withThreeGap(String distanceId, double db) => DynamicLadder(
+  DynamicLadder withThreeGap(String distanceId, double db) => _copy(
     distances: [
       for (final d in distances)
         d.id == distanceId
             ? d.withThreeGap(db.clamp(minGapDb, maxFigureDb).toDouble())
             : d,
     ],
-    steps: steps,
-    liftDb: liftDb,
   );
 
   /// A copy with the quiet sound lifted [db] above the floor, kept within
-  /// 0–[maxLiftDb]. Every gap stays as it is (compressed where the span
-  /// above no longer holds it).
-  DynamicLadder withLift(double db) => DynamicLadder(
-    distances: distances,
-    steps: steps,
-    liftDb: db.clamp(0, maxLiftDb).toDouble(),
+  /// 0–[maxLiftDb]. Every gap stays as it is; fewer instruments have the
+  /// room for it (and it is compressed where none has).
+  DynamicLadder withLift(double db) =>
+      _copy(liftDb: db.clamp(0, maxLiftDb).toDouble());
+
+  /// A copy with [instrument]'s ceiling set to [db], kept within 0 and its
+  /// measured clipping room — tuned down by ear, never past the point it
+  /// clips.
+  DynamicLadder withHeadroom(HighLowInstrument instrument, double db) => _copy(
+    headroomDb: {
+      ...headroomDb,
+      instrument: db.clamp(0, measuredHeadroomDb[instrument] ?? 0).toDouble(),
+    },
   );
+
+  DynamicLadder _copy({
+    List<DynamicDistance>? distances,
+    double? liftDb,
+    Map<HighLowInstrument, double>? headroomDb,
+  }) => DynamicLadder(
+    distances: distances ?? this.distances,
+    steps: steps,
+    liftDb: liftDb ?? this.liftDb,
+    headroomDb: headroomDb ?? this.headroomDb,
+  );
+
+  /// The dial's loud end, in dB: the loudest TWO-instrument step's loud
+  /// level, never below full. Loud may now sound above full, and the dial
+  /// is a magnitude (card 208: a narrower gap swings less far), so its end
+  /// has to move up with it — to the widest pair, so the extreme pair still
+  /// swings right out to the loud end. A three-instrument round's loudest
+  /// sits higher still (the extra instrument's offset) and lands there too.
+  /// Scaled to T4's top instead, the extreme pair only just reached the
+  /// loud zone.
+  double get dialTopDb {
+    var top = 0.0;
+    for (var i = 0; i < length; i++) {
+      if (instrumentCountAt(i) == 2 && loudDbAt(i) > top) top = loudDbAt(i);
+    }
+    return top;
+  }
 
   /// Sets the gap step [index] plays for its instrument count: the
   /// two-instrument gap, or the three-instrument one.
@@ -347,13 +455,20 @@ class DynamicLadder {
       other is DynamicLadder &&
       other.liftDb == liftDb &&
       _same(other.distances, distances) &&
-      _same(other.steps, steps);
+      _same(other.steps, steps) &&
+      HighLowInstrument.values.every(
+        (i) => other.headroomOf(i) == headroomOf(i),
+      );
 
   static bool _same(List<Object> a, List<Object> b) =>
       a.length == b.length &&
       [for (var i = 0; i < a.length; i++) a[i] == b[i]].every((s) => s);
 
   @override
-  int get hashCode =>
-      Object.hash(Object.hashAll(distances), Object.hashAll(steps), liftDb);
+  int get hashCode => Object.hash(
+    Object.hashAll(distances),
+    Object.hashAll(steps),
+    liftDb,
+    Object.hashAll(HighLowInstrument.values.map(headroomOf)),
+  );
 }

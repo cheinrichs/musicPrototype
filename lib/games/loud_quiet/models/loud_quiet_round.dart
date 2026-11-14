@@ -128,25 +128,13 @@ class LoudQuietRound {
 
   static double dbToGain(double db) => math.pow(10, db / 20).toDouble();
 
-  /// The instruments Loud or Quiet draws from: all but the tuba. Its range
-  /// here (G♯3–B3) puts only ≈60% of its energy where a phone speaker can
-  /// reproduce it, so at the quiet end (−12 dB) it is the one most likely to
-  /// vanish in a real room — and High vs Low already leaves it out of every
-  /// tier.
+  /// The instruments Loud or Quiet may draw from: see
+  /// [DynamicLadder.poolFor]. Which of them can play a given step is
+  /// [DynamicLadder.eligibleAt].
   static List<HighLowInstrument> get pool => poolFor(2);
 
-  /// The pool for a round of [count] instruments. Three leave out the
-  /// bells too: drawn at half size, they alone would need each instrument's
-  /// box twice as big to keep the touch floor, and three such boxes do not
-  /// fit beside the dial — the dial would shrink to a sliver on a phone.
-  /// Without them, three fit in the room two take, and the dial stays the
-  /// size it is in two-instrument rounds.
-  static List<HighLowInstrument> poolFor(int count) => [
-    for (final i in HighLowInstrument.values)
-      if (i != HighLowInstrument.tuba &&
-          (count < 3 || i != HighLowInstrument.bells))
-        i,
-  ];
+  static List<HighLowInstrument> poolFor(int count) =>
+      DynamicLadder.poolFor(count);
 
   /// The side the round asks for: the loudest, or the quietest.
   int get targetSide => asksLoud ? loudSide : quietSide;
@@ -154,21 +142,21 @@ class LoudQuietRound {
   HighLowInstrument instrumentOf(int side) => instruments[side];
 
   /// Where the dial's zero sits, in dB below full: under the quietest sound
-  /// it shows ([DynamicLadder.floorDb], −12 dB), so even the quietest is a short movement up from
-  /// rest and the loudest is the longest (card 208 — loudness is a
-  /// magnitude, not a polarity).
+  /// it shows ([DynamicLadder.floorDb], −12 dB), so even the quietest is a
+  /// short movement up from rest and the loudest is the longest (card 208 —
+  /// loudness is a magnitude, not a polarity).
   static const double dialFloorDb = -14;
 
   /// Where the needle points for a sound at [gain]: 0 at rest (the dial's
-  /// zero, below the quiet end), 1 at full, in decibels between — a wide
-  /// round's quiet sound lands a seventh of the way, a narrow round's
-  /// (−6 dB) a little past halfway.
-  static double needlePosition(double gain) =>
-      needlePositionDb(20 * math.log(gain) / math.ln10);
+  /// zero, below the quiet end), 1 at [topDb] — the loudest the ladder
+  /// plays ([DynamicLadder.dialTopDb]; full if omitted) — in decibels
+  /// between.
+  static double needlePosition(double gain, {double topDb = 0}) =>
+      needlePositionDb(20 * math.log(gain) / math.ln10, topDb: topDb);
 
   /// [needlePosition] for a level in dB.
-  static double needlePositionDb(double db) =>
-      ((db - dialFloorDb) / -dialFloorDb).clamp(0.0, 1.0);
+  static double needlePositionDb(double db, {double topDb = 0}) =>
+      ((db - dialFloorDb) / (topDb - dialFloorDb)).clamp(0.0, 1.0);
 
   /// A round at [step] of [ladder], asking about the loud pole if
   /// [asksLoud]: as many sounds as the step compares, the target the step's
@@ -182,7 +170,9 @@ class LoudQuietRound {
     required math.Random random,
   }) {
     final count = ladder.instrumentCountAt(step);
-    final pool = LoudQuietRound.poolFor(count);
+    // Only instruments with the room for this step's loud level — the
+    // mirror of High vs Low's range rule (see DynamicLadder.hasRoomFor).
+    final pool = ladder.eligibleAt(step);
     final instrument = pool[random.nextInt(pool.length)];
     final notes = instrument.availableMidis;
     final midi = notes[notes.length ~/ 2];

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../app/state/dev_settings_state.dart';
+import '../../games/high_low/models/high_low_instrument.dart';
 import '../../games/loud_quiet/models/dynamic_ladder.dart';
 import '../../models/agency_stage.dart';
 import '../../models/concept_tier.dart';
@@ -175,12 +176,26 @@ class DevSetupOverlay extends StatelessWidget {
                   // audibility floor, in the row High vs Low's two toggles
                   // take — neither does anything in Loud or Quiet.
                   if (loudQuiet)
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: _LiftStepper(
-                        liftDb: devSettings.loudQuietLadder.liftDb,
-                        onChanged: devSettings.setLoudQuietLift,
-                      ),
+                    Row(
+                      children: [
+                        // Each instrument's own ceiling above full, tuned
+                        // down by ear from its clipping room.
+                        _RoomStepper(
+                          ladder: devSettings.loudQuietLadder,
+                          step: devSettings.loudQuietStep,
+                          instrument: devSettings.roomInstrument,
+                          onNext: devSettings.nextRoomInstrument,
+                          onChanged: (db) => devSettings.setLoudQuietHeadroom(
+                            devSettings.roomInstrument,
+                            db,
+                          ),
+                        ),
+                        const Spacer(),
+                        _LiftStepper(
+                          liftDb: devSettings.loudQuietLadder.liftDb,
+                          onChanged: devSettings.setLoudQuietLift,
+                        ),
+                      ],
                     )
                   else
                     // Two two-way toggles share one row, so the column still
@@ -343,6 +358,73 @@ class _LiftStepper extends StatelessWidget {
       ),
     ],
   );
+}
+
+/// "[Oboe] − +12 + 6/8": how far above full one instrument's loud sound may
+/// play (tap the name for the next instrument), and how many of the pool
+/// can play the selected tier — so the pool shrinking is seen as it is
+/// tuned.
+class _RoomStepper extends StatelessWidget {
+  final DynamicLadder ladder;
+  final int step;
+  final HighLowInstrument instrument;
+  final VoidCallback onNext;
+  final ValueChanged<double> onChanged;
+
+  const _RoomStepper({
+    required this.ladder,
+    required this.step,
+    required this.instrument,
+    required this.onNext,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final room = ladder.headroomOf(instrument);
+    final most = DynamicLadder.measuredHeadroomDb[instrument] ?? 0;
+    final playing = ladder.eligibleAt(step).length;
+    final pool = DynamicLadder.poolFor(ladder.instrumentCountAt(step)).length;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        TextButton(
+          key: const ValueKey('room-instrument'),
+          style: TextButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            minimumSize: const Size(56, 32),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            visualDensity: VisualDensity.compact,
+          ),
+          onPressed: onNext,
+          child: Text(
+            instrument.displayName,
+            style: const TextStyle(fontSize: 12),
+          ),
+        ),
+        _stepButton(
+          'room-minus',
+          Icons.remove_rounded,
+          room > 0 ? () => onChanged(room - 1) : null,
+        ),
+        Text(
+          '+${_db(room)}',
+          key: const ValueKey('room-value'),
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+        ),
+        _stepButton(
+          'room-plus',
+          Icons.add_rounded,
+          room < most ? () => onChanged(room + 1) : null,
+        ),
+        Text(
+          '$playing/$pool',
+          key: const ValueKey('room-playing'),
+          style: AppTypography.label.copyWith(fontSize: 11),
+        ),
+      ],
+    );
+  }
 }
 
 /// "Rounds − n +": the round-set length for the selected agency, within

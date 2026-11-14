@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 import 'package:ear_trainer/app/state/dev_settings_state.dart';
+import 'package:ear_trainer/games/high_low/models/high_low_instrument.dart';
 import 'package:ear_trainer/models/agency_stage.dart';
 import 'package:ear_trainer/models/concept_tier.dart';
 import 'package:ear_trainer/ui/components/dev_setup_overlay.dart';
@@ -99,6 +100,26 @@ void main() {
       tester.widget<Text>(find.byKey(const ValueKey('lift-value'))).data,
       '+1',
     );
+    expect(tester.takeException(), isNull);
+
+    // The Room control: the bells' ceiling tuned down until they sit out
+    // T1, and the count of instruments that can play it says so.
+    await tester.tap(find.byKey(const ValueKey('lift-minus')));
+    await tester.pump();
+    String text(String key) =>
+        tester.widget<Text>(find.byKey(ValueKey(key))).data!;
+    expect(text('room-value'), '+6.5');
+    expect(text('room-playing'), '6/8');
+    for (var n = 0; n < 3; n++) {
+      await tester.tap(find.byKey(const ValueKey('room-minus')));
+      await tester.pump();
+    }
+    expect(text('room-value'), '+3.5');
+    expect(text('room-playing'), '5/8', reason: 'T1 needs +4');
+    await tester.tap(find.byKey(const ValueKey('room-instrument')));
+    await tester.pump();
+    expect(devSettings.roomInstrument, HighLowInstrument.cello);
+    expect(text('room-value'), '+4.5');
     expect(tester.takeException(), isNull);
   });
 

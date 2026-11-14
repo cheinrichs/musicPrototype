@@ -343,7 +343,10 @@ class LoudQuietGameState extends ChangeNotifier {
     // Unless the round moved on, or the game closed, while it was read.
     if (!_disposed && currentRound == round && !dialLocked) {
       _swing = NeedleSwing(
-        position: LoudQuietRound.needlePosition(round.gainOf(side)),
+        position: LoudQuietRound.needlePosition(
+          round.gainOf(side),
+          topDb: ladder.dialTopDb,
+        ),
         length: length,
         serial: ++_swingSerial,
       );

@@ -194,17 +194,25 @@ void main() {
 
     test('the dial reads up from zero below the quietest (card 208): the '
         'quiet sound a short way, the tightest step\'s loud one past '
-        'halfway, full gain all the way', () {
+        'halfway, the widest pair\'s all the way', () {
+      const top = 4.0; // DynamicLadder.standard.dialTopDb: T1, −12 + 16
+      expect(DynamicLadder.standard.dialTopDb, top);
       expect(
-        LoudQuietRound.needlePositionDb(DynamicLadder.floorDb),
-        closeTo(2 / 14, 0.01),
+        LoudQuietRound.needlePositionDb(DynamicLadder.floorDb, topDb: top),
+        closeTo(2 / 18, 0.01),
       );
       expect(
-        LoudQuietRound.needlePositionDb(DynamicLadder.standard.loudDbAt(2)),
-        // T3 (8 dB): loud at -4, 10/14 of the way.
-        closeTo(10 / 14, 0.01),
+        LoudQuietRound.needlePositionDb(
+          DynamicLadder.standard.loudDbAt(2),
+          topDb: top,
+        ),
+        // T3 (8 dB): loud at -4, 10/18 of the way.
+        closeTo(10 / 18, 0.01),
       );
-      expect(LoudQuietRound.needlePosition(1.0), closeTo(1, 1e-9));
+      expect(
+        LoudQuietRound.needlePositionDb(top, topDb: top),
+        closeTo(1, 1e-9),
+      );
       expect(
         LoudQuietRound.needlePosition(0.01),
         0,
@@ -238,12 +246,18 @@ void main() {
         final round = game.currentRound!;
         await tester.pump();
         final first = game.needleSwing!;
-        expect(first.position, LoudQuietRound.needlePosition(round.gainOf(0)));
+        expect(
+          first.position,
+          LoudQuietRound.needlePosition(round.gainOf(0), topDb: _top),
+        );
         expect(first.length, _RecordingAudio.length);
         await tester.pump(LoudQuietGameState.noteGap);
         final second = game.needleSwing!;
         expect(second.serial, greaterThan(first.serial));
-        expect(second.position, LoudQuietRound.needlePosition(round.gainOf(1)));
+        expect(
+          second.position,
+          LoudQuietRound.needlePosition(round.gainOf(1), topDb: _top),
+        );
         expect(game.dialLocked, isFalse);
         await _playThrough(tester);
         game.dispose();
@@ -298,7 +312,10 @@ void main() {
       );
       expect(
         game.needleSwing!.position,
-        LoudQuietRound.needlePosition(round.gainOf(round.targetSide)),
+        LoudQuietRound.needlePosition(
+          round.gainOf(round.targetSide),
+          topDb: _top,
+        ),
       );
       expect(game.currentPromptIndex, 0);
       await tester.pump(LoudQuietGameState.celebration);
@@ -604,3 +621,5 @@ void main() {
     });
   });
 }
+
+final _top = DynamicLadder.standard.dialTopDb;
