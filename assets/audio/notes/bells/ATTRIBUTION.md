@@ -1,5 +1,11 @@
 # Attribution (Trello card TY1KDwiB, 2026-09)
 
+⚠️ **ATTRIBUTION: REQUIRED.** CC BY 4.0. The credit for these handbells on
+the app's credits screen (lib/app/credits_data.dart, marked
+`attributionRequired: true`) MUST stay; removing it breaches the licence.
+This is the only REQUIRED credit among the note libraries. Philharmonia
+and Iowa (see each instrument's PROVENANCE.md) are courtesies.
+
 The 13 files in this directory are derived from InspectorJ's "Hand Bells,
 Singles" pack on Freesound, licensed **CC BY 4.0**
 (https://creativecommons.org/licenses/by/4.0/) — attribution required,

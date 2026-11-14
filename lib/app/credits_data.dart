@@ -31,12 +31,19 @@ class CreditEntry {
   /// entry's main line.
   final String? note;
 
+  /// ⚠️ Whether the source's LICENCE REQUIRES this credit. True: removing
+  /// the entry BREACHES the licence (the CC BY 4.0 handbells). False: a
+  /// courtesy, removable without consequence. Required — never defaulted —
+  /// so every new entry has to decide.
+  final bool attributionRequired;
+
   const CreditEntry({
     required this.title,
     this.creator,
     this.sourceUrl,
     this.license,
     this.note,
+    required this.attributionRequired,
   });
 }
 
@@ -55,11 +62,24 @@ const List<CreditSection> creditSections = [
   CreditSection(
     heading: 'Sound',
     entries: [
+      // ⚠️ ATTRIBUTION RULES — read before tidying this list:
+      // - InspectorJ's handbells are CC BY 4.0: the credit is REQUIRED,
+      //   and removing it breaches the licence.
+      // - Philharmonia and Iowa ask for no credit; theirs are courtesies.
+      // Each entry's [CreditEntry.attributionRequired] says which, and
+      // test/app/credits_data_test.dart fails if a required one goes.
+      // Per-file provenance: assets/audio/notes/<instrument>/PROVENANCE.md
+      // (Philharmonia, Iowa) and bells/ATTRIBUTION.md.
       CreditEntry(
         title: 'Philharmonia Orchestra sound samples',
         creator: 'Philharmonia Orchestra',
-        sourceUrl: 'https://philharmonia.co.uk/resources/sound-samples/',
+        // Philharmonia's own terms (checked 2026-11-14): free to use
+        // as you wish, including in a commercial work, but never sold or
+        // made available "as is". NOT Creative Commons — commit e5730e3
+        // wrongly said "CC-licensed".
+        sourceUrl: 'https://philharmonia.co.uk/audio-sound-samples',
         license: 'Free to use for any purpose, including commercially',
+        attributionRequired: false,
         note:
             'Cello, flute, guitar, oboe, trumpet, tuba, and violin note '
             'samples.',
@@ -72,12 +92,15 @@ const List<CreditSection> creditSections = [
             'Freely available since 1997, for any project, without '
             'restriction',
         note: 'Piano note samples.',
+        attributionRequired: false,
       ),
       CreditEntry(
         title: 'Hand Bells, Singles',
         creator: 'InspectorJ',
         sourceUrl: 'https://freesound.org/people/InspectorJ/packs/19255/',
         license: 'CC BY 4.0 (creativecommons.org/licenses/by/4.0)',
+        // REQUIRED by CC BY 4.0. Do not remove.
+        attributionRequired: true,
         note:
             'Bell note samples. Modified: converted to mono, trimmed, and '
             'gain-normalized.',
@@ -91,6 +114,7 @@ const List<CreditSection> creditSections = [
         title: 'Character and instrument illustrations',
         creator: 'SongStone',
         note: 'Original artwork created for this app.',
+        attributionRequired: false,
       ),
     ],
   ),
