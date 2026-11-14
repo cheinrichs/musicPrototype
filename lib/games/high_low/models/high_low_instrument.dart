@@ -246,6 +246,60 @@ enum HighLowInstrument {
       if (!missingMidis.contains(midi)) midi,
   ];
 
+  /// The ways this instrument can LOOK, as SETS of distinct looks: a round
+  /// that puts this one instrument in several positions draws each in a
+  /// different look from one set (never mixing sets — they are different
+  /// drawings). Every instrument has its pair, [leftAssetPath] /
+  /// [rightAssetPath] (two colourways); the bells also have three
+  /// handbells — brass, copper, silver (bells_x3_variants.png).
+  ///
+  /// WHY: a ONE-instrument, THREE-note tier (High vs Low's T5/T6) put three
+  /// identical sprites on three platforms, and a child could not tell which
+  /// they had tapped. Same timbre is the point of the tier; same appearance
+  /// was a defect. Looks are appearance ONLY — they never touch the sound,
+  /// and never which tiers an instrument is eligible for.
+  List<List<InstrumentLook>> get lookSets => [
+    [InstrumentLook(leftAssetPath), InstrumentLook(rightAssetPath)],
+    if (this == bells) _handbells,
+  ];
+
+  /// Looks for [count] positions of this instrument in one round: all
+  /// different when any set has [count] looks (the first such set, so a
+  /// two-position round keeps its familiar pair), otherwise the largest
+  /// set, repeating in order.
+  List<InstrumentLook> looksFor(int count) {
+    final sets = lookSets;
+    final set = sets.firstWhere(
+      (s) => s.length >= count,
+      orElse: () => sets.reduce((a, b) => b.length > a.length ? b : a),
+    );
+    return [for (var i = 0; i < count; i++) set[i % set.length]];
+  }
+
+  /// Whether [count] positions of this instrument can all look different.
+  bool hasDistinctLooksFor(int count) => lookSets.any((s) => s.length >= count);
+
+  /// Each position's look in a round whose positions play [instruments]
+  /// (left to right): every instrument's positions take its [looksFor]
+  /// that many, in order — so one instrument on three platforms wears
+  /// three looks where it has them, and two instruments keep theirs apart.
+  static List<InstrumentLook> looksForRound(
+    List<HighLowInstrument> instruments,
+  ) {
+    final counts = <HighLowInstrument, int>{};
+    for (final i in instruments) {
+      counts[i] = (counts[i] ?? 0) + 1;
+    }
+    final looks = {
+      for (final e in counts.entries) e.key: e.key.looksFor(e.value),
+    };
+    final used = <HighLowInstrument, int>{};
+    return [
+      for (final i in instruments)
+        looks[i]![used.update(i, (n) => n + 1, ifAbsent: () => 0)],
+    ];
+  }
+
   String get leftAssetPath =>
       'assets/images/characters/instruments/${_assetBaseName}1.png';
 
@@ -342,4 +396,73 @@ String _sampleFilenameForMidi(int midi) {
   // Sharps carry an underscore before the octave digit too (c_sharp_4),
   // naturals don't (c4) — matches the existing asset naming convention.
   return name.contains('_sharp') ? '${name}_$octave' : '$name$octave';
+}
+
+/// The three handbells, measured 2026-11-14 on bells_x3_variants.png
+/// (2172×724): one slice size for all three — centred on each bell, the
+/// whole bell inside, nothing of a neighbour — so they draw at one scale.
+/// test/games/high_low/instrument_looks_test.dart re-measures them.
+const _handbellSheet =
+    'assets/images/characters/instruments/bells_x3_variants.png';
+const handbellCentres = [521.0, 1086.0, 1649.5];
+const handbellSlice = 460.0; // width; 712 tall, from y 3
+const _handbells = [
+  InstrumentLook(_handbellSheet, LookRegion.handbell(521.0)), // brass
+  InstrumentLook(_handbellSheet, LookRegion.handbell(1086.0)), // copper
+  InstrumentLook(_handbellSheet, LookRegion.handbell(1649.5)), // silver
+];
+
+/// One way an instrument looks: a whole image file, or a [region] of a
+/// sheet. Pure Dart (no dart:ui) — the curriculum generator reaches this
+/// file through the Loud or Quiet ladder.
+class InstrumentLook {
+  final String asset;
+  final LookRegion? region;
+  const InstrumentLook(this.asset, [this.region]);
+
+  @override
+  bool operator ==(Object other) =>
+      other is InstrumentLook && other.asset == asset && other.region == region;
+
+  @override
+  int get hashCode => Object.hash(asset, region);
+
+  @override
+  String toString() => region == null ? asset : '$asset@${region!.left}';
+}
+
+/// A look's box in its sheet, in pixels, and the sheet's size.
+class LookRegion {
+  final double sheetWidth, sheetHeight, left, top, width, height;
+  const LookRegion({
+    required this.sheetWidth,
+    required this.sheetHeight,
+    required this.left,
+    required this.top,
+    required this.width,
+    required this.height,
+  });
+
+  /// A handbell's slice, centred on [centreX].
+  const LookRegion.handbell(double centreX)
+    : sheetWidth = 2172,
+      sheetHeight = 724,
+      left = centreX - handbellSlice / 2,
+      top = 3,
+      width = handbellSlice,
+      height = 712;
+
+  @override
+  bool operator ==(Object other) =>
+      other is LookRegion &&
+      other.sheetWidth == sheetWidth &&
+      other.sheetHeight == sheetHeight &&
+      other.left == left &&
+      other.top == top &&
+      other.width == width &&
+      other.height == height;
+
+  @override
+  int get hashCode =>
+      Object.hash(sheetWidth, sheetHeight, left, top, width, height);
 }

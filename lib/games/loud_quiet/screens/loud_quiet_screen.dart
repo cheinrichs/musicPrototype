@@ -20,9 +20,11 @@ import '../../../ui/components/game_screen_layout.dart';
 import '../../../ui/components/round_set_end.dart';
 import '../../../ui/theme/theme.dart';
 import '../../game_session.dart';
+import '../../high_low/models/high_low_instrument.dart';
 import '../../high_low/ordering/ordering_slot.dart';
 import '../../high_low/widgets/character_art.dart';
 import '../../high_low/widgets/high_low_header.dart';
+import '../../high_low/widgets/instrument_look_image.dart';
 import '../../high_low/widgets/mouth_frames.dart';
 import '../models/loud_quiet_layout.dart';
 import '../state/loud_quiet_game_state.dart';
@@ -364,9 +366,11 @@ class _LoudQuietScreenState extends State<LoudQuietScreen> {
     final instrument = round.instrumentOf(side);
     final box = layout.instrumentSize * instrument.displaySizeScale;
     final lift = box * instrument.floatFraction;
-    final asset = side.isEven
-        ? instrument.leftAssetPath
-        : instrument.rightAssetPath;
+    // Every side its own look where the art allows — three sides of one
+    // instrument are three tellable-apart sprites (see
+    // HighLowInstrument.lookSets). Appearance only: which instruments may
+    // play a step is the ladder's room rule, never this.
+    final look = HighLowInstrument.looksForRound(round.instruments)[side];
     final feet = Offset(
       layout.stumpAnchorX(side),
       layout.screen.height - layout.groundY - lift,
@@ -387,7 +391,7 @@ class _LoudQuietScreenState extends State<LoudQuietScreen> {
               scale: playing ? 1.12 : 1.0,
               duration: AppAnimations.medium,
               curve: AppAnimations.bounceCurve,
-              child: Image.asset(asset, fit: BoxFit.contain),
+              child: InstrumentLookImage(look),
             ),
             Positioned(
               top: -box * 0.15,
@@ -454,11 +458,9 @@ class _LoudQuietScreenState extends State<LoudQuietScreen> {
         },
         feedback: Opacity(
           opacity: 0.85,
-          child: Image.asset(
-            asset,
-            width: box,
-            height: box,
-            fit: BoxFit.contain,
+          child: SizedBox.square(
+            dimension: box,
+            child: InstrumentLookImage(look),
           ),
         ),
         childWhenDragging: Opacity(opacity: 0.3, child: button),

@@ -14,7 +14,9 @@ import '../../../ui/components/drop_snap.dart';
 import '../../../ui/components/game_screen_layout.dart';
 import '../../../ui/theme/theme.dart';
 import '../models/scene_layout.dart';
+import '../models/high_low_instrument.dart';
 import '../widgets/high_low_header.dart';
+import '../widgets/instrument_look_image.dart';
 import '../widgets/character_art.dart';
 import '../widgets/mouth_frames.dart';
 import '../widgets/retry_settle.dart';
@@ -324,14 +326,13 @@ class _OrderingScreenState extends State<OrderingScreen> {
     });
   }
 
-  String _assetFor(OrderingLayout layout, int note) {
-    final instrument = _state.round!.notes[note].instrument;
-    // Same variants as before: the last note wears the right-hand art, the
-    // rest the left-hand art (two notes: one each).
-    return note == layout.noteCount - 1
-        ? instrument.rightAssetPath
-        : instrument.leftAssetPath;
-  }
+  /// [note]'s look: every instrument's positions in the round wear
+  /// DIFFERENT looks where its art allows — one instrument on three
+  /// platforms is three tellable-apart sprites (see
+  /// HighLowInstrument.lookSets).
+  InstrumentLook _lookFor(int note) => HighLowInstrument.looksForRound([
+    for (final n in _state.round!.notes) n.instrument,
+  ])[note];
 
   double _scaleOf(int note) =>
       _state.round!.notes[note].instrument.displaySizeScale;
@@ -364,7 +365,7 @@ class _OrderingScreenState extends State<OrderingScreen> {
               0.33, 0.33, 0.33, 0, 0,
               0, 0, 0, 1, 0,
             ]),
-            child: Image.asset(_assetFor(layout, note), fit: BoxFit.contain),
+            child: InstrumentLookImage(_lookFor(note)),
           ),
         ),
       ),
@@ -381,10 +382,10 @@ class _OrderingScreenState extends State<OrderingScreen> {
     final feet = placed == null
         ? layout.stumpFeet(note)
         : layout.slotCentre(placed);
-    final asset = _assetFor(layout, note);
+    final look = _lookFor(note);
     final glowing = _state.playingIndex == note;
 
-    Widget art = Image.asset(asset, fit: BoxFit.contain);
+    Widget art = InstrumentLookImage(look);
 
     // Home again after being sent back or missing a platform: the shared
     // wrong-drag return, plus a shrink-to-grow so it doesn't pop in size.
@@ -465,7 +466,7 @@ class _OrderingScreenState extends State<OrderingScreen> {
           child: SizedBox(
             width: stumpSize,
             height: stumpSize,
-            child: Image.asset(asset, fit: BoxFit.contain),
+            child: InstrumentLookImage(look),
           ),
         ),
         childWhenDragging: const SizedBox.shrink(),
