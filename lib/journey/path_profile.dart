@@ -36,6 +36,12 @@ class PathProfile {
     required this.minDepth,
   });
 
+  /// The path's typical depth (its mean over the samples): where a figure
+  /// standing on it draws at its nominal size.
+  double get meanDepth =>
+      samples.map((s) => math.max(minDepth, s.$3)).reduce((a, b) => a + b) /
+      samples.length;
+
   /// Centre-line y and depth at [u] (0–1 across the image), interpolated.
   (double centre, double depth) at(double u) {
     final x = u.clamp(0.0, 1.0);

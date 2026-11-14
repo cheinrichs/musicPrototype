@@ -182,8 +182,10 @@ class _JourneyScreenState extends State<JourneyScreen> {
   AgencyStage get _agency =>
       _profiles()?.activeProfile?.agencyOverride ?? AgencyStage.observe;
 
-  _MapGeometry _geometry() =>
-      _MapGeometry(MediaQuery.sizeOf(context), MediaQuery.paddingOf(context));
+  JourneyMapGeometry _geometry() => JourneyMapGeometry(
+    MediaQuery.sizeOf(context),
+    MediaQuery.paddingOf(context),
+  );
 
   Future<void> _wait(Duration d) => Future.delayed(d);
 
@@ -205,12 +207,12 @@ class _JourneyScreenState extends State<JourneyScreen> {
   // Panning
   // ---------------------------------------------------------------------------
 
-  double _offsetFor(_MapGeometry g, int stone, {double at = 0.4}) {
+  double _offsetFor(JourneyMapGeometry g, int stone, {double at = 0.4}) {
     final max = _scroll.hasClients ? _scroll.position.maxScrollExtent : 0.0;
     return (g.stoneX(stone) - g.visibleWidth * at).clamp(0.0, max);
   }
 
-  bool _onScreen(_MapGeometry g, double x) {
+  bool _onScreen(JourneyMapGeometry g, double x) {
     final o = _scroll.offset;
     return x > o + g.margin && x < o + g.visibleWidth - g.margin;
   }
@@ -416,7 +418,7 @@ class _JourneyScreenState extends State<JourneyScreen> {
   Future<void> _presentsOut(
     Offset from,
     List<Reward> rewards,
-    _MapGeometry g,
+    JourneyMapGeometry g,
   ) async {
     final n = rewards.length;
     // Kept clear of the top edge at its popped (1.2×) size: on a phone the
@@ -483,7 +485,7 @@ class _JourneyScreenState extends State<JourneyScreen> {
     await _wait(JourneyTiming.rewardFlight + JourneyTiming.rewardHold);
   }
 
-  Widget _rewardItem(Reward r, _MapGeometry g) =>
+  Widget _rewardItem(Reward r, JourneyMapGeometry g) =>
       RewardItem(reward: r, size: g.rewardSize);
 
   /// Back on the path: the stone turns rainbow, the pin steps on, an arrow
@@ -647,7 +649,7 @@ class _JourneyScreenState extends State<JourneyScreen> {
     );
   }
 
-  Widget _buildMap(_MapGeometry g) {
+  Widget _buildMap(JourneyMapGeometry g) {
     final current = _journey.current;
     final count = math.max(_journey.chestStone + 3, current + 6);
     final chestStone = _chestAt ?? _journey.chestStone;
@@ -698,7 +700,7 @@ class _JourneyScreenState extends State<JourneyScreen> {
   Widget _placed(Rect r, Widget child) =>
       Positioned.fromRect(rect: r, child: child);
 
-  Widget _buildStone(_MapGeometry g, int i, int current) {
+  Widget _buildStone(JourneyMapGeometry g, int i, int current) {
     final state = i < current
         ? StoneState.done
         : i == current
@@ -738,7 +740,7 @@ class _JourneyScreenState extends State<JourneyScreen> {
     );
   }
 
-  Widget _buildPin(_MapGeometry g, int stone) {
+  Widget _buildPin(JourneyMapGeometry g, int stone) {
     final r = g.pinRect(stone);
     return AnimatedPositioned(
       duration: JourneyTiming.pinMoves,
@@ -755,7 +757,7 @@ class _JourneyScreenState extends State<JourneyScreen> {
     );
   }
 
-  Widget _buildChest(_MapGeometry g, int stone) {
+  Widget _buildChest(JourneyMapGeometry g, int stone) {
     final lifted = _chestAwake;
     final r = g.chestRect(stone, lifted: lifted);
     Widget chest = Stack(
@@ -831,7 +833,7 @@ class _JourneyScreenState extends State<JourneyScreen> {
 
   /// Onward: from the child's new stone toward the one after it — the
   /// walked side behind is where Piper and Clef stand.
-  Widget _buildArrow(_MapGeometry g, int from) {
+  Widget _buildArrow(JourneyMapGeometry g, int from) {
     final a = g.stoneCentre(from + 1);
     final b = g.stoneCentre(from + 2);
     final st = g.stoneSize(from + 1);
@@ -853,7 +855,7 @@ class _JourneyScreenState extends State<JourneyScreen> {
     );
   }
 
-  Widget _buildStoneLayer(_MapGeometry g) {
+  Widget _buildStoneLayer(JourneyMapGeometry g) {
     final part = _part;
     final showGame = _beat == _Beat.playing;
     final piper = _piperSpot(g);
@@ -919,7 +921,7 @@ class _JourneyScreenState extends State<JourneyScreen> {
     );
   }
 
-  Widget _buildGift(_MapGeometry g) {
+  Widget _buildGift(JourneyMapGeometry g) {
     final c = g.giftCentre;
     final s = g.giftSize;
     final open =
@@ -970,7 +972,7 @@ class _JourneyScreenState extends State<JourneyScreen> {
   }
 
   ({double left, double bottom, double height, double right}) _piperSpot(
-    _MapGeometry g,
+    JourneyMapGeometry g,
   ) {
     if (_lastGame == 'loud_quiet') {
       final l = LoudQuietLayout(g.size, insets: g.padding);
@@ -997,10 +999,14 @@ class _JourneyScreenState extends State<JourneyScreen> {
   /// Piper and Clef strung along the path with the child — a party walking
   /// it, not a huddle on one spot (Cooper, 2026-11). They walk on with the
   /// pin. Built to the cards (the composite's Journey was illustrative).
-  Widget _buildCompanion(_MapGeometry g, int stone, {required bool clef}) {
+  Widget _buildCompanion(
+    JourneyMapGeometry g,
+    int stone, {
+    required bool clef,
+  }) {
     final art = clef ? CharacterArt.clef : CharacterArt.piper;
     final feet = clef ? g.clefFeet(stone) : g.piperFeet(stone);
-    final h = clef ? g.companionHeight : g.piperHeight;
+    final h = clef ? g.clefHeightAt(feet.dx) : g.piperHeightAt(feet.dx);
     final w = art.frameSize.width * h / art.frameSize.height;
     return AnimatedPositioned(
       key: ValueKey(clef ? 'map-clef' : 'map-piper'),
@@ -1021,7 +1027,7 @@ class _JourneyScreenState extends State<JourneyScreen> {
     );
   }
 
-  Widget _buildDevBar(_MapGeometry g) {
+  Widget _buildDevBar(JourneyMapGeometry g) {
     Widget button(String label, VoidCallback onTap) => Padding(
       padding: const EdgeInsets.only(right: 8),
       child: ActionChip(
@@ -1050,10 +1056,10 @@ class _JourneyScreenState extends State<JourneyScreen> {
 /// on its centre line and sized to its width there, so they shrink as it
 /// recedes and the far ones take less room. The chest stands behind its
 /// stone, the pin on the child's, all clear of the rail's panel.
-class _MapGeometry {
+class JourneyMapGeometry {
   final Size size;
   final EdgeInsets padding;
-  _MapGeometry(this.size, this.padding);
+  JourneyMapGeometry(this.size, this.padding);
 
   /// The backdrop's painted path (one backdrop for now).
   final PathProfile path = forestPath;
@@ -1080,9 +1086,21 @@ class _MapGeometry {
   /// Gap between stones, as a share of a stone's cell.
   static const double step = 1.15;
 
-  /// Far enough in that Piper fits behind the first stone.
-  double get startX =>
-      padding.left + math.max(size.width * 0.16, size.height * 0.34);
+  /// Far enough in that Piper — at her depth-scaled size, clear of the
+  /// pin — fits on screen behind the first stone.
+  double get startX {
+    final least = padding.left + size.width * 0.16;
+    var x = least;
+    for (var pass = 0; pass < 4; pass++) {
+      final piperX = x - pinWidth * (0.5 + _piperGap);
+      final w = _widthFor(CharacterArt.piper, piperHeightAt(piperX));
+      x = math.max(
+        least,
+        padding.left + size.height * 0.02 + w + pinWidth * (0.5 + _piperGap),
+      );
+    }
+    return x;
+  }
 
   final List<double> _xs = [];
 
@@ -1137,13 +1155,16 @@ class _MapGeometry {
     return Rect.fromLTWH(foot.dx - s / 2, foot.dy - s * 0.76, s, s);
   }
 
-  /// The avatar pin: the child, so the dominant figure on screen — taller
-  /// than Piper and Clef — its tip on the stone.
+  // 0.257 of the screen: the avatar the size it was drawn at before its
+  // slice was tightened from an even grid cell (0.28 of a 301 px cell).
+  double get pinHeight => size.height * 0.257;
+  double get pinWidth =>
+      pinHeight * JourneyArt.pinCell.width / JourneyArt.pinCell.height;
+
+  /// The avatar pin: the child, its tip on the stone.
   Rect pinRect(int i) {
-    // 0.257 of the screen: the avatar the size it was drawn at before its
-    // slice was tightened from an even grid cell (0.28 of a 301 px cell).
-    final h = size.height * 0.257;
-    final w = h * JourneyArt.pinCell.width / JourneyArt.pinCell.height;
+    final h = pinHeight;
+    final w = pinWidth;
     final tip = stoneCentre(i) - Offset(0, stoneSize(i) * 0.08);
     return Rect.fromLTWH(tip.dx - w / 2, tip.dy - h * JourneyArt.pinTip, w, h);
   }
@@ -1163,24 +1184,62 @@ class _MapGeometry {
   /// a square item would be.
   double get rewardSize => math.max(64, size.height * 0.16);
 
-  // Piper and Clef strung along the path with the child: Piper on the
-  // walked path just behind, Clef just ahead but BESIDE the path (its far
-  // edge), so she never seems to stand on an unplayed stone.
+  // Piper and Clef walk the path WITH the child: Piper close behind the
+  // pin, Clef a scout further ahead, beside the path's far edge so he never
+  // seems to stand on an unplayed stone. Direction and travel — never a
+  // trio posed either side of the hero.
+  //
+  // They obey the path's DEPTH exactly as the stones do (stoneSizeAt): a
+  // figure's height is its nominal height scaled by the path's depth where
+  // it stands, relative to the path's mean depth. So Clef, further along
+  // where the path narrows away, draws smaller than Piper — figures
+  // standing IN the painting, not cutouts laid on it.
   double get companionHeight => size.height * 0.22;
 
-  /// Piper, a quarter bigger than Clef on the map (Cooper, 2026-11-13).
-  double get piperHeight => companionHeight * 1.25;
+  /// Piper's nominal height: half as big again as the quarter-bigger she
+  /// was (Cooper, 2026-11-13, then 2026-11-14).
+  double get piperHeight => companionHeight * 1.25 * 1.5;
 
+  /// The path's depth at [x] relative to its mean — the stones' scaling.
+  double depthScaleAt(double x) => pathAt(x).$2 / (path.meanDepth * tileHeight);
+
+  double piperHeightAt(double x) => piperHeight * depthScaleAt(x);
+  double clefHeightAt(double x) => companionHeight * depthScaleAt(x);
+
+  static double _widthFor(CharacterArt art, double h) =>
+      art.frameSize.width * h / art.frameSize.height;
+
+  /// Clear space between Piper and the pin, as a share of the pin's width.
+  static const double _piperGap = 0.04;
+
+  /// Piper's feet: her frame's right edge just clear of the pin's left
+  /// edge — never under it — on the near side of the walked path. Her size
+  /// depends on where she stands, so this settles it in a few passes.
   Offset piperFeet(int i) {
-    final x = stoneX(i) - stoneSize(i) * 0.75;
+    final pin = pinRect(i);
+    var x = pin.left - pin.width * _piperGap;
+    for (var pass = 0; pass < 4; pass++) {
+      final w = _widthFor(CharacterArt.piper, piperHeightAt(x));
+      x = pin.left - pin.width * _piperGap - w / 2;
+    }
     final (y, depth) = pathAt(x);
     return Offset(x, y + depth * 0.3);
   }
 
+  /// Clef's feet: well ahead — standing behind the stone after next,
+  /// beyond the path's far edge (the stone drawn over his feet, so he is
+  /// behind it, never on it) — and clear of the resting chest when it
+  /// stands there, past its right side.
   Offset clefFeet(int i) {
-    // A full stride on, past the far edge: clear of the pin, and standing
-    // behind the next stone rather than on it.
-    final x = stoneX(i) + stride(i) * 1.05;
+    var x = stoneX(i + 2);
+    final chest = chestRect(JourneyState.nextMilestoneFrom(i));
+    double half(double at) =>
+        _widthFor(CharacterArt.clef, clefHeightAt(at)) / 2;
+    if (x + half(x) > chest.left && x - half(x) < chest.right) {
+      for (var pass = 0; pass < 4; pass++) {
+        x = chest.right + half(x) + 2;
+      }
+    }
     final (y, depth) = pathAt(x);
     return Offset(x, y - depth * 0.6);
   }
@@ -1195,7 +1254,7 @@ class _MapGeometry {
 
 class _Backdrop extends StatelessWidget {
   final double width;
-  final _MapGeometry g;
+  final JourneyMapGeometry g;
   const _Backdrop({required this.width, required this.g});
 
   @override
