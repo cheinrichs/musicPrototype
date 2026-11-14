@@ -72,7 +72,20 @@ side-agnostic.
    B + A.
 3. **Vary WHICH STUMP is which**: "same" cannot always be the left stump.
 
-## Instruments
+## Instruments — cards against audio (2026-11-14)
 
-Cello and bells both have full, audited sample libraries (see the
-instrument inventory, 2026-11-14), so both cards can play.
+Ten card sheets are in `assets/images/journey/cards_<instrument>_pair.png`.
+Each is 1536×1024 RGBA, copied byte-for-byte; every sheet tops out at
+alpha 254, which is Cooper's export setting, not a defect.
+
+| Cards | Audio | Can it be offered? |
+|---|---|---|
+| bells | 13 notes, C6–C7 | Yes |
+| cello, flute, oboe, piano, trumpet, violin | 24 notes, C4–B5 | Yes |
+| guitar | 22 notes, C3–B4 (A3 and A♯4 missing) | Yes — melodies must avoid the two holes |
+| tuba | 24 files, but only G♯3–B3 (4 notes) usable on a speaker | ⚠️ Barely: a melody has just 4 notes to move in |
+| drum | NONE, and unpitched | ⚠️ **NO.** Never offer drum until it is decided whether drum belongs in this game (comparing RHYTHMS, not melodies) or in the separate rhythm game — open between Cooper and the user. |
+| xylophone | Not yet sourced (Iowa F4–C8 is available) | No card sheet yet; it would be the eleventh. |
+
+Every sheet needs its own measured slices (only cello and bells were
+measured above).
