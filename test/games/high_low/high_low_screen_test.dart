@@ -1353,7 +1353,7 @@ void main() {
     testWidgets('shows for the adult profile', (tester) async {
       await pumpWithProfile(
         tester,
-        const Profile(id: 'p1', name: 'Cooper', isAdult: true),
+        const Profile(id: 'p1', name: 'Cooper', isDev: true),
       );
       expect(find.text('Dev: agency setup'), findsOneWidget);
     });
@@ -1362,7 +1362,7 @@ void main() {
         'instead, same as a public build', (tester) async {
       await pumpWithProfile(
         tester,
-        const Profile(id: 'p2', name: 'Davis', isAdult: false),
+        const Profile(id: 'p2', name: 'Davis', isDev: false),
       );
       expect(find.text('Dev: agency setup'), findsNothing);
       // The game auto-started (correct) and its intro is now mid-flight

@@ -1,7 +1,6 @@
 import 'package:go_router/go_router.dart';
 import 'rail_shell.dart';
 import '../ui/screens/credits_screen.dart';
-import '../ui/screens/profile_picker_screen.dart';
 import '../ui/screens/songstone_home_screen.dart';
 import '../games/high_low/screens/high_low_screen.dart';
 import '../games/loud_quiet/screens/loud_quiet_screen.dart';
@@ -18,8 +17,11 @@ import '../ui/screens/skill_profile_screen.dart';
 
 /// App routes configuration
 class AppRoutes {
+  /// The SongStone logo page: choose your player. The first screen.
   static const String profilePicker = '/profile';
-  static const String landing = '/welcome';
+
+  /// The old landing page's address — the same screen now.
+  static const String landing = profilePicker;
   static const String home = '/';
   static const String highLow = '/high-low';
   static const String loudQuiet = '/loud-quiet';
@@ -39,16 +41,12 @@ class AppRoutes {
 
 /// Create the app router
 final GoRouter appRouter = GoRouter(
-  // "Pick a profile at launch" (Trello card 170) — the real first screen,
-  // ahead of the branded landing screen.
+  // Choose your player at launch (card 170): the SongStone logo page is
+  // the picker, and picking goes HOME — the Journey.
   initialLocation: AppRoutes.profilePicker,
   routes: [
     GoRoute(
       path: AppRoutes.profilePicker,
-      builder: (context, state) => const ProfilePickerScreen(),
-    ),
-    GoRoute(
-      path: AppRoutes.landing,
       builder: (context, state) => const SongStoneHomeScreen(),
     ),
     GoRoute(

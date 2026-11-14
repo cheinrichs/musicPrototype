@@ -50,7 +50,7 @@ class HomeScreen extends StatelessWidget {
       children: [
         // Back to the SongStone landing screen — replaces the bottom nav
         // bar this screen used to share with Learning Path/Playground.
-        const BackToLandingButton(),
+        const BackHomeButton(),
         const SizedBox(width: AppSpacing.sm),
         // Mascot + app title
         Flexible(
@@ -193,7 +193,7 @@ class HomeScreen extends StatelessWidget {
       journey = null;
     }
     final profile = profiles?.activeProfile;
-    final gated = profile != null && !profile.isAdult;
+    final gated = profile != null && !profile.isDev;
     final met = journey?.gamesMet ?? const <String>{};
     return [
       for (final g in _games)

@@ -1,4 +1,4 @@
-.PHONY: bootstrap test lint format curriculum run-ios run-ios-dev build-ios clean help
+.PHONY: bootstrap test lint format curriculum run-ios run-ios-dev build-ios build-ios-public clean help
 
 # Default target
 help:
@@ -11,6 +11,7 @@ help:
 	@echo "  make run-ios    - Run on iOS simulator"
 	@echo "  make run-ios-dev - Run on iOS simulator with dev tools enabled"
 	@echo "  make build-ios  - Build iOS app"
+	@echo "  make build-ios-public - Release build, App Store flavour (no dev profile)"
 	@echo "  make clean      - Clean build artifacts"
 
 bootstrap:
@@ -51,6 +52,13 @@ run-ios-dev:
 
 build-ios:
 	flutter build ios --debug --dart-define=COMMIT_SHA=$(COMMIT_SHA)
+
+# The PUBLIC (App Store) flavour: release WITHOUT INTERNAL_BUILD, so the dev
+# profile is compiled out entirely (lib/app/config.dart). TestFlight builds
+# carry INTERNAL_BUILD=true (deploy.yml) and must never be promoted to the
+# App Store.
+build-ios-public:
+	flutter build ios --release --no-codesign --dart-define=COMMIT_SHA=$(COMMIT_SHA)
 
 clean:
 	flutter clean

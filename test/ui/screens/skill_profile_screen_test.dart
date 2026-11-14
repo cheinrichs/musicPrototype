@@ -47,7 +47,7 @@ void main() {
     ) async {
       await pumpWithProfile(
         tester,
-        const Profile(id: 'p1', name: 'Cooper', isAdult: true),
+        const Profile(id: 'p1', name: 'Cooper', isDev: true),
       );
       expect(find.byTooltip('Seed random data'), findsOneWidget);
       expect(find.byTooltip('Reset all XP'), findsOneWidget);
@@ -57,7 +57,7 @@ void main() {
         'even on an internal build', (tester) async {
       await pumpWithProfile(
         tester,
-        const Profile(id: 'p2', name: 'Davis', isAdult: false),
+        const Profile(id: 'p2', name: 'Davis', isDev: false),
       );
       expect(find.byTooltip('Seed random data'), findsNothing);
       expect(find.byTooltip('Reset all XP'), findsNothing);

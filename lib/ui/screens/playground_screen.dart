@@ -104,7 +104,7 @@ class _PlaygroundScreenState extends State<PlaygroundScreen> {
               Positioned(
                 top: AppSpacing.sm,
                 left: AppSpacing.lg,
-                child: const BackToLandingButton(),
+                child: const BackHomeButton(),
               ),
             ],
           ),

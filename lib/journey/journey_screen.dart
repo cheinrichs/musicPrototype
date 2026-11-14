@@ -4,10 +4,12 @@ import 'dart:math' as math;
 import 'package:confetti/confetti.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../app/config.dart';
 import '../app/rail_shell.dart';
+import '../app/router.dart';
 import '../app/state/profile_state.dart';
 import '../audio/audio_controller.dart';
 import '../audio/sfx_type.dart';
@@ -20,7 +22,7 @@ import '../games/high_low/widgets/character_art.dart';
 import '../games/high_low/widgets/mouth_frames.dart';
 import '../games/loud_quiet/models/loud_quiet_layout.dart';
 import '../models/agency_stage.dart';
-import '../ui/components/circle_icon_button.dart';
+import '../ui/components/adult_door.dart';
 import 'journey_art.dart';
 import 'journey_state.dart';
 import 'map_decoration.dart';
@@ -149,8 +151,10 @@ class _JourneyScreenState extends State<JourneyScreen> {
   void initState() {
     super.initState();
     _sparkles = ConfettiController(duration: const Duration(seconds: 1));
+    // Normally already this child's (the picker switched it); if not, switch
+    // quietly — this is mid-build.
     _journey = context.read<JourneyState>()
-      ..useProfile(_profiles()?.activeProfile?.id);
+      ..useProfile(_profiles()?.activeProfile?.id, notify: false);
     try {
       _rail = context.read<RailController>();
     } on ProviderNotFoundException {
@@ -624,11 +628,18 @@ class _JourneyScreenState extends State<JourneyScreen> {
                 ],
               ),
             ),
+          // The Journey is HOME: no back arrow. Switching player is the
+          // same small door it always was (card 194) — never one big tap a
+          // child might take into a sibling's record.
           if (!inStone)
             Positioned(
-              left: g.padding.left + 12,
-              top: g.padding.top + 12,
-              child: const BackToLandingButton(),
+              left: g.padding.left + 4,
+              top: g.padding.top + 4,
+              child: AdultDoor(
+                icon: Icons.switch_account_outlined,
+                semanticLabel: 'Switch player',
+                onTap: () => GoRouter.of(context).go(AppRoutes.profilePicker),
+              ),
             ),
           if (devToolsEnabled && !inStone && !_panning) _buildDevBar(g),
         ],
@@ -738,7 +749,8 @@ class _JourneyScreenState extends State<JourneyScreen> {
       height: r.height,
       child: GestureDetector(
         onTap: _startStone,
-        child: AvatarPin(index: avatarIndexFor(_profiles()?.activeProfile?.id)),
+        // The avatar THIS child chose at setup (card 202).
+        child: AvatarPin(index: _profiles()?.activeProfile?.avatarIndex ?? 0),
       ),
     );
   }

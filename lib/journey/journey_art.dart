@@ -14,6 +14,7 @@ abstract final class JourneyArt {
   static const stonesCurrent = '$_dir/stones_current_x3.png';
   static const stonesDone = '$_dir/stones_done_x3.png';
   static const pins = '$_dir/avatars_pins_16.png';
+  static const badges = '$_dir/avatars_badges_16.png';
   static const chestPlain = '$_dir/chest_closed_plain.png';
   static const chestGlow = '$_dir/chest_closed_glow.png';
   static const chestOpen = '$_dir/chest_open_burst.png';
@@ -73,6 +74,44 @@ abstract final class JourneyArt {
       pinCell.height,
     );
   }
+
+  /// The badge sheet, 1306×1205: the same sixteen as round badges, for
+  /// the picker and the setup quiz. Not an even grid either.
+  static const badgeSheet = Size(1306, 1205);
+
+  /// Each badge's DISC centre (its solid disc's horizontal centre, and its
+  /// bottom less its radius — so ears and horns above the disc do not pull
+  /// it off-centre), in reading order, measured 2026-11-14.
+  /// test/journey/avatar_badge_slices_test.dart re-measures them.
+  static const badgeCentres = [
+    Offset(220.0, 205.0),
+    Offset(509.5, 202.5),
+    Offset(795.0, 203.0),
+    Offset(1080.0, 205.0),
+    Offset(219.5, 473.5),
+    Offset(509.5, 474.5),
+    Offset(795.5, 473.5),
+    Offset(1085.0, 473.0),
+    Offset(219.0, 739.0),
+    Offset(511.5, 739.5),
+    Offset(796.0, 740.0),
+    Offset(1084.5, 740.5),
+    Offset(219.0, 994.0),
+    Offset(509.5, 994.5),
+    Offset(798.5, 993.5),
+    Offset(1088.5, 996.5),
+  ];
+
+  /// One square for all sixteen, so every badge draws at the same scale:
+  /// the largest that catches nothing of any neighbour. It trims at most
+  /// 11 px of the tallest ear tips; the disc is always whole.
+  static const badgeSide = 248.0;
+
+  static Rect badgeSlice(int index) => Rect.fromCenter(
+    center: badgeCentres[index % badgeCentres.length],
+    width: badgeSide,
+    height: badgeSide,
+  );
 }
 
 enum StoneState { locked, current, done }
@@ -162,14 +201,20 @@ class AvatarPin extends StatelessWidget {
   );
 }
 
-/// No avatar picker yet: a profile keeps the same one of the sixteen.
-int avatarIndexFor(String? profileId) {
-  if (profileId == null) return 0;
-  var h = 0;
-  for (final c in profileId.codeUnits) {
-    h = (h * 31 + c) & 0x7fffffff;
-  }
-  return h % 16;
+/// The child's avatar as a round badge, from the sixteen: the picker and
+/// the setup quiz. The same index as their [AvatarPin].
+class AvatarBadge extends StatelessWidget {
+  final int index;
+  const AvatarBadge({super.key, required this.index});
+
+  @override
+  Widget build(BuildContext context) => ImageRegion(
+    art: ArtRef(
+      JourneyArt.badges,
+      image: JourneyArt.badgeSheet,
+      region: JourneyArt.badgeSlice(index),
+    ),
+  );
 }
 
 /// A reward as it flies and arrives: the thing itself (its type's art for

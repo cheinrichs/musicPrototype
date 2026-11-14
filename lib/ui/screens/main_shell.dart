@@ -10,7 +10,7 @@ import 'playground_screen.dart';
 /// Used to also show a bottom nav bar for switching between them (Trello
 /// card 49 removed it: each section now has its own back arrow to the
 /// SongStone landing screen instead, which is the only place all three are
-/// reachable from — see [BackToLandingButton]). [IndexedStack] still keeps
+/// reachable from — see [BackHomeButton]). [IndexedStack] still keeps
 /// all three alive so switching via [initialTabIndex] or a path-return
 /// doesn't lose a screen's scroll position/state.
 class MainShell extends StatefulWidget {

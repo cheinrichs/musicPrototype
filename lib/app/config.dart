@@ -6,7 +6,31 @@ import 'build_distribution.dart';
 /// was installed. Never set by CI (see .github/workflows/deploy.yml) — the
 /// TestFlight/App Store distinction is handled at runtime instead, by
 /// [resolveDevToolsEnabled].
-const bool kForceDevMode = bool.fromEnvironment('DEV_MODE', defaultValue: false);
+const bool kForceDevMode = bool.fromEnvironment(
+  'DEV_MODE',
+  defaultValue: false,
+);
+
+/// Compile-time: an INTERNAL build — TestFlight (CI passes
+/// --dart-define=INTERNAL_BUILD=true) or a developer's own run. Without it,
+/// the build is RELEASE-FLAVOURED.
+///
+/// ⚠️ The standing rule (docs/product/STANDING_RULES.md, Builds): the dev
+/// profile is COMPILED OUT of a release build entirely, not merely gated.
+/// Every reference to it sits behind [kDevProfileCompiledIn], a const, so
+/// in a release-flavoured build that code is dead and the compiler drops it
+/// — there is nothing left to reach, whatever the runtime says.
+///
+/// ⚠️ This means a TestFlight archive (built WITH the flag) must never be
+/// promoted to the App Store: the public build is its own build, made
+/// without it.
+const bool kInternalBuild = bool.fromEnvironment('INTERNAL_BUILD');
+
+/// Whether this binary contains the dev profile at all: an internal build,
+/// a forced dev build, or a debug run. A const, so a release-flavoured
+/// build drops everything guarded by it.
+const bool kDevProfileCompiledIn =
+    kInternalBuild || kForceDevMode || kDebugMode;
 
 /// Whether developer-only UI (the agency/tier/round-order gate, "Report
 /// this round") is shown: the skill profile's seed/reset buttons, the
@@ -38,6 +62,11 @@ bool devToolsEnabled = false;
 ///   release build run straight from Xcode) — off for the public App
 ///   Store, which is what makes this safe to ship at all.
 Future<void> resolveDevToolsEnabled() async {
+  // A release-flavoured binary has no dev tools whoever installed it.
+  if (!kDevProfileCompiledIn) {
+    devToolsEnabled = false;
+    return;
+  }
   if (kForceDevMode || kDebugMode) {
     devToolsEnabled = true;
     return;

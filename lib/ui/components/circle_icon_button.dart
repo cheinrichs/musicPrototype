@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
+import '../../app/rail_shell.dart';
 import '../../app/router.dart';
 import '../theme/theme.dart';
 
@@ -66,21 +68,27 @@ class CircleIconButton extends StatelessWidget {
   }
 }
 
-/// A [CircleIconButton] pre-wired to navigate back to the SongStone landing
-/// screen — the shared "back" affordance for the top-level tabs (Ear
-/// Training Games, Learning Path, Sound Playground) now that they no
-/// longer share a bottom nav bar (Trello card 49). Those screens are only
-/// ever reached *from* the landing screen's three menu pills, so going
-/// back there always lands somewhere useful.
-class BackToLandingButton extends StatelessWidget {
-  const BackToLandingButton({super.key});
+/// A [CircleIconButton] that goes HOME — the Journey. The Games library
+/// and the Playground sit in the rail beside it, so inside the rail this
+/// just selects the Journey; anywhere else it navigates there. (It used to
+/// go to the SongStone landing page, which is the player picker now — a
+/// child must not reach a sibling's profile with one big tap, card 194.)
+class BackHomeButton extends StatelessWidget {
+  const BackHomeButton({super.key});
 
   @override
   Widget build(BuildContext context) {
     return CircleIconButton(
       icon: Icons.arrow_back_rounded,
       tooltip: 'Back',
-      onTap: () => context.go(AppRoutes.landing),
+      onTap: () {
+        final rail = Provider.of<RailController?>(context, listen: false);
+        if (rail != null) {
+          rail.select(RailDestination.journey);
+        } else {
+          context.go(AppRoutes.journey);
+        }
+      },
     );
   }
 }

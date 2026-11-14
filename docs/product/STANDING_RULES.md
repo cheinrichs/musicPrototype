@@ -83,3 +83,12 @@ profile is compiled out of a release build entirely. The reading gate in
 front of it on internal builds is a signpost for a child on a shared iPad,
 not a security boundary, and it re-asks on every use (no session-level
 "adult verified" flag).
+
+**How:** `--dart-define=INTERNAL_BUILD=true` makes an internal build
+(CI passes it for TestFlight). Everything that touches the dev profile sits
+behind the const `kDevProfileCompiledIn` (`lib/app/config.dart`), so a build
+without the flag drops that code; checked 2026-11-14 by searching the
+compiled App binary for the dev badge's label: absent without the flag,
+present with it. ⚠️ So a TestFlight archive must **never be promoted to the
+App Store** — the public build is its own build, made without the flag
+(`make build-ios-public`).

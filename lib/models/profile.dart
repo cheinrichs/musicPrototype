@@ -1,67 +1,146 @@
 import 'agency_stage.dart';
 
-/// A local, on-device profile (Trello card 170, "Local profiles: one per
-/// child, plus an adult profile that sees the dev screens").
+/// The child's age band (card 202): drives VOCABULARY only, never tone.
+/// A band, never a birth date — we have no use for the exact date, and
+/// children's data we do not hold cannot leak.
+enum AgeBand {
+  twoThree('2–3'),
+  fourFive('4–5'),
+  sixEight('6–8');
+
+  const AgeBand(this.label);
+  final String label;
+
+  static AgeBand? byName(String? name) {
+    for (final b in values) {
+      if (b.name == name) return b;
+    }
+    return null;
+  }
+}
+
+/// Where a profile's agency came from (card 202): a parent placed it at
+/// setup, or play moved it. Every parent answer is a starting point, not a
+/// verdict — so the tracking log must be able to tell a placed child from
+/// one who climbed.
+enum AgencySource {
+  parent,
+  play;
+
+  static AgencySource? byName(String? name) {
+    for (final s in values) {
+      if (s.name == name) return s;
+    }
+    return null;
+  }
+}
+
+/// A local, on-device profile (Trello card 170): one per child, plus — on
+/// internal builds only — Cooper's dev profile. Local only, no account, no
+/// network identity (COPPA/GDPR-K, ages 2–8).
 ///
-/// Deliberately tiny — a name, whether this is the one adult profile, and
-/// an optional agency override a parent can set directly rather than
-/// making a child prove their own capability across several rounds
-/// ("a parent already knows whether their child can drag"). Nothing else:
-/// no avatar (optional per the card, skipped here — an easy add later, not
-/// worth the extra picker UI now), no account, no network identity. Local
-/// only, same posture as the tracking log (COPPA/GDPR-K, ages 2-8).
+/// What the setup quiz (card 202) asks, and nothing more: a name, a
+/// picture, the drag question (→ [agencyOverride]) and an age band.
 class Profile {
   final String id;
   final String name;
 
-  /// At most one profile in [ProfileState] may have this true — the
-  /// adult's, gated to the dev screens (`ProfileState.canUseDevTools`).
-  final bool isAdult;
+  /// The dev profile: INTERNAL BUILDS ONLY, compiled out of a release
+  /// build (see `kDevProfileCompiledIn`), behind the reading gate. Not a
+  /// general adult profile — a parent needs a DOOR (settings, adding a
+  /// child, credits), not a player. At most one exists.
+  final bool isDev;
 
-  /// A parent-set capability floor/value, straight onto the profile rather
-  /// than inferred — see the class doc. Null means "not set yet"; nothing
-  /// in this card defines what null falls back to for an actual game
-  /// session (that's the advancement/demotion card).
+  /// Which of the sixteen avatars (avatars_badges_16 / avatars_pins_16,
+  /// row-major), chosen at setup — the one thing a child who cannot read
+  /// recognises as theirs. Null only for profiles made before the quiz
+  /// existed; see [avatarIndex].
+  final int? avatar;
+
+  /// Null only for profiles made before the quiz existed.
+  final AgeBand? ageBand;
+
+  /// The child's agency: set by a parent at setup, or moved by play. Null
+  /// means "not set yet" (the game starts at Observe).
   final AgencyStage? agencyOverride;
+
+  /// Where [agencyOverride] came from.
+  final AgencySource? agencySource;
+
+  static const int avatarCount = 16;
 
   const Profile({
     required this.id,
     required this.name,
-    this.isAdult = false,
+    this.isDev = false,
+    this.avatar,
+    this.ageBand,
     this.agencyOverride,
+    this.agencySource,
   });
 
-  /// [setAgencyOverride] defaults to `false` because a plain
-  /// `agencyOverride: null` argument is indistinguishable from "leave it
-  /// alone" — Dart has no way to tell "pass null" from "pass nothing" for
-  /// an optional parameter, so clearing the override needs its own
-  /// explicit flag rather than overloading the value itself.
+  /// The avatar to show: the chosen one, or — for a profile made before
+  /// the quiz — a stable one derived from its id, so it keeps the same
+  /// face on every screen until a parent re-takes setup.
+  int get avatarIndex => avatar ?? derivedAvatarFor(id);
+
+  static int derivedAvatarFor(String id) {
+    var h = 0;
+    for (final c in id.codeUnits) {
+      h = (h * 31 + c) & 0x7fffffff;
+    }
+    return h % avatarCount;
+  }
+
+  /// [clearAgencyOverride] exists because a plain `agencyOverride: null`
+  /// is indistinguishable from "leave it alone".
   Profile copyWith({
     String? name,
+    int? avatar,
+    AgeBand? ageBand,
     AgencyStage? agencyOverride,
+    AgencySource? agencySource,
     bool clearAgencyOverride = false,
   }) => Profile(
     id: id,
     name: name ?? this.name,
-    isAdult: isAdult,
+    isDev: isDev,
+    avatar: avatar ?? this.avatar,
+    ageBand: ageBand ?? this.ageBand,
     agencyOverride: clearAgencyOverride
         ? null
         : (agencyOverride ?? this.agencyOverride),
+    agencySource: clearAgencyOverride
+        ? null
+        : (agencySource ?? this.agencySource),
   );
 
   Map<String, dynamic> toJson() => {
     'id': id,
     'name': name,
-    'isAdult': isAdult,
+    'isDev': isDev,
+    'avatar': avatar,
+    'ageBand': ageBand?.name,
     'agencyOverride': agencyOverride?.name,
+    'agencySource': agencySource?.name,
   };
 
   factory Profile.fromJson(Map<String, dynamic> json) => Profile(
     id: json['id'] as String,
     name: json['name'] as String,
-    isAdult: json['isAdult'] as bool? ?? false,
+    // 'isAdult' before 2026-11-14: the one adult profile was Cooper's, and
+    // it IS the dev profile now.
+    isDev: json['isDev'] as bool? ?? json['isAdult'] as bool? ?? false,
+    avatar: _avatarFrom(json['avatar']),
+    ageBand: AgeBand.byName(json['ageBand'] as String?),
     agencyOverride: _agencyStageByName(json['agencyOverride'] as String?),
+    agencySource: AgencySource.byName(json['agencySource'] as String?),
   );
+
+  /// Out of range (a smaller sheet one day) falls back to the derived one,
+  /// never a crash.
+  static int? _avatarFrom(Object? raw) =>
+      raw is int && raw >= 0 && raw < avatarCount ? raw : null;
 
   /// A stale or renamed [AgencyStage] value (see Trello card 168's own
   /// renumbering warning) must not crash a profile load — this falls back

@@ -7,13 +7,15 @@ import '../../models/musical_skill.dart';
 import '../../models/profile.dart';
 import '../config.dart';
 
-/// Local, on-device profiles — one per child, plus at most one adult
-/// profile that unlocks the dev screens (Trello card 170).
+/// Local, on-device profiles — one per child, plus, on INTERNAL builds
+/// only, Cooper's dev profile (Trello card 170; compiled out of a release
+/// build, see [kDevProfileCompiledIn]). Not a general adult profile: a
+/// parent needs a door, not a player.
 ///
 /// **Deliberately tiny.** A profile is picked at launch; the per-round
 /// tracking log, tier state and agency state all scope to it (see
 /// [ProgressState.loadForProfile]/[SkillState.loadForProfile]); the dev
-/// gate is reachable only from the adult one ([canUseDevTools]). Local
+/// gate is reachable only from the dev one ([canUseDevTools]). Local
 /// only — no accounts, no network, no sync.
 ///
 /// **The one real data migration in this whole architecture rework lives
@@ -46,16 +48,30 @@ class ProfileState extends ChangeNotifier {
   Profile? get activeProfile => _activeProfile;
   bool get isLoaded => _isLoaded;
 
-  bool get hasAdultProfile => _profiles.any((p) => p.isAdult);
+  /// The children, in the order they were added — the picker's players.
+  List<Profile> get childProfiles =>
+      List.unmodifiable(_profiles.where((p) => !p.isDev));
+
+  /// The dev profile, if this binary has one and it exists yet. Always
+  /// null in a release-flavoured build (see [kDevProfileCompiledIn]).
+  Profile? get devProfile {
+    if (!kDevProfileCompiledIn) return null;
+    for (final p in _profiles) {
+      if (p.isDev) return p;
+    }
+    return null;
+  }
 
   /// Whether the dev screens (High/Low's agency/tier gate, the skill
   /// profile screen's seed/reset buttons) may be shown right now — both an
-  /// internal build ([devToolsEnabled], never true on the public App
-  /// Store) *and* the active profile being the adult's. Neither alone is
-  /// enough: an internal build a child is using must not show dev tools,
+  /// internal install ([devToolsEnabled], never true on the public App
+  /// Store) *and* the active profile being the dev profile. Neither alone
+  /// is enough: an internal build a child is using must not show dev tools,
   /// and a public build must never show them regardless of profile.
   bool get canUseDevTools =>
-      devToolsEnabled && (_activeProfile?.isAdult ?? false);
+      kDevProfileCompiledIn &&
+      devToolsEnabled &&
+      (_activeProfile?.isDev ?? false);
 
   Future<void> load() async {
     if (_isLoaded) return;
@@ -76,6 +92,10 @@ class ProfileState extends ChangeNotifier {
                       Profile.fromJson(jsonDecode(s) as Map<String, dynamic>),
                 )
                 .toList();
+      // A release-flavoured binary has no dev profile, whatever is stored.
+      if (!kDevProfileCompiledIn) {
+        _profiles = _profiles.where((p) => !p.isDev).toList();
+      }
     } catch (_) {
       _profiles = [];
     }
@@ -95,24 +115,79 @@ class ProfileState extends ChangeNotifier {
     }
   }
 
-  /// Adds a new profile and returns it. Ignored (returns the existing one)
-  /// for a second `isAdult: true` — at most one adult profile can exist
-  /// (see the class doc); the picker screen is expected to check
-  /// [hasAdultProfile] itself and not offer this in that case, but the
-  /// invariant is enforced here too rather than trusted to the UI alone.
-  Future<Profile> addProfile(String name, {bool isAdult = false}) async {
-    if (isAdult && hasAdultProfile) {
-      return _profiles.firstWhere((p) => p.isAdult);
-    }
+  /// Adds a child from the setup quiz's answers (card 202) and returns it.
+  /// The agency is the PARENT's placement — recorded as such, so a placed
+  /// child can be told from one who climbed.
+  Future<Profile> addChild(SetupAnswers answers) async {
     final profile = Profile(
       id: DateTime.now().microsecondsSinceEpoch.toString(),
-      name: name,
-      isAdult: isAdult,
+      name: answers.name,
+      avatar: answers.avatar,
+      ageBand: answers.ageBand,
+      agencyOverride: answers.agency,
+      agencySource: AgencySource.parent,
     );
     _profiles = [..._profiles, profile];
     notifyListeners();
     await _save();
     return profile;
+  }
+
+  /// Re-takes [profile]'s setup (card 202: re-takeable, from behind the
+  /// adult gate — a parent who guessed wrong needs a way back that is not
+  /// deleting the profile). Its history is untouched; the new agency is
+  /// the parent's placement again.
+  Future<Profile> retakeSetup(Profile profile, SetupAnswers answers) async {
+    final updated = profile.copyWith(
+      name: answers.name,
+      avatar: answers.avatar,
+      ageBand: answers.ageBand,
+      agencyOverride: answers.agency,
+      agencySource: AgencySource.parent,
+    );
+    _replace(updated);
+    notifyListeners();
+    await _save();
+    return updated;
+  }
+
+  /// The dev profile, made the first time it is opened. Internal builds
+  /// only: in a release-flavoured build this is dead code and the dev
+  /// profile can never be created.
+  Future<Profile?> ensureDevProfile({String name = 'Dev'}) async {
+    if (!kDevProfileCompiledIn) return null;
+    final existing = devProfile;
+    if (existing != null) return existing;
+    final profile = Profile(
+      id: DateTime.now().microsecondsSinceEpoch.toString(),
+      name: name,
+      isDev: true,
+    );
+    _profiles = [..._profiles, profile];
+    notifyListeners();
+    await _save();
+    return profile;
+  }
+
+  /// A bare profile with no setup answers — for tests. A dev one goes
+  /// through [ensureDevProfile] (so there is still at most one, and none
+  /// in a release-flavoured build).
+  @visibleForTesting
+  Future<Profile> addProfile(String name, {bool isDev = false}) async {
+    if (isDev) return (await ensureDevProfile(name: name))!;
+    final profile = Profile(
+      id: DateTime.now().microsecondsSinceEpoch.toString(),
+      name: name,
+    );
+    _profiles = [..._profiles, profile];
+    notifyListeners();
+    await _save();
+    return profile;
+  }
+
+  void _replace(Profile updated) {
+    _profiles = [for (final p in _profiles) p.id == updated.id ? updated : p];
+    if (_activeProfile?.id == updated.id) _activeProfile = updated;
   }
 
   /// Sets the active profile for this session. Not persisted across
@@ -124,13 +199,45 @@ class ProfileState extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Sets [profile]'s agency as PLAY moved it (advancement or demotion) —
+  /// a parent's placement goes through [addChild]/[retakeSetup].
   Future<void> setAgencyOverride(Profile profile, AgencyStage? stage) async {
     final updated = stage == null
         ? profile.copyWith(clearAgencyOverride: true)
-        : profile.copyWith(agencyOverride: stage);
-    _profiles = [for (final p in _profiles) p.id == profile.id ? updated : p];
-    if (_activeProfile?.id == profile.id) _activeProfile = updated;
+        : profile.copyWith(
+            agencyOverride: stage,
+            agencySource: AgencySource.play,
+          );
+    _replace(updated);
     notifyListeners();
     await _save();
+  }
+}
+
+/// The setup quiz's four answers (card 202) — never more.
+class SetupAnswers {
+  final String name;
+  final int avatar;
+  final AgencyStage agency;
+  final AgeBand ageBand;
+
+  const SetupAnswers({
+    required this.name,
+    required this.avatar,
+    required this.agency,
+    required this.ageBand,
+  });
+
+  /// [profile]'s current answers, for re-taking — null where it was made
+  /// before the quiz and lacks one.
+  static SetupAnswers? of(Profile profile) {
+    final band = profile.ageBand;
+    if (band == null) return null;
+    return SetupAnswers(
+      name: profile.name,
+      avatar: profile.avatarIndex,
+      agency: profile.agencyOverride ?? AgencyStage.observe,
+      ageBand: band,
+    );
   }
 }

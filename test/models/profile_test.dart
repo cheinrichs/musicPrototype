@@ -9,7 +9,7 @@ void main() {
       final restored = Profile.fromJson(profile.toJson());
       expect(restored.id, 'abc');
       expect(restored.name, 'Delaney');
-      expect(restored.isAdult, isFalse);
+      expect(restored.isDev, isFalse);
       expect(restored.agencyOverride, isNull);
     });
 
@@ -71,10 +71,10 @@ void main() {
       });
 
       test('never changes id or isAdult', () {
-        const profile = Profile(id: 'abc', name: 'Davis', isAdult: true);
+        const profile = Profile(id: 'abc', name: 'Davis', isDev: true);
         final updated = profile.copyWith(name: 'Someone else');
         expect(updated.id, 'abc');
-        expect(updated.isAdult, isTrue);
+        expect(updated.isDev, isTrue);
       });
     });
   });
@@ -102,5 +102,53 @@ void main() {
       expect(profile.agencyOverride, AgencyStage.decide);
     });
   });
-}
 
+  group('the setup quiz\'s answers (card 202)', () {
+    test('picture, age band and where the agency came from round-trip', () {
+      const p = Profile(
+        id: 'a',
+        name: 'Davis',
+        avatar: 7,
+        ageBand: AgeBand.sixEight,
+        agencyOverride: AgencyStage.explore,
+        agencySource: AgencySource.parent,
+      );
+      final r = Profile.fromJson(p.toJson());
+      expect(r.avatar, 7);
+      expect(r.ageBand, AgeBand.sixEight);
+      expect(r.agencySource, AgencySource.parent);
+      expect(p.toJson().keys, isNot(contains('birthDate')));
+    });
+
+    test("Cooper's old adult profile ('isAdult') is the dev profile now", () {
+      final r = Profile.fromJson({
+        'id': 'c',
+        'name': 'Cooper',
+        'isAdult': true,
+      });
+      expect(r.isDev, isTrue);
+    });
+
+    test('a profile from before the quiz keeps a STABLE face; a bad index '
+        'falls back to it, never a crash', () {
+      final old = Profile.fromJson({'id': 'old', 'name': 'Delaney'});
+      expect(old.avatar, isNull);
+      expect(old.avatarIndex, Profile.derivedAvatarFor('old'));
+      expect(old.avatarIndex, inInclusiveRange(0, 15));
+      final bad = Profile.fromJson({'id': 'x', 'name': 'X', 'avatar': 40});
+      expect(bad.avatarIndex, Profile.derivedAvatarFor('x'));
+    });
+
+    test('clearing the agency clears where it came from too', () {
+      const p = Profile(
+        id: 'a',
+        name: 'A',
+        agencyOverride: AgencyStage.decide,
+        agencySource: AgencySource.play,
+      );
+      final cleared = p.copyWith(clearAgencyOverride: true);
+      expect(cleared.agencyOverride, isNull);
+      expect(cleared.agencySource, isNull);
+    });
+  });
+}

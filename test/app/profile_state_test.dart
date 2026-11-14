@@ -3,6 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ear_trainer/app/config.dart';
 import 'package:ear_trainer/app/state/profile_state.dart';
 import 'package:ear_trainer/models/agency_stage.dart';
+import 'package:ear_trainer/models/profile.dart';
 
 void main() {
   setUp(() {
@@ -56,10 +57,10 @@ void main() {
         'the existing one instead of creating another', () async {
       final state = ProfileState();
       await state.load();
-      final first = await state.addProfile('Cooper', isAdult: true);
-      final second = await state.addProfile('Someone else', isAdult: true);
+      final first = await state.addProfile('Cooper', isDev: true);
+      final second = await state.addProfile('Someone else', isDev: true);
       expect(second.id, first.id);
-      expect(state.profiles.where((p) => p.isAdult), hasLength(1));
+      expect(state.profiles.where((p) => p.isDev), hasLength(1));
     });
 
     test('setAgencyOverride updates the profile in the list and, if it is '
@@ -105,7 +106,7 @@ void main() {
         devToolsEnabled = false;
         final state = ProfileState();
         await state.load();
-        state.selectProfile(await state.addProfile('Cooper', isAdult: true));
+        state.selectProfile(await state.addProfile('Cooper', isDev: true));
         expect(state.canUseDevTools, isFalse);
       });
 
@@ -113,7 +114,7 @@ void main() {
         devToolsEnabled = true;
         final state = ProfileState();
         await state.load();
-        state.selectProfile(await state.addProfile('Cooper', isAdult: true));
+        state.selectProfile(await state.addProfile('Cooper', isDev: true));
         expect(state.canUseDevTools, isTrue);
       });
     });
@@ -142,6 +143,71 @@ void main() {
       final second = ProfileState();
       await second.load();
       expect(second.profiles, hasLength(1));
+    });
+  });
+
+  group('the profile chain (card 202)', () {
+    const answers = SetupAnswers(
+      name: 'Davis',
+      avatar: 3,
+      agency: AgencyStage.explore,
+      ageBand: AgeBand.fourFive,
+    );
+
+    test("a new child is the PARENT's placement, recorded as such", () async {
+      final state = ProfileState();
+      await state.load();
+      final child = await state.addChild(answers);
+      expect(child.agencyOverride, AgencyStage.explore);
+      expect(child.agencySource, AgencySource.parent);
+      expect(state.childProfiles, [child]);
+    });
+
+    test('play moving the agency is recorded as PLAY', () async {
+      final state = ProfileState();
+      await state.load();
+      final child = await state.addChild(answers);
+      await state.setAgencyOverride(child, AgencyStage.decide);
+      final moved = state.childProfiles.single;
+      expect(moved.agencyOverride, AgencyStage.decide);
+      expect(moved.agencySource, AgencySource.play);
+    });
+
+    test('re-taking setup keeps the id (and so the history) and is the '
+        "parent's placement again", () async {
+      final state = ProfileState();
+      await state.load();
+      final child = await state.addChild(answers);
+      await state.setAgencyOverride(child, AgencyStage.decide);
+      final again = await state.retakeSetup(
+        state.childProfiles.single,
+        const SetupAnswers(
+          name: 'Davis',
+          avatar: 11,
+          agency: AgencyStage.observe,
+          ageBand: AgeBand.fourFive,
+        ),
+      );
+      expect(again.id, child.id);
+      expect(again.avatar, 11);
+      expect(again.agencyOverride, AgencyStage.observe);
+      expect(again.agencySource, AgencySource.parent);
+      expect(state.profiles, hasLength(1));
+    });
+
+    test('at most one dev profile, and never among the children', () async {
+      final state = ProfileState();
+      await state.load();
+      await state.addChild(answers);
+      final a = await state.ensureDevProfile();
+      final b = await state.ensureDevProfile();
+      expect(a!.id, b!.id);
+      expect(state.devProfile?.id, a.id);
+      expect(state.childProfiles.where((p) => p.isDev), isEmpty);
+    });
+
+    test('SetupAnswers.of: nothing for a profile from before the quiz', () {
+      expect(SetupAnswers.of(const Profile(id: 'o', name: 'Old')), isNull);
     });
   });
 }

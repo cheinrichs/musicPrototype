@@ -162,7 +162,7 @@ class LearningPathScreen extends StatelessWidget {
           padding: AppSpacing.screenPadding,
           child: Row(
             children: [
-              const BackToLandingButton(),
+              const BackHomeButton(),
               const SizedBox(width: AppSpacing.sm),
               Text(
                 'Learning Path',

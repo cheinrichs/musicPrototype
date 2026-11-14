@@ -48,12 +48,15 @@ class JourneyState extends ChangeNotifier {
 
   _Progress get _p => _byProfile.putIfAbsent(_profile, _Progress.new);
 
-  /// Switches to [profileId]'s journey (empty id: no profile).
-  void useProfile(String? profileId) {
+  /// Switches to [profileId]'s journey (empty id: no profile). The picker
+  /// does this as a child is chosen. [notify] false is for a screen's
+  /// initState, which reads the new journey as it first builds and must not
+  /// notify mid-build (a framework assertion).
+  void useProfile(String? profileId, {bool notify = true}) {
     final id = profileId ?? '';
     if (id == _profile) return;
     _profile = id;
-    notifyListeners();
+    if (notify) notifyListeners();
   }
 
   /// The stone the child is on (0-based). Every stone before it is done.

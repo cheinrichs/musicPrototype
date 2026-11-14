@@ -23,7 +23,7 @@ void main() {
     final journey = JourneyState();
     late Profile profile;
     await tester.runAsync(() async {
-      profile = await profiles.addProfile('Kid', isAdult: adult);
+      profile = await profiles.addProfile('Kid', isDev: adult);
     });
     profiles.selectProfile(profile);
     journey.useProfile(profile.id);
