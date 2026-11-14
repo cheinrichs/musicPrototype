@@ -72,20 +72,35 @@ side-agnostic.
    B + A.
 3. **Vary WHICH STUMP is which**: "same" cannot always be the left stump.
 
+## Card conventions — every future card must match
+
+Established across all twelve sheets (2026-11-14):
+
+1. ⚠️ **The warmer or lighter variant goes on the CREAM card; the cooler or
+   darker one on the BLUE card.** Pale cello and gold trumpet are on cream;
+   dark cello and silver trumpet on blue. "These match" can then be read
+   partly from warmth, without the child having to identify the
+   instrument, which matters at stump size.
+2. **No faces.** Instruments on cards are formal and faceless, unlike the
+   in-game sprites, which are characters. An earlier electric guitar pair
+   had faces and was replaced.
+
 ## Instruments — cards against audio (2026-11-14)
 
-Ten card sheets are in `assets/images/journey/cards_<instrument>_pair.png`.
-Each is 1536×1024 RGBA, copied byte-for-byte; every sheet tops out at
-alpha 254, which is Cooper's export setting, not a defect.
+Twelve card sheets are in
+`assets/images/journey/cards_<instrument>_pair.png`. Each is 1536×1024
+RGBA, copied byte-for-byte and verified by checksum. Every sheet tops out
+at alpha 254, which is Cooper's export setting, not a defect.
 
 | Cards | Audio | Can it be offered? |
 |---|---|---|
 | bells | 13 notes, C6–C7 | Yes |
 | cello, flute, oboe, piano, trumpet, violin | 24 notes, C4–B5 | Yes |
-| guitar | 22 notes, C3–B4 (A3 and A♯4 missing) | Yes — melodies must avoid the two holes |
-| tuba | 24 files, but only G♯3–B3 (4 notes) usable on a speaker | ⚠️ Barely: a melody has just 4 notes to move in |
-| drum | NONE, and unpitched | ⚠️ **NO.** Never offer drum until it is decided whether drum belongs in this game (comparing RHYTHMS, not melodies) or in the separate rhythm game — open between Cooper and the user. |
-| xylophone | Not yet sourced (Iowa F4–C8 is available) | No card sheet yet; it would be the eleventh. |
+| guitar | 22 notes, C3–B4 (A3 and A♯4 missing) | Yes. Melodies must avoid the two holes. |
+| tuba | 24 files, but only G♯3–B3 (4 notes) usable on a phone speaker | ⚠️ Barely: a melody has just 4 notes to move in. |
+| xylophone | Not yet sourced (Iowa has F4–C8) | Not until the samples land. |
+| drum | NONE, and unpitched | ⚠️ **NO.** Never offer drum until it is decided whether drum belongs in this game (comparing RHYTHMS, not melodies) or in the separate rhythm game. That question is open between Cooper and the user. |
+| electric guitar | NONE in any library we use | ⚠️ **NO.** Needs a third source and a new licence question. |
 
-Every sheet needs its own measured slices (only cello and bells were
-measured above).
+Every sheet needs its own measured slices. Only the first cello and bells
+columns were measured above, and must be re-checked if a sheet is revised.
