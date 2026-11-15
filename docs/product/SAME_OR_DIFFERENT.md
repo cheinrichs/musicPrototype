@@ -29,6 +29,58 @@ carried by the note animations on that side, not by the sound itself.
 Stereo panning (the audio engine supports it) would reinforce it. That is
 Cooper's call, and it is not in the spec.
 
+## ⚠️ Cooper's amendments to the spec (2026-11-14), which override it
+
+### A1. DECIDE USES TWO STUMPS, NOT THREE (replaces spec §5 "Decide layout")
+
+Cooper rejected §5's three-stump triangle. For accuracy: the triangle
+never meant three melodies. It is always TWO melodies, with a reference
+card, an empty slot and two candidates.
+
+**The two-stump Decide, which loses nothing:**
+
+- one stump holds the **reference card and the empty slot**;
+- the other stump holds **both candidates**;
+- the child drags a candidate across to the empty slot.
+
+Same gesture, same meaning, same randomisation rules (§8): the reference
+variant varies, and so does which candidate is the match.
+
+⚠️ **This closes §12's open question** about moving between agency
+levels without an abrupt interface change. The LAYOUT IS NOW THE SAME at
+Observe, Explore and Decide: two stumps, flanked by the characters. Only
+what sits on the stumps changes:
+
+- Observe and Explore: a whole pair on each stump;
+- Decide: a reference card and an empty slot on one, two candidates on the
+  other.
+
+The place where the interface rearranged itself at the moment the child
+was asked for a new kind of answer is gone.
+
+### A2. Both characters at all three levels — and character size is PER GAME
+
+Confirmed by Cooper: Piper and Clef both appear at Observe, Explore and
+Decide. This is a deliberate exception to card 222 (see below).
+
+⚠️ **It is CONDITIONAL ON FITTING.** Cooper: "we'll have to see how it
+feels fitting on the screen. that's the biggest factor." This is the most
+crowded of the three game screens: two stumps each carrying a PAIR of
+cards, plus two characters flanking them. Piper has been enlarged twice
+for the other screens (card 209 by 25%, then a further 50%), and at that
+size she will almost certainly not fit here.
+
+⚠️ **So character size is PER GAME, never one global value.** It already
+is, in code: each screen's layout sizes the characters for its own room
+(`SceneLayout.piperHeight` for High vs Low, `LoudQuietLayout.piperHeight`,
+`JourneyMapGeometry.piperHeight`), and `CharacterArt` says so. The Grove
+gets its own layout with its own size. **Never match Piper here to her
+size on another screen.**
+
+When the screen is composed: report the character scale that actually fits
+on every target device (an iPhone SE in landscape is the tightest), with
+renders, and flag it for Cooper's eye BEFORE treating it as settled.
+
 ## Resolved against existing decisions
 
 ### Decide's incorrect-answer handling: ANSWERED by card 212
@@ -49,7 +101,7 @@ drop. **This item is removed from the open list.** It also applies card
 221: the drop zone accepts whenever it lights up, generously, by the
 dragged card's position, not the finger's.
 
-### Both characters on screen at every level: a DELIBERATE EXCEPTION to card 222
+### Both characters on screen at every level: a DELIBERATE EXCEPTION to card 222 (confirmed by Cooper, A2)
 
 In High vs Low and Loud or Quiet, card 222 settled that **only the asking
 character appears at Explore and Decide.** This spec has BOTH Piper and
@@ -57,27 +109,18 @@ Clef present at every level, flanking the stumps, and requires that
 neither becomes an answer label (§3: "the position of the matching and
 non-matching answers is randomized independently of the characters").
 
-⚠️ **This is deliberate.** It is a different game with different needs.
-Here the characters guide; they are never the poles of the answer. Do NOT
-"fix" it to match the other two games.
+⚠️ **This is deliberate, and Cooper has confirmed it.** It is a different
+game with different needs. Here the characters guide; they are never the
+poles of the answer. Do NOT "fix" it to match the other two games. It is
+conditional only on fitting the screen (A2).
 
 ## ⚠️ Open for Cooper
 
-### 1. §12 contradicts §5: the Explore → Decide layout change is abrupt
+### ~~1. The Explore → Decide layout jump~~ — CLOSED by amendment A1
 
-§12 lists "how the game transitions between agency levels without abruptly
-changing the interface" as open. But §5's layouts DO change abruptly:
-
-- Observe and Explore have **two stumps side by side**, each holding a
-  whole pair;
-- Decide has **three stumps in a triangle**: a reference card and an empty
-  slot on a tall centre pedestal, and one candidate on each low stump.
-
-The whole arrangement rearranges at the same moment the child is asked for
-a new kind of answer. **Question for Cooper:** can Decide work on the
-two-stump layout (for example, the reference card held up by a character,
-or the empty slot on one stump), or is the triangle worth the
-discontinuity?
+§12's question was how to move between agency levels without an abrupt
+interface change, and §5's triangle made it abrupt. With two stumps at
+every level (A1), the layout no longer changes at all.
 
 ### 2. §7's "keep tapping" cue against card 210
 
@@ -114,6 +157,10 @@ The five-tap answer threshold itself matches the app's existing rule.
   standard is five).
 - Card animation timing and feedback audio.
 - How often the reference and candidate imagery changes.
+- ~~Moving between agency levels without an abrupt interface change.~~
+  Closed by amendment A1: the layout is the same at every level.
+- The character scale that fits this screen (A2): to be measured when it
+  is composed, and judged by Cooper.
 
 ## Cards: art facts
 

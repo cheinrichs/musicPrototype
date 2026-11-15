@@ -26,6 +26,15 @@ enum CharacterPose {
 /// never changes her size. The recorded sizes are what the sprite scales by;
 /// `character_art_test.dart` fails if a re-cut asset's dimensions stop
 /// matching them.
+///
+/// ⚠️ THERE IS NO GLOBAL CHARACTER SIZE. Each screen's own layout sizes
+/// the characters for the room it has: `SceneLayout.piperHeight` (High vs
+/// Low), `LoudQuietLayout.piperHeight`, `JourneyMapGeometry.piperHeight`,
+/// and a future Matching Grove layout of its own, which is the most crowded
+/// screen (two stumps of card pairs plus both characters). Never match a
+/// character's size on one screen to another's: an enlargement asked for
+/// on one screen does not apply to the others
+/// (docs/product/SAME_OR_DIFFERENT.md, amendment A2).
 @immutable
 class CharacterArt {
   final List<String> mouthFrames;
