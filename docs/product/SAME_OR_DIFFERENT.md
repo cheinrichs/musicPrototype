@@ -122,27 +122,13 @@ conditional only on fitting the screen (A2).
 interface change, and §5's triangle made it abrupt. With two stumps at
 every level (A1), the layout no longer changes at all.
 
-### 2. §7's "keep tapping" cue against card 210
+### ~~2. §7's "keep tapping" cue against card 210~~ — RESOLVED by Cooper: no conflict
 
-Spec §7 has the character acknowledge the judgement "when the child begins
-repeatedly tapping a pair" ("Keep tapping if you think they match!").
-**Card 210** revised the equivalent High vs Low cue:
-
-- it must NOT fire on early taps, because with two options the first tap
-  is right half the time by chance;
-- the cue belongs to taps SPREAD ACROSS BOTH options with no repetition, as
-  a nudge, once per round set.
-
-The spec's cue fires on REPEATED taps on one pair, which is a different
-trigger, and its wording names the answer category the child is leaning
-towards. Check with Cooper which rule holds here, so Explore's three nudge
-conditions don't collide:
-
-- nothing happening at all;
-- five taps on the wrong option;
-- taps spread across both options.
-
-The five-tap answer threshold itself matches the app's existing rule.
+§7's cue ("Keep tapping if you think they match!") stands as the spec
+writes it. Card 210's rule exists because a first correct tap is right half
+the time by CHANCE, so a cue must not CONFIRM it. This cue confirms
+nothing: it is neutral as to correctness, and reads identically whether
+the child is tapping the right pair or the wrong one. Do not reopen it.
 
 ### Smaller notes
 
