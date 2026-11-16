@@ -95,6 +95,33 @@ void main() {
     await finish(tester);
   });
 
+  for (final size in [const Size(667, 375), const Size(874, 402)]) {
+    testWidgets('THE GEAR IS FINDABLE on ${size.width.toInt()}×'
+        '${size.height.toInt()}: a visible 52 pt circle, bottom-left, on '
+        'screen, clear of every tile — the only way to settings and the '
+        'dev profile', (tester) async {
+      await mount(tester, stored: kids(5), size: size);
+      final gear = tester.getRect(find.byKey(const ValueKey('settings-gear')));
+      expect((Offset.zero & size).intersect(gear), gear);
+      expect(gear.width, greaterThanOrEqualTo(48));
+      expect(gear.center.dx, lessThan(size.width / 2));
+      expect(gear.center.dy, greaterThan(size.height / 2));
+      for (var i = 0; i < 5; i++) {
+        expect(
+          tester.getRect(find.byKey(ValueKey('player-k$i'))).overlaps(gear),
+          isFalse,
+        );
+      }
+      expect(
+        tester
+            .getRect(find.byKey(const ValueKey('add-profile')))
+            .overlaps(gear),
+        isFalse,
+      );
+      await finish(tester);
+    });
+  }
+
   group('the dev profile lives in settings', () {
     testWidgets('an INTERNAL build: behind the gear and the reading gate, '
         'ONE gate', (tester) async {

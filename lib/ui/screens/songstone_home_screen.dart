@@ -13,7 +13,6 @@ import '../../app/state/skill_state.dart';
 import '../../journey/journey_art.dart';
 import '../../journey/journey_state.dart';
 import '../../models/profile.dart';
-import '../components/adult_door.dart';
 import '../components/reading_gate.dart';
 import '../theme/theme.dart';
 import 'settings_screen.dart';
@@ -77,16 +76,19 @@ class SongStoneHomeScreen extends StatelessWidget {
                   rect: layout.badge(children.length),
                   child: _AddProfileTile(onTap: () => _addChild(context)),
                 ),
-              // The gear: settings, behind the reading gate. The dev
-              // profile lives in there now (internal builds only), so the
-              // picker shows children only.
+              // The gear: settings, behind the reading gate — and the ONLY
+              // route to the dev profile, so it must be FINDABLE. Build 133
+              // left it as a faint 20 px AdultDoor bottom-right and removed
+              // the visible badge Cooper's hand went to bottom-left: he
+              // couldn't find a way in. A plain, visible gear where that
+              // badge was. The reading gate is what turns a child around,
+              // not hiding the door.
               SafeArea(
                 child: Align(
-                  alignment: Alignment.bottomRight,
-                  child: AdultDoor(
-                    icon: Icons.settings_outlined,
-                    semanticLabel: 'Settings',
-                    onTap: () => _openSettings(context),
+                  alignment: Alignment.bottomLeft,
+                  child: Padding(
+                    padding: const EdgeInsets.all(AppSpacing.sm),
+                    child: _SettingsGear(onTap: () => _openSettings(context)),
                   ),
                 ),
               ),
@@ -304,6 +306,34 @@ class _PlayerBadge extends StatelessWidget {
             ],
           );
         },
+      ),
+    ),
+  );
+}
+
+/// The settings gear: a plain, visible circle (as the dev badge it
+/// replaces was), never a faint door — it is the only way to settings and
+/// the dev profile.
+class _SettingsGear extends StatelessWidget {
+  final VoidCallback onTap;
+  const _SettingsGear({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    button: true,
+    label: 'Settings',
+    child: GestureDetector(
+      key: const ValueKey('settings-gear'),
+      onTap: onTap,
+      child: Container(
+        width: 52,
+        height: 52,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: AppColors.surface.withValues(alpha: 0.85),
+          border: Border.all(color: AppColors.cardEdge, width: 2),
+        ),
+        child: const Icon(Icons.settings_rounded, color: AppColors.warmGray),
       ),
     ),
   );
