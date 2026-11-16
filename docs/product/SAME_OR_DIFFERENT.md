@@ -81,6 +81,61 @@ When the screen is composed: report the character scale that actually fits
 on every target device (an iPhone SE in landscape is the tightest), with
 renders, and flag it for Cooper's eye BEFORE treating it as settled.
 
+## ⚠️ IMPLEMENTATION CONSTRAINT: the drifting notes must never carry the answer
+
+The notes are built in CODE: the `♪` of `DriftingNotes`, sparkles and
+flutter_animate, with no new art. That turns spec §9's "no visual answer
+leakage" from something a pre-rendered animation got for free into an
+ACTIVE OBLIGATION. The melody data is right there, and the obvious
+implementation (one note per played note, rising with its pitch) would
+draw the answer on the screen.
+
+**So the emission is driven by a TIMER and a FIXED (or random) PATTERN.**
+The ONLY thing tied to the music is WHICH SIDE emits: the left grove while
+melody A plays, the right while melody B plays. The same count, the same
+rhythm and the same look, whatever the notes are and whether the melodies
+match. Never derive a note's count, height, timing, colour or path from
+the melody. (`DriftingNotes` already works this way: two notes on a fixed
+pattern, regardless of what sounds.)
+
+A review must check this; a test should pin it (the emitted pattern is
+identical for matching and differing melodies).
+
+## The grove art: two layers, and the layer order
+
+Delivered 2026-11-14 as two layers, so the notes can genuinely pass
+BEHIND the near trunks (spec §2's "weave between trees at different
+depths" needs this; a single flat painting could not do it):
+
+- `assets/images/grove/grove_background_far.png`: the distant meadow,
+  waterfall and mountains. 1672×941. Max alpha 248, so about 3% bleeds
+  through; invisible, and Cooper's export setting. Do NOT re-save.
+- `assets/images/grove/grove_foreground_trunks.png`: the near aspens,
+  canopy and ground foliage, with a clean cut-out through the centre.
+  1672×941 RGBA, 40.6% fully transparent.
+- `docs/reference/REFERENCE_grove_composited.png`: the two assembled.
+  REFERENCE ONLY; never ship it.
+
+Same size, so they overlay with no alignment work. Not registered in
+`pubspec.yaml` until the Grove is built.
+
+⚠️ **LAYER ORDER, back to front. This is what makes the weaving work:**
+
+1. `grove_background_far`
+2. **the drifting music notes**
+3. `grove_foreground_trunks`
+4. stumps, cards, characters, UI
+
+The notes sit BETWEEN the two background layers, so they pass behind the
+near trunks and reappear. Everything interactive sits ABOVE the trunks, so
+nothing hides Piper, Clef or a card the child must tap. Notes above the
+trunks lose the depth; characters below them get a tree through Piper.
+
+⚠️ **NOTE PATHS STAY IN THE OUTER THIRDS.** The foreground's centre is
+open, so a note drifting into the middle has nothing to pass behind and
+stops reading as coming from among the trees. This also matches §2: notes
+emerge from between the trunks on each side.
+
 ## Resolved against existing decisions
 
 ### Decide's incorrect-answer handling: ANSWERED by card 212

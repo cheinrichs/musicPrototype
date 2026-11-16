@@ -80,3 +80,55 @@ the adult profile" group).
   an actual game session yet — that's the advancement/demotion card's job.
 - No UI for a parent to actually set the agency override — the model and
   state support it; the picker screen doesn't expose it yet.
+
+## Settings area and picker: Cooper's decisions (2026-11-15)
+
+These supersede the profile-chain shape built in build 121 wherever they
+differ.
+
+1. **A back arrow on the Journey returns to the picker, UNGATED.** This
+   reverses the earlier rule that switching player sits behind a door
+   (card 194). Switching children is the commonest adult action in a
+   two-child house. Gating it taxes the common case to prevent a rare,
+   low-harm one: a stray round in the wrong profile is annoying, and it is
+   visible in the log.
+2. **The dev profile moves OFF the picker into settings.** The picker
+   shows CHILDREN ONLY. The dev profile is chosen from inside settings,
+   which is already gated: one gate, not two, and nothing unexpected in the
+   child-facing list. It is still compiled out of release builds entirely.
+3. **The gear on the picker opens SETTINGS, behind the reading gate:**
+   - add and delete profiles;
+   - choose the dev profile (internal builds only);
+   - change a profile's avatar (settings ONLY; a chooser on the Journey pin
+     was considered and dropped);
+   - edit the agency placement;
+   - edit the age band.
+4. **Agency placement is option (b):** the screen says plainly that it is
+   a STARTING POINT and the app will adjust. A manual change is NOT sticky,
+   and automatic promotion and the ghost-prompt demotion (card 199) are not
+   suppressed. Saying so means a later adjustment doesn't read as the
+   setting failing to save. Silently reverting is not acceptable.
+5. **Avatars are UNIQUE PER DEVICE.** An avatar taken by another profile is
+   hidden or disabled in both the setup quiz and the chooser. The avatar is
+   the only thing a non-reader can use to find themselves. A change updates
+   both the picker badge and the Journey pin. A child may change it any
+   number of times.
+6. **The picker always ENDS with an "Add Profile" tile:** an OUTLINED +
+   circle with the words "Add Profile" beneath, visibly unlike the filled
+   animal badges.
+   - It is a second entry point (settings has one too). A fresh install
+     has no profiles and needs a way in.
+   - Words are right here: adding a profile is an adult action.
+   - It is UNGATED.
+7. **The setup quiz is ABANDONABLE IN ONE TAP from ANY question.** Back
+   exits the whole flow to the picker; it does not step back through the
+   questions.
+   - ⚠️ The profile does NOT EXIST until the quiz completes: all four
+     answers are held in memory and the profile is written only at the
+     end. Never create-then-update.
+   - Losing a parent's partial answers is acceptable, since settings can
+     edit all four fields. So no confirm dialog and no resume.
+8. **SIX PROFILES MAXIMUM per device.** At six, the Add Profile tile is
+   HIDDEN, not disabled. The way back is deleting a profile in settings.
+   The picker's layout at six profiles plus the tile must be rendered and
+   shown before it is built.
