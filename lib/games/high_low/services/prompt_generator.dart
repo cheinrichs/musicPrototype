@@ -96,7 +96,7 @@ class PromptGenerator {
     // heuristic) is what makes this correct for both note counts —
     // [hasRangeFor] here is just a fast pre-filter before the real check.
     final eligible = <(HighLowInstrument, List<_Note>)>[
-      for (final i in HighLowInstrument.values)
+      for (final i in HighLowInstrument.inPlay)
         if (i.hasRangeFor(tier.minSemitones))
           if (_pickNoteSet(
                 [
@@ -145,8 +145,8 @@ class PromptGenerator {
     PitchDirection targetDirection,
   ) {
     final eligiblePairs = <(HighLowInstrument, HighLowInstrument)>[
-      for (final a in HighLowInstrument.values)
-        for (final b in HighLowInstrument.values)
+      for (final a in HighLowInstrument.inPlay)
+        for (final b in HighLowInstrument.inPlay)
           if (a.index < b.index &&
               a.canPairWith(b, minSemitones: tier.minSemitones) &&
               _isFairPair(a, b, tier))

@@ -65,10 +65,24 @@ class DevSetupOverlay extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(
-                    'Dev: agency setup',
-                    style: AppTypography.bodyLarge,
-                    textAlign: TextAlign.center,
+                  // The title, and the trial switch beside it (on the
+                  // title line, so the gate still fits an SE).
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Dev: agency setup',
+                          style: AppTypography.bodyLarge,
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      _TrialSwitch(
+                        on: devSettings.xylophoneTrial,
+                        onChanged: devSettings.setXylophoneTrial,
+                      ),
+                    ],
                   ),
                   const SizedBox(height: AppSpacing.xs),
                   Text(
@@ -425,6 +439,36 @@ class _RoomStepper extends StatelessWidget {
       ],
     );
   }
+}
+
+/// "Xylophone trial": brings the trial instruments into this set, so their
+/// loudness can be judged by ear against the real ones. Dev gate only.
+class _TrialSwitch extends StatelessWidget {
+  final bool on;
+  final ValueChanged<bool> onChanged;
+  const _TrialSwitch({required this.on, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) => InkWell(
+    key: const ValueKey('xylophone-trial'),
+    onTap: () => onChanged(!on),
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            on
+                ? Icons.check_box_rounded
+                : Icons.check_box_outline_blank_rounded,
+            size: 18,
+          ),
+          const SizedBox(width: 2),
+          Text('Xylophone', style: AppTypography.label.copyWith(fontSize: 12)),
+        ],
+      ),
+    ),
+  );
 }
 
 /// "Rounds − n +": the round-set length for the selected agency, within

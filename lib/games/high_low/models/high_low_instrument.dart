@@ -177,7 +177,17 @@ enum HighLowInstrument {
   // implemented yet) finds a partner via [canPairWith] — guitar's
   // [48, 71] still reaches down to cover it.
   tuba('Tuba', 'tuba', 'tuba', 56, 59),
-  violin('Violin', 'violin', 'violin', 60, 96);
+  violin('Violin', 'violin', 'violin', 60, 96),
+
+  // ⚠️ A TRIAL INSTRUMENT: DEV PROFILE ONLY, behind the dev gate's
+  // "Xylophone trial" switch (2026-11-15), so Cooper can judge its loudness
+  // by ear in situ against the real instruments. Never in a child's round:
+  // [inPlay] leaves it out unless [trialsEnabled]. Iowa, rosewood, F4-C8 —
+  // its low end measures quieter than the rest (assets/audio/notes/
+  // xylophone/PROVENANCE.md); that is what the trial is for. Its art is
+  // Cooper's UI-Kit sheet, copied byte-for-byte and sliced in code
+  // ([lookSets]).
+  xylophone('Xylophone', 'xylophone', 'xylophone', 65, 108);
 
   const HighLowInstrument(
     this._assetBaseName,
@@ -268,9 +278,27 @@ enum HighLowInstrument {
   /// they had tapped. Same timbre is the point of the tier; same appearance
   /// was a defect. Looks are appearance ONLY — they never touch the sound,
   /// and never which tiers an instrument is eligible for.
-  List<List<InstrumentLook>> get lookSets => [
-    [InstrumentLook(leftAssetPath), InstrumentLook(rightAssetPath)],
-    if (this == bells) _handbells,
+  List<List<InstrumentLook>> get lookSets => this == xylophone
+      ? const [_xylophones]
+      : [
+          [InstrumentLook(leftAssetPath), InstrumentLook(rightAssetPath)],
+          if (this == bells) _handbells,
+        ];
+
+  /// Whether this is a trial instrument — playable only on the dev profile,
+  /// behind the dev gate. See [inPlay].
+  bool get isTrial => this == xylophone;
+
+  /// Whether trial instruments join the rounds. Set at the start of a set:
+  /// true ONLY on the dev profile with the dev gate's trial switch on, so a
+  /// child never meets one.
+  static bool trialsEnabled = false;
+
+  /// The instruments rounds may draw from: every one, less the trials
+  /// unless [trialsEnabled].
+  static List<HighLowInstrument> get inPlay => [
+    for (final i in values)
+      if (!i.isTrial || trialsEnabled) i,
   ];
 
   /// Looks for [count] positions of this instrument in one round: all
@@ -414,6 +442,36 @@ String _sampleFilenameForMidi(int midi) {
 /// test/games/high_low/instrument_looks_test.dart re-measures them.
 const _handbellSheet =
     'assets/images/characters/instruments/bells_x3_variants.png';
+
+/// Cooper's UI-Kit xylophone sheet (Xylophone.png, 1774x887): light wood
+/// and dark wood, measured 2026-11-15 (alpha > 8): 18-867 and 907-1756
+/// across, 151-757 down, with a clean 40 px gap. One slice size for both.
+const _xylophoneSheet = 'assets/images/characters/instruments/Xylophone.png';
+const _xylophones = [
+  InstrumentLook(
+    _xylophoneSheet,
+    LookRegion(
+      sheetWidth: 1774,
+      sheetHeight: 887,
+      left: 18,
+      top: 151,
+      width: 849,
+      height: 606,
+    ),
+  ),
+  InstrumentLook(
+    _xylophoneSheet,
+    LookRegion(
+      sheetWidth: 1774,
+      sheetHeight: 887,
+      left: 907,
+      top: 151,
+      width: 849,
+      height: 606,
+    ),
+  ),
+];
+
 const handbellCentres = [521.0, 1086.0, 1649.5];
 const handbellSlice = 460.0; // width; 712 tall, from y 3
 const _handbells = [

@@ -2,7 +2,12 @@ import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
+import 'dart:math' as math;
+
 import 'package:ear_trainer/games/high_low/models/high_low_instrument.dart';
+import 'package:ear_trainer/games/high_low/services/prompt_generator.dart';
+import 'package:ear_trainer/models/concept_tier.dart';
+import 'package:ear_trainer/models/pitch_direction.dart';
 import 'package:ear_trainer/games/loud_quiet/models/dynamic_ladder.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -80,7 +85,7 @@ void main() {
   });
 
   test('two positions keep their familiar pair — nothing changes there', () {
-    for (final i in HighLowInstrument.values) {
+    for (final i in HighLowInstrument.values.where((i) => !i.isTrial)) {
       expect(i.looksFor(2).map((l) => l.asset), [
         i.leftAssetPath,
         i.rightAssetPath,
@@ -127,5 +132,95 @@ void main() {
     // Three-instrument rounds still leave the bells out (their half-size
     // art, not their looks).
     expect(DynamicLadder.poolFor(3), isNot(contains(HighLowInstrument.bells)));
+  });
+
+  group('the xylophone: a TRIAL instrument, dev profile only', () {
+    tearDown(() => HighLowInstrument.trialsEnabled = false);
+
+    test('OUT of every pool unless trials are on — a child never meets it', () {
+      HighLowInstrument.trialsEnabled = false;
+      expect(
+        HighLowInstrument.inPlay,
+        isNot(contains(HighLowInstrument.xylophone)),
+      );
+      expect(
+        DynamicLadder.poolFor(2),
+        isNot(contains(HighLowInstrument.xylophone)),
+      );
+      HighLowInstrument.trialsEnabled = true;
+      expect(HighLowInstrument.inPlay, contains(HighLowInstrument.xylophone));
+      expect(DynamicLadder.poolFor(2), contains(HighLowInstrument.xylophone));
+    });
+
+    test("two distinct looks, both slices of Cooper's UI-Kit sheet", () {
+      final looks = HighLowInstrument.xylophone.looksFor(2);
+      expect(looks.toSet(), hasLength(2));
+      for (final l in looks) {
+        expect(l.asset, 'assets/images/characters/instruments/Xylophone.png');
+        expect(l.region, isNotNull);
+      }
+    });
+
+    test(
+      'each slice holds its whole xylophone and nothing of the other',
+      () async {
+        final bytes = File(
+          'assets/images/characters/instruments/Xylophone.png',
+        ).readAsBytesSync();
+        final codec = await ui.instantiateImageCodec(Uint8List.fromList(bytes));
+        final image = (await codec.getNextFrame()).image;
+        final px = (await image.toByteData())!;
+        bool visible(int x, int y) =>
+            px.getUint8((y * image.width + x) * 4 + 3) > 8;
+        final looks = HighLowInstrument.xylophone.looksFor(2);
+        const half = 887; // the gap between the two runs 867-907
+        for (var i = 0; i < 2; i++) {
+          final r = looks[i].region!;
+          for (var y = 0; y < image.height; y += 2) {
+            for (
+              var x = i == 0 ? 0 : half;
+              x < (i == 0 ? half : image.width);
+              x += 2
+            ) {
+              if (!visible(x, y)) continue;
+              expect(
+                x >= r.left &&
+                    x < r.left + r.width &&
+                    y >= r.top &&
+                    y < r.top + r.height,
+                isTrue,
+                reason: 'xylophone $i clipped at ($x, $y)',
+              );
+            }
+          }
+        }
+      },
+    );
+
+    test('with trials on, both games generate rounds with it, and Loud or '
+        "Quiet keeps it to the levels its +0.5 dB room allows", () {
+      HighLowInstrument.trialsEnabled = true;
+      final generator = PromptGenerator(random: math.Random(7));
+      var seen = false;
+      for (final tier in ConceptTier.values) {
+        for (var i = 0; i < 150; i++) {
+          final p = generator.generatePrompt(
+            promptNumber: i,
+            tier: tier,
+            targetDirection: PitchDirection.higher,
+          );
+          if (p.firstInstrument == HighLowInstrument.xylophone) seen = true;
+        }
+      }
+      expect(seen, isTrue);
+      const ladder = DynamicLadder.standard;
+      for (var step = 0; step < ladder.length; step++) {
+        expect(
+          ladder.eligibleAt(step).contains(HighLowInstrument.xylophone),
+          ladder.instrumentCountAt(step) >= 2 && ladder.loudDbAt(step) <= 0.5,
+          reason: 'T${step + 1}',
+        );
+      }
+    });
   });
 }

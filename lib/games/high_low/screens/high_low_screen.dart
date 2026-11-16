@@ -38,6 +38,7 @@ import '../ordering/ordering_slot.dart';
 import '../models/scene_layout.dart';
 import '../widgets/character_art.dart';
 import '../widgets/high_low_header.dart';
+import '../widgets/instrument_look_image.dart';
 import '../widgets/retry_settle.dart';
 import '../widgets/speaking_pulse.dart';
 
@@ -191,6 +192,9 @@ class _HighLowScreenState extends State<HighLowScreen> {
     super.initState();
     _canUseDevTools = _resolveCanUseDevTools();
     _showDevGate = _canUseDevTools && widget.entry == null;
+    // Every set starts with trial instruments OUT; only the dev gate's
+    // switch, reachable on the dev profile alone, brings them in.
+    HighLowInstrument.trialsEnabled = false;
     _ownsGameState = widget.gameState == null || widget.ownsGameState;
     // The round count comes from the one shared per-agency setting (Trello
     // card 196), as Loud or Quiet's does.
@@ -305,6 +309,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
 
   void _startFromDevGate() {
     final devSettings = context.read<DevSettingsState>();
+    HighLowInstrument.trialsEnabled = devSettings.xylophoneTrial;
     // Ordering is a separate skill (Trello card 168), selected by its own
     // toggle rather than a fourth AgencyStage value the way `.order` used
     // to work — see [DevSettingsState.orderingSelected].
@@ -800,7 +805,10 @@ class _HighLowScreenState extends State<HighLowScreen> {
         // handed.
         _buildInstrumentSlot(
           side: 0,
-          assetPath: _gameState.leftInstrument.leftAssetPath,
+          // The left side wears its instrument's first look, the right its
+          // second — as the separate left/right PNGs always did — whether
+          // the look is a whole file or a slice of a sheet (the xylophone).
+          look: _gameState.leftInstrument.looksFor(2)[0],
           instrumentName: _gameState.leftInstrument.name,
           anchorX: layout.stumpAnchorX(0),
           landing: landing,
@@ -816,7 +824,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
         ),
         _buildInstrumentSlot(
           side: 1,
-          assetPath: _gameState.rightInstrument.rightAssetPath,
+          look: _gameState.rightInstrument.looksFor(2)[1],
           instrumentName: _gameState.rightInstrument.name,
           anchorX: layout.stumpAnchorX(1),
           landing: landing,
@@ -1116,7 +1124,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
   /// alignment-fraction approximation would introduce.
   Widget _buildInstrumentSlot({
     required int side,
-    required String assetPath,
+    required InstrumentLook look,
     required String instrumentName,
     required double anchorX,
     required Offset landing,
@@ -1143,7 +1151,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
 
     Widget button = _InstrumentButton(
       key: ValueKey('$side-$instrumentName'),
-      assetPath: assetPath,
+      look: look,
       size: charSize,
       glowing: glowing,
       feedback: feedback,
@@ -1189,11 +1197,9 @@ class _HighLowScreenState extends State<HighLowScreen> {
         },
         feedback: Opacity(
           opacity: 0.85,
-          child: Image.asset(
-            assetPath,
-            width: charSize,
-            height: charSize,
-            fit: BoxFit.contain,
+          child: SizedBox.square(
+            dimension: charSize,
+            child: InstrumentLookImage(look),
           ),
         ),
         childWhenDragging: Opacity(opacity: 0.3, child: button),
@@ -1374,7 +1380,7 @@ class _HeardRingPainter extends CustomPainter {
 /// Perfectly still otherwise — see [_buildInstrumentSlot]'s doc comment
 /// for why idle motion was retired here entirely.
 class _InstrumentButton extends StatelessWidget {
-  final String assetPath;
+  final InstrumentLook look;
   final double size;
   final bool glowing;
   final _CharacterFeedback? feedback;
@@ -1388,7 +1394,7 @@ class _InstrumentButton extends StatelessWidget {
 
   const _InstrumentButton({
     super.key,
-    required this.assetPath,
+    required this.look,
     required this.size,
     required this.glowing,
     required this.feedback,
@@ -1422,9 +1428,9 @@ class _InstrumentButton extends StatelessWidget {
                   ? RetrySettle(
                       key: ValueKey(dropSerial),
                       from: retryFrom,
-                      child: Image.asset(assetPath, fit: BoxFit.contain),
+                      child: InstrumentLookImage(look),
                     )
-                  : Image.asset(assetPath, fit: BoxFit.contain),
+                  : InstrumentLookImage(look),
             ),
             Positioned(
               top: -size * 0.15,

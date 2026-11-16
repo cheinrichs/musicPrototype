@@ -141,6 +141,8 @@ class DynamicLadder {
     HighLowInstrument.piano: 3.0, // C5, −4.1
     HighLowInstrument.trumpet: 10.5, // C5, −11.5
     HighLowInstrument.violin: 7.0, // F♯5, −8.1
+    // Trial only (dev profile): its peaks already sit at the ceiling.
+    HighLowInstrument.xylophone: 0.5, // D♯6
   };
 
   /// [instrument]'s ceiling on this ladder, in dB above full.
@@ -157,7 +159,7 @@ class DynamicLadder {
   ///
   /// This is who MAY play; [eligibleAt] is who CAN play a given step.
   static List<HighLowInstrument> poolFor(int count) => [
-    for (final i in HighLowInstrument.values)
+    for (final i in HighLowInstrument.inPlay)
       if (i != HighLowInstrument.tuba &&
           (count < 3 || i != HighLowInstrument.bells))
         i,

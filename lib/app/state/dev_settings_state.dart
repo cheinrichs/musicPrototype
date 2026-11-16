@@ -131,6 +131,18 @@ class DevSettingsState extends ChangeNotifier {
     unawaited(_saveGaps());
   }
 
+  /// Whether this dev-gate set brings in the TRIAL instruments (the
+  /// xylophone), so Cooper can judge them by ear against the real ones.
+  /// Off by default, not kept between launches, and only ever applied from
+  /// the dev gate — a child's set always starts with trials out.
+  bool _xylophoneTrial = false;
+  bool get xylophoneTrial => _xylophoneTrial;
+
+  void setXylophoneTrial(bool on) {
+    _xylophoneTrial = on;
+    notifyListeners();
+  }
+
   /// The instrument the dev gate's "Room" control is tuning.
   HighLowInstrument _roomInstrument = DynamicLadder.poolFor(2).first;
   HighLowInstrument get roomInstrument => _roomInstrument;

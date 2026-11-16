@@ -87,6 +87,8 @@ class _LoudQuietScreenState extends State<LoudQuietScreen> {
     _game.addListener(_onChanged);
     _confetti = ConfettiController(duration: AppAnimations.confettiBurst);
 
+    // Every set starts with trial instruments OUT (see High vs Low).
+    HighLowInstrument.trialsEnabled = false;
     final canUseDevTools = _profileState()?.canUseDevTools ?? devToolsEnabled;
     _showDevGate =
         canUseDevTools && widget.gameState == null && widget.entry == null;
@@ -122,6 +124,7 @@ class _LoudQuietScreenState extends State<LoudQuietScreen> {
 
   void _startFromDevGate() {
     final dev = context.read<DevSettingsState>();
+    HighLowInstrument.trialsEnabled = dev.xylophoneTrial;
     _game
       ..agencyStage = dev.agencyStage
       ..ladder = dev.loudQuietLadder
