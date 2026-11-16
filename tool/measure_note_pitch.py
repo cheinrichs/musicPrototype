@@ -153,6 +153,36 @@ MIN_FREQ_HZ = 45     # a bit below tuba's lowest real note (~65Hz)
 # ceiling silently ruling out the correct answer before the algorithm
 # ever got a chance to consider it.
 MAX_FREQ_HZ = 2150
+DEFAULT_MAX_FREQ_HZ = MAX_FREQ_HZ
+
+# Per-instrument ceilings, for an instrument whose real range runs above
+# the default. The xylophone (Iowa, 2026-11-14) reaches C8, ~4186Hz: at the
+# default ceiling its whole top octave would be MIS-measured (failure mode
+# 4 above), not merely missed. Raising the ceiling for EVERY instrument
+# would instead invite the low ones to report a harmonic (a shorter lag
+# wins near-ties), so it is raised only where the range needs it.
+INSTRUMENT_MAX_FREQ_HZ = {"xylophone": 4400}
+
+
+class search_ceiling:
+    """Within this block, measure with [dir_name]'s ceiling and spectral
+    settings."""
+
+    def __init__(self, dir_name: str):
+        self.ceiling = INSTRUMENT_MAX_FREQ_HZ.get(dir_name, DEFAULT_MAX_FREQ_HZ)
+
+        self.spectral = SPECTRAL_PEAK_SETTINGS.get(dir_name, {})
+
+    def __enter__(self):
+        global MAX_FREQ_HZ, _spectral_kwargs
+        MAX_FREQ_HZ = self.ceiling
+        _spectral_kwargs = self.spectral
+
+    def __exit__(self, *exc):
+        global MAX_FREQ_HZ, _spectral_kwargs
+        MAX_FREQ_HZ = DEFAULT_MAX_FREQ_HZ
+        _spectral_kwargs = {}
+        return False
 MIN_CONFIDENCE = 0.35  # normalized-correlation floor before we call a reading "unusable"
 
 
@@ -311,7 +341,21 @@ def normalized_autocorrelation_peak(
     best_lag = min(strong_peaks, key=lambda lc: lc[0])[0]
     best_lag_corr = dict(strong_peaks)[best_lag]
 
-    freq = sr / best_lag
+    # Sub-sample refinement: a parabola through the peak and its two
+    # neighbours. Whole-sample lags are coarse at high pitch — around 2kHz
+    # one lag step is ~70 cents (2026-11-14: flute A#6 read 1837Hz and B6
+    # 2005Hz, each within 25c of its label, but their ratio failed the
+    # 50c chromatic tolerance). Only the refinement is new; which peak is
+    # chosen is unchanged.
+    corr_at = dict(candidates)
+    lag = float(best_lag)
+    if best_lag - 1 in corr_at and best_lag + 1 in corr_at:
+        y0, y1, y2 = corr_at[best_lag - 1], best_lag_corr, corr_at[best_lag + 1]
+        curve = y0 - 2 * y1 + y2
+        if curve < 0:
+            lag += max(-0.5, min(0.5, 0.5 * (y0 - y2) / curve))
+
+    freq = sr / lag
     return freq, best_lag_corr
 
 
@@ -320,11 +364,28 @@ def normalized_autocorrelation_peak(
 # InspectorJ import). Not a general replacement; see spectral_peak's
 # docstring for why bells specifically need a different *method*, not
 # just a different window on the same one.
-SPECTRAL_PEAK_INSTRUMENT_DIRS = {"bells"}
+SPECTRAL_PEAK_INSTRUMENT_DIRS = {"bells", "xylophone"}
+
+# Per-instrument spectral_peak settings (default: bells', below). The
+# xylophone (2026-11-14) needs a SHORT window right after the strike and a
+# rumble floor: a high bar's tone dies within a fraction of a second, so
+# bells' 1 s window ended mostly in the recording room's low rumble and
+# read C7-B7 as ~45 Hz; and autocorrelation's whole-sample lags are far
+# too coarse at 4 kHz (a cycle is ~10 samples), so its top octave piled
+# up near the ceiling. Measured on both Iowa mallets: this read 24/24
+# notes correctly where the defaults read 13/24 and 15-18/24.
+SPECTRAL_PEAK_SETTINGS = {
+    "xylophone": {"start_s": 0.01, "window_s": 0.25, "min_hz": 150.0},
+}
+_spectral_kwargs: dict = {}
 
 
 def spectral_peak(
-    samples: array.array, sr: int, start_s: float = 0.05, window_s: float = 1.0
+    samples: array.array,
+    sr: int,
+    start_s: float = 0.05,
+    window_s: float = 1.0,
+    min_hz: float | None = None,
 ) -> tuple[float | None, float]:
     """Return (frequency_hz, confidence) for the dominant FFT peak in a
     window starting [start_s] seconds in and [window_s] seconds long.
@@ -382,9 +443,12 @@ def spectral_peak(
     if len(chunk) < sr * 0.05:
         return None, 0.0
 
-    spectrum = np.abs(np.fft.rfft(chunk * np.hanning(len(chunk))))
-    freqs = np.fft.rfftfreq(len(chunk), d=1 / sr)
-    mask = (freqs >= MIN_FREQ_HZ) & (freqs <= MAX_FREQ_HZ)
+    # Zero-padded to at least 2^16 points: a short window's raw bins are
+    # several Hz wide, too coarse to read cents.
+    n = max(len(chunk), 1 << 16)
+    spectrum = np.abs(np.fft.rfft(chunk * np.hanning(len(chunk)), n))
+    freqs = np.fft.rfftfreq(n, d=1 / sr)
+    mask = (freqs >= (min_hz or MIN_FREQ_HZ)) & (freqs <= MAX_FREQ_HZ)
     f = freqs[mask]
     m = spectrum[mask]
     if len(m) < 3:
@@ -459,7 +523,7 @@ def measure_file(
         decode_to_wav(mp3_path, wav_path)
         samples, sr = read_pcm16_mono(wav_path)
         freq, confidence = (
-            spectral_peak(samples, sr)
+            spectral_peak(samples, sr, **_spectral_kwargs)
             if use_spectral_peak
             else normalized_autocorrelation_peak(samples, sr)
         )
@@ -927,7 +991,8 @@ def main():
             work_dir = Path(tmp)
             for d in dirs:
                 print(f"\n=== {d.name} (chromatic structure check) ===")
-                freqs, failures = verify_chromatic_structure(d, work_dir)
+                with search_ceiling(d.name):
+                    freqs, failures = verify_chromatic_structure(d, work_dir)
                 print(f"  {len(freqs)} files measured, sorted by filename-implied real pitch")
                 real_failures = [f for f in failures if f.accepted_reason is None]
                 accepted = [f for f in failures if f.accepted_reason is not None]
@@ -952,7 +1017,8 @@ def main():
             work_dir = Path(tmp)
             for d in dirs:
                 print(f"\n=== {d.name} (label periodicity check) ===")
-                results = verify_label_periodicity(d, work_dir)
+                with search_ceiling(d.name):
+                    results = verify_label_periodicity(d, work_dir)
                 for r in results:
                     status = "OK" if r.ok else "SUSPECT"
                     if not r.ok:
@@ -969,7 +1035,8 @@ def main():
         work_dir = Path(tmp)
         for d in dirs:
             print(f"\n=== {d.name} ===")
-            results, summary = measure_instrument_dir(d, work_dir)
+            with search_ceiling(d.name):
+                results, summary = measure_instrument_dir(d, work_dir)
             all_results[d.name] = results
             all_summaries[d.name] = summary
             for m in results:

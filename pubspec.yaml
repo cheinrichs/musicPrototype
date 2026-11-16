@@ -62,6 +62,9 @@ flutter:
     - assets/audio/notes/trumpet/
     - assets/audio/notes/tuba/
     - assets/audio/notes/violin/
+    - assets/audio/notes/xylophone/
+    # Unpitched: hits to sequence into rhythms, never a note library.
+    - assets/audio/percussion/drum/
     - assets/audio/sfx/
     - assets/audio/playground/
     - assets/audio/voice/

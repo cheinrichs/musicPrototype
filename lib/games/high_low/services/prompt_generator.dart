@@ -148,7 +148,8 @@ class PromptGenerator {
       for (final a in HighLowInstrument.values)
         for (final b in HighLowInstrument.values)
           if (a.index < b.index &&
-              a.canPairWith(b, minSemitones: tier.minSemitones))
+              a.canPairWith(b, minSemitones: tier.minSemitones) &&
+              _isFairPair(a, b, tier))
             (a, b),
     ];
     assert(
@@ -178,6 +179,46 @@ class PromptGenerator {
       '$_maxPairAttempts attempts — check HighLowInstrument ranges/gaps.',
     );
   }
+
+  /// Whether [a] and [b] can each land as BOTH the highest and the lowest
+  /// note of a valid [tier] round together. Overlap ([canPairWith]) is not
+  /// enough: with three notes the round needs two CHAINED gaps, and if one
+  /// instrument can only ever sit at one end, its identity gives the answer
+  /// away (2026-11-14: bells, C6-C7, paired with flute, which now reaches C7,
+  /// in T7: a wide three-note set with bells at the bottom needs a top note
+  /// past C7, so bells was ALWAYS the highest). Excluded, never degraded —
+  /// the same shape as the range rule. Cached: it depends only on the
+  /// declared ranges.
+  static final Map<String, bool> _fairPairs = {};
+
+  bool _isFairPair(
+    HighLowInstrument a,
+    HighLowInstrument b,
+    ConceptTier tier,
+  ) => _fairPairs.putIfAbsent('${a.name}|${b.name}|${tier.name}', () {
+    final notes = [
+      for (final midi in a.availableMidis) (instrument: a, midi: midi),
+      for (final midi in b.availableMidis) (instrument: b, midi: midi),
+    ]..sort((x, y) => x.midi.compareTo(y.midi));
+    final combos = tier.noteCount == 2
+        ? _pairs(notes)
+        : _triples(notes, tier.minSemitones, tier.maxSemitones);
+    final lowest = <HighLowInstrument>{};
+    final highest = <HighLowInstrument>{};
+    for (final combo in combos) {
+      if (!_gapsInBounds(combo, tier.minSemitones, tier.maxSemitones)) {
+        continue;
+      }
+      if (!combo.any((n) => n.instrument == a) ||
+          !combo.any((n) => n.instrument == b)) {
+        continue;
+      }
+      lowest.add(combo.first.instrument);
+      highest.add(combo.last.instrument);
+      if (lowest.length == 2 && highest.length == 2) return true;
+    }
+    return false;
+  });
 
   /// Picks [count] (2 or 3) notes from [pool], such that every *adjacent*
   /// gap in sorted pitch order falls within [tier]'s
@@ -241,8 +282,7 @@ class PromptGenerator {
     ];
     if (valid.isEmpty) return null;
 
-    final chosen = [...valid[_random.nextInt(valid.length)]]
-      ..shuffle(_random);
+    final chosen = [...valid[_random.nextInt(valid.length)]]..shuffle(_random);
     return chosen;
   }
 

@@ -43,9 +43,10 @@ void main() {
             1 -
             guitar.missingMidis.length;
         expect(guitar.allAssetPaths.length, expectedCount);
+        // A3 restored 2026-11-14 (a different Philharmonia take).
         expect(
           guitar.allAssetPaths,
-          isNot(contains('assets/audio/notes/guitar/a3.mp3')),
+          contains('assets/audio/notes/guitar/a3.mp3'),
         );
         expect(
           guitar.allAssetPaths,

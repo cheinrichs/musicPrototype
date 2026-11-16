@@ -24,7 +24,7 @@ use for any purpose, including commercially" is correct.
 
 ## History
 
-Added in bdab53d (card 44). Every file was then trimmed or padded to 1.645625 s, converted to
+Added in bdab53d (card 44), C4–B5. Extended to C7 on 2026-11-14 (card 148). Our files match the 1 s mezzo-forte arco take (B5 0.998). The new C6–C7 use it too, except F6, A♯6, B6 and C7, which use the 1 s forte take (no mezzo-forte exists for them). Known, older measurement issue: tool/measure_note_pitch.py reads c4.mp3 an octave high (failure mode 2 in its docstring); this predates the extension. Every file was then trimmed or padded to 1.645625 s, converted to
 mono 44.1 kHz and encoded to 64 kbps mp3, processed outside the repo, with
 no raw archives committed. Loudness was later re-normalised to about
 −18 LUFS, with a −1 dBTP true-peak ceiling (4166189,
@@ -33,7 +33,7 @@ tool/normalize_loudness.py). Pitch was measured by tool/measure_note_pitch.py.
 The original source file name of each note was NOT recorded at import.
 Only the take choices above were.
 
-## Files (24)
+## Files (37)
 
 | File | Real pitch | Used by the app |
 |---|---|---|
@@ -61,3 +61,16 @@ Only the take choices above were.
 | `a5.mp3` | A5 | yes |
 | `a_sharp_5.mp3` | A♯5 | yes |
 | `b5.mp3` | B5 | yes |
+| `c6.mp3` | C6 | yes |
+| `c_sharp_6.mp3` | C♯6 | yes |
+| `d6.mp3` | D6 | yes |
+| `d_sharp_6.mp3` | D♯6 | yes |
+| `e6.mp3` | E6 | yes |
+| `f6.mp3` | F6 | yes |
+| `f_sharp_6.mp3` | F♯6 | yes |
+| `g6.mp3` | G6 | yes |
+| `g_sharp_6.mp3` | G♯6 | yes |
+| `a6.mp3` | A6 | yes |
+| `a_sharp_6.mp3` | A♯6 | yes |
+| `b6.mp3` | B6 | yes |
+| `c7.mp3` | C7 | yes |

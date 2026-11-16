@@ -100,7 +100,12 @@ enum HighLowInstrument {
     floatFraction: 0.12,
   ),
   cello('Cello', 'cello', 'cello', 60, 83),
-  flute('Flute', 'flute', 'flute', 60, 83),
+  // Flute and violin reach C7 (2026-11-14, card 148): extended from B5 so
+  // the bells (C6-C7) have partners in cross-instrument rounds. Same
+  // Philharmonia take as C4-B5 (1 s, mezzo-forte; violin F6, A#6, B6 and
+  // C7 use the forte take, as no mezzo-forte exists). Stopped at C7, all
+  // the bells need: higher flute risks being piercing on a phone.
+  flute('Flute', 'flute', 'flute', 60, 96),
   // Guitar (2026-09 audit): real pitch is one octave below its file names
   // (not two, which is what an uncorrected guess — copied from tuba's own
   // offset without measuring guitar independently — had assumed for
@@ -124,7 +129,12 @@ enum HighLowInstrument {
   // contiguous. [missingMidis] documents those two remaining holes rather
   // than shrinking the declared range down to whatever contiguous run is
   // left, so the restored notes are actually reachable.
-  guitar('Guitar', 'guitar', 'guitar', 48, 71, missingMidis: {57, 70}),
+  //
+  // A3 restored 2026-11-14: a different Philharmonia take (the piano
+  // dynamic, labelled A3) that measures a clean A3 with a normal pluck
+  // and no click noise — awaiting Cooper's ear, since an A3 was once
+  // rejected by ear for clicking. A#4 has no other take.
+  guitar('Guitar', 'guitar', 'guitar', 48, 71, missingMidis: {70}),
   oboe('Oboe', 'oboe', 'oboe', 60, 83),
   piano('Piano', 'piano', 'piano', 60, 83),
   trumpet('Trumpet', 'trumpet', 'trumpet', 60, 83),
@@ -167,7 +177,7 @@ enum HighLowInstrument {
   // implemented yet) finds a partner via [canPairWith] — guitar's
   // [48, 71] still reaches down to cover it.
   tuba('Tuba', 'tuba', 'tuba', 56, 59),
-  violin('Violin', 'violin', 'violin', 60, 83);
+  violin('Violin', 'violin', 'violin', 60, 96);
 
   const HighLowInstrument(
     this._assetBaseName,

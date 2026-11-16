@@ -11,7 +11,8 @@ audio: `assets/audio/notes/<instrument>/PROVENANCE.md`, and
 | Cello, flute, violin | Philharmonia Orchestra (strings, woodwind) | Philharmonia's own terms (below) | Courtesy |
 | Guitar | Philharmonia Orchestra | Philharmonia's own terms | Courtesy |
 | Oboe, trumpet, tuba | Philharmonia Orchestra (woodwind, brass) | Philharmonia's own terms | Courtesy |
-| Piano | University of Iowa Musical Instrument Samples | Free for any project, without restriction | Courtesy |
+| Piano, xylophone | University of Iowa Musical Instrument Samples | Free for any project, without restriction | Courtesy |
+| Drum (2 hits, unpitched) | Philharmonia Orchestra (percussion) | Philharmonia's own terms | Courtesy |
 
 The credits screen lists all three sources (`lib/app/credits_data.dart`).
 Each entry carries `attributionRequired`, and
@@ -36,13 +37,26 @@ Philharmonia brass pack "free, CC-licensed". That is wrong: the claim came
 from a third-party GitHub mirror, not from Philharmonia. A pushed commit's
 message is not rewritten, so this file is the correction. Do not reopen it.
 
-## Available but not yet sourced (2026-11-14)
+## The 2026-11-14 pull
 
-- **Xylophone:** the University of Iowa percussion set has it, recorded
-  note by note at three dynamic levels. It is the same source and terms as
-  the piano, so there is no new licence question. Cooper recalls a decision
-  to fetch it that was dropped; nothing in the repo or the commit history
-  records it. Its art is in the UI Kit, not in this repo.
-- **Drum:** neither library has a pitched drum (noted in bdab53d), so it
-  can never serve High vs Low. Iowa's percussion could serve a rhythm game.
-- **Electric guitar:** in neither library. Art only.
+- **Xylophone:** Iowa, F4–C8 (44 notes), rosewood, mezzo-forte. The
+  samples are in, but it is NOT YET PLAYABLE: it has no sprite art, and its
+  loudness is uneven, lowest at the bottom. See
+  `assets/audio/notes/xylophone/PROVENANCE.md`.
+- **Flute and violin:** extended C6–C7 (card 148), from the same
+  Philharmonia take as before.
+- **Guitar:** A3 restored from another take. Awaiting Cooper's ear.
+- **Drum:** two Philharmonia hits (snare, tom), unpitched, in
+  `assets/audio/percussion/drum/`.
+- **Electric guitar:** in neither library. It needs a third source and a
+  new licence question.
+
+## ⚠️ UNDOCUMENTED: `assets/audio/notes/percussion/` (24 raw .aif files)
+
+These were committed 2026-04-27 (ffed98e, "for future use in rhythm games")
+with NO record of their source or licence. Their names (`tambourinevintage`,
+`sleighbellsvintage`, `jamblockhigh`, `cajonsnare`) look like a commercial
+library's. They are registered in `pubspec.yaml`, so they SHIP in the app,
+although no code plays them. They are also raw AIFFs, against the rule of
+committing only mp3s. **A decision is needed:** find their source and
+licence, or remove them from the app bundle.

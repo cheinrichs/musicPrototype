@@ -82,7 +82,7 @@ const List<CreditSection> creditSections = [
         attributionRequired: false,
         note:
             'Cello, flute, guitar, oboe, trumpet, tuba, and violin note '
-            'samples.',
+            'samples, and drum hits.',
       ),
       CreditEntry(
         title: 'University of Iowa Musical Instrument Samples',
@@ -91,7 +91,7 @@ const List<CreditSection> creditSections = [
         license:
             'Freely available since 1997, for any project, without '
             'restriction',
-        note: 'Piano note samples.',
+        note: 'Piano and xylophone note samples.',
         attributionRequired: false,
       ),
       CreditEntry(

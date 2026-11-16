@@ -29,8 +29,12 @@ void main() {
     }
   });
 
-  test('every note library has its provenance record on disk', () {
-    for (final dir in Directory('assets/audio/notes').listSync()) {
+  test('every note library, and the drum hits, has its provenance record '
+      'on disk', () {
+    for (final dir in [
+      ...Directory('assets/audio/notes').listSync(),
+      Directory('assets/audio/percussion/drum'),
+    ]) {
       if (dir is! Directory) continue;
       final hasMp3 = dir.listSync().any((f) => f.path.endsWith('.mp3'));
       if (!hasMp3) continue;

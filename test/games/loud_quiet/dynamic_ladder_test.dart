@@ -280,9 +280,11 @@ void main() {
         HighLowInstrument.flute,
         HighLowInstrument.oboe,
         HighLowInstrument.trumpet,
-        HighLowInstrument.violin,
       ]);
-      expect(lifted.eligibleAt(3), [HighLowInstrument.oboe]);
+      expect(lifted.eligibleAt(3), [
+        HighLowInstrument.flute,
+        HighLowInstrument.oboe,
+      ]);
       final top = ladder.withLift(6);
       expect(top.playedGapsLabel(), '16 · 12 · 8 · 16→15 · 12 · 8');
       expect(top.isCompressedAt(3), isTrue);
@@ -308,7 +310,7 @@ void main() {
         'level — guitar and piano sit out the widest, not every tier', () {
       expect(
         [for (var s = 0; s < ladder.length; s++) ladder.eligibleAt(s).length],
-        [6, 8, 8, 4, 6, 7],
+        [6, 8, 8, 4, 7, 7],
         reason: 'the pool size the report gives Cooper, per tier',
       );
       expect(
@@ -351,7 +353,7 @@ void main() {
 
     test('tuned only DOWN from the measured clipping room, never past it', () {
       final up = ladder.withHeadroom(HighLowInstrument.guitar, 9);
-      expect(up.headroomOf(HighLowInstrument.guitar), 1.5);
+      expect(up.headroomOf(HighLowInstrument.guitar), 3.0);
       expect(
         ladder
             .withHeadroom(HighLowInstrument.oboe, -4)

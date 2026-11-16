@@ -51,12 +51,15 @@ from normalize_loudness import (  # noqa: E402
 INSTRUMENTS = {
     "bells": (84, 96, set()),
     "cello": (60, 83, set()),
-    "flute": (60, 83, set()),
-    "guitar": (48, 71, {57, 70}),
+    "flute": (60, 96, set()),
+    "guitar": (48, 71, {70}),
     "oboe": (60, 83, set()),
     "piano": (60, 83, set()),
     "trumpet": (60, 83, set()),
-    "violin": (60, 83, set()),
+    "violin": (60, 96, set()),
+    # Not yet playable (no sprite art; loudness uneven across its range),
+    # measured for when it joins.
+    "xylophone": (65, 108, set()),
 }
 TRIM_DB = {"oboe": -3.0, "flute": -1.5, "guitar": -1.0}
 CEILING_DBTP = -1.0

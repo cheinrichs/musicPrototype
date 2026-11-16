@@ -321,27 +321,36 @@ void main() {
         }
       });
 
-      test('bells never appears — its C6-C7 range (84-96) doesn\'t overlap '
-          'any other instrument\'s range at all, so it can never satisfy '
-          'the overlap rule (falls out of the arithmetic, no special '
-          'case needed)', () {
+      test('BELLS IS NO LONGER STRANDED (card 148, 2026-11-14): flute and '
+          'violin now reach C7, so bells has partners in cross-instrument '
+          'rounds — and ONLY them, since nothing else reaches C6', () {
         final generator = PromptGenerator(random: Random(2026));
+        final partners = <HighLowInstrument>{};
+        final tiersWithBells = <ConceptTier>{};
         for (final tier in varyingInstrumentTiers) {
-          for (var i = 0; i < 200; i++) {
+          for (var i = 0; i < 400; i++) {
             final prompt = generator.generatePrompt(
               promptNumber: i,
               tier: tier,
               targetDirection: PitchDirection.higher,
             );
-            for (final instrument in [
+            final used = {
               prompt.firstInstrument,
               prompt.secondInstrument,
               if (prompt.thirdInstrument != null) prompt.thirdInstrument!,
-            ]) {
-              expect(instrument, isNot(HighLowInstrument.bells));
+            };
+            if (used.contains(HighLowInstrument.bells)) {
+              tiersWithBells.add(tier);
+              partners.addAll(used..remove(HighLowInstrument.bells));
             }
           }
         }
+        expect(partners, {HighLowInstrument.flute, HighLowInstrument.violin});
+        // Wide three-note (T7) cannot keep bells fair: two chained gaps of
+        // 7+ span 14+, more than bells' 12, so bells could only ever be the
+        // top note — the fairness rule excludes it there.
+        expect(tiersWithBells, isNot(contains(ConceptTier.t7)));
+        expect(tiersWithBells, containsAll([ConceptTier.t3, ConceptTier.t4]));
       });
 
       test('tuba never appears — its only possible partner (guitar) '

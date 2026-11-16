@@ -117,7 +117,10 @@ class DynamicLadder {
   /// middle of its range): how far its intended level may go above full
   /// before the note's true peak, after its trim, reaches −1 dBTP. Measured
   /// 2026-11-14 by tool/measure_dynamic_headroom.py, rounded DOWN to the
-  /// half-decibel.
+  /// half-decibel. Re-measured the same day when flute and violin were
+  /// extended to C7 and guitar regained A3: the played note is the middle of
+  /// the range, so it MOVED (flute and violin C5 → F♯5, guitar C4 → B3).
+  /// Any change to an instrument's range moves it again: re-run the tool.
   ///
   /// ⚠️ A HARD UPPER BOUND, NOT PERCEPTUAL ROOM. Peak room is not the room
   /// before a sound turns harsh on a small speaker, and no meter we have
@@ -132,12 +135,12 @@ class DynamicLadder {
   static const Map<HighLowInstrument, double> measuredHeadroomDb = {
     HighLowInstrument.bells: 6.5, // F♯6, true peak −7.9
     HighLowInstrument.cello: 4.5, // C5, −5.6
-    HighLowInstrument.flute: 9.0, // C5, −8.7, trim −1.5
-    HighLowInstrument.guitar: 1.5, // C4, −1.5, trim −1
+    HighLowInstrument.flute: 11.5, // F♯5, −11.2, trim −1.5
+    HighLowInstrument.guitar: 3.0, // B3, −3.4, trim −1
     HighLowInstrument.oboe: 12.0, // C5, −10.2, trim −3
     HighLowInstrument.piano: 3.0, // C5, −4.1
     HighLowInstrument.trumpet: 10.5, // C5, −11.5
-    HighLowInstrument.violin: 8.0, // C5, −9.3
+    HighLowInstrument.violin: 7.0, // F♯5, −8.1
   };
 
   /// [instrument]'s ceiling on this ladder, in dB above full.
