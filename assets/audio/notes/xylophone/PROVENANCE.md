@@ -14,22 +14,26 @@ https://theremin.music.uiowa.edu/MISxylophone.html
 1997, for any project, without restriction. The same source and terms as
 the piano. Not a Creative Commons licence.
 
-## ⚠️ NOT YET PLAYABLE
+## ⚠️ A TRIAL INSTRUMENT: dev profile only
 
-The samples are here; the xylophone is NOT in `HighLowInstrument`, for two
-reasons:
+It plays only on the dev profile, behind the dev gate's "Xylophone"
+switch (`HighLowInstrument.isTrial`, `inPlay`), so Cooper can judge its
+loudness by ear in situ against the real instruments. A child never meets
+it.
 
-1. **No sprite art in the repo.** The UI Kit's `Xylophone.png` is a
-   two-up sheet; the game needs `Xylophone1.png` / `Xylophone2.png` like
-   every other instrument. (The Same or Different cards exist.)
-2. **Its loudness is uneven across its range, and lowest at the bottom.**
-   A struck bar is nearly all attack: its true peak hits the −1 dBTP
-   ceiling long before its loudness reaches −18 LUFS. Most notes sit
-   between −19 and −26 LUFS, but F4–A♯4 sit between −24 and −33 (marked
-   ⚠️ below). In a PITCH game, a quieter low end is a cue: "the quiet one
-   is the low one". Fixing it needs a decision first: a gentle peak
-   limiter (it would soften the mallet's attack), or leaving the bottom
-   notes out.
+Its art is Cooper's UI-Kit sheet
+(`SongStone-UI-Kit/Assets/Cast/Instruments/Xylophone.png`, light and dark
+wood), copied byte-for-byte and sliced in code. An earlier version of this
+file said it had "no sprite art": that was WRONG. The art existed in the UI
+Kit and had simply never been imported.
+
+**Still open before a child plays it: its loudness is uneven, lowest at the
+bottom.** A struck bar is nearly all attack: its true peak hits the
+−1 dBTP ceiling long before its loudness reaches −18 LUFS. Most notes sit
+between −19 and −26 LUFS, but F4–A♯4 sit between −24 and −33 (marked ⚠️
+below). In a PITCH game, a quieter low end is a cue: "the quiet one is the
+low one". The fix is Cooper's call after the trial: a gentle peak limiter
+(it would soften the mallet's attack), or leaving the bottom notes out.
 
 Its Loud or Quiet headroom is also only **+0.5 dB** (on D♯6, the middle
 of its range), since its peaks already sit at the ceiling. It could play

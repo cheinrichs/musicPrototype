@@ -39,9 +39,9 @@ message is not rewritten, so this file is the correction. Do not reopen it.
 
 ## The 2026-11-14 pull
 
-- **Xylophone:** Iowa, F4–C8 (44 notes), rosewood, mezzo-forte. The
-  samples are in, but it is NOT YET PLAYABLE: it has no sprite art, and its
-  loudness is uneven, lowest at the bottom. See
+- **Xylophone:** Iowa, F4–C8 (44 notes), rosewood, mezzo-forte. A TRIAL
+  instrument, dev profile only, using Cooper's UI-Kit art. Its loudness is
+  uneven, lowest at the bottom, and that is what the trial is for. See
   `assets/audio/notes/xylophone/PROVENANCE.md`.
 - **Flute and violin:** extended C6–C7 (card 148), from the same
   Philharmonia take as before.
@@ -51,12 +51,31 @@ message is not rewritten, so this file is the correction. Do not reopen it.
 - **Electric guitar:** in neither library. It needs a third source and a
   new licence question.
 
-## ⚠️ UNDOCUMENTED: `assets/audio/notes/percussion/` (24 raw .aif files)
+## ⚠️ `assets/audio/notes/percussion/` (24 raw .aif files): Logic Pro, NOT our three libraries
 
-These were committed 2026-04-27 (ffed98e, "for future use in rhythm games")
-with NO record of their source or licence. Their names (`tambourinevintage`,
-`sleighbellsvintage`, `jamblockhigh`, `cajonsnare`) look like a commercial
-library's. They are registered in `pubspec.yaml`, so they SHIP in the app,
-although no code plays them. They are also raw AIFFs, against the rule of
-committing only mp3s. **A decision is needed:** find their source and
-licence, or remove them from the app bundle.
+Traced 2026-11-15. Nothing has been deleted.
+
+- **How they arrived:** commit ffed98e, 2026-04-27, authored by Cooper
+  (with Claude Sonnet 4.6), "Add percussion assets, roadmap…, for future
+  use in rhythm games". It also added ROADMAP.md and registered the folder
+  in `pubspec.yaml`. No source was named.
+- **The metadata says where they came from.** All 24 carry the AIFF comment
+  **"Creator: Logic Pro 11.2.2"**, a Logic `LGWV` chunk, and markers
+  "Tempo: 109.0" plus a project timestamp. They were BOUNCED FROM A LOGIC
+  PRO PROJECT at 109 BPM.
+- **The format matches none of our three sources.** Every file is 16-bit
+  44.1 kHz stereo, exactly 0.55 s long, about 98 KB: a uniform batch
+  export.
+  - Iowa ships 24-bit AIFFs named like `5.5wb.mf.aif` or
+    `xylophone.rosewood.mf.C5B5.aif`.
+  - Philharmonia ships mp3s named like `tom-toms__05_mezzo-forte_…`.
+  - InspectorJ ships Freesound WAVs with titles like "Hand Bells, Low C".
+  - These names (`jamblockhigh`, `congabrightlow`, `cowbelldry`,
+    `tambourinevintage`) read like the pieces of a Logic percussion kit.
+- **Nothing plays them.** The only reference in code is a comment in
+  `rhythm_game_state.dart`. They still SHIP, because the folder is
+  registered in `pubspec.yaml`.
+- **Licence:** Apple's Logic Pro sound content is licensed for use in your
+  own compositions. Whether loose one-shot samples shipped inside an app
+  count as that, or as redistributing the samples themselves, should be
+  checked against the licence text. **Cooper's call; not decided here.**
