@@ -76,6 +76,40 @@ class SongStoneHomeScreen extends StatelessWidget {
                   rect: layout.badge(children.length),
                   child: _AddProfileTile(onTap: () => _addChild(context)),
                 ),
+              // At the cap the + is HIDDEN (Cooper), so say why and how to
+              // free a slot — for the grown-up, so in words. Top-left: the
+              // tile row fills the bottom.
+              if (!addTile)
+                SafeArea(
+                  child: Align(
+                    alignment: Alignment.topLeft,
+                    child: Padding(
+                      padding: const EdgeInsets.all(AppSpacing.sm),
+                      child: Container(
+                        key: const ValueKey('profile-cap-note'),
+                        // Narrow: on an SE the logo starts ~180 pt in.
+                        constraints: const BoxConstraints(maxWidth: 160),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.sm,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.ivory.withValues(alpha: 0.9),
+                          borderRadius: BorderRadius.circular(
+                            AppSpacing.radiusMd,
+                          ),
+                        ),
+                        child: Text(
+                          'Six players max. To add one, delete one in '
+                          'Settings.',
+                          style: AppTypography.label.copyWith(
+                            color: AppColors.inkBrown,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
               // The gear: settings, behind the reading gate — and the ONLY
               // route to the dev profile, so it must be FINDABLE. Build 133
               // left it as a faint 20 px AdultDoor bottom-right and removed

@@ -160,12 +160,33 @@ void main() {
     ) async {
       await mount(tester);
       expect(find.byKey(const ValueKey('add-profile')), findsOneWidget);
+      expect(find.byKey(const ValueKey('profile-cap-note')), findsNothing);
       await finish(tester);
     });
 
-    testWidgets('HIDDEN at six — not disabled', (tester) async {
-      await mount(tester, stored: kids(6));
+    testWidgets('HIDDEN at six — not disabled — and the picker SAYS how to '
+        'free a slot', (tester) async {
+      await mount(tester, stored: kids(6), size: const Size(667, 375));
       expect(find.byKey(const ValueKey('add-profile')), findsNothing);
+      expect(find.byKey(const ValueKey('profile-cap-note')), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      final note = tester.getRect(
+        find.byKey(const ValueKey('profile-cap-note')),
+      );
+      for (var i = 0; i < 6; i++) {
+        expect(
+          tester.getRect(find.byKey(ValueKey('player-k$i'))).overlaps(note),
+          isFalse,
+          reason: 'the note stays clear of the tiles',
+        );
+      }
+      expect(
+        note.overlaps(
+          PickerLayout(const Size(844, 390), EdgeInsets.zero, 6).logo,
+        ),
+        isFalse,
+        reason: 'and of the logo',
+      );
       await finish(tester);
     });
 
