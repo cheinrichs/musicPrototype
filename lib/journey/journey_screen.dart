@@ -22,7 +22,7 @@ import '../games/high_low/widgets/character_art.dart';
 import '../games/high_low/widgets/mouth_frames.dart';
 import '../games/loud_quiet/models/loud_quiet_layout.dart';
 import '../models/agency_stage.dart';
-import '../ui/components/adult_door.dart';
+import '../ui/components/circle_icon_button.dart';
 import 'journey_art.dart';
 import 'journey_state.dart';
 import 'map_decoration.dart';
@@ -630,16 +630,17 @@ class _JourneyScreenState extends State<JourneyScreen> {
                 ],
               ),
             ),
-          // The Journey is HOME: no back arrow. Switching player is the
-          // same small door it always was (card 194) — never one big tap a
-          // child might take into a sibling's record.
+          // Back to the player picker, UNGATED (Cooper, 2026-11-15):
+          // switching children is the commonest adult action, and a stray
+          // round in the wrong profile is annoying, not serious.
           if (!inStone)
             Positioned(
-              left: g.padding.left + 4,
-              top: g.padding.top + 4,
-              child: AdultDoor(
-                icon: Icons.switch_account_outlined,
-                semanticLabel: 'Switch player',
+              left: g.padding.left + 12,
+              top: g.padding.top + 12,
+              child: CircleIconButton(
+                key: const ValueKey('journey-back'),
+                icon: Icons.arrow_back_rounded,
+                tooltip: 'Players',
                 onTap: () => GoRouter.of(context).go(AppRoutes.profilePicker),
               ),
             ),

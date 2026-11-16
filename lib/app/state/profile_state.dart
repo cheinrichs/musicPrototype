@@ -115,10 +115,30 @@ class ProfileState extends ChangeNotifier {
     }
   }
 
-  /// Adds a child from the setup quiz's answers (card 202) and returns it.
-  /// The agency is the PARENT's placement — recorded as such, so a placed
-  /// child can be told from one who climbed.
-  Future<Profile> addChild(SetupAnswers answers) async {
+  /// The most children one device holds (Cooper, 2026-11-15). At the cap
+  /// the picker HIDES its "Add Profile" tile: a + that does nothing is
+  /// worse than one that isn't there. The way back is deleting one in
+  /// settings.
+  static const int maxChildren = 6;
+
+  bool get canAddChild => childProfiles.length < maxChildren;
+
+  /// The avatars other children on this device already wear: hidden from
+  /// the quiz and the chooser, so no two siblings share a face. The avatar
+  /// is the only thing a non-reader can use to find themselves on the
+  /// picker. [exceptId]'s own avatar stays available to them.
+  Set<int> takenAvatars({String? exceptId}) => {
+    for (final p in childProfiles)
+      if (p.id != exceptId) p.avatarIndex,
+  };
+
+  /// Adds a child from the setup quiz's answers (card 202) and returns it,
+  /// or null at the cap. Called ONLY when the quiz completes: the quiz holds
+  /// its answers in memory, so backing out of it at any question leaves no
+  /// half-made profile behind (Cooper, 2026-11-15). The agency is the
+  /// PARENT's placement, recorded as such.
+  Future<Profile?> addChild(SetupAnswers answers) async {
+    if (!canAddChild) return null;
     final profile = Profile(
       id: DateTime.now().microsecondsSinceEpoch.toString(),
       name: answers.name,
@@ -133,22 +153,47 @@ class ProfileState extends ChangeNotifier {
     return profile;
   }
 
-  /// Re-takes [profile]'s setup (card 202: re-takeable, from behind the
-  /// adult gate — a parent who guessed wrong needs a way back that is not
-  /// deleting the profile). Its history is untouched; the new agency is
-  /// the parent's placement again.
-  Future<Profile> retakeSetup(Profile profile, SetupAnswers answers) async {
-    final updated = profile.copyWith(
-      name: answers.name,
-      avatar: answers.avatar,
-      ageBand: answers.ageBand,
-      agencyOverride: answers.agency,
-      agencySource: AgencySource.parent,
-    );
+  /// Settings: a new picture for [profile]. Ignored if another child wears
+  /// it. Both the picker badge and the Journey pin read [Profile.avatarIndex],
+  /// so both follow.
+  Future<void> setAvatar(Profile profile, int avatar) async {
+    if (takenAvatars(exceptId: profile.id).contains(avatar)) return;
+    await _update(profile.copyWith(avatar: avatar));
+  }
+
+  /// Settings: where play starts. A STARTING POINT (Cooper, option (b)):
+  /// play still promotes and demotes the child as card 199 says, and the
+  /// settings screen says so, so a later change does not look like the
+  /// setting failing to save.
+  Future<void> setPlacement(Profile profile, AgencyStage stage) => _update(
+    profile.copyWith(agencyOverride: stage, agencySource: AgencySource.parent),
+  );
+
+  Future<void> setAgeBand(Profile profile, AgeBand band) =>
+      _update(profile.copyWith(ageBand: band));
+
+  /// Settings: deletes [profile] and everything saved under it (its keys all
+  /// begin `profile_<id>_`). Permanent; the settings screen asks first.
+  Future<void> deleteProfile(Profile profile) async {
+    _profiles = [
+      for (final p in _profiles)
+        if (p.id != profile.id) p,
+    ];
+    if (_activeProfile?.id == profile.id) _activeProfile = null;
+    notifyListeners();
+    await _save();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      for (final key in prefs.getKeys().toList()) {
+        if (key.startsWith('profile_${profile.id}_')) await prefs.remove(key);
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _update(Profile updated) async {
     _replace(updated);
     notifyListeners();
     await _save();
-    return updated;
   }
 
   /// The dev profile, made the first time it is opened. Internal builds
@@ -200,7 +245,7 @@ class ProfileState extends ChangeNotifier {
   }
 
   /// Sets [profile]'s agency as PLAY moved it (advancement or demotion) —
-  /// a parent's placement goes through [addChild]/[retakeSetup].
+  /// a parent's placement goes through [addChild]/[setPlacement].
   Future<void> setAgencyOverride(Profile profile, AgencyStage? stage) async {
     final updated = stage == null
         ? profile.copyWith(clearAgencyOverride: true)
@@ -227,17 +272,4 @@ class SetupAnswers {
     required this.agency,
     required this.ageBand,
   });
-
-  /// [profile]'s current answers, for re-taking — null where it was made
-  /// before the quiz and lacks one.
-  static SetupAnswers? of(Profile profile) {
-    final band = profile.ageBand;
-    if (band == null) return null;
-    return SetupAnswers(
-      name: profile.name,
-      avatar: profile.avatarIndex,
-      agency: profile.agencyOverride ?? AgencyStage.observe,
-      ageBand: band,
-    );
-  }
 }

@@ -157,7 +157,7 @@ void main() {
     test("a new child is the PARENT's placement, recorded as such", () async {
       final state = ProfileState();
       await state.load();
-      final child = await state.addChild(answers);
+      final child = (await state.addChild(answers))!;
       expect(child.agencyOverride, AgencyStage.explore);
       expect(child.agencySource, AgencySource.parent);
       expect(state.childProfiles, [child]);
@@ -166,33 +166,90 @@ void main() {
     test('play moving the agency is recorded as PLAY', () async {
       final state = ProfileState();
       await state.load();
-      final child = await state.addChild(answers);
+      final child = (await state.addChild(answers))!;
       await state.setAgencyOverride(child, AgencyStage.decide);
       final moved = state.childProfiles.single;
       expect(moved.agencyOverride, AgencyStage.decide);
       expect(moved.agencySource, AgencySource.play);
     });
 
-    test('re-taking setup keeps the id (and so the history) and is the '
-        "parent's placement again", () async {
+    test("settings edits a child's placement as the PARENT's starting "
+        'point, and play can still move it afterwards (option b)', () async {
       final state = ProfileState();
       await state.load();
-      final child = await state.addChild(answers);
-      await state.setAgencyOverride(child, AgencyStage.decide);
-      final again = await state.retakeSetup(
+      final child = (await state.addChild(answers))!;
+      await state.setPlacement(child, AgencyStage.decide);
+      expect(state.childProfiles.single.agencySource, AgencySource.parent);
+      await state.setAgencyOverride(
         state.childProfiles.single,
-        const SetupAnswers(
-          name: 'Davis',
-          avatar: 11,
-          agency: AgencyStage.observe,
-          ageBand: AgeBand.fourFive,
-        ),
+        AgencyStage.explore,
       );
-      expect(again.id, child.id);
-      expect(again.avatar, 11);
-      expect(again.agencyOverride, AgencyStage.observe);
-      expect(again.agencySource, AgencySource.parent);
-      expect(state.profiles, hasLength(1));
+      expect(state.childProfiles.single.agencyOverride, AgencyStage.explore);
+      expect(state.childProfiles.single.agencySource, AgencySource.play);
+    });
+
+    test('AVATARS ARE UNIQUE PER DEVICE: a sibling\'s face is taken, and '
+        'cannot be chosen', () async {
+      final state = ProfileState();
+      await state.load();
+      final a = (await state.addChild(answers))!; // avatar 3
+      final b = (await state.addChild(
+        const SetupAnswers(
+          name: 'Bo',
+          avatar: 5,
+          agency: AgencyStage.observe,
+          ageBand: AgeBand.twoThree,
+        ),
+      ))!;
+      expect(state.takenAvatars(exceptId: b.id), {3});
+      expect(state.takenAvatars(), {3, 5});
+      await state.setAvatar(b, 3);
+      expect(
+        state.childProfiles.firstWhere((p) => p.id == b.id).avatar,
+        5,
+        reason: "Davis's",
+      );
+      await state.setAvatar(b, 9);
+      expect(state.childProfiles.firstWhere((p) => p.id == b.id).avatar, 9);
+      expect(a.avatar, 3);
+    });
+
+    test('SIX children at most: the seventh is refused', () async {
+      final state = ProfileState();
+      await state.load();
+      for (var i = 0; i < ProfileState.maxChildren; i++) {
+        expect(
+          await state.addChild(
+            SetupAnswers(
+              name: 'K$i',
+              avatar: i,
+              agency: AgencyStage.observe,
+              ageBand: AgeBand.twoThree,
+            ),
+          ),
+          isNotNull,
+        );
+      }
+      expect(state.canAddChild, isFalse);
+      expect(await state.addChild(answers), isNull);
+      expect(state.childProfiles, hasLength(6));
+    });
+
+    test('deleting a child removes it AND everything saved under it', () async {
+      SharedPreferences.setMockInitialValues({
+        'profile_keep_total_sessions': 4,
+      });
+      final state = ProfileState();
+      await state.load();
+      final child = (await state.addChild(answers))!;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setInt('profile_${child.id}_total_sessions', 7);
+      state.selectProfile(child);
+      await state.deleteProfile(child);
+      expect(state.childProfiles, isEmpty);
+      expect(state.activeProfile, isNull);
+      expect(prefs.getInt('profile_${child.id}_total_sessions'), isNull);
+      expect(prefs.getInt('profile_keep_total_sessions'), 4);
     });
 
     test('at most one dev profile, and never among the children', () async {
@@ -204,10 +261,6 @@ void main() {
       expect(a!.id, b!.id);
       expect(state.devProfile?.id, a.id);
       expect(state.childProfiles.where((p) => p.isDev), isEmpty);
-    });
-
-    test('SetupAnswers.of: nothing for a profile from before the quiz', () {
-      expect(SetupAnswers.of(const Profile(id: 'o', name: 'Old')), isNull);
     });
   });
 }

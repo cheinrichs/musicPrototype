@@ -16,17 +16,22 @@ import '../theme/theme.dart';
 /// child. Every answer is a STARTING POINT, not a verdict — play overrides
 /// it — and re-takeable from behind the adult door.
 class SetupQuizScreen extends StatefulWidget {
-  /// A profile's current answers when re-taking; null for a new child.
-  final SetupAnswers? initial;
+  /// Avatars other children on this device already wear: not offered, so
+  /// no two siblings share a face.
+  final Set<int> takenAvatars;
 
-  const SetupQuizScreen({super.key, this.initial});
+  const SetupQuizScreen({super.key, this.takenAvatars = const {}});
 
-  /// Runs the quiz; its answers, or null if the parent backed out.
+  /// Runs the quiz; its answers, or null if it was abandoned. ⚠️ Nothing is
+  /// written until it COMPLETES: the answers live only in this screen, so
+  /// backing out leaves no half-made profile (Cooper, 2026-11-15).
   static Future<SetupAnswers?> run(
     BuildContext context, {
-    SetupAnswers? initial,
+    Set<int> takenAvatars = const {},
   }) => Navigator.of(context, rootNavigator: true).push<SetupAnswers>(
-    MaterialPageRoute(builder: (_) => SetupQuizScreen(initial: initial)),
+    MaterialPageRoute(
+      builder: (_) => SetupQuizScreen(takenAvatars: takenAvatars),
+    ),
   );
 
   @override
@@ -52,11 +57,7 @@ class _SetupQuizScreenState extends State<SetupQuizScreen> {
   @override
   void initState() {
     super.initState();
-    final initial = widget.initial;
-    _name = TextEditingController(text: initial?.name ?? '');
-    _avatar = initial?.avatar;
-    _agency = initial?.agency;
-    _ageBand = initial?.ageBand;
+    _name = TextEditingController();
   }
 
   @override
@@ -89,13 +90,11 @@ class _SetupQuizScreenState extends State<SetupQuizScreen> {
     );
   }
 
-  void _back() {
-    if (_page == 0) {
-      Navigator.of(context).pop();
-    } else {
-      setState(() => _page--);
-    }
-  }
+  /// ONE TAP ABANDONS, from ANY question (Cooper): back does not step
+  /// through the questions, it leaves the whole flow, and nothing is saved.
+  /// A child three questions in escapes in a single tap. Losing a parent's
+  /// partial answers is fine: settings can edit every field afterwards.
+  void _abandon() => Navigator.of(context).pop();
 
   @override
   Widget build(BuildContext context) {
@@ -114,13 +113,9 @@ class _SetupQuizScreenState extends State<SetupQuizScreen> {
                 children: [
                   IconButton(
                     key: const ValueKey('quiz-back'),
-                    tooltip: _page == 0 ? 'Cancel' : 'Back',
-                    icon: Icon(
-                      _page == 0
-                          ? Icons.close_rounded
-                          : Icons.arrow_back_rounded,
-                    ),
-                    onPressed: _back,
+                    tooltip: 'Back to the players',
+                    icon: const Icon(Icons.arrow_back_rounded),
+                    onPressed: _abandon,
                   ),
                   const Spacer(),
                   Text(
@@ -185,7 +180,7 @@ class _SetupQuizScreenState extends State<SetupQuizScreen> {
         TextField(
           key: const ValueKey('quiz-name'),
           controller: _name,
-          autofocus: widget.initial == null,
+          autofocus: true,
           textCapitalization: TextCapitalization.words,
           textInputAction: TextInputAction.next,
           onChanged: (_) => setState(() {}),
@@ -204,27 +199,10 @@ class _SetupQuizScreenState extends State<SetupQuizScreen> {
             'their player.',
       ),
       Expanded(
-        child: LayoutBuilder(
-          builder: (context, c) {
-            // Two rows of eight: fits a landscape phone without scrolling.
-            const perRow = 8;
-            final side = ((c.maxWidth - (perRow - 1) * AppSpacing.sm) / perRow)
-                .clamp(0.0, (c.maxHeight - AppSpacing.sm) / 2)
-                .toDouble();
-            return Wrap(
-              spacing: AppSpacing.sm,
-              runSpacing: AppSpacing.sm,
-              children: [
-                for (var i = 0; i < Profile.avatarCount; i++)
-                  _AvatarChoice(
-                    index: i,
-                    side: side,
-                    selected: _avatar == i,
-                    onTap: () => setState(() => _avatar = i),
-                  ),
-              ],
-            );
-          },
+        child: AvatarGrid(
+          taken: widget.takenAvatars,
+          selected: _avatar,
+          onSelected: (i) => setState(() => _avatar = i),
         ),
       ),
     ],
@@ -252,6 +230,47 @@ class _SetupQuizScreenState extends State<SetupQuizScreen> {
         ],
       ],
     ),
+  );
+}
+
+/// The sixteen avatars, minus any [taken] by another child on this device
+/// (hidden, not greyed: a greyed face is a thing withheld). Two rows of
+/// eight, fitting a landscape phone. Shared by the setup quiz and the
+/// settings chooser.
+class AvatarGrid extends StatelessWidget {
+  final Set<int> taken;
+  final int? selected;
+  final ValueChanged<int> onSelected;
+
+  const AvatarGrid({
+    super.key,
+    required this.taken,
+    required this.selected,
+    required this.onSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, c) {
+      const perRow = 8;
+      final side = ((c.maxWidth - (perRow - 1) * AppSpacing.sm) / perRow)
+          .clamp(0.0, (c.maxHeight - AppSpacing.sm) / 2)
+          .toDouble();
+      return Wrap(
+        spacing: AppSpacing.sm,
+        runSpacing: AppSpacing.sm,
+        children: [
+          for (var i = 0; i < Profile.avatarCount; i++)
+            if (!taken.contains(i))
+              _AvatarChoice(
+                index: i,
+                side: side,
+                selected: selected == i,
+                onTap: () => onSelected(i),
+              ),
+        ],
+      );
+    },
   );
 }
 

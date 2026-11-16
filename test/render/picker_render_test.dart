@@ -17,7 +17,6 @@ import 'package:ear_trainer/app/state/progress_state.dart';
 import 'package:ear_trainer/app/state/skill_state.dart';
 import 'package:ear_trainer/journey/journey_art.dart';
 import 'package:ear_trainer/journey/journey_state.dart';
-import 'package:ear_trainer/models/agency_stage.dart';
 import 'package:ear_trainer/models/profile.dart';
 import 'package:ear_trainer/ui/components/reading_gate.dart';
 import 'package:ear_trainer/ui/screens/setup_quiz_screen.dart';
@@ -65,7 +64,7 @@ Future<void> _capture(WidgetTester tester, GlobalKey key, String name) async {
 
 void main() {
   for (final MapEntry(key: device, value: size) in _devices.entries) {
-    for (final n in [1, 2, 3, 5]) {
+    for (final n in [0, 1, 2, 5, 6]) {
       testWidgets('picker $device $n', (tester) async {
         SharedPreferences.setMockInitialValues({
           'profiles_v1': [
@@ -73,7 +72,7 @@ void main() {
               jsonEncode(
                 Profile(
                   id: 'k$i',
-                  name: ['Davis', 'Delaney', 'Ada', 'Bo', 'Cy'][i],
+                  name: ["Davis", "Delaney", "Ada", "Bo", "Cy", "Dee"][i],
                   avatar: i * 3,
                   ageBand: AgeBand.fourFive,
                 ).toJson(),
@@ -124,18 +123,12 @@ void main() {
       await tester.pumpWidget(
         RepaintBoundary(
           key: key,
-          child: const MaterialApp(
-            home: SetupQuizScreen(
-              initial: SetupAnswers(
-                name: 'Davis',
-                avatar: 6,
-                agency: AgencyStage.explore,
-                ageBand: AgeBand.fourFive,
-              ),
-            ),
-          ),
+          // Two avatars taken by siblings: hidden from the grid.
+          child: const MaterialApp(home: SetupQuizScreen(takenAvatars: {0, 3})),
         ),
       );
+      await tester.enterText(find.byKey(const ValueKey('quiz-name')), 'Davis');
+      await tester.pump();
       await tester.tap(find.byKey(const ValueKey('quiz-next')));
       await tester.pump(const Duration(seconds: 1));
       await _capture(tester, key, 'quiz_picture_$device');

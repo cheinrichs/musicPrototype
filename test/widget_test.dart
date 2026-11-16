@@ -33,40 +33,43 @@ void main() {
     await settle(tester);
   }
 
-  testWidgets('a FRESH INSTALL: "Set up a player", the four questions, and '
-      'the brand-new child reaches the Journey wearing the avatar they '
-      'picked', (tester) async {
-    await launch(tester);
-    expect(find.byType(JourneyScreen), findsNothing);
-    await tester.tap(find.byKey(const ValueKey('first-setup')));
-    await settle(tester);
+  testWidgets(
+    'a FRESH INSTALL: the "Add Profile" tile, the four questions, and '
+    'the brand-new child reaches the Journey wearing the avatar they '
+    'picked',
+    (tester) async {
+      await launch(tester);
+      expect(find.byType(JourneyScreen), findsNothing);
+      await tester.tap(find.byKey(const ValueKey('add-profile')));
+      await settle(tester);
 
-    await answerQuiz(
-      tester,
-      name: 'Davis',
-      avatar: 6,
-      agency: AgencyStage.explore,
-      ageBand: AgeBand.fourFive,
-    );
+      await answerQuiz(
+        tester,
+        name: 'Davis',
+        avatar: 6,
+        agency: AgencyStage.explore,
+        ageBand: AgeBand.fourFive,
+      );
 
-    final profiles = profileState(tester);
-    final davis = profiles.childProfiles.single;
-    expect(davis.name, 'Davis');
-    expect(davis.avatar, 6);
-    expect(davis.ageBand, AgeBand.fourFive);
-    expect(davis.agencyOverride, AgencyStage.explore);
-    expect(
-      davis.agencySource,
-      AgencySource.parent,
-      reason: 'a placed child is told apart from one who climbed',
-    );
+      final profiles = profileState(tester);
+      final davis = profiles.childProfiles.single;
+      expect(davis.name, 'Davis');
+      expect(davis.avatar, 6);
+      expect(davis.ageBand, AgeBand.fourFive);
+      expect(davis.agencyOverride, AgencyStage.explore);
+      expect(
+        davis.agencySource,
+        AgencySource.parent,
+        reason: 'a placed child is told apart from one who climbed',
+      );
 
-    await tester.tap(find.byKey(ValueKey('player-${davis.id}')));
-    await settle(tester);
-    expect(find.byType(JourneyScreen), findsOneWidget);
-    expect(profiles.activeProfile?.id, davis.id);
-    expect(tester.widget<AvatarPin>(find.byType(AvatarPin)).index, 6);
-  });
+      await tester.tap(find.byKey(ValueKey('player-${davis.id}')));
+      await settle(tester);
+      expect(find.byType(JourneyScreen), findsOneWidget);
+      expect(profiles.activeProfile?.id, davis.id);
+      expect(tester.widget<AvatarPin>(find.byType(AvatarPin)).index, 6);
+    },
+  );
 
   testWidgets('EVERY child reaches the Journey — two on the stumps, a third '
       'in a row — each on one tap', (tester) async {
@@ -102,7 +105,7 @@ void main() {
 
   testWidgets('a profile from BEFORE the quiz (no picture, no age band) and '
       "Cooper's old adult profile still open — the child on one tap, the "
-      'adult as the dev profile behind the reading gate', (tester) async {
+      'adult as the dev profile from settings', (tester) async {
     await launch(
       tester,
       stored: {
@@ -130,11 +133,12 @@ void main() {
       reason: 'a stable face until a parent re-takes setup',
     );
 
-    appRouter.go(AppRoutes.profilePicker);
+    // The Journey's back arrow: ungated, straight to the picker.
+    await tester.tap(find.byKey(const ValueKey('journey-back')));
     await settle(tester);
-    await tester.tap(find.byKey(const ValueKey('dev-profile')));
-    await settle(tester);
-    await passGate(tester);
+    expect(find.byType(JourneyScreen), findsNothing);
+    expect(find.byKey(const ValueKey('player-old')), findsOneWidget);
+    await openDevProfile(tester);
     expect(find.byType(JourneyScreen), findsOneWidget);
     expect(profiles.activeProfile?.id, 'cooper');
     // An internal install (resolved in main(), which tests do not run).
@@ -144,19 +148,18 @@ void main() {
   });
 
   testWidgets('the dev profile on a fresh internal install: made the first '
-      'time the gate is passed, and the gate is RE-ASKED every time', (
+      'time it is opened from settings, and the gate is RE-ASKED every time', (
     tester,
   ) async {
     await launch(tester);
-    await tester.tap(find.byKey(const ValueKey('dev-profile')));
-    await settle(tester);
-    expect(find.byType(ReadingGate), findsOneWidget);
-    await passGate(tester);
+    expect(find.byKey(const ValueKey('dev-profile')), findsNothing);
+    await openDevProfile(tester);
     expect(find.byType(JourneyScreen), findsOneWidget);
+    expect(profileState(tester).activeProfile?.isDev, isTrue);
 
-    appRouter.go(AppRoutes.profilePicker);
+    await tester.tap(find.byKey(const ValueKey('journey-back')));
     await settle(tester);
-    await tester.tap(find.byKey(const ValueKey('dev-profile')));
+    await tester.tap(find.bySemanticsLabel('Settings'));
     await settle(tester);
     expect(
       find.byType(ReadingGate),
@@ -167,13 +170,11 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('reading-gate-exit')));
     await settle(tester);
     expect(find.byType(ReadingGate), findsNothing);
-    expect(find.byKey(const ValueKey('dev-profile')), findsOneWidget);
+    expect(find.byKey(const ValueKey('add-profile')), findsOneWidget);
   });
 
-  testWidgets('the adult door: the reading gate, then the parent area — '
-      "re-taking a child's setup changes their picture and keeps their id", (
-    tester,
-  ) async {
+  testWidgets("a child's new picture, changed in settings, is their pin on "
+      'the Journey', (tester) async {
     await launch(
       tester,
       stored: {
@@ -190,34 +191,32 @@ void main() {
         ],
       },
     );
-    await tester.tap(find.bySemanticsLabel('For grown-ups'));
+    await tester.tap(find.bySemanticsLabel('Settings'));
     await settle(tester);
     await passGate(tester);
-    await tester.tap(find.byKey(const ValueKey('parent-retake-k')));
-    await settle(tester);
-    // Pre-filled with Kit's answers: change only the picture and agency.
-    await tester.tap(find.byKey(const ValueKey('quiz-next')));
+    await tester.tap(find.byKey(const ValueKey('settings-child-k')));
     await settle(tester);
     await tester.tap(find.byKey(const ValueKey('quiz-avatar-9')));
-    await tester.pump();
-    await tester.tap(find.byKey(const ValueKey('quiz-next')));
     await settle(tester);
-    await tester.tap(
-      find.byKey(const ValueKey('quiz-choice-AgencyStage.decide')),
-    );
-    await tester.pump();
-    await tester.tap(find.byKey(const ValueKey('quiz-next')));
+    expect(profileState(tester).childProfiles.single.avatar, 9);
+    // Back out of settings to the picker, and into the Journey.
+    Navigator.of(
+      tester.element(find.byType(Scaffold).last),
+    ).popUntil((r) => r.isFirst);
     await settle(tester);
-    await tester.tap(find.byKey(const ValueKey('quiz-next')));
+    await tester.tap(find.byKey(const ValueKey('player-k')));
     await settle(tester);
-
-    final kit = profileState(tester).childProfiles.single;
-    expect(kit.id, 'k');
-    expect(kit.name, 'Kit');
-    expect(kit.avatar, 9);
-    expect(kit.agencyOverride, AgencyStage.decide);
-    expect(kit.agencySource, AgencySource.parent);
+    expect(tester.widget<AvatarPin>(find.byType(AvatarPin)).index, 9);
   });
+}
+
+/// The gear, the reading gate, then settings' dev-profile tile.
+Future<void> openDevProfile(WidgetTester tester) async {
+  await tester.tap(find.bySemanticsLabel('Settings'));
+  await settle(tester);
+  await passGate(tester);
+  await tester.tap(find.byKey(const ValueKey('dev-profile')));
+  await settle(tester);
 }
 
 ProfileState profileState(WidgetTester tester) => Provider.of<ProfileState>(

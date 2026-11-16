@@ -16,26 +16,20 @@ import '../../models/profile.dart';
 import '../components/adult_door.dart';
 import '../components/reading_gate.dart';
 import '../theme/theme.dart';
-import 'credits_screen.dart';
+import 'settings_screen.dart';
 import 'setup_quiz_screen.dart';
 
-/// The SongStone logo page — now the CHOOSE-YOUR-PLAYER screen and the
-/// app's first screen. Each child is a round badge standing on the
-/// meadow's stumps; picking one goes straight to their Journey, which is
-/// home.
+/// The SongStone logo page — the CHOOSE-YOUR-PLAYER screen and the app's
+/// first screen. Each child is a round badge standing on the meadow's
+/// stumps; picking one goes straight to their Journey, which is home.
 ///
-/// - Child profiles open on ONE tap.
-/// - On INTERNAL builds only, Cooper's dev profile is listed too, behind
-///   the reading gate — a signpost for his daughter, never a security
-///   boundary. In a release-flavoured build it is compiled out
-///   ([kDevProfileCompiledIn]).
-/// - The ADULT DOOR is a door, not a player: behind the reading gate it
-///   opens the parent area — adding a child, re-taking a child's setup,
-///   the credits. Profile-level settings sit ABOVE profiles, so they live
-///   here, where no child is active; the fuller settings area slots in
-///   behind the same door.
-/// - With no children yet (a fresh install, an adult setting it up) the
-///   first player's setup is offered directly.
+/// Cooper, 2026-11-15 (docs/product/PROFILES.md):
+/// - CHILDREN ONLY, each on one tap. The dev profile lives in settings now
+///   (internal builds only), so there is one gate, not two.
+/// - The last tile is always "Add Profile" (an outlined +, with words),
+///   UNGATED: the quiz abandons in one tap and writes nothing until done.
+///   Hidden at six children.
+/// - The gear opens settings, behind the reading gate.
 ///
 /// Picking is a deliberate step every launch on a shared device — never a
 /// remembered default (card 170).
@@ -53,31 +47,23 @@ class SongStoneHomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final profiles = context.watch<ProfileState>();
     final children = profiles.childProfiles;
+    // The tiles: every child, then "Add Profile" — always last, and HIDDEN
+    // at the cap (a + that does nothing is worse than none).
+    final addTile = profiles.canAddChild;
+    final tiles = children.length + (addTile ? 1 : 0);
     return Scaffold(
       body: LayoutBuilder(
         builder: (context, c) {
           final layout = PickerLayout(
             c.biggest,
             MediaQuery.paddingOf(context),
-            children.length,
+            tiles,
           );
           return Stack(
             fit: StackFit.expand,
             children: [
               Image.asset(background, fit: BoxFit.cover),
               Positioned.fromRect(rect: layout.logo, child: _wordmark()),
-              if (children.isEmpty)
-                Positioned.fromRect(
-                  rect: layout.firstSetup,
-                  child: Center(
-                    child: FilledButton.icon(
-                      key: const ValueKey('first-setup'),
-                      onPressed: () => _addChild(context),
-                      icon: const Icon(Icons.add_rounded),
-                      label: const Text('Set up a player'),
-                    ),
-                  ),
-                ),
               for (var i = 0; i < children.length; i++)
                 Positioned.fromRect(
                   rect: layout.badge(i),
@@ -86,26 +72,21 @@ class SongStoneHomeScreen extends StatelessWidget {
                     onTap: () => _choose(context, children[i]),
                   ),
                 ),
-              // INTERNAL BUILDS ONLY. `kDevProfileCompiledIn` is a const:
-              // in a release-flavoured build this branch, and everything
-              // only it reaches, is not compiled in at all.
-              if (kDevProfileCompiledIn && showDevProfile)
-                SafeArea(
-                  child: Align(
-                    alignment: Alignment.bottomLeft,
-                    child: Padding(
-                      padding: const EdgeInsets.all(AppSpacing.sm),
-                      child: _DevBadge(onTap: () => _openDevProfile(context)),
-                    ),
-                  ),
+              if (addTile)
+                Positioned.fromRect(
+                  rect: layout.badge(children.length),
+                  child: _AddProfileTile(onTap: () => _addChild(context)),
                 ),
+              // The gear: settings, behind the reading gate. The dev
+              // profile lives in there now (internal builds only), so the
+              // picker shows children only.
               SafeArea(
                 child: Align(
                   alignment: Alignment.bottomRight,
                   child: AdultDoor(
                     icon: Icons.settings_outlined,
-                    semanticLabel: 'For grown-ups',
-                    onTap: () => _openAdultDoor(context),
+                    semanticLabel: 'Settings',
+                    onTap: () => _openSettings(context),
                   ),
                 ),
               ),
@@ -154,30 +135,39 @@ class SongStoneHomeScreen extends StatelessWidget {
     deps.router.go(AppRoutes.journey);
   }
 
-  /// The dev profile: behind the reading gate, re-asked every time.
-  static Future<void> _openDevProfile(BuildContext context) async {
-    final deps = _deps(context);
-    if (!await ReadingGate.ask(context)) return;
-    final dev = await deps.profiles.ensureDevProfile();
-    if (dev != null) await _enter(deps, dev);
-  }
-
+  /// "Add Profile": the setup quiz, UNGATED (Cooper). It is safe because
+  /// the quiz abandons in one tap and writes nothing until it completes,
+  /// so a child's stray tap is a screen they leave, not a junk profile.
   static Future<void> _addChild(BuildContext context) async {
     final deps = _deps(context);
-    final answers = await SetupQuizScreen.run(context);
+    final answers = await SetupQuizScreen.run(
+      context,
+      takenAvatars: deps.profiles.takenAvatars(),
+    );
     if (answers == null) return;
     await deps.profiles.addChild(answers);
   }
 
-  /// The adult door: the reading gate, then the parent area.
-  static Future<void> _openAdultDoor(BuildContext context) async {
+  /// The gear: the reading gate (re-asked every time), then settings.
+  Future<void> _openSettings(BuildContext context) async {
     final deps = _deps(context);
     final navigator = Navigator.of(context, rootNavigator: true);
     if (!await ReadingGate.ask(context)) return;
     if (!navigator.mounted) return;
     await navigator.push(
       MaterialPageRoute<void>(
-        builder: (_) => _ParentArea(profiles: deps.profiles),
+        builder: (settingsContext) => SettingsScreen(
+          profiles: deps.profiles,
+          showDevProfile: showDevProfile,
+          // INTERNAL BUILDS ONLY (the tile is const-guarded): already
+          // behind the gate, so no second one.
+          onDevProfile: () async {
+            final dev = await deps.profiles.ensureDevProfile();
+            if (dev == null) return;
+            navigator.popUntil((r) => r.isFirst);
+            await _enter(deps, dev);
+          },
+        ),
       ),
     );
   }
@@ -260,13 +250,6 @@ class PickerLayout {
       height: w / 1.5,
     );
   }
-
-  /// Where "Set up a player" sits before there are any: between the stumps.
-  Rect get firstSetup => Rect.fromCenter(
-    center: Offset(size.width / 2, stumpTop(0).dy - diameter * 0.3),
-    width: size.width * 0.5,
-    height: diameter,
-  );
 }
 
 class _PlayerBadge extends StatelessWidget {
@@ -326,97 +309,78 @@ class _PlayerBadge extends StatelessWidget {
   );
 }
 
-/// Cooper's dev profile on the picker — internal builds only; a plain
-/// tool badge, unmistakably not a child's.
-class _DevBadge extends StatelessWidget {
+/// "Add Profile": an OUTLINED + with words beneath (Cooper). Visibly not
+/// one of the round animal faces, so it never reads as another player to
+/// pick. Words are right here alone: adding a profile is an adult's action.
+class _AddProfileTile extends StatelessWidget {
   final VoidCallback onTap;
-  const _DevBadge({required this.onTap});
+  const _AddProfileTile({required this.onTap});
 
   @override
   Widget build(BuildContext context) => Semantics(
     button: true,
-    label: 'Dev profile (internal)',
+    label: 'Add Profile',
     child: GestureDetector(
-      key: const ValueKey('dev-profile'),
+      key: const ValueKey('add-profile'),
+      behavior: HitTestBehavior.opaque,
       onTap: onTap,
-      child: Container(
-        width: 52,
-        height: 52,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: AppColors.surface.withValues(alpha: 0.85),
-          border: Border.all(color: AppColors.cardEdge, width: 2),
-        ),
-        child: const Icon(Icons.build_rounded, color: AppColors.warmGray),
+      child: LayoutBuilder(
+        builder: (context, c) {
+          final d = c.maxWidth;
+          return Column(
+            children: [
+              SizedBox.square(
+                dimension: d,
+                child: Padding(
+                  padding: EdgeInsets.all(d * 0.08),
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppColors.ivory.withValues(alpha: 0.18),
+                      border: Border.all(
+                        color: AppColors.ivory,
+                        width: d * 0.04,
+                      ),
+                    ),
+                    child: Icon(
+                      Icons.add_rounded,
+                      size: d * 0.5,
+                      color: AppColors.ivory,
+                    ),
+                  ),
+                ),
+              ),
+              Flexible(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Container(
+                    margin: const EdgeInsets.only(top: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.sm,
+                      vertical: 1,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.ivory.withValues(alpha: 0.9),
+                      borderRadius: BorderRadius.circular(
+                        AppSpacing.radiusRound,
+                      ),
+                    ),
+                    child: Text(
+                      'Add Profile',
+                      style: AppTypography.label.copyWith(
+                        color: AppColors.inkBrown,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
       ),
     ),
   );
-}
-
-/// Behind the adult door: the parent area, as it stands today — adding a
-/// child, re-taking a child's setup (card 202), the credits. The fuller
-/// settings area (exporting the tracking log, card 128; editing and
-/// removing children) is not built; it slots in here.
-class _ParentArea extends StatelessWidget {
-  final ProfileState profiles;
-
-  const _ParentArea({required this.profiles});
-
-  @override
-  Widget build(BuildContext context) {
-    return ListenableBuilder(
-      listenable: profiles,
-      builder: (context, _) => Scaffold(
-        backgroundColor: AppColors.background,
-        appBar: AppBar(
-          title: const Text('For grown-ups'),
-          backgroundColor: AppColors.background,
-        ),
-        body: ListView(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          children: [
-            ListTile(
-              key: const ValueKey('parent-add-child'),
-              leading: const Icon(Icons.person_add_alt_1_rounded),
-              title: const Text('Add a child'),
-              onTap: () async {
-                final answers = await SetupQuizScreen.run(context);
-                if (answers != null) await profiles.addChild(answers);
-              },
-            ),
-            for (final child in profiles.childProfiles)
-              ListTile(
-                key: ValueKey('parent-retake-${child.id}'),
-                leading: SizedBox.square(
-                  dimension: 40,
-                  child: AvatarBadge(index: child.avatarIndex),
-                ),
-                title: Text('Redo setup for ${child.name}'),
-                subtitle: const Text(
-                  'Name, picture, dragging, age. Their progress stays.',
-                ),
-                onTap: () async {
-                  final answers = await SetupQuizScreen.run(
-                    context,
-                    initial: SetupAnswers.of(child),
-                  );
-                  if (answers != null) {
-                    await profiles.retakeSetup(child, answers);
-                  }
-                },
-              ),
-            ListTile(
-              leading: const Icon(Icons.info_outline_rounded),
-              title: const Text('About and credits'),
-              onTap: () => Navigator.of(context).push(
-                MaterialPageRoute<void>(builder: (_) => const CreditsScreen()),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
 
 class _Deps {
