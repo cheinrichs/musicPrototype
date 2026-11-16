@@ -12,6 +12,8 @@ void main() {
     'roomy with notch': (Size(844, 390), EdgeInsets.symmetric(horizontal: 47)),
     'iPhone 17': (Size(874, 402), EdgeInsets.symmetric(horizontal: 62)),
     'Pro Max': (Size(932, 430), EdgeInsets.symmetric(horizontal: 59)),
+    // The widest landscape aspect we expect (~2.2:1), so the least height.
+    'widest': (Size(950, 430), EdgeInsets.symmetric(horizontal: 59)),
   };
   final grow = max(SpeakingPulse.maxScaleDelta, 0.08);
   double smallestFor(int count) =>
@@ -24,6 +26,23 @@ void main() {
       group('LoudQuietLayout — ${entry.key}, $count instruments', () {
         LoudQuietLayout l() =>
             LoudQuietLayout(size, insets: insets, instrumentCount: count);
+
+        test("THE TALL TREE (2026-11-15): its own meter lands exactly on the "
+            "dial's — hub on hub, at the measured scale — and its canopy "
+            'reaches past the top of the screen', () {
+          final layout = l();
+          final t = layout.treeRect;
+          final k = t.width / LoudQuietLayout.treeSize.width;
+          final treeHub = t.topLeft + LoudQuietLayout.treeHub * k;
+          expect((treeHub - layout.hubPoint).distance, lessThan(0.01));
+          expect(
+            k * LoudQuietLayout.treeMeterScale,
+            closeTo(layout.dialWidth / 1536, 1e-9),
+            reason: 'the meter at the size the dial was',
+          );
+          // The canopy's first leaves sit ~15 px into the art.
+          expect(t.top + 20 * k, lessThanOrEqualTo(0));
+        });
 
         test('THE TOUCH-TARGET FLOOR holds: the smallest instrument is at '
             'least 64 px — that, not looks, is what the dial gives way to', () {

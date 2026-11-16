@@ -263,12 +263,13 @@ class _LoudQuietScreenState extends State<LoudQuietScreen> {
       key: _sceneKey,
       clipBehavior: Clip.none,
       children: [
+        // The tall tree (2026-11-15): its meter drawn exactly over the
+        // dial's, its canopy running off the top of the screen. The top
+        // row sits above the whole scene (GameScreenLayout's header), so
+        // the canopy never covers X, the bar, the caption or Skip.
         Positioned.fromRect(
-          rect: layout.dialRect,
-          child: Image.asset(
-            'assets/images/backgrounds/props/DialFace.png',
-            fit: BoxFit.fill,
-          ),
+          rect: layout.treeRect,
+          child: Image.asset(LoudQuietLayout.treeAsset, fit: BoxFit.fill),
         ),
         ..._buildNeedle(layout),
         if (round != null)

@@ -44,16 +44,57 @@ class LoudQuietLayout {
   static const hub = Offset(0.511, 0.706);
 
   /// The three platforms on top of the dial, left (quiet end) to right (loud
-  /// end), the middle of each flat face as fractions of the face — measured
-  /// off the art on a grid (2026-10-12).
+  /// end), the middle of each flat face, in the face's fractions. Re-measured
+  /// 2026-11-15 off the TALL TREE ([treeAsset]) on a grid and mapped back
+  /// through [treeHub] and [treeMeterScale]: the new art redraws them within
+  /// ~1% of where `DialFace.png` had them (0.281/0.327, 0.512/0.200,
+  /// 0.762/0.322), and the drop snaps to these, so they follow the art drawn.
   static const platformCentres = [
-    Offset(0.281, 0.327),
-    Offset(0.512, 0.200),
-    Offset(0.762, 0.322),
+    Offset(0.276, 0.318),
+    Offset(0.511, 0.188),
+    Offset(0.764, 0.318),
   ];
 
   /// Width of each platform's top face, as a fraction of the face's width.
-  static const platformWidths = [0.147, 0.160, 0.146];
+  static const platformWidths = [0.149, 0.167, 0.151];
+
+  // ---- the tree, sound_meter_tree_tall.png (1024 x 1536), 2026-11-15 ----
+  //
+  // Cooper: the old dial "didn't have enough tree so it looked like a stump
+  // in game" — this art has a full canopy, meant to run off the top of the
+  // screen. HIS CONSTRAINT: "keep the meter part of the tree the same so
+  // scale the new art around the meter". So the METER stays exactly where it
+  // was — [dialRect], [hub], the needle and its pivot are unchanged — and the
+  // tree is drawn so its own meter lands on top of that: its hub hole on
+  // [hubPoint], scaled by [treeMeterScale]. Most of the canopy is cropped
+  // by the top of the screen; that is intended.
+
+  static const treeAsset =
+      'assets/images/backgrounds/props/sound_meter_tree_tall.png';
+  static const treeSize = Size(1024, 1536);
+
+  /// The tree's hub hole, in its pixels — measured on a grid, the same way
+  /// as [hub] (which that method reproduces to within 3 px on DialFace).
+  static const treeHub = Offset(501.9, 1318.1);
+
+  /// The tree's meter is drawn at this many of its pixels per `DialFace.png`
+  /// pixel: hub to the top of the middle panel 213.1 against 393.8 (0.541);
+  /// hub to the left panel's edge at the matching height 230.4 against 428.1
+  /// (0.538). The same shape at one scale; the panel dividers sit at the same
+  /// angles from the hub (~28-31°), so [restDegrees]/[sweepDegrees] hold.
+  static const treeMeterScale = 0.540;
+
+  /// Where the tree is drawn: its meter on the dial's meter.
+  Rect get treeRect {
+    final k = dialWidth / (faceAspect * 1024) / treeMeterScale;
+    final h = hubPoint;
+    return Rect.fromLTWH(
+      h.dx - treeHub.dx * k,
+      h.dy - treeHub.dy * k,
+      treeSize.width * k,
+      treeSize.height * k,
+    );
+  }
 
   /// The quiet end's platform: the near side, nearest the instruments.
   static const int quietPlatform = 0;
