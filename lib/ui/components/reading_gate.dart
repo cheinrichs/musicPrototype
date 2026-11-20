@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../games/high_low/ordering/ordering_slot.dart' show PlacementTick;
 import '../theme/theme.dart';
 
 /// The reading gate (modelled on reading.com's): three numbers spelled as
@@ -49,19 +50,32 @@ class _ReadingGateState extends State<ReadingGate> {
   /// How many of the targets have been tapped, in order.
   int _progress = 0;
 
+  /// How long the last tick shows before the gate opens, so it is seen.
+  static const passHold = Duration(milliseconds: 450);
+
+  bool get _passed => _progress == widget.puzzle.targets.length;
+
   void _tap(int number) {
+    if (_passed) return; // already open; the hold is under way
     final targets = widget.puzzle.targets;
     if (number != targets[_progress]) {
-      // Quietly start over: no shake, no sound, no message.
+      // Quietly start over: no shake, no sound, no message, no red. The
+      // ticks so far simply go.
       setState(() => _progress = 0);
       return;
     }
-    if (_progress + 1 == targets.length) {
-      Navigator.of(context).pop(true);
-      return;
-    }
     setState(() => _progress++);
+    if (_passed) {
+      Future.delayed(passHold, () {
+        if (mounted) Navigator.of(context).pop(true);
+      });
+    }
   }
+
+  /// Tapped correctly, in order, this attempt: shown green with the app's
+  /// one success mark (the tick on a correctly placed instrument). Nothing
+  /// ever marks a wrong tap.
+  bool _done(int n) => widget.puzzle.targets.take(_progress).contains(n);
 
   @override
   Widget build(BuildContext context) {
@@ -150,17 +164,33 @@ class _ReadingGateState extends State<ReadingGate> {
     children: [
       for (final n in puzzle.grid)
         Material(
-          color: AppColors.surface,
+          color: _done(n) ? AppColors.correct : AppColors.surface,
           borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
           child: InkWell(
             key: ValueKey('reading-gate-$n'),
             borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
             onTap: () => _tap(n),
-            child: Center(
-              child: Text(
-                '$n',
-                style: AppTypography.heading2.copyWith(fontSize: 26),
-              ),
+            child: Stack(
+              children: [
+                Center(
+                  child: Text(
+                    '$n',
+                    style: AppTypography.heading2.copyWith(
+                      fontSize: 26,
+                      color: _done(n) ? Colors.white : null,
+                    ),
+                  ),
+                ),
+                if (_done(n))
+                  const Positioned(
+                    top: 4,
+                    right: 4,
+                    child: PlacementTick(
+                      key: ValueKey('reading-gate-tick'),
+                      size: 22,
+                    ),
+                  ),
+              ],
             ),
           ),
         ),

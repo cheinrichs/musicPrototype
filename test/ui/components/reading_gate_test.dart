@@ -88,6 +88,40 @@ void main() {
     expect(results, [true]);
   });
 
+  testWidgets('each right tap turns green with the success tick; a wrong '
+      'tap clears them and marks nothing', (tester) async {
+    await open(tester, puzzle);
+    Finder tick(int n) => find.descendant(
+      of: find.byKey(ValueKey('reading-gate-$n')),
+      matching: find.byKey(const ValueKey('reading-gate-tick')),
+    );
+    await tester.tap(find.byKey(const ValueKey('reading-gate-42')));
+    await tester.pump();
+    expect(tick(42), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('reading-gate-52')));
+    await tester.pump();
+    expect(tick(52), findsOneWidget);
+    expect(find.byKey(const ValueKey('reading-gate-tick')), findsNWidgets(2));
+    // Wrong: every tick goes, and nothing appears on the wrong number.
+    await tester.tap(find.byKey(const ValueKey('reading-gate-50')));
+    await tester.pump();
+    expect(find.byKey(const ValueKey('reading-gate-tick')), findsNothing);
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets('the last tick shows before the gate opens', (tester) async {
+    final results = await open(tester, puzzle);
+    for (final n in [42, 52, 96]) {
+      await tester.tap(find.byKey(ValueKey('reading-gate-$n')));
+      await tester.pump();
+    }
+    expect(find.byKey(const ValueKey('reading-gate-tick')), findsNWidgets(3));
+    expect(results, isEmpty);
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pumpAndSettle();
+    expect(results, [true]);
+  });
+
   testWidgets('a wrong tap QUIETLY resets — no message — and the order '
       'must start again', (tester) async {
     final results = await open(tester, puzzle);
