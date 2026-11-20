@@ -408,6 +408,12 @@ class SceneLayout {
   /// [stumpWidthOfInstrument] of the instrument's width, about half as tall as
   /// it is wide, and its top surface is [stumpSurfaceFraction] of the way
   /// down it (see `HighLowScreen._buildStump`).
+  ///
+  /// One value for every game's stumps (High vs Low, ordering, Loud or
+  /// Quiet). Cooper suggested +25% (1.1875) on 2026-11-20; rendered, it made
+  /// neighbouring stumps overlap on an SE's three-note ordering screen and
+  /// touch in Loud or Quiet's three, and left the flute and bells looking
+  /// undersized, so it waits on his call.
   static const stumpWidthOfInstrument = 0.95;
   static const stumpAspect = 794 / 1512;
 

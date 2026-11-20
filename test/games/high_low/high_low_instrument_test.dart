@@ -183,9 +183,17 @@ void main() {
       expect(HighLowInstrument.bells.displaySizeScale, 0.5);
     });
 
+    test('the xylophone is drawn at 0.6, as wide as its stump (Cooper, '
+        'on device, 2026-11-20: it was 1.67x the stump)', () {
+      expect(HighLowInstrument.xylophone.displaySizeScale, 0.6);
+    });
+
     test('every other instrument keeps the original shared default', () {
       for (final instrument in HighLowInstrument.values) {
-        if (instrument == HighLowInstrument.bells) continue;
+        if (instrument == HighLowInstrument.bells ||
+            instrument == HighLowInstrument.xylophone) {
+          continue;
+        }
         expect(
           instrument.displaySizeScale,
           1.0,

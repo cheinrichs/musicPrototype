@@ -187,7 +187,20 @@ enum HighLowInstrument {
   // xylophone/PROVENANCE.md); that is what the trial is for. Its art is
   // Cooper's UI-Kit sheet, copied byte-for-byte and sliced in code
   // ([lookSets]).
-  xylophone('Xylophone', 'xylophone', 'xylophone', 65, 108);
+  //
+  // 0.6 size (Cooper, on device, 2026-11-20): at full size it was 1.67x the
+  // width of its stump. He asked for stumps +25% and the xylophone -25%,
+  // which meet at 1.00; the bigger stumps crowd the three-note screens, so
+  // this reaches 1.00 on today's stumps instead. If the stumps do grow,
+  // this goes to 0.75.
+  xylophone(
+    'Xylophone',
+    'xylophone',
+    'xylophone',
+    65,
+    108,
+    displaySizeScale: 0.6,
+  );
 
   const HighLowInstrument(
     this._assetBaseName,

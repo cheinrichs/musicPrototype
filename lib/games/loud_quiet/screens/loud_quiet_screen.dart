@@ -21,6 +21,7 @@ import '../../../ui/components/round_set_end.dart';
 import '../../../ui/theme/theme.dart';
 import '../../game_session.dart';
 import '../../high_low/models/high_low_instrument.dart';
+import '../../high_low/models/scene_layout.dart';
 import '../../high_low/ordering/ordering_slot.dart';
 import '../../high_low/widgets/character_art.dart';
 import '../../high_low/widgets/high_low_header.dart';
@@ -319,8 +320,8 @@ class _LoudQuietScreenState extends State<LoudQuietScreen> {
   }
 
   Widget _buildStump(LoudQuietLayout layout, int side) {
-    const surface = 0.37;
-    final width = layout.instrumentSize * 0.95;
+    const surface = SceneLayout.stumpSurfaceFraction;
+    final width = layout.instrumentSize * SceneLayout.stumpWidthOfInstrument;
     // Alternating stumps, so neighbours never match.
     final isA = side.isEven;
     final height = width * (isA ? 794 / 1512 : 781 / 1506);
