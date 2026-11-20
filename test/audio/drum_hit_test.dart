@@ -22,4 +22,18 @@ void main() {
       expect(hit.assetPath, isNot(contains('/notes/')));
     }
   });
+
+  test('the tom is INTENTIONALLY UNUSED: the file stays, no code plays it '
+      '(the snare is the confirmed match for the art, 2026-11-20)', () {
+    expect(DrumHit.values.map((h) => h.name), ['snare']);
+    expect(
+      File('assets/audio/percussion/drum/tom.mp3').existsSync(),
+      isTrue,
+      reason: 'kept in case a tom is ever drawn',
+    );
+    expect(
+      File('assets/audio/percussion/drum/PROVENANCE.md').readAsStringSync(),
+      contains('INTENTIONALLY UNUSED'),
+    );
+  });
 }

@@ -98,6 +98,16 @@ Traced 2026-11-15. Nothing has been deleted.
   count as that, or as redistributing the samples themselves, should be
   checked against the licence text. **Cooper's call; not decided here.**
 
+## ⚠️ THE RULE FOR EVERY SAMPLE IN THE REPOSITORY (2026-11-20)
+
+Every sample in the repository is EITHER in use with a documented source,
+OR explicitly marked unused with a reason, its source and a date. Nothing
+sits in the tree unexplained. An unused sample still wired into a code
+path is worse than an unused file: take it out of the code.
+
+The 24 percussion .aif files and the seven playground clips each cost an
+investigation because nobody wrote this down when they were added.
+
 ## Does the art match the sound? (the rule, 2026-11-20)
 
 Cooper found the playable flute drawn as a recorder while its samples
@@ -137,7 +147,7 @@ and that is her, not the flute's art.
 | tuba | tuba | Philharmonia tuba | Yes |
 | piano | upright piano | Iowa piano (Iowa's catalogue: a grand; our record does not say) | ⚠️ BORDERLINE: ticked on the name first. A grand is fuller and brighter than an upright's boxier tone; Cooper to listen |
 | guitar | acoustic guitar | Philharmonia guitar (Philharmonia's is a classical, nylon-string guitar; our record does not say) | ⚠️ BORDERLINE: nylon is softer and rounder than the steel-string guitar most children picture; Cooper to listen |
-| drum | rope-tension field drum, deep shell | Philharmonia snare drum with snares, and a tom-tom | ⚠️ NO, neither. First ticked on the name ("a snare is a snare"); Cooper caught it. The snare is a bright, shallow modern snare, mostly wire; the tom has the depth but no buzz and is clearly pitched (about D4). A deep field drum sits between them. Philharmonia also has a TENOR DRUM (deep, snareless, only 52% of its energy above a phone's 200 Hz). Candidates for Cooper's ear, 2026-11-20: tenor drum alone, snare+tom layered, snare+tenor layered |
+| drum | rope-tension snare drum | Philharmonia snare drum with snares | ✅ YES, confirmed 2026-11-20 by a musician Cooper consulted, by ear. (It was questioned on measured brightness; that conclusion was wrong. Do not reopen it on a number.) The tom is intentionally unused: see `assets/audio/percussion/drum/PROVENANCE.md` |
 | electric guitar (cards only) | solid-body electric | NONE | ⚠️ NO. Trello 228 |
 
 ## The playground's seven clips (`assets/audio/playground/`)

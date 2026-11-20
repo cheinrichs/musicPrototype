@@ -10,13 +10,15 @@ library;
 /// not melodies, and whether that belongs in the Matching Grove or in the
 /// rhythm game is still open between Cooper and the user.
 ///
-/// Two hits, matching the drum art (a rope-tension snare with sticks):
-/// the snare, and a tom as a second, lower voice for accents. Philharmonia
-/// percussion, 2026-11-14 (assets/audio/percussion/drum/PROVENANCE.md).
-/// Nothing plays them yet.
+/// One hit: the snare, the confirmed match for the drum art (a
+/// rope-tension snare with sticks; confirmed by a musician Cooper
+/// consulted, 2026-11-20). Philharmonia percussion
+/// (assets/audio/percussion/drum/PROVENANCE.md). Nothing plays it yet.
+///
+/// The tom (tom.mp3) is INTENTIONALLY UNUSED and deliberately not listed
+/// here: no instrument art depicts a tom. Add it back only if one is drawn.
 enum DrumHit {
-  snare('assets/audio/percussion/drum/snare.mp3'),
-  tom('assets/audio/percussion/drum/tom.mp3');
+  snare('assets/audio/percussion/drum/snare.mp3');
 
   const DrumHit(this.assetPath);
 
