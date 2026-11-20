@@ -245,6 +245,7 @@ columns, then rows, of pixels above alpha 8.
 | violin | 21–752, 17–1001 | 767–1511, 17–1001 | Yes, 15 px |
 | xylophone | 20–755, 26–985 | 769–1515, 26–986 | Yes, 14 px |
 | **drum** | 32–758 | 773–1504 | ⚠️ **No transparent gap:** the two glows touch. It separates only above alpha 100. Cut at column 766, the faintest column (alpha at most 32), and accept a trace of the neighbour's glow, or ask Cooper for a re-export with a gap. |
+| tomtom (new 2026-11-20) | from the manifest: cut at 764 | | Yes: x=764 and x=768 both fully clear |
 
 Each sheet is sliced to ONE slice size for both of its cards, so the pair
 draws at one scale. Re-measure whenever a sheet is revised.
@@ -273,7 +274,15 @@ at alpha 254, which is Cooper's export setting, not a defect.
 | guitar | 22 notes, C3–B4 (A3 and A♯4 missing) | Yes. Melodies must avoid the two holes. |
 | tuba | Only G♯3–B3 (4 notes) usable on a speaker | ⚠️ Barely: a melody has just 4 notes to move in. |
 | xylophone | Not yet sourced (Iowa has F4–C8) | Not until the samples land. |
-| drum | NONE, and unpitched | ⚠️ **NO.** Not until it is decided whether drum belongs in this game (comparing RHYTHMS) or in the rhythm game. |
+| drum (rope-tension snare) | the snare hit (`DrumHit.snare`), unpitched | ⚠️ **NOT YET.** Not until it is decided whether drums belong in this game (comparing RHYTHMS) or in the rhythm game. |
+| tom-tom (concert tom) | the tom hit (`DrumHit.tom`), unpitched | ⚠️ **NOT YET**, same reason as the drum. |
+
+⚠️ **TWO DRUMS, TWO INSTRUMENTS (2026-11-20).** `cards_drum_pair.png` is
+the rope-tension snare and `cards_tomtom_pair.png` the concert tom. The
+spec keeps ONE instrument type throughout a trial, so whatever picks a
+trial's card set must treat them as two distinct instruments, never as
+two variants of "drum", and never mix them within a trial. (No code picks
+card sets yet; this is the rule for when it is built.)
 | electric guitar | NONE in any library we use | ⚠️ **NO.** Needs a third source and a new licence question. |
 
 Note: because the cards are symbolic (they say nothing about which

@@ -280,5 +280,13 @@
    705,
    710
   ]
+ },
+ "cards_tomtom_pair.png": {
+  "width": 1536,
+  "slices": [
+   764
+  ],
+  "naive_half_safe": true,
+  "variants": 2
  }
 }

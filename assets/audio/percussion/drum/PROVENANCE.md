@@ -61,7 +61,9 @@ rope-tension snare. So it is a normal documented instrument:
 - **Source:** Philharmonia percussion, `tom-toms__05_mezzo-forte_struck-singly.mp3`.
 - **Sound:** clearly pitched, around D4 (dominant 293 Hz); unpitched
   percussion in the app all the same, so never in a pitch game.
-- **Art:** `tomtom_x3.png`, amber / red / dark brown.
+- **Art:** `tomtom_x3.png`, amber / red / dark brown, and the Matching
+  Grove card pair `cards_tomtom_pair.png` (amber on cream, dark brown on
+  blue). A complete instrument.
 - **Code:** `DrumHit.tom`.
 
 The snare stays separately correct for the snare art.
