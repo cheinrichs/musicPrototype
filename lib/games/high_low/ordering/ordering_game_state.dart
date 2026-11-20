@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../../../audio/audio_controller.dart';
 import '../../../audio/sfx_type.dart';
+import '../../../audio/strike_figure.dart';
 import '../../../models/concept_tier.dart';
 import '../../../models/game_status.dart';
 import '../../../models/pitch_direction.dart';
@@ -209,7 +210,16 @@ class OrderingGameState extends ChangeNotifier {
       if (token != _sequenceToken || roundToken != _roundToken) return;
       _playingIndex = i;
       notifyListeners();
-      unawaited(_play(round.notes[i]));
+      // A short sound is presented as the strike figure, three a beat
+      // apart; a child's own tap or landing still plays once.
+      final strikes = round.notes[i].instrument.introStrikes;
+      for (var s = 0; s < strikes; s++) {
+        if (s > 0) {
+          await _wait(StrikeFigure.spacing);
+          if (token != _sequenceToken || roundToken != _roundToken) return;
+        }
+        unawaited(_play(round.notes[i]));
+      }
       await _wait(noteGap);
     }
     if (token != _sequenceToken || roundToken != _roundToken) return;

@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import '../../../audio/audio_controller.dart';
 import '../../../audio/shared_voice_line.dart';
 import '../../../audio/sfx_type.dart';
+import '../../../audio/strike_figure.dart';
 import '../../../models/agency_stage.dart';
 import '../../../models/game_status.dart';
 import '../../../models/round_order.dart';
@@ -305,7 +306,16 @@ class LoudQuietGameState extends ChangeNotifier {
     for (var side = 0; side < round.sideCount; side++) {
       if (token != _token) return;
       _ring(side);
-      unawaited(_playSide(side));
+      // A short sound is presented as the strike figure, three a beat
+      // apart; a child's own tap still plays once.
+      final strikes = round.instrumentOf(side).introStrikes;
+      for (var s = 0; s < strikes; s++) {
+        if (s > 0) {
+          await _wait(StrikeFigure.spacing);
+          if (token != _token) return;
+        }
+        unawaited(_playSide(side));
+      }
       await _wait(noteGap);
     }
     if (token != _token) return;

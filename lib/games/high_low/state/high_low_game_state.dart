@@ -4,6 +4,7 @@ import '../../../audio/audio_controller.dart';
 import '../../../audio/sfx_type.dart';
 import '../../../audio/shared_voice_line.dart';
 import '../../../audio/spoken_line.dart';
+import '../../../audio/strike_figure.dart';
 import '../../../audio/voice_line.dart';
 import '../../shared/nudges.dart';
 import '../../../models/agency_stage.dart';
@@ -755,56 +756,92 @@ class HighLowGameState extends ChangeNotifier {
     _bothNotesHeard = false;
     _cancelTapRingTimer();
     _playingIndex = 0;
-    if (agencyStage == AgencyStage.observe) {
-      _activeCaption = prompt.leftIsHigher
-          ? VoiceLine.clefSaysHigh
-          : VoiceLine.piperSaysLow;
-      unawaited(_speak(token, _activeCaption!));
-    }
-    notifyListeners();
-
-    await _audio.playAssetForScale(
-      leftInstrument.assetPathForMidi(prompt.firstMidi),
-    );
-    if (token != _roundToken) return;
+    // Observe narrates each note. The "Second" variants continue the
+    // sentence the first note's narration started (e.g. "Ooh! That one
+    // sounds high! ...and that one sounds low!") — see
+    // VoiceLine.piperSaysLowSecond/clefSaysHighSecond's doc comments.
+    // Whichever character didn't narrate the first note narrates the second.
+    final observe = agencyStage == AgencyStage.observe;
+    final firstLine = prompt.leftIsHigher
+        ? VoiceLine.clefSaysHigh
+        : VoiceLine.piperSaysLow;
+    final secondLine = prompt.leftIsHigher
+        ? VoiceLine.piperSaysLowSecond
+        : VoiceLine.clefSaysHighSecond;
 
     // Long enough for the first sample to decay before the splice into the
     // second note — see the original High/Low implementation notes
-    // (Trello card 57/58); unchanged here.
-    await _delay(_noteRingDuration);
-    if (token != _roundToken) return;
+    // (Trello card 57/58). The second note's wait mirrors it (Trello card
+    // 97): `playAssetForScale` only awaits the sample *starting*, so
+    // without it the right-hand instrument's "I'm sounding" glow was
+    // cleared before a frame had painted it.
+    if (!await _presentSide(
+      token,
+      leftInstrument,
+      prompt.firstMidi,
+      observe ? firstLine : null,
+    )) {
+      return;
+    }
 
     _cancelTapRingTimer();
     _playingIndex = 1;
-    if (agencyStage == AgencyStage.observe) {
-      // The "Second" variants continue the sentence the first note's
-      // narration started (e.g. "Ooh! That one sounds high! ...and that
-      // one sounds low!") — see VoiceLine.piperSaysLowSecond/
-      // clefSaysHighSecond's doc comments. Whichever character didn't
-      // narrate the first note always narrates the second, so this is
-      // just the opposite branch of the first caption's condition above.
-      _activeCaption = prompt.leftIsHigher
-          ? VoiceLine.piperSaysLowSecond
-          : VoiceLine.clefSaysHighSecond;
-      unawaited(_speak(token, _activeCaption!));
+    if (!await _presentSide(
+      token,
+      rightInstrument,
+      prompt.secondMidi,
+      observe ? secondLine : null,
+    )) {
+      return;
     }
-    notifyListeners();
-
-    await _audio.playAssetForScale(
-      rightInstrument.assetPathForMidi(prompt.secondMidi),
-    );
-    if (token != _roundToken) return;
-
-    // Mirrors the first note's wait above (Trello card 97): `playNoteForScale`
-    // only awaits the sample *starting*, not finishing, so without this the
-    // second note's wiggle/glow was cleared by `_finishIntro` on the very
-    // next microtask — before a single frame had painted it. The right-hand
-    // instrument's "I'm sounding" indicator never had a chance to render.
-    await _delay(_noteRingDuration);
-    if (token != _roundToken) return;
 
     _bothNotesHeard = true;
     _finishIntro(token);
+  }
+
+  /// The intro presenting one instrument: its note, then the ring wait.
+  /// False if the round was superseded meanwhile.
+  ///
+  /// A SHORT sound is played as [StrikeFigure] — three strikes, a beat
+  /// apart — and a long one once; which is which is measured
+  /// ([HighLowInstrument.introStrikes]), never named. A child's own tap
+  /// still plays once ([_soundTap]).
+  ///
+  /// [line] is Observe's narration. With one strike it starts with the note,
+  /// as it always has. With three it waits a beat past the last strike and
+  /// the wait lasts until the line has finished: TALK IN THE GAPS, NEVER
+  /// OVER THE SOUND (voice rule 4), so it never lands across the strikes
+  /// nor runs into the next instrument.
+  Future<bool> _presentSide(
+    int token,
+    HighLowInstrument instrument,
+    int midi,
+    SpokenLine? line,
+  ) async {
+    final strikes = instrument.introStrikes;
+    if (line != null && strikes == 1) {
+      _activeCaption = line;
+      unawaited(_speak(token, line));
+    }
+    notifyListeners();
+    final path = instrument.assetPathForMidi(midi);
+    for (var i = 0; i < strikes; i++) {
+      if (i > 0) {
+        await _delay(StrikeFigure.spacing);
+        if (token != _roundToken) return false;
+      }
+      await _audio.playAssetForScale(path);
+      if (token != _roundToken) return false;
+    }
+    if (line != null && strikes > 1) {
+      await _delay(StrikeFigure.spacing);
+      if (token != _roundToken) return false;
+      _activeCaption = line;
+      await Future.wait([_speak(token, line), _delay(_noteRingDuration)]);
+    } else {
+      await _delay(_noteRingDuration);
+    }
+    return token == _roundToken;
   }
 
   void _finishIntro(int token) {

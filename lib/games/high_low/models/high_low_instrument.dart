@@ -1,5 +1,7 @@
 import 'dart:math' as math;
 
+import '../../../audio/strike_figure.dart';
+
 /// Instruments that can appear as the two characters in the High/Low game.
 ///
 /// Each one declares the real MIDI range its own sample library actually
@@ -268,6 +270,28 @@ enum HighLowInstrument {
   /// multiply on top of it.
   static const double _defaultFloatFraction = 0.06;
   final double floatFraction;
+
+  /// The median length its notes really sound, measured 2026-11-20 by
+  /// tool/measure_note_decay.py (onset to the last 10 ms within 20 dB of the
+  /// peak). One figure per instrument, so every note of it is treated alike
+  /// and a same-instrument round never plays one side three times and the
+  /// other once. Re-run the tool when a library changes.
+  static const Map<HighLowInstrument, Duration> measuredDecay = {
+    HighLowInstrument.bells: Duration(milliseconds: 590),
+    HighLowInstrument.cello: Duration(milliseconds: 870),
+    HighLowInstrument.flute: Duration(milliseconds: 940),
+    HighLowInstrument.guitar: Duration(milliseconds: 1490),
+    HighLowInstrument.oboe: Duration(milliseconds: 1405),
+    HighLowInstrument.piano: Duration(milliseconds: 705),
+    HighLowInstrument.trumpet: Duration(milliseconds: 1390),
+    HighLowInstrument.tuba: Duration(milliseconds: 860),
+    HighLowInstrument.violin: Duration(milliseconds: 720),
+    HighLowInstrument.xylophone: Duration(milliseconds: 115),
+  };
+
+  /// How many times a round's introduction plays this instrument's note: the
+  /// short-sound rule ([StrikeFigure.strikesFor]) on its measured length.
+  int get introStrikes => StrikeFigure.strikesFor(measuredDecay[this]);
 
   /// Every real MIDI note this instrument actually has a sample for,
   /// ascending — [lowestSampleMidi]..[highestSampleMidi] with
