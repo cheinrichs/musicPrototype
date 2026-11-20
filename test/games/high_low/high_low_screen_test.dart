@@ -479,14 +479,8 @@ void main() {
     });
 
     /// The rendered rect of each character's resting (mouth) frame.
-    Rect frameRect(WidgetTester tester, String name) => tester.getRect(
-      find.byWidgetPredicate(
-        (w) =>
-            w is Image &&
-            w.image is AssetImage &&
-            (w.image as AssetImage).assetName.endsWith(name),
-      ),
-    );
+    Rect frameRect(WidgetTester tester, String layer) =>
+        tester.getRect(find.byKey(ValueKey(layer)));
 
     Future<void> startAt(WidgetTester tester, String agencyChip) async {
       devToolsEnabled = true;
@@ -530,8 +524,8 @@ void main() {
         (tester) async {
           await startAt(tester, chip);
 
-          final clef = frameRect(tester, 'clef_mouth_0.png');
-          final piper = frameRect(tester, 'piper_mouth_0.png');
+          final clef = frameRect(tester, 'clef-mouth-0');
+          final piper = frameRect(tester, 'piper-mouth-0');
           expect(
             piper.height,
             greaterThan(clef.height * 1.5),
@@ -979,6 +973,7 @@ void main() {
 
   group('poses, prominence and the layout pass (Cooper, on device)', () {
     /// Asset names of every character image currently showing (opacity 1).
+    /// The sprite layers showing, by key ('clef-thinking', 'piper-mouth-0').
     Set<String> showing(WidgetTester tester) {
       final result = <String>{};
       for (final o
@@ -989,17 +984,8 @@ void main() {
               )
               .evaluate()) {
         if ((o.widget as Opacity).opacity != 1.0) continue;
-        final image =
-            find
-                    .descendant(
-                      of: find.byWidget(o.widget),
-                      matching: find.byType(Image),
-                    )
-                    .evaluate()
-                    .single
-                    .widget
-                as Image;
-        result.add((image.image as AssetImage).assetName.split('/').last);
+        final layer = o.findAncestorWidgetOfExactType<Positioned>()!;
+        result.add((layer.key! as ValueKey<String>).value);
       }
       return result;
     }
@@ -1062,10 +1048,10 @@ void main() {
       await dragSide(tester, 1 - state.currentPrompt!.targetSide);
 
       final shown = showing(tester);
-      expect(shown.where((n) => n.endsWith('thinking.png')).length, 1);
-      expect(shown.where((n) => n.endsWith('celebration.png')), isEmpty);
+      expect(shown.where((n) => n.endsWith('thinking')).length, 1);
+      expect(shown.where((n) => n.endsWith('celebration')), isEmpty);
       expect(
-        shown.where((n) => n.contains('_mouth_')).length,
+        shown.where((n) => n.contains('-mouth-')).length,
         1,
         reason: 'the one standing by just speaks',
       );
@@ -1078,9 +1064,9 @@ void main() {
       await dragSide(tester, state.currentPrompt!.targetSide);
 
       final shown = showing(tester);
-      expect(shown.where((n) => n.endsWith('celebration.png')).length, 1);
-      expect(shown.where((n) => n.endsWith('thinking.png')), isEmpty);
-      expect(shown.where((n) => n.contains('_mouth_')).length, 1);
+      expect(shown.where((n) => n.endsWith('celebration')).length, 1);
+      expect(shown.where((n) => n.endsWith('thinking')), isEmpty);
+      expect(shown.where((n) => n.contains('-mouth-')).length, 1);
       state.dispose();
     });
 
@@ -1103,23 +1089,25 @@ void main() {
             e.widget is InstrumentLookImage &&
             (e.widget as InstrumentLookImage).look == instrument,
       );
+      // The celebrating layer that is showing, painted after the instrument.
       final celebrationAt = order.indexWhere((e) {
         final w = e.widget;
-        return w is Opacity &&
-            w.opacity == 1.0 &&
+        if (w is! Positioned) return false;
+        final key = w.key;
+        if (key is! ValueKey<String> || !key.value.endsWith('celebration')) {
+          return false;
+        }
+        final opacity =
             find
-                .descendant(
-                  of: find.byWidget(w),
-                  matching: find.byWidgetPredicate(
-                    (x) =>
-                        x is Image &&
-                        (x.image as AssetImage).assetName.endsWith(
-                          'celebration.png',
-                        ),
-                  ),
-                )
-                .evaluate()
-                .isNotEmpty;
+                    .descendant(
+                      of: find.byWidget(w),
+                      matching: find.byType(Opacity),
+                    )
+                    .evaluate()
+                    .first
+                    .widget
+                as Opacity;
+        return opacity.opacity == 1.0;
       });
       expect(instrumentAt, isNonNegative);
       expect(celebrationAt, isNonNegative);
@@ -1134,10 +1122,7 @@ void main() {
       await dragSide(tester, 1 - right);
       await dragSide(tester, right);
 
-      expect(
-        showing(tester).where((n) => n.endsWith('celebration.png')).length,
-        1,
-      );
+      expect(showing(tester).where((n) => n.endsWith('celebration')).length, 1);
       state.dispose();
     });
 
@@ -1149,13 +1134,13 @@ void main() {
       final state = await pumpKnownRound(tester, stage: AgencyStage.explore);
       await tester.pump(const Duration(seconds: 7));
       expect(state.secondaryCaptionText, isNotNull, reason: 'caption is up');
-      expect(showing(tester).where((n) => n.endsWith('thinking.png')), isEmpty);
+      expect(showing(tester).where((n) => n.endsWith('thinking')), isEmpty);
 
       for (var tap = 1; tap <= 4; tap++) {
         state.tapInstrument(state.currentPrompt!.targetSide);
         await tester.pump();
         expect(
-          showing(tester).where((n) => n.endsWith('thinking.png')),
+          showing(tester).where((n) => n.endsWith('thinking')),
           isEmpty,
           reason: 'correct tap $tap',
         );
@@ -1172,26 +1157,23 @@ void main() {
         state.tapInstrument(wrong);
         await tester.pump();
         expect(
-          showing(tester).where((n) => n.endsWith('thinking.png')),
+          showing(tester).where((n) => n.endsWith('thinking')),
           isEmpty,
           reason: 'wrong tap $tap is below the five-tap rule',
         );
       }
       state.tapInstrument(wrong);
       await tester.pump();
+      expect(showing(tester).where((n) => n.endsWith('thinking')).length, 1);
       expect(
-        showing(tester).where((n) => n.endsWith('thinking.png')).length,
-        1,
-      );
-      expect(
-        showing(tester).where((n) => n.contains('_mouth_')).length,
+        showing(tester).where((n) => n.contains('-mouth-')).length,
         1,
         reason: 'the one standing by just speaks',
       );
 
       // The test audio resolves lines at once, so the minimum dwell governs.
       await tester.pump(const Duration(milliseconds: 1500));
-      expect(showing(tester).where((n) => n.endsWith('thinking.png')), isEmpty);
+      expect(showing(tester).where((n) => n.endsWith('thinking')), isEmpty);
       state.dispose();
     });
 
@@ -1205,14 +1187,11 @@ void main() {
         state.tapInstrument(1 - target);
       }
       await tester.pump();
-      expect(
-        showing(tester).where((n) => n.endsWith('thinking.png')).length,
-        1,
-      );
+      expect(showing(tester).where((n) => n.endsWith('thinking')).length, 1);
 
       state.tapInstrument(target);
       await tester.pump();
-      expect(showing(tester).where((n) => n.endsWith('thinking.png')), isEmpty);
+      expect(showing(tester).where((n) => n.endsWith('thinking')), isEmpty);
       await tester.pump(const Duration(milliseconds: 1500));
       state.dispose();
     });
@@ -1220,12 +1199,8 @@ void main() {
     testWidgets('Piper has her own mouth frames — the stopgap sheet — and '
         'Clef has hers', (tester) async {
       await pumpAndFinishIntro(tester, viewport: roomyViewport);
-      final names = {
-        for (final e in find.byType(Image).evaluate())
-          if ((e.widget as Image).image is AssetImage)
-            ((e.widget as Image).image as AssetImage).assetName.split('/').last,
-      };
-      expect(names, containsAll(['piper_mouth_0.png', 'clef_mouth_0.png']));
+      expect(find.byKey(const ValueKey('piper-mouth-0')), findsOneWidget);
+      expect(find.byKey(const ValueKey('clef-mouth-0')), findsOneWidget);
     });
 
     testWidgets('on a notched phone no character crosses the safe area — '
@@ -1253,15 +1228,8 @@ void main() {
       }
       await tester.pump(Duration.zero);
 
-      for (final name in ['clef_mouth_0.png', 'piper_mouth_0.png']) {
-        final rect = tester.getRect(
-          find.byWidgetPredicate(
-            (w) =>
-                w is Image &&
-                w.image is AssetImage &&
-                (w.image as AssetImage).assetName.endsWith(name),
-          ),
-        );
+      for (final name in ['clef-mouth-0', 'piper-mouth-0']) {
+        final rect = tester.getRect(find.byKey(ValueKey(name)));
         expect(rect.left, greaterThanOrEqualTo(47 - 0.5), reason: name);
         expect(
           rect.right,

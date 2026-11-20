@@ -25,7 +25,8 @@ void main() {
       expect(
         seen.where((f) => f != MouthFrame.open).length,
         1,
-        reason: 'only the first sample (0.16, below the opening point) stays '
+        reason:
+            'only the first sample (0.16, below the opening point) stays '
             'closed; after that it stays open through the wobble: $seen',
       );
 
@@ -49,7 +50,7 @@ void main() {
     });
   });
 
-  group('Clef mouth frame assets', () {
+  group('Piper mouth frame assets (Clef draws hers from one sheet)', () {
     /// Reads a PNG's width and height from its IHDR chunk.
     (int, int) pngSize(String path) {
       final Uint8List bytes = File(path).readAsBytesSync();
@@ -61,11 +62,11 @@ void main() {
         'directories are not recursive, so a new subfolder that is not '
         'listed ships as missing art without any other test noticing', () {
       final pubspec = File('pubspec.yaml').readAsStringSync();
-      final declared = RegExp(r'^\s*-\s+(assets/\S+/)\s*$', multiLine: true)
-          .allMatches(pubspec)
-          .map((m) => m.group(1)!)
-          .toSet();
-      for (final path in clefMouthFrameAssets) {
+      final declared = RegExp(
+        r'^\s*-\s+(assets/\S+/)\s*$',
+        multiLine: true,
+      ).allMatches(pubspec).map((m) => m.group(1)!).toSet();
+      for (final path in piperMouthFrameAssets) {
         final dir = path.substring(0, path.lastIndexOf('/') + 1);
         expect(declared, contains(dir), reason: '$path needs $dir declared');
       }
@@ -74,7 +75,7 @@ void main() {
     test('all three frames exist and share one size — the registration '
         'invariant tool/slice_mouth_frames.py enforces: swapping frames must '
         'never change the sprite\'s footprint', () {
-      final sizes = {for (final p in clefMouthFrameAssets) p: pngSize(p)};
+      final sizes = {for (final p in piperMouthFrameAssets) p: pngSize(p)};
       expect(sizes.length, 3);
       expect(sizes.values.toSet().length, 1, reason: 'sizes: $sizes');
     });

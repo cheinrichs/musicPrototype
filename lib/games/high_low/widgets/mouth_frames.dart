@@ -9,15 +9,8 @@ typedef MouthSpriteBuilder =
 /// data that drives the scale pulse, so the two cues cannot drift apart.
 enum MouthFrame { closed, open, wide }
 
-/// Clef's three registered mouth frames, in [MouthFrame] order. Sliced and
-/// aligned from the UI kit's `Clef_MouthFrames_3.png` by
-/// `tool/slice_mouth_frames.py` so swapping between them never moves the
-/// body — only the mouth (and a little of the face) changes.
-const clefMouthFrameAssets = [
-  'assets/images/characters/clef/clef_mouth_0.png',
-  'assets/images/characters/clef/clef_mouth_1.png',
-  'assets/images/characters/clef/clef_mouth_2.png',
-];
+// Clef's mouth frames are the three frames of clef_H_talk_x3.png, drawn as
+// regions of that sheet: see CharacterArt.clef.
 
 /// Piper's three mouth frames — a stopgap cut from the rejected sheet; see
 /// `CharacterArt.piper`.
