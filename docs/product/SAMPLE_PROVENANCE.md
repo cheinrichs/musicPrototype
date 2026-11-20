@@ -97,3 +97,46 @@ Traced 2026-11-15. Nothing has been deleted.
   own compositions. Whether loose one-shot samples shipped inside an app
   count as that, or as redistributing the samples themselves, should be
   checked against the licence text. **Cooper's call; not decided here.**
+
+## Does the art match the sound? (the rule, 2026-11-20)
+
+Cooper found the playable flute drawn as a recorder while its samples
+were a concert flute. In a game about listening to instruments, art that
+promises one instrument while the audio delivers another is a defect.
+
+**THE STANDARD, in Cooper's words:** "the tone between a recorder and a
+real flute is very obvious so the visual disconnect was just too big, but
+many of these are probably easy to buy into the samples being a very
+similar adjacent instrument."
+
+So the bar is NOT "the sample is exactly the instrument drawn". It is
+**"a child would not hear a disconnect between what they see and what
+they hear."** A plausible adjacent instrument is fine (an upright drawn,
+a grand recorded). An obvious timbral mismatch is not. Judge every new
+instrument by this, not by taxonomy, and let Cooper listen to anything
+borderline.
+
+Characters' props are not playable instruments: Piper plays a recorder,
+and that is her, not the flute's art.
+
+### The audit, 2026-11-20
+
+| Instrument | Art shows | Samples are (per provenance) | Match? |
+|---|---|---|---|
+| bells | handbells | InspectorJ "Hand Bells, Singles" | Yes (Cooper, by ear) |
+| xylophone | xylophone | Iowa xylophone, rosewood mallet | Yes (Cooper, by ear: bright, not a marimba) |
+| flute | keyed concert flute (new art) | Philharmonia flute | Yes, since the new art |
+| cello | cello | Philharmonia cello, arco | Yes |
+| violin | violin | Philharmonia violin, arco | Yes |
+| oboe | oboe | Philharmonia oboe | Yes |
+| trumpet | trumpet | Philharmonia trumpet | Yes |
+| tuba | tuba | Philharmonia tuba | Yes |
+| piano | upright piano | Iowa piano (Iowa's catalogue: a grand; our record does not say) | Yes, adjacent |
+| guitar | acoustic guitar | Philharmonia guitar (Philharmonia's is a classical, nylon-string guitar; our record does not say) | Yes, adjacent |
+| drum | rope-tension field/snare drum | Philharmonia snare drum with snares, and a tom-tom | Snare: adjacent. Tom: ⚠️ OPEN, Cooper has not heard it |
+| electric guitar (cards only) | solid-body electric | NONE | ⚠️ NO. Trello 228 |
+
+The playground's own seven clips (`assets/audio/playground/`, including
+the "electric" guitar clips beside the electric guitar art) have NO
+provenance record at all. Same class of gap as the 24 percussion .aif
+files.
