@@ -25,6 +25,7 @@ import '../models/agency_stage.dart';
 import '../ui/components/circle_icon_button.dart';
 import 'journey_art.dart';
 import 'journey_state.dart';
+import 'journey_travel.dart';
 import 'map_decoration.dart';
 import 'path_profile.dart';
 
@@ -63,7 +64,11 @@ abstract final class JourneyTiming {
 
   // Both: back on the path.
   static const stoneTurns = Duration(milliseconds: 700);
-  static const pinMoves = Duration(milliseconds: 700);
+
+  /// Moving on a stone (Trello 227): Piper walks, Clef hops, the pin
+  /// arcs — all three together. Slower than an in-game move: the child is
+  /// watching, not playing.
+  static const pinMoves = Duration(milliseconds: 1100);
   static const newChestPan = Duration(milliseconds: 1000);
   static const newChestDrop = Duration(milliseconds: 700);
   static const newChestHold = Duration(milliseconds: 900);
@@ -160,7 +165,13 @@ class _JourneyScreenState extends State<JourneyScreen> {
     } on ProviderNotFoundException {
       _rail = _ownRail = RailController();
     }
-    WidgetsBinding.instance.addPostFrameCallback((_) => _openingPan());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Decode the movement sheets now, so the first step never flashes.
+      for (final g in [Gait.piperWalk, Gait.clefHop]) {
+        unawaited(precacheImage(AssetImage(g.asset), context));
+      }
+      _openingPan();
+    });
   }
 
   @override
@@ -741,22 +752,19 @@ class _JourneyScreenState extends State<JourneyScreen> {
     );
   }
 
-  Widget _buildPin(JourneyMapGeometry g, int stone) {
-    final r = g.pinRect(stone);
-    return AnimatedPositioned(
-      duration: JourneyTiming.pinMoves,
-      curve: Curves.easeInOutCubic,
-      left: r.left,
-      top: r.top,
-      width: r.width,
-      height: r.height,
-      child: GestureDetector(
-        onTap: _startStone,
-        // The avatar THIS child chose at setup (card 202).
-        child: AvatarPin(index: _profiles()?.activeProfile?.avatarIndex ?? 0),
-      ),
-    );
-  }
+  Widget _buildPin(JourneyMapGeometry g, int stone) => Traveller(
+    key: const ValueKey('map-pin'),
+    rect: g.pinRect(stone),
+    duration: JourneyTiming.pinMoves,
+    // The pin has no legs, so the arc carries its motion. Cooper: "a
+    // little arc", so a modest one.
+    arc: 0.15,
+    rest: GestureDetector(
+      onTap: _startStone,
+      // The avatar THIS child chose at setup (card 202).
+      child: AvatarPin(index: _profiles()?.activeProfile?.avatarIndex ?? 0),
+    ),
+  );
 
   Widget _buildChest(JourneyMapGeometry g, int stone) {
     final lifted = _chestAwake;
@@ -1009,15 +1017,19 @@ class _JourneyScreenState extends State<JourneyScreen> {
     final feet = clef ? g.clefFeet(stone) : g.piperFeet(stone);
     final h = clef ? g.clefHeightAt(feet.dx) : g.piperHeightAt(feet.dx);
     final w = art.frameSize.width * h / art.frameSize.height;
-    return AnimatedPositioned(
+    // The travelling body, matched to the resting one: Piper's body is her
+    // frame; Clef's is her talking body (12% grown), and her hop frames
+    // are head-matched to it (hop at 0.73H, talking at 0.63H).
+    final body = clef
+        ? h * CharacterArt.clefGrowth * 719 / 723 * 0.73 / 0.63
+        : h;
+    return Traveller(
       key: ValueKey(clef ? 'map-clef' : 'map-piper'),
+      rect: Rect.fromLTWH(feet.dx - w / 2, feet.dy - h, w, h),
       duration: JourneyTiming.pinMoves,
-      curve: Curves.easeInOutCubic,
-      left: feet.dx - w / 2,
-      top: feet.dy - h,
-      width: w,
-      height: h,
-      child: IgnorePointer(
+      gait: clef ? Gait.clefHop : Gait.piperWalk,
+      bodyHeight: body,
+      rest: IgnorePointer(
         child: CharacterSprite(
           art: art,
           pose: CharacterPose.speaking,
