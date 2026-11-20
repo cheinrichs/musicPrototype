@@ -30,4 +30,39 @@ void main() {
     expect(art.height, lessThan(box.height));
     expect(art.center.dx, closeTo(box.center.dx, 0.5));
   });
+
+  // A wide instrument's art fills only the bottom of its box, but the WHOLE
+  // box takes the touch, as a whole-file image always did: a child who
+  // grabs the empty band above a piano still picks it up (caught by card
+  // 221's held-by-the-top drop, 2026-11-20).
+  for (final instrument in [
+    HighLowInstrument.piano,
+    HighLowInstrument.xylophone,
+  ]) {
+    testWidgets('${instrument.name}: a touch at the top of its box lands', (
+      tester,
+    ) async {
+      var taps = 0;
+      await tester.pumpWidget(
+        Directionality(
+          textDirection: TextDirection.ltr,
+          child: Center(
+            child: GestureDetector(
+              onTap: () => taps++,
+              child: SizedBox.square(
+                key: const ValueKey('box'),
+                dimension: 200,
+                child: InstrumentLookImage(instrument.looksFor(2)[0]),
+              ),
+            ),
+          ),
+        ),
+      );
+      final box = tester.getRect(find.byKey(const ValueKey('box')));
+      final art = tester.getRect(find.byType(AspectRatio));
+      expect(art.top, greaterThan(box.top + 10), reason: 'empty band above');
+      await tester.tapAt(box.topCenter + const Offset(0, 4));
+      expect(taps, 1);
+    });
+  }
 }

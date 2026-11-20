@@ -19,15 +19,22 @@ class InstrumentLookImage extends StatelessWidget {
   Widget build(BuildContext context) {
     final r = look.region;
     if (r == null) return Image.asset(look.asset, fit: BoxFit.contain);
-    return Align(
-      alignment: Alignment.bottomCenter,
-      child: AspectRatio(
-        aspectRatio: r.width / r.height,
-        child: ImageRegion(
-          art: ArtRef(
-            look.asset,
-            image: Size(r.sheetWidth, r.sheetHeight),
-            region: Rect.fromLTWH(r.left, r.top, r.width, r.height),
+    // THE WHOLE BOX TAKES THE TOUCH, as a whole-file image always did. An
+    // [Align] alone only hit-tests its child, so the empty band above a
+    // wide instrument (piano, xylophone) stopped answering taps and drags
+    // (caught by card 221's held-by-the-top drop, 2026-11-20).
+    return ColoredBox(
+      color: const Color(0x00000000),
+      child: Align(
+        alignment: Alignment.bottomCenter,
+        child: AspectRatio(
+          aspectRatio: r.width / r.height,
+          child: ImageRegion(
+            art: ArtRef(
+              look.asset,
+              image: Size(r.sheetWidth, r.sheetHeight),
+              region: Rect.fromLTWH(r.left, r.top, r.width, r.height),
+            ),
           ),
         ),
       ),
