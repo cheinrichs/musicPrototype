@@ -1,0 +1,213 @@
+{
+ "_README": "Correct x boundaries for slicing each 3-variant sheet. Slicing at naive thirds CUTS THROUGH ART on 8 of these 14 sheets. Use these columns instead; every one is verified fully transparent (0 opaque pixels). Each sheet yields variants [0:x1], [x1:x2], [x2:W]. Measured 2026-11-20.",
+ "_rule": "Variant index 1 (centre) is used ONLY in three-instrument rounds. Two-instrument rounds use indices 0 and 2.",
+ "instruments_v3/cello_x3.png": {
+  "width": 1536,
+  "slices": [
+   551,
+   999
+  ],
+  "naive_thirds_safe": true
+ },
+ "instruments_v3/drum_x3.png": {
+  "width": 2172,
+  "slices": [
+   747,
+   1411
+  ],
+  "naive_thirds_safe": true
+ },
+ "instruments_v3/flute_x3.png": {
+  "width": 1536,
+  "slices": [
+   632,
+   906
+  ],
+  "naive_thirds_safe": false
+ },
+ "instruments_v3/guitar_x3.png": {
+  "width": 2172,
+  "slices": [
+   865,
+   1307
+  ],
+  "naive_thirds_safe": false
+ },
+ "instruments_v3/oboe_x3.png": {
+  "width": 2172,
+  "slices": [
+   814,
+   1360
+  ],
+  "naive_thirds_safe": false
+ },
+ "instruments_v3/piano_x3.png": {
+  "width": 2172,
+  "slices": [
+   718,
+   1452
+  ],
+  "naive_thirds_safe": false
+ },
+ "instruments_v3/trumpet_x3.png": {
+  "width": 2172,
+  "slices": [
+   885,
+   1282
+  ],
+  "naive_thirds_safe": false
+ },
+ "instruments_v3/tuba_x3.png": {
+  "width": 2172,
+  "slices": [
+   786,
+   1349
+  ],
+  "naive_thirds_safe": false
+ },
+ "instruments_v3/violin_x3.png": {
+  "width": 2014,
+  "slices": [
+   757,
+   1280
+  ],
+  "naive_thirds_safe": false
+ },
+ "instruments_v3/xylophone_x3.png": {
+  "width": 2172,
+  "slices": [
+   723,
+   1448
+  ],
+  "naive_thirds_safe": true
+ },
+ "bells_x3_variants.png": {
+  "width": 2172,
+  "slices": [
+   798,
+   1372
+  ],
+  "naive_thirds_safe": false
+ },
+ "clef_H_talk_x3.png": {
+  "width": 2170,
+  "slices": [
+   740,
+   1399
+  ],
+  "naive_thirds_safe": true
+ },
+ "clef_H_move_x3.png": {
+  "width": 2172,
+  "slices": [
+   737,
+   1429
+  ],
+  "naive_thirds_safe": true
+ },
+ "piper_H_move_x3.png": {
+  "width": 2172,
+  "slices": [
+   668,
+   1342
+  ],
+  "naive_thirds_safe": true
+ },
+ "_README_cards": "Matching Grove card pairs. Two cards per sheet, slice at the single x below: [0:x] and [x:W]. Slicing at the midpoint cuts art on the sheets marked naive_half_safe false. Measured 2026-11-20.",
+ "cards_bells_pair.png": {
+  "width": 1536,
+  "slices": [
+   766
+  ],
+  "naive_half_safe": true,
+  "variants": 2
+ },
+ "cards_cello_pair.png": {
+  "width": 1536,
+  "slices": [
+   765
+  ],
+  "naive_half_safe": true,
+  "variants": 2
+ },
+ "cards_drum_pair.png": {
+  "width": 1536,
+  "slices": [
+   765
+  ],
+  "naive_half_safe": true,
+  "variants": 2
+ },
+ "cards_electricguitar_pair.png": {
+  "width": 1536,
+  "slices": [
+   749
+  ],
+  "naive_half_safe": false,
+  "variants": 2
+ },
+ "cards_flute_pair.png": {
+  "width": 1536,
+  "slices": [
+   764
+  ],
+  "naive_half_safe": true,
+  "variants": 2
+ },
+ "cards_guitar_pair.png": {
+  "width": 1536,
+  "slices": [
+   764
+  ],
+  "naive_half_safe": true,
+  "variants": 2
+ },
+ "cards_oboe_pair.png": {
+  "width": 1536,
+  "slices": [
+   767
+  ],
+  "naive_half_safe": true,
+  "variants": 2
+ },
+ "cards_piano_pair.png": {
+  "width": 1536,
+  "slices": [
+   765
+  ],
+  "naive_half_safe": true,
+  "variants": 2
+ },
+ "cards_trumpet_pair.png": {
+  "width": 1536,
+  "slices": [
+   765
+  ],
+  "naive_half_safe": true,
+  "variants": 2
+ },
+ "cards_tuba_pair.png": {
+  "width": 1536,
+  "slices": [
+   760
+  ],
+  "naive_half_safe": true,
+  "variants": 2
+ },
+ "cards_violin_pair.png": {
+  "width": 1536,
+  "slices": [
+   759
+  ],
+  "naive_half_safe": false,
+  "variants": 2
+ },
+ "cards_xylophone_pair.png": {
+  "width": 1536,
+  "slices": [
+   762
+  ],
+  "naive_half_safe": true,
+  "variants": 2
+ }
+}

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../audio/audio_controller.dart';
+import '../../games/high_low/widgets/instrument_look_image.dart';
 import '../../models/instrument.dart';
 import '../components/circle_icon_button.dart';
 import '../components/drifting_notes.dart';
@@ -324,26 +325,10 @@ class _InstrumentCharacterState extends State<_InstrumentCharacter>
     );
   }
 
-  Widget _buildArt() {
-    final art = widget.instrument.artAssetPath;
-
-    return art != null
-        ? Image.asset(art, height: widget.size, fit: BoxFit.contain)
-        // No kit character for this instrument yet — fall back to the emoji
-        // at roughly the same visual weight so the scene still balances. The
-        // width is explicit: an unbounded SizedBox here would stretch the
-        // character's tap target across the whole meadow.
-        : SizedBox(
-            width: widget.size * 0.9,
-            height: widget.size,
-            child: Center(
-              child: Text(
-                widget.instrument.emoji,
-                style: TextStyle(fontSize: widget.size * 0.6),
-              ),
-            ),
-          );
-  }
+  Widget _buildArt() => SizedBox.square(
+    dimension: widget.size,
+    child: InstrumentLookImage(widget.instrument.art),
+  );
 
   Widget _buildNamePlate() {
     return AnimatedContainer(

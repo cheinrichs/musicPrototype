@@ -330,7 +330,7 @@ class _OrderingScreenState extends State<OrderingScreen> {
   /// [note]'s look: every instrument's positions in the round wear
   /// DIFFERENT looks where its art allows — one instrument on three
   /// platforms is three tellable-apart sprites (see
-  /// HighLowInstrument.lookSets).
+  /// HighLowInstrument.looksFor).
   InstrumentLook _lookFor(int note) => HighLowInstrument.looksForRound([
     for (final n in _state.round!.notes) n.instrument,
   ])[note];

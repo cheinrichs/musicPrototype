@@ -27,7 +27,7 @@ import 'package:ear_trainer/models/pitch_direction.dart';
 
 const _outDir = String.fromEnvironment('RENDER_DIR');
 
-/// Every round puts [instrument] on both stumps, a fifth apart.
+/// Every round puts [instrument] on both stumps, its lowest and highest.
 class _OneInstrument extends PromptGenerator {
   final HighLowInstrument instrument;
   _OneInstrument(this.instrument) : super(random: Random(1));
@@ -39,10 +39,9 @@ class _OneInstrument extends PromptGenerator {
     required PitchDirection targetDirection,
   }) {
     final midis = instrument.availableMidis;
-    final low = midis[midis.length ~/ 2 - 4];
     return HighLowPrompt(
-      firstMidi: low,
-      secondMidi: low + 7,
+      firstMidi: midis.first,
+      secondMidi: midis.last,
       firstInstrument: instrument,
       secondInstrument: instrument,
       promptNumber: promptNumber,
@@ -54,14 +53,7 @@ class _OneInstrument extends PromptGenerator {
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
-  for (final instrument in [
-    HighLowInstrument.xylophone,
-    HighLowInstrument.trumpet,
-    HighLowInstrument.flute,
-    HighLowInstrument.bells,
-    HighLowInstrument.violin,
-    HighLowInstrument.guitar,
-  ]) {
+  for (final instrument in HighLowInstrument.values) {
     final name = 'pair_${instrument.name}';
     testWidgets(name, skip: _outDir.isEmpty, (tester) async {
       tester.view.physicalSize = const Size(874, 402) * 3;

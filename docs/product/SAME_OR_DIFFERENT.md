@@ -236,7 +236,7 @@ columns, then rows, of pixels above alpha 8.
 | bells | 51–755, 33–991 | 776–1485, 33–991 | Yes, 21 px gap |
 | cello | 66–749, 28–991 | 782–1469, 28–992 | Yes, 33 px |
 | electricguitar | 14–746, 16–1002 | 752–1521, 15–1003 | Yes, but only a 6 px gap |
-| flute | 30–754, 20–1002 | 774–1505, 20–1002 | Yes, 20 px |
+| flute | 28–760, 24–998 | 769–1505, 24–999 | Yes, 9 px. ⚠️ NEW SHEET 2026-11-20: a keyed concert flute, not the old recorder (superseded sheet not shipped). |
 | guitar | 38–758, 10–1008 | 772–1500, 10–1009 | Yes, 14 px |
 | oboe | 43–760, 25–995 | 775–1492, 26–995 | Yes, 15 px |
 | piano | 34–760, 18–1001 | 771–1501, 18–1003 | Yes, 11 px |
@@ -248,6 +248,16 @@ columns, then rows, of pixels above alpha 8.
 
 Each sheet is sliced to ONE slice size for both of its cards, so the pair
 draws at one scale. Re-measure whenever a sheet is revised.
+
+⚠️ WHERE TO CUT (2026-11-20): `assets/images/characters/instruments/
+SLICE_POINTS.json` is the source of truth for every card pair's cut (and
+every three-variant instrument and character sheet). Cut each pair at its
+single x: [0:x] and [x:W]. The midpoint cuts into the art on the electric
+guitar (cut at 749) and violin (759) sheets. Use the manifest for all of
+them, one code path. `test/games/high_low/instrument_sheets_test.dart`
+asserts no opaque pixel (alpha ≥ 128) sits on any cut or at any crop's
+edge. The drum pair's glow crosses its cut at alpha ≤ 33 down the whole
+height, which is allowed.
 
 ### Cards against audio
 

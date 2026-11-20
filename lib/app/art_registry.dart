@@ -1,5 +1,7 @@
 import 'package:flutter/widgets.dart';
 
+import '../games/high_low/models/instrument_sheets.dart';
+
 /// A piece of art: a region of an image file. A whole file is a region
 /// covering all of it, so sheets and one-file-per-asset both fit. Fields
 /// are final; not `@immutable` only so the file/cell constructors can work
@@ -46,7 +48,23 @@ class ArtRef {
 /// the state as a suffix (`.rest` / `.hit`).
 abstract final class Art {
   static const _dir = 'assets/images/journey';
-  static const _instruments = 'assets/images/characters/instruments';
+
+  /// Variant [index] of an instrument's three-variant sheet, from its
+  /// measured box (never an even split; see [InstrumentSheet]).
+  static ArtRef _variant(String sheet, int index) {
+    final s = instrumentSheets[sheet]!;
+    final (left, top, w, h) = s.boxes[index];
+    return ArtRef(
+      s.asset,
+      image: Size(s.width.toDouble(), s.height.toDouble()),
+      region: Rect.fromLTWH(
+        left.toDouble(),
+        top.toDouble(),
+        w.toDouble(),
+        h.toDouble(),
+      ),
+    );
+  }
 
   // --- Game icons -----------------------------------------------------------
   // High vs Low is the standalone tree WITHOUT Clef: after card 222 Clef is
@@ -100,18 +118,18 @@ abstract final class Art {
       region: Rect.fromLTWH(1086, 90.5, 543, 543),
     ),
 
-    // Instruments: the art the games already use, which doubles as the
-    // instrument's reward token.
-    for (final (id, file, w, h) in const [
-      ('guitar', 'Guitar1.png', 363.0, 821.0),
-      ('trumpet', 'Trumpet1.png', 531.0, 940.0),
-      ('violin', 'Violin1.png', 512.0, 678.0),
-      ('drum', 'Drum1.png', 358.0, 341.0),
-      ('flute', 'Flute1.png', 246.0, 831.0),
-      ('bell', 'Bell1.png', 392.0, 552.0),
-      ('piano', 'Piano1.png', 572.0, 456.0),
+    // Instruments: the art the games already use (the left variant of each
+    // three-variant sheet), which doubles as the instrument's reward token.
+    for (final (id, sheet) in const [
+      ('guitar', 'guitar'),
+      ('trumpet', 'trumpet'),
+      ('violin', 'violin'),
+      ('drum', 'drum'),
+      ('flute', 'flute'),
+      ('bell', 'bells'),
+      ('piano', 'piano'),
     ])
-      'instrument.$id': ArtRef.file('$_instruments/$file', Size(w, h)),
+      'instrument.$id': _variant(sheet, 0),
 
     // Set 1: mushroom, butterfly / acorn, bluebells / chipmunk, snail.
     // Set 2: frog, bluebird / pine cone, ladybird / daisy, dragonfly.

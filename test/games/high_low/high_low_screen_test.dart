@@ -17,6 +17,7 @@ import 'package:ear_trainer/models/profile.dart';
 import 'package:ear_trainer/games/high_low/models/scene_layout.dart';
 import 'package:ear_trainer/games/high_low/ordering/ordering_screen.dart';
 import 'package:ear_trainer/games/high_low/screens/high_low_screen.dart';
+import 'package:ear_trainer/games/high_low/widgets/instrument_look_image.dart';
 import 'package:ear_trainer/games/high_low/services/agency_advancement.dart';
 import 'package:ear_trainer/games/high_low/services/prompt_generator.dart';
 import 'package:ear_trainer/games/high_low/state/high_low_game_state.dart';
@@ -1091,16 +1092,16 @@ void main() {
       final state = await pumpKnownRound(tester);
       final side = state.currentPrompt!.targetSide;
       final instrument = side == 0
-          ? state.leftInstrument.leftAssetPath
-          : state.rightInstrument.rightAssetPath;
+          ? state.leftInstrument.looksFor(2)[0]
+          : state.rightInstrument.looksFor(2)[1];
       await dragSide(tester, side);
       await tester.pump(const Duration(milliseconds: 600));
 
       final order = tester.allElements.toList();
       final instrumentAt = order.indexWhere(
         (e) =>
-            e.widget is Image &&
-            ((e.widget as Image).image as AssetImage).assetName == instrument,
+            e.widget is InstrumentLookImage &&
+            (e.widget as InstrumentLookImage).look == instrument,
       );
       final celebrationAt = order.indexWhere((e) {
         final w = e.widget;
@@ -1728,14 +1729,11 @@ void main() {
 
       final target = state.currentPrompt!.targetSide;
       final targetAsset = target == 0
-          ? state.leftInstrument.leftAssetPath
-          : state.rightInstrument.rightAssetPath;
+          ? state.leftInstrument.looksFor(2)[0]
+          : state.rightInstrument.looksFor(2)[1];
       Rect targetRect() => tester.getRect(
         find.byWidgetPredicate(
-          (w) =>
-              w is Image &&
-              w.image is AssetImage &&
-              (w.image as AssetImage).assetName == targetAsset,
+          (w) => w is InstrumentLookImage && w.look == targetAsset,
         ),
       );
 
@@ -1864,14 +1862,11 @@ void main() {
 
     Rect instrumentRect(WidgetTester tester, HighLowGameState state, int side) {
       final asset = side == 0
-          ? state.leftInstrument.leftAssetPath
-          : state.rightInstrument.rightAssetPath;
+          ? state.leftInstrument.looksFor(2)[0]
+          : state.rightInstrument.looksFor(2)[1];
       return tester.getRect(
         find.byWidgetPredicate(
-          (w) =>
-              w is Image &&
-              w.image is AssetImage &&
-              (w.image as AssetImage).assetName == asset,
+          (w) => w is InstrumentLookImage && w.look == asset,
         ),
       );
     }

@@ -805,9 +805,10 @@ class _HighLowScreenState extends State<HighLowScreen> {
         // handed.
         _buildInstrumentSlot(
           side: 0,
-          // The left side wears its instrument's first look, the right its
-          // second — as the separate left/right PNGs always did — whether
-          // the look is a whole file or a slice of a sheet (the xylophone).
+          // Two positions wear the OUTER pair of the instrument's three
+          // variants — the left its left one, the right its right one; the
+          // centre is for three-instrument rounds only (Cooper, 2026-11-20;
+          // HighLowInstrument.variantsFor).
           look: _gameState.leftInstrument.looksFor(2)[0],
           instrumentName: _gameState.leftInstrument.name,
           anchorX: layout.stumpAnchorX(0),

@@ -373,7 +373,7 @@ class _LoudQuietScreenState extends State<LoudQuietScreen> {
     final lift = box * instrument.floatFraction;
     // Every side its own look where the art allows — three sides of one
     // instrument are three tellable-apart sprites (see
-    // HighLowInstrument.lookSets). Appearance only: which instruments may
+    // HighLowInstrument.looksFor). Appearance only: which instruments may
     // play a step is the ladder's room rule, never this.
     final look = HighLowInstrument.looksForRound(round.instruments)[side];
     final feet = Offset(

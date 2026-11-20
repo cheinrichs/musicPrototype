@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 
 import '../../../audio/strike_figure.dart';
+import 'instrument_sheets.dart';
 
 /// Instruments that can appear as the two characters in the High/Low game.
 ///
@@ -84,7 +85,6 @@ enum HighLowInstrument {
   // side fix instead — an FFT peak in that same early window — see
   // tool/measure_note_pitch.py's SPECTRAL_PEAK_INSTRUMENT_DIRS.
   bells(
-    'Bell',
     'bell',
     'bells',
     84,
@@ -101,13 +101,13 @@ enum HighLowInstrument {
     // halved) size.
     floatFraction: 0.12,
   ),
-  cello('Cello', 'cello', 'cello', 60, 83),
+  cello('cello', 'cello', 60, 83),
   // Flute and violin reach C7 (2026-11-14, card 148): extended from B5 so
   // the bells (C6-C7) have partners in cross-instrument rounds. Same
   // Philharmonia take as C4-B5 (1 s, mezzo-forte; violin F6, A#6, B6 and
   // C7 use the forte take, as no mezzo-forte exists). Stopped at C7, all
   // the bells need: higher flute risks being piercing on a phone.
-  flute('Flute', 'flute', 'flute', 60, 96),
+  flute('flute', 'flute', 60, 96),
   // Guitar (2026-09 audit): real pitch is one octave below its file names
   // (not two, which is what an uncorrected guess — copied from tuba's own
   // offset without measuring guitar independently — had assumed for
@@ -136,10 +136,10 @@ enum HighLowInstrument {
   // dynamic, labelled A3) that measures a clean A3 with a normal pluck
   // and no click noise — awaiting Cooper's ear, since an A3 was once
   // rejected by ear for clicking. A#4 has no other take.
-  guitar('Guitar', 'guitar', 'guitar', 48, 71, missingMidis: {70}),
-  oboe('Oboe', 'oboe', 'oboe', 60, 83),
-  piano('Piano', 'piano', 'piano', 60, 83),
-  trumpet('Trumpet', 'trumpet', 'trumpet', 60, 83),
+  guitar('guitar', 'guitar', 48, 71, missingMidis: {70}),
+  oboe('oboe', 'oboe', 60, 83),
+  piano('piano', 'piano', 60, 83),
+  trumpet('trumpet', 'trumpet', 60, 83),
   // Tuba (Trello card 55, confirmed by the 2026-09 audit): real pitch is
   // two octaves below its file names, exactly as originally sourced — the
   // one instrument the uncorrected guess above happened to get right. One
@@ -178,34 +178,24 @@ enum HighLowInstrument {
   // Tuba remains legal wherever a *cross-instrument* round (T3+, not
   // implemented yet) finds a partner via [canPairWith] — guitar's
   // [48, 71] still reaches down to cover it.
-  tuba('Tuba', 'tuba', 'tuba', 56, 59),
-  violin('Violin', 'violin', 'violin', 60, 96),
+  tuba('tuba', 'tuba', 56, 59),
+  violin('violin', 'violin', 60, 96),
 
   // ⚠️ A TRIAL INSTRUMENT: DEV PROFILE ONLY, behind the dev gate's
   // "Xylophone trial" switch (2026-11-15), so Cooper can judge its loudness
   // by ear in situ against the real instruments. Never in a child's round:
   // [inPlay] leaves it out unless [trialsEnabled]. Iowa, rosewood, F4-C8 —
   // its low end measures quieter than the rest (assets/audio/notes/
-  // xylophone/PROVENANCE.md); that is what the trial is for. Its art is
-  // Cooper's UI-Kit sheet, copied byte-for-byte and sliced in code
-  // ([lookSets]).
+  // xylophone/PROVENANCE.md); that is what the trial is for.
   //
   // 0.6 size (Cooper, on device, 2026-11-20): at full size it was 1.67x the
   // width of its stump. He asked for stumps +25% and the xylophone -25%,
   // which meet at 1.00; the bigger stumps crowd the three-note screens, so
   // this reaches 1.00 on today's stumps instead. If the stumps do grow,
   // this goes to 0.75.
-  xylophone(
-    'Xylophone',
-    'xylophone',
-    'xylophone',
-    65,
-    108,
-    displaySizeScale: 0.6,
-  );
+  xylophone('xylophone', 'xylophone', 65, 108, displaySizeScale: 0.6);
 
   const HighLowInstrument(
-    this._assetBaseName,
     this.displayName,
     this.sampleInstrument,
     this.lowestSampleMidi,
@@ -214,8 +204,6 @@ enum HighLowInstrument {
     this.displaySizeScale = 1.0,
     this.floatFraction = _defaultFloatFraction,
   });
-
-  final String _assetBaseName;
 
   /// Lowercase singular name for prompt/status copy, e.g. "Which piano
   /// played a higher note?"
@@ -303,24 +291,27 @@ enum HighLowInstrument {
       if (!missingMidis.contains(midi)) midi,
   ];
 
-  /// The ways this instrument can LOOK, as SETS of distinct looks: a round
-  /// that puts this one instrument in several positions draws each in a
-  /// different look from one set (never mixing sets — they are different
-  /// drawings). Every instrument has its pair, [leftAssetPath] /
-  /// [rightAssetPath] (two colourways); the bells also have three
-  /// handbells — brass, copper, silver (bells_x3_variants.png).
+  /// The three ways this instrument LOOKS, left to right on Cooper's
+  /// three-variant sheet (2026-11-20; [instrumentSheets]).
   ///
-  /// WHY: a ONE-instrument, THREE-note tier (High vs Low's T5/T6) put three
-  /// identical sprites on three platforms, and a child could not tell which
-  /// they had tapped. Same timbre is the point of the tier; same appearance
-  /// was a defect. Looks are appearance ONLY — they never touch the sound,
-  /// and never which tiers an instrument is eligible for.
-  List<List<InstrumentLook>> get lookSets => this == xylophone
-      ? const [_xylophones]
-      : [
-          [InstrumentLook(leftAssetPath), InstrumentLook(rightAssetPath)],
-          if (this == bells) _handbells,
-        ];
+  /// WHY several: a ONE-instrument, THREE-note tier (High vs Low's T5/T6)
+  /// put three identical sprites on three platforms, and a child could not
+  /// tell which they had tapped. Same timbre is the point of the tier; same
+  /// appearance was a defect. Looks are appearance ONLY — they never touch
+  /// the sound, and never which tiers an instrument is eligible for.
+  List<InstrumentLook> get looks => [
+    for (var i = 0; i < 3; i++) instrumentSheets[name]!.look(i),
+  ];
+
+  /// Which of the three variants a round with [count] positions of one
+  /// instrument uses, BY INDEX (Cooper, 2026-11-20: "only use the centered
+  /// instrument on the 3 sets, and the outer 2 instruments for the 2
+  /// sets"). The centre variant (1) NEVER appears in a two-instrument
+  /// round. It is the centre by POSITION, not by colour: Cooper called the
+  /// centres "the blue instruments", and on half the sheets they are not
+  /// blue.
+  static List<int> variantsFor(int count) =>
+      count >= 3 ? const [0, 1, 2] : const [0, 2];
 
   /// Whether this is a trial instrument — playable only on the dev profile,
   /// behind the dev gate. See [inPlay].
@@ -338,21 +329,17 @@ enum HighLowInstrument {
       if (!i.isTrial || trialsEnabled) i,
   ];
 
-  /// Looks for [count] positions of this instrument in one round: all
-  /// different when any set has [count] looks (the first such set, so a
-  /// two-position round keeps its familiar pair), otherwise the largest
-  /// set, repeating in order.
+  /// Looks for [count] positions of this instrument in one round, left to
+  /// right: the outer pair for two (or one), all three for three — see
+  /// [variantsFor].
   List<InstrumentLook> looksFor(int count) {
-    final sets = lookSets;
-    final set = sets.firstWhere(
-      (s) => s.length >= count,
-      orElse: () => sets.reduce((a, b) => b.length > a.length ? b : a),
-    );
-    return [for (var i = 0; i < count; i++) set[i % set.length]];
+    final all = looks;
+    final order = variantsFor(count);
+    return [for (var i = 0; i < count; i++) all[order[i % order.length]]];
   }
 
   /// Whether [count] positions of this instrument can all look different.
-  bool hasDistinctLooksFor(int count) => lookSets.any((s) => s.length >= count);
+  bool hasDistinctLooksFor(int count) => count <= 3;
 
   /// Each position's look in a round whose positions play [instruments]
   /// (left to right): every instrument's positions take its [looksFor]
@@ -374,12 +361,6 @@ enum HighLowInstrument {
         looks[i]![used.update(i, (n) => n + 1, ifAbsent: () => 0)],
     ];
   }
-
-  String get leftAssetPath =>
-      'assets/images/characters/instruments/${_assetBaseName}1.png';
-
-  String get rightAssetPath =>
-      'assets/images/characters/instruments/${_assetBaseName}2.png';
 
   /// Asset path for the sample that sounds at real MIDI [midi]. The file's
   /// name is that real pitch directly — no separate logical slot to
@@ -473,49 +454,45 @@ String _sampleFilenameForMidi(int midi) {
   return name.contains('_sharp') ? '${name}_$octave' : '$name$octave';
 }
 
-/// The three handbells, measured 2026-11-14 on bells_x3_variants.png
-/// (2172×724): one slice size for all three — centred on each bell, the
-/// whole bell inside, nothing of a neighbour — so they draw at one scale.
-/// test/games/high_low/instrument_looks_test.dart re-measures them.
-const _handbellSheet =
-    'assets/images/characters/instruments/bells_x3_variants.png';
+/// One of Cooper's three-variant instrument sheets (2026-11-20): where
+/// each variant is, from tool/measure_sheet_slices.py ([instrumentSheets]).
+///
+/// [cuts] are the manifest's column boundaries
+/// (assets/images/characters/instruments/SLICE_POINTS.json) — NEVER equal
+/// thirds, which cut through the art on most sheets. [boxes] are each
+/// variant's own tight box (alpha > 8) inside its column, as (left, top,
+/// width, height): drawn from that box, a narrow instrument fills its slot
+/// and its feet are the box's bottom.
+class InstrumentSheet {
+  final String asset;
+  final int width, height;
+  final List<int> cuts;
+  final List<(int, int, int, int)> boxes;
 
-/// Cooper's UI-Kit xylophone sheet (Xylophone.png, 1774x887): light wood
-/// and dark wood, measured 2026-11-15 (alpha > 8): 18-867 and 907-1756
-/// across, 151-757 down, with a clean 40 px gap. One slice size for both.
-const _xylophoneSheet = 'assets/images/characters/instruments/Xylophone.png';
-const _xylophones = [
-  InstrumentLook(
-    _xylophoneSheet,
-    LookRegion(
-      sheetWidth: 1774,
-      sheetHeight: 887,
-      left: 18,
-      top: 151,
-      width: 849,
-      height: 606,
-    ),
-  ),
-  InstrumentLook(
-    _xylophoneSheet,
-    LookRegion(
-      sheetWidth: 1774,
-      sheetHeight: 887,
-      left: 907,
-      top: 151,
-      width: 849,
-      height: 606,
-    ),
-  ),
-];
+  const InstrumentSheet(
+    this.asset, {
+    required this.width,
+    required this.height,
+    required this.cuts,
+    required this.boxes,
+  });
 
-const handbellCentres = [521.0, 1086.0, 1649.5];
-const handbellSlice = 460.0; // width; 712 tall, from y 3
-const _handbells = [
-  InstrumentLook(_handbellSheet, LookRegion.handbell(521.0)), // brass
-  InstrumentLook(_handbellSheet, LookRegion.handbell(1086.0)), // copper
-  InstrumentLook(_handbellSheet, LookRegion.handbell(1649.5)), // silver
-];
+  /// Variant [index] (0 left, 1 centre, 2 right).
+  InstrumentLook look(int index) {
+    final (left, top, w, h) = boxes[index];
+    return InstrumentLook(
+      asset,
+      LookRegion(
+        sheetWidth: width.toDouble(),
+        sheetHeight: height.toDouble(),
+        left: left.toDouble(),
+        top: top.toDouble(),
+        width: w.toDouble(),
+        height: h.toDouble(),
+      ),
+    );
+  }
+}
 
 /// One way an instrument looks: a whole image file, or a [region] of a
 /// sheet. Pure Dart (no dart:ui) — the curriculum generator reaches this
@@ -547,15 +524,6 @@ class LookRegion {
     required this.width,
     required this.height,
   });
-
-  /// A handbell's slice, centred on [centreX].
-  const LookRegion.handbell(double centreX)
-    : sheetWidth = 2172,
-      sheetHeight = 724,
-      left = centreX - handbellSlice / 2,
-      top = 3,
-      width = handbellSlice,
-      height = 712;
 
   @override
   bool operator ==(Object other) =>
