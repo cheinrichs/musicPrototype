@@ -108,13 +108,13 @@ void main() {
     await tester.pump();
     String text(String key) =>
         tester.widget<Text>(find.byKey(ValueKey(key))).data!;
-    expect(text('room-value'), '+6.5');
+    expect(text('room-value'), '+6');
     expect(text('room-playing'), '6/8');
     for (var n = 0; n < 3; n++) {
       await tester.tap(find.byKey(const ValueKey('room-minus')));
       await tester.pump();
     }
-    expect(text('room-value'), '+3.5');
+    expect(text('room-value'), '+3');
     expect(text('room-playing'), '5/8', reason: 'T1 needs +4');
     await tester.tap(find.byKey(const ValueKey('room-instrument')));
     await tester.pump();

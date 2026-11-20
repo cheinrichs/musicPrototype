@@ -61,3 +61,14 @@ Only the take choices above were.
 | `a5.mp3` | A5 | yes |
 | `a_sharp_5.mp3` | A♯5 | yes |
 | `b5.mp3` | B5 | yes |
+
+## Four slow starters checked, NOT trimmed (2026-11-15)
+
+`d_sharp_4`, `c5`, `c4` and `d5` were flagged as false starts (the note
+reaches -6 dB of its peak 360-600 ms in) and approved for trimming. They
+were checked first and left alone: each is the right pitch, clearly, from
+20-30 ms in (D♯4 310.6 Hz, C5 512.8 Hz, C4 259.4 Hz, D5 588.0 Hz, pitch
+clarity 0.83-1.00). The bow is playing the note from the start and then
+swells. That is a real attack, and trimming to the swell would cut away
+up to 0.6 s of the note itself. If they still feel slow, the fix is a
+different take, not a trim.

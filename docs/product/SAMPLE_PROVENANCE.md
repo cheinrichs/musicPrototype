@@ -51,6 +51,24 @@ message is not rewritten, so this file is the correction. Do not reopen it.
 - **Electric guitar:** in neither library. It needs a third source and a
   new licence question.
 
+## Lead-in trims, 2026-11-15
+
+Cooper approved cutting the dead start off the slow files (groups A and
+B of the onset audit), keeping the originals.
+
+- **Trimmed:** all 13 bells (a silent pad of 150–440 ms) and 7 guitar
+  notes (240–700 ms of low rumble before the pluck). Each file's cut is
+  recorded in its library's PROVENANCE.md or ATTRIBUTION.md.
+- **Not trimmed:** the 4 cello files in group A. They're the right note
+  from 20–30 ms in, which means a real bowed attack, not a false start.
+  See `assets/audio/notes/cello/PROVENANCE.md`.
+- **On hold (Cooper's call):** group C, the naturally slow attacks of
+  trumpet, oboe, flute, violin and cello.
+- **Originals:** byte-for-byte at `docs/audio_originals/notes/`, which
+  doesn't ship. Undo a file by copying it back.
+- **Tool:** `tool/trim_note_start.py`. Check the lead-in's pitch before
+  using it. A quiet start that is already the note is an attack.
+
 ## ⚠️ `assets/audio/notes/percussion/` (24 raw .aif files): Logic Pro, NOT our three libraries
 
 Traced 2026-11-15. Nothing has been deleted.

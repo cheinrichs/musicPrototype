@@ -60,3 +60,30 @@ Only the take choices above were.
 | `g_sharp_4.mp3` | G♯4 | yes |
 | `a4.mp3` | A4 | yes |
 | `b4.mp3` | B4 | yes |
+
+## Lead-in trimmed on 7 files, 2026-11-15 (Cooper approved; build after 137)
+
+These seven began with 240-700 ms of low rumble (energy at 10-30 Hz,
+-10 to -30 dB under the note: handling noise, close to inaudible on a
+phone speaker) before the string is plucked, so a tap seemed to do
+nothing (guitar C♯4 was Cooper's original report). The lead-in's pitch
+was checked first: none of it is the note. Cut with
+`tool/trim_note_start.py`: each file now starts 10 ms before the pluck,
+with a 5 ms fade-in, silence added at the end to keep the length, and
+the re-encode's level loss made up (within ±0.03 dB). The pluck and
+everything after it are untouched.
+
+**Untrimmed originals kept** at `docs/audio_originals/notes/guitar/`
+(not shipped). To undo a file, copy it back over this one.
+
+| File | Cut from start (ms) |
+|---|---|
+| `c3.mp3` | 275.7 |
+| `c_sharp_3.mp3` | 244.8 |
+| `d_sharp_3.mp3` | 422.5 |
+| `f3.mp3` | 425.3 |
+| `a_sharp_3.mp3` | 364.9 |
+| `c_sharp_4.mp3` | 701.6 |
+| `d4.mp3` | 246.6 |
+
+The other 16 already start within 50 ms and were not touched.

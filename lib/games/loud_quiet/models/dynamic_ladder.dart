@@ -133,7 +133,8 @@ class DynamicLadder {
   ///
   /// Tuba has none: Loud or Quiet never plays it.
   static const Map<HighLowInstrument, double> measuredHeadroomDb = {
-    HighLowInstrument.bells: 6.5, // F♯6, true peak −7.9
+    // Was 6.5 (−7.9) until the 2026-11-15 lead-in trim re-encoded it.
+    HighLowInstrument.bells: 6.0, // F♯6, true peak −7.4
     HighLowInstrument.cello: 4.5, // C5, −5.6
     HighLowInstrument.flute: 11.5, // F♯5, −11.2, trim −1.5
     HighLowInstrument.guitar: 3.0, // B3, −3.4, trim −1
