@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:ear_trainer/audio/drum_hit.dart';
 import 'package:ear_trainer/games/high_low/models/high_low_instrument.dart';
+import 'package:ear_trainer/games/high_low/models/instrument_sheets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// The drum is unpitched: a few hits, never a note library.
@@ -23,17 +24,14 @@ void main() {
     }
   });
 
-  test('the tom is INTENTIONALLY UNUSED: the file stays, no code plays it '
-      '(the snare is the confirmed match for the art, 2026-11-20)', () {
-    expect(DrumHit.values.map((h) => h.name), ['snare']);
+  test('every drum has its own art: the snare the rope-tension snare, '
+      'the tom the concert tom (2026-11-20)', () {
     expect(
-      File('assets/audio/percussion/drum/tom.mp3').existsSync(),
-      isTrue,
-      reason: 'kept in case a tom is ever drawn',
+      {for (final h in DrumHit.values) h.name: h.sheet},
+      {'snare': 'drum', 'tom': 'tomtom'},
     );
-    expect(
-      File('assets/audio/percussion/drum/PROVENANCE.md').readAsStringSync(),
-      contains('INTENTIONALLY UNUSED'),
-    );
+    for (final h in DrumHit.values) {
+      expect(instrumentSheets[h.sheet], isNotNull, reason: h.name);
+    }
   });
 }

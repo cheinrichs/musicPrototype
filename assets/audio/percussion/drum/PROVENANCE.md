@@ -24,7 +24,7 @@ NOT Creative Commons (see docs/product/SAMPLE_PROVENANCE.md).
 | File | Source file in the pack | Why |
 |---|---|---|
 | `snare.mp3` | `snare-drum__025_mezzo-forte_with-snares.mp3` | The drum art is a rope-tension snare with sticks. |
-| `tom.mp3` | `tom-toms__05_mezzo-forte_struck-singly.mp3` | ⚠️ INTENTIONALLY UNUSED (2026-11-20), see below. |
+| `tom.mp3` | `tom-toms__05_mezzo-forte_struck-singly.mp3` | The tom-tom instrument (art: `tomtom_x3.png`, 2026-11-20). |
 
 The bass drum (`bass-drum__1_mezzo-forte_bass-drum-mallet`) was tried and
 rejected: only 16% of its energy is above a phone speaker's 200 Hz
@@ -50,12 +50,18 @@ field drum. The measurement was accurate; the conclusion drawn from it
 was wrong. The search for a Philharmonia tenor or field drum, and a
 layered snare+tom test, were both cancelled.
 
-## `tom.mp3`: INTENTIONALLY UNUSED (2026-11-20)
+## `tom.mp3`: the tom-tom (2026-11-20)
+
+Pulled on 2026-11-14 as a second, lower voice for accents. For a few
+hours on 2026-11-20 it was an orphan (no art showed a tom). Cooper then
+drew one: `tomtom_x3.png`, a single concert tom on legs with chrome lugs
+and rim, no snare hardware and no sticks, deliberately unlike the
+rope-tension snare. So it is a normal documented instrument:
 
 - **Source:** Philharmonia percussion, `tom-toms__05_mezzo-forte_struck-singly.mp3`.
-- **Why it was pulled (2026-11-14):** a second, lower voice for accents.
-- **Why it is not used:** no instrument art depicts a tom, and the snare
-  is the confirmed match for the drum art.
-- **Kept** (13 KB): it may be wanted if a tom is ever drawn.
-- **Not referenced by any code:** removed from `DrumHit` the same day, so
-  nothing can play it by accident.
+- **Sound:** clearly pitched, around D4 (dominant 293 Hz); unpitched
+  percussion in the app all the same, so never in a pitch game.
+- **Art:** `tomtom_x3.png`, amber / red / dark brown.
+- **Code:** `DrumHit.tom`.
+
+The snare stays separately correct for the snare art.

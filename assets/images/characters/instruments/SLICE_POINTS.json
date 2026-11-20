@@ -209,5 +209,76 @@
   ],
   "naive_half_safe": true,
   "variants": 2
+ },
+ "instruments_v3/tomtom_x3.png": {
+  "width": 2172,
+  "slices": [
+   780,
+   1390
+  ],
+  "naive_thirds_safe": false
+ },
+ "_README_baselines": "Variant baselines (lowest opaque row) measured 2026-11-20. Most sheets agree within 12 px. TWO DO NOT: instruments_v3/tomtom_x3.png (v1 sits 140 px high) and instruments_v3/xylophone_x3.png (v1 sits 193 px high and is smaller). DO NOT place instruments by canvas position. Register each sliced variant by ITS OWN lowest opaque pixel onto the stump surface. That makes canvas drift irrelevant and protects every future sheet.",
+ "_baselines": {
+  "cello_x3": [
+   986,
+   996,
+   989
+  ],
+  "drum_x3": [
+   645,
+   637,
+   649
+  ],
+  "flute_x3": [
+   976,
+   974,
+   976
+  ],
+  "guitar_x3": [
+   722,
+   717,
+   721
+  ],
+  "oboe_x3": [
+   714,
+   718,
+   716
+  ],
+  "piano_x3": [
+   676,
+   674,
+   677
+  ],
+  "tomtom_x3": [
+   706,
+   569,
+   709
+  ],
+  "trumpet_x3": [
+   714,
+   717,
+   716
+  ],
+  "tuba_x3": [
+   714,
+   714,
+   718
+  ],
+  "violin_x3": [
+   774,
+   774,
+   775
+  ],
+  "xylophone_x3": [
+   686,
+   497,
+   690
+  ],
+  "bells_x3_variants": [
+   708,
+   705,
+   710
+  ]
  }
 }

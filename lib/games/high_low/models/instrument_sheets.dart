@@ -63,6 +63,13 @@ const instrumentSheets = <String, InstrumentSheet>{
     cuts: [885, 1282],
     boxes: [(378, 5, 444, 711), (949, 3, 264, 716), (1351, 4, 420, 714)],
   ),
+  'tomtom': InstrumentSheet(
+    'assets/images/characters/instruments/tomtom_x3.png',
+    width: 2172,
+    height: 724,
+    cuts: [780, 1390],
+    boxes: [(106, 149, 662, 560), (792, 20, 590, 551), (1398, 152, 663, 560)],
+  ),
   'tuba': InstrumentSheet(
     'assets/images/characters/instruments/tuba_x3.png',
     width: 2172,

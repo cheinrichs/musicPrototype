@@ -10,17 +10,24 @@ library;
 /// not melodies, and whether that belongs in the Matching Grove or in the
 /// rhythm game is still open between Cooper and the user.
 ///
-/// One hit: the snare, the confirmed match for the drum art (a
-/// rope-tension snare with sticks; confirmed by a musician Cooper
-/// consulted, 2026-11-20). Philharmonia percussion
-/// (assets/audio/percussion/drum/PROVENANCE.md). Nothing plays it yet.
+/// Two drums, each with its own art and its own sample (2026-11-20):
 ///
-/// The tom (tom.mp3) is INTENTIONALLY UNUSED and deliberately not listed
-/// here: no instrument art depicts a tom. Add it back only if one is drawn.
+/// - SNARE: the rope-tension snare (drum_x3.png). Its sample is the
+///   confirmed match for that art (a musician Cooper consulted).
+/// - TOM: a concert tom on legs, chrome lugs, no snare hardware
+///   (tomtom_x3.png), drawn deliberately unlike the snare. Its sample is
+///   Philharmonia's tom-tom, which had no art until Cooper drew this.
+///
+/// Philharmonia percussion (assets/audio/percussion/drum/PROVENANCE.md).
+/// Nothing plays them yet.
 enum DrumHit {
-  snare('assets/audio/percussion/drum/snare.mp3');
+  snare('assets/audio/percussion/drum/snare.mp3', 'drum'),
+  tom('assets/audio/percussion/drum/tom.mp3', 'tomtom');
 
-  const DrumHit(this.assetPath);
+  const DrumHit(this.assetPath, this.sheet);
 
   final String assetPath;
+
+  /// Its art: a key of `instrumentSheets`.
+  final String sheet;
 }
