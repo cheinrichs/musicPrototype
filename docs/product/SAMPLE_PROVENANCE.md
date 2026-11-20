@@ -109,6 +109,10 @@ real flute is very obvious so the visual disconnect was just too big, but
 many of these are probably easy to buy into the samples being a very
 similar adjacent instrument."
 
+⚠️ JUDGE THE SOUND, NOT THE NAME. The first audit ticked the drum
+because "the art is a snare and the sample is a snare"; by ear they do
+not match. A name match proves nothing.
+
 So the bar is NOT "the sample is exactly the instrument drawn". It is
 **"a child would not hear a disconnect between what they see and what
 they hear."** A plausible adjacent instrument is fine (an upright drawn,
@@ -131,12 +135,21 @@ and that is her, not the flute's art.
 | oboe | oboe | Philharmonia oboe | Yes |
 | trumpet | trumpet | Philharmonia trumpet | Yes |
 | tuba | tuba | Philharmonia tuba | Yes |
-| piano | upright piano | Iowa piano (Iowa's catalogue: a grand; our record does not say) | Yes, adjacent |
-| guitar | acoustic guitar | Philharmonia guitar (Philharmonia's is a classical, nylon-string guitar; our record does not say) | Yes, adjacent |
-| drum | rope-tension field/snare drum | Philharmonia snare drum with snares, and a tom-tom | Snare: adjacent. Tom: ⚠️ OPEN, Cooper has not heard it |
+| piano | upright piano | Iowa piano (Iowa's catalogue: a grand; our record does not say) | ⚠️ BORDERLINE: ticked on the name first. A grand is fuller and brighter than an upright's boxier tone; Cooper to listen |
+| guitar | acoustic guitar | Philharmonia guitar (Philharmonia's is a classical, nylon-string guitar; our record does not say) | ⚠️ BORDERLINE: nylon is softer and rounder than the steel-string guitar most children picture; Cooper to listen |
+| drum | rope-tension field drum, deep shell | Philharmonia snare drum with snares, and a tom-tom | ⚠️ NO, neither. First ticked on the name ("a snare is a snare"); Cooper caught it. The snare is a bright, shallow modern snare, mostly wire; the tom has the depth but no buzz and is clearly pitched (about D4). A deep field drum sits between them. Philharmonia also has a TENOR DRUM (deep, snareless, only 52% of its energy above a phone's 200 Hz). Candidates for Cooper's ear, 2026-11-20: tenor drum alone, snare+tom layered, snare+tenor layered |
 | electric guitar (cards only) | solid-body electric | NONE | ⚠️ NO. Trello 228 |
 
-The playground's own seven clips (`assets/audio/playground/`, including
-the "electric" guitar clips beside the electric guitar art) have NO
-provenance record at all. Same class of gap as the 24 percussion .aif
-files.
+## The playground's seven clips (`assets/audio/playground/`)
+
+All seven are bounces from Logic Pro 11.2.2 (each file's ID3 tag), added
+by Cooper in f9f4a05 (2026-04-19) and 0d56e2c (2026-04-27).
+
+- **The three electric guitar clips (`guitar1-3.mp3`): ORIGINAL
+  RECORDINGS, made for this app by Cooper's husband, and owned outright.**
+  The cleanest provenance in the project: no third-party licence at all.
+  Credit him by name on the credits screen if he wishes.
+- `drums.mp3`, `piano.mp3`, `trumpet.mp3`, `violin.mp3`: source not yet
+  stated. Logic Pro bounces, like the 24 percussion .aif files, so the same
+  open question applies (Apple's Logic content terms) unless they are his
+  recordings too.
