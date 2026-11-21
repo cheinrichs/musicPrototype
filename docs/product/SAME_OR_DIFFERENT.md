@@ -289,6 +289,20 @@ card sets yet; this is the rule for when it is built.)
 `cards_electricguitar_pair.png` the electric (Karoryfer Emilyguitar). Two
 distinct instruments: never variants of "guitar", never mixed in a trial.
 
+**Outside the Grove, cross-pairing is allowed (Cooper, 2026-11-21):** "let's
+try allowing pitting electric guitar against acoustic, in every game except
+the matching grove … same with the two types of drums." The Grove rule
+above is unchanged. Where it stands in code:
+- **High vs Low:** the two guitars already pair in its two-instrument
+  levels (T3, T4, T7, T8), because every instrument is its own entry. The
+  drums can never reach it: they are not pitched instruments, and a snare
+  against a tom has no "higher". That exclusion is structural (see
+  `lib/audio/drum_hit.dart`).
+- **Loud or Quiet:** every round is one instrument on every side (card
+  220), so neither pair can occur. Allowing them would be its first
+  cross-instrument round: awaiting Cooper.
+- **Bright & Dark:** not built (card 232).
+
 ⚠️ **The electric guitar's two cards are two different MODELS** (a red
 Strat and a blue Les Paul), not one guitar in two finishes like every
 other pair. The spec wants a non-matching pair to be "the same instrument

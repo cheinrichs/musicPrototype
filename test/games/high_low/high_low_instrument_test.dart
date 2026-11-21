@@ -128,6 +128,21 @@ void main() {
       }
     });
 
+    test('the two guitars may pair (Cooper, 2026-11-21: allowed everywhere '
+        'but the Matching Grove); no drum is a pitched instrument, so snare '
+        'against tom can never reach High vs Low', () {
+      expect(
+        HighLowInstrument.guitar.canPairWith(
+          HighLowInstrument.electricGuitar,
+          minSemitones: 7,
+        ),
+        isTrue,
+      );
+      for (final i in HighLowInstrument.values) {
+        expect(i.name, isNot(anyOf('drum', 'tomtom', 'snare', 'tom')));
+      }
+    });
+
     test('hasRangeFor reflects each instrument\'s real span — tuba\'s '
         'post-speaker-audibility G#3-B3 (3 semitones) is narrower than '
         'every one of the eight ConceptTiers now (the narrowest floor is '

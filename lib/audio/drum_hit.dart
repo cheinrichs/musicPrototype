@@ -18,6 +18,11 @@ library;
 ///   (tomtom_x3.png), drawn deliberately unlike the snare. Its sample is
 ///   Philharmonia's tom-tom, which had no art until Cooper drew this.
 ///
+/// Snare against tom (Cooper, 2026-11-21): allowed in every game except the
+/// Matching Grove, but NEVER in High vs Low. The snare is unpitched noise
+/// and the tom sits near D4, so "which is higher" is not a question. Kept
+/// out by construction: neither is a `HighLowInstrument`.
+///
 /// Philharmonia percussion (assets/audio/percussion/drum/PROVENANCE.md).
 /// Nothing plays them yet.
 enum DrumHit {
