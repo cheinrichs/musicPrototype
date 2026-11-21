@@ -41,6 +41,26 @@ void main() {
         height: l.instrumentSize,
       );
 
+      test('A0: Clef stands on the bottom platform, as large as fits — her '
+          'arm short of the right inset, her head under the top bar '
+          '(card 222)', () {
+        final l = two();
+        expect(l.observeClefPerch, l.platform(2));
+        final b = l.observeClefBounds(pulse: SceneLayout.maxCharacterGrowth);
+        expect(b.right, lessThanOrEqualTo(size.width - insets.right + 0.01));
+        expect(
+          b.top,
+          greaterThanOrEqualTo(insets.top + SceneLayout.topBarClearance - 0.01),
+        );
+        expect(b.bottom, closeTo(l.observeClefPerch.dy, 0.01));
+        // Limited by one of the two, never by an arbitrary multiplier.
+        expect(
+          (b.right - (size.width - insets.right)).abs() < 0.5 ||
+              (b.top - insets.top - SceneLayout.topBarClearance).abs() < 0.5,
+          isTrue,
+        );
+      });
+
       test('the tree is full screen height with a quarter of its width off '
           'the right edge (Trello card 187 — smaller was tested and does '
           'not work: the platforms become too small to hit)', () {

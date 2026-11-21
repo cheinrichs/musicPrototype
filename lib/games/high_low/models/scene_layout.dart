@@ -175,6 +175,72 @@ class SceneLayout {
         )
       : platform(1);
 
+  // ---- A0 (Observe): a big Clef on the bottom platform ----
+  //
+  // Cooper (Trello card 222): at Observe nothing is draggable, so the
+  // tree's platforms are an affordance not on offer. Clef stands on the
+  // BOTTOM platform and is herself what stops them reading as places to put
+  // something. 2026-11-20: the criterion is an OUTCOME, not a multiplier —
+  // she should be big enough that the platforms MOSTLY disappear behind her
+  // ("or at least mostly block"), judged by eye on a device. So she is as
+  // large as the screen allows. Piper stays where she is, unmirrored.
+  //
+  // WHAT LIMITS HER (and it is not the screen's height): the tree is pushed
+  // right with a quarter of it off-screen, so the bottom platform sits near
+  // the RIGHT edge (x = 777 of 874 on an iPhone 17), and she grows sideways
+  // as well as up. So the limit is how far her arm reaches right before the
+  // right inset — which, since Trello 226, is the Dynamic Island's 62 pt
+  // only when the island is on that side, and a corner margin otherwise —
+  // and, secondly, the top bar above her head.
+
+  /// Where Clef's feet go at A0: the bottom platform.
+  Offset get observeClefPerch => platform(platformCentres.length - 1);
+
+  /// Room kept clear at the top for the game's top bar (close, progress,
+  /// caption, skip), measured off the renders.
+  static const double topBarClearance = 56;
+
+  /// How far her speaking pose — the only pose A0 shows — reaches right of
+  /// her feet and up from them, per unit of her height.
+  static ({double right, double up}) get _clefSpeakingReach {
+    final art = CharacterArt.clef;
+    final box = art.mouthFrames
+        .map((i) => i.box)
+        .reduce((a, b) => a.expandToInclude(b));
+    final h = art.frameSize.height;
+    return (
+      right: (box.right - art.frameSize.width / 2) / h,
+      up: (h - box.top) / h,
+    );
+  }
+
+  /// Clef's height at A0: as large as fits, at the peak of
+  /// [maxCharacterGrowth] — her arm short of the right inset, her head
+  /// short of the top bar.
+  double get observeClefHeight {
+    final grown = 1 + maxCharacterGrowth;
+    final reach = _clefSpeakingReach;
+    final right = screen.width - insets.right - observeClefPerch.dx;
+    final up = observeClefPerch.dy - insets.top - topBarClearance;
+    return math.min(right / reach.right, up / reach.up) / grown;
+  }
+
+  /// [observeClefHeight] as a multiple of her usual tree size.
+  double get observeClefScale => observeClefHeight / characterHeight;
+
+  /// Everywhere A0's Clef can be drawn, speaking, at the peak of [pulse].
+  Rect observeClefBounds({double pulse = 0}) {
+    final reach = _clefSpeakingReach;
+    final h = observeClefHeight * (1 + pulse);
+    final feet = observeClefPerch;
+    return Rect.fromLTRB(
+      feet.dx - reach.right * h,
+      feet.dy - reach.up * h,
+      feet.dx + reach.right * h,
+      feet.dy,
+    );
+  }
+
   /// The most a character's drawn box ever grows past its resting size: the
   /// celebration pose's scale-up (8%), which is more than the speaking
   /// pulse's.

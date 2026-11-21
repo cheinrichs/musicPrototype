@@ -1046,8 +1046,12 @@ class _HighLowScreenState extends State<HighLowScreen> {
     required String? speakingLineName,
     required int speakingGeneration,
   }) {
-    final height = layout.characterHeight;
-    final feet = layout.clefPerch;
+    // A0: big, on the bottom platform (card 222; see SceneLayout).
+    final observe = _gameState.agencyStage == AgencyStage.observe;
+    final height = observe
+        ? layout.observeClefHeight
+        : layout.characterHeight;
+    final feet = observe ? layout.observeClefPerch : layout.clefPerch;
     final boxWidth = height * 2;
     return Positioned(
       left: feet.dx - boxWidth / 2,

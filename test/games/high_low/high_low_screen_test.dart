@@ -514,7 +514,7 @@ void main() {
       await tester.pump(Duration.zero);
     }
 
-    for (final chip in ['A0 · Observe', 'A1 · Explore', 'A2 · Decide']) {
+    for (final chip in ['A1 · Explore', 'A2 · Decide']) {
       testWidgets(
         '$chip: Clef is up the tree on the right; Piper stands on the ground '
         'at the left, clearly bigger (Trello card 187: Piper left, '
@@ -537,6 +537,18 @@ void main() {
         },
       );
     }
+
+    testWidgets('A0 · Observe: Clef stands BIG on the bottom platform, so the '
+        'platforms mostly disappear behind her (card 222) — bigger than her '
+        'tree size elsewhere, her feet on the bottom platform', (tester) async {
+      await startAt(tester, 'A1 · Explore');
+      final usual = frameRect(tester, 'clef-mouth-0');
+      await startAt(tester, 'A0 · Observe');
+      final big = frameRect(tester, 'clef-mouth-0');
+      expect(big.height, greaterThan(usual.height * 2.5));
+      final layout = SceneLayout(roomyViewport, noteCount: 2);
+      expect(big.bottom, closeTo(layout.platform(2).dy, 1));
+    });
 
     testWidgets(
       'A0 · Observe and A1 · Explore show NO tree slot — nothing can be '
