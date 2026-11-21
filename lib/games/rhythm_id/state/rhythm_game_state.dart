@@ -93,7 +93,8 @@ class RhythmGameState extends ChangeNotifier {
     _safeNotify();
   }
 
-  // Uses Note.c5 as beat — swap for woodblock once .aif files are converted to .mp3/.wav
+  // Uses Note.c5 as the beat. The 24 Logic one-shots once meant for this were
+  // archived 2026-11-21 (docs/product/SAMPLE_PROVENANCE.md).
   Future<void> _playPattern(RhythmPattern pattern) async {
     final start = DateTime.now().millisecondsSinceEpoch;
     for (final offset in pattern.beatOffsets) {

@@ -133,10 +133,10 @@ Two skills have no game yet:
 miniaudio supports: **MP3, WAV, FLAC, Ogg Vorbis**. It does NOT support AIFF.
 
 **Critical lesson**: `.aif` files will load without error but play as loud buzzing
-noise (raw bytes interpreted as PCM). The app has 24 `.aif` percussion samples in
-`assets/audio/notes/percussion/` that need to be converted to `.mp3` or `.wav`
-before use. The rhythm game currently uses `Note.c5` as a placeholder beat sound
-for this reason.
+noise (raw bytes interpreted as PCM). The 24 `.aif` percussion one-shots once in
+`assets/audio/notes/percussion/` were never converted and were archived on
+2026-11-21 (docs/product/SAMPLE_PROVENANCE.md). The rhythm game uses `Note.c5` as
+a placeholder beat sound.
 
 ### Key Audio Methods
 - `playNote(Note)` — plays from note cache, concurrent (no stopping)
@@ -237,7 +237,6 @@ lib/
   ui/            — reusable components, theme, home/path/playground screens
 assets/
   audio/notes/          — 24 chromatic note samples (mp3)
-  audio/notes/percussion/ — 24 percussion samples (aif — needs conversion)
   audio/sfx/            — correct, incorrect, tap, reward, streak sounds
   audio/playground/     — instrument melody clips (mp3)
 ```

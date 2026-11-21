@@ -76,9 +76,30 @@ B of the onset audit), keeping the originals.
 - **Tool:** `tool/trim_note_start.py`. Check the lead-in's pitch before
   using it. A quiet start that is already the note is an attack.
 
-## ⚠️ `assets/audio/notes/percussion/` (24 raw .aif files): Logic Pro, NOT our three libraries
+## 🗄️ ARCHIVED 2026-11-21: the 24 Logic percussion one-shots (`assets/audio/notes/percussion/`)
 
-Traced 2026-11-15. Nothing has been deleted.
+**Removed from the app's assets on 2026-11-21. They are no longer in the
+tree or the bundle; they remain in git history.**
+
+- **What they were:** 24 single hits, 16-bit 44.1 kHz stereo AIFF, 0.55 s
+  each, 2,357,452 bytes (2.3 MB) in all: `agogohigh agogolow bongohigh
+  bongolow cabasa cajonbass cajonsnare castanets claves congabrighthigh
+  congabrightlow cowbelldry jamblockhigh jamblocklow sleighbellsvintage
+  snaps stomps tambourinevintage timbalehigh timbalelow timbalemid
+  triangle woodblockhigh woodblocklow`.
+- **Who added them, and when:** Cooper's husband, early in the project,
+  from Logic Pro; committed in ffed98e (2026-04-27).
+- **Why dropped (Cooper, 2026-11-21):** they were tried and "it didn't work
+  out", so they were never used. Nothing ever played them (the AIFF format
+  doesn't even decode in our audio engine; see DESIGN.md).
+- **Licence:** settled by removal. Nothing is redistributed, so Logic's
+  content terms no longer apply to the app.
+- **To recover:** the last commit that contains them is **ef6c7d6**
+  (`git checkout ef6c7d6 -- assets/audio/notes/percussion/`). The folder
+  also held a `PROVENANCE.md`, which is folded into this section; the
+  history below is kept as the record.
+
+Traced 2026-11-15 (the original investigation):
 
 - **How they arrived:** commit ffed98e, 2026-04-27, authored by Cooper
   (with Claude Sonnet 4.6), "Add percussion assets, roadmap…, for future
@@ -108,6 +129,8 @@ Traced 2026-11-15. Nothing has been deleted.
   and bounced (24 instruments, one identical length, one 109 BPM project),
   not original recordings; to confirm with Cooper. Marked INTENTIONALLY
   UNUSED in the folder's own `PROVENANCE.md`. Not deleted.
+- **2026-11-21:** Cooper confirmed his husband added them from Logic and
+  they were abandoned. Archived (above).
 
 ## ⚠️ THE RULE FOR EVERY SAMPLE IN THE REPOSITORY (2026-11-20)
 
