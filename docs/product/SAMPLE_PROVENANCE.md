@@ -64,6 +64,13 @@ B of the onset audit), keeping the originals.
   See `assets/audio/notes/cello/PROVENANCE.md`.
 - **On hold (Cooper's call):** group C, the naturally slow attacks of
   trumpet, oboe, flute, violin and cello.
+- **Xylophone onsets aligned, 2026-11-20 (for chords):** 18-79 ms of
+  lead-in silence cut from all 44 files so every strike starts together;
+  see `assets/audio/notes/xylophone/PROVENANCE.md`. Measured after the
+  trims, every library's notes start within 20 ms of each other except
+  the trumpet (50-270 ms, group C, on hold). The flute's spread is its
+  slow ATTACK, not its start (first sound within 10 ms on all 37), and is
+  the instrument, not a defect.
 - **Originals:** byte-for-byte at `docs/audio_originals/notes/`, which
   doesn't ship. Undo a file by copying it back.
 - **Tool:** `tool/trim_note_start.py`. Check the lead-in's pitch before

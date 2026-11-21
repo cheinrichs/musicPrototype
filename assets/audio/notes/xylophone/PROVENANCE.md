@@ -133,3 +133,65 @@ The source offers no soft (yarn) mallet: only rosewood (the one we use,
 mezzo-forte) and hard rubber. So "soften the xylophone's strike by taking
 a softer-mallet take" is CLOSED: no such take exists in Iowa's set. Do
 not re-investigate it. A softer strike would need a different source.
+
+## Onsets aligned, 2026-11-20 (for chords)
+
+Building a chord from single notes needs every note to START together:
+simultaneity breaks down around 20-30 ms, and the xylophone's files began
+their strike anywhere from 20 to 70 ms in, so a xylophone chord would
+audibly flam. Each file's lead-in silence was cut with
+`tool/trim_note_start.py`: every file now starts 10 ms before its mallet
+strike, with a 5 ms fade-in, silence added at the end to keep the length,
+and the level made up to the original's (within ±0.5 dB). ONSETS were
+aligned, not peaks: only silence before the strike was cut, never the
+strike. Measured after: all 44 reach the note at the same 20 ms block.
+
+**Untrimmed originals kept** at `docs/audio_originals/notes/xylophone/`
+(not shipped). To undo a file, copy it back over this one.
+
+| File | Cut from start (ms) |
+|---|---|
+| `a4.mp3` | 45.6 |
+| `a5.mp3` | 41.6 |
+| `a6.mp3` | 56.0 |
+| `a7.mp3` | 61.6 |
+| `a_sharp_4.mp3` | 37.8 |
+| `a_sharp_5.mp3` | 39.5 |
+| `a_sharp_6.mp3` | 59.6 |
+| `a_sharp_7.mp3` | 44.0 |
+| `b4.mp3` | 74.8 |
+| `b5.mp3` | 61.2 |
+| `b6.mp3` | 41.2 |
+| `b7.mp3` | 39.7 |
+| `c5.mp3` | 47.8 |
+| `c6.mp3` | 39.9 |
+| `c7.mp3` | 37.0 |
+| `c8.mp3` | 50.5 |
+| `c_sharp_5.mp3` | 49.9 |
+| `c_sharp_6.mp3` | 79.2 |
+| `c_sharp_7.mp3` | 43.9 |
+| `d5.mp3` | 76.3 |
+| `d6.mp3` | 39.2 |
+| `d7.mp3` | 39.4 |
+| `d_sharp_5.mp3` | 47.3 |
+| `d_sharp_6.mp3` | 67.2 |
+| `d_sharp_7.mp3` | 43.2 |
+| `e5.mp3` | 46.6 |
+| `e6.mp3` | 44.4 |
+| `e7.mp3` | 61.5 |
+| `f4.mp3` | 57.9 |
+| `f5.mp3` | 22.7 |
+| `f6.mp3` | 78.2 |
+| `f7.mp3` | 38.0 |
+| `f_sharp_4.mp3` | 46.0 |
+| `f_sharp_5.mp3` | 43.1 |
+| `f_sharp_6.mp3` | 36.5 |
+| `f_sharp_7.mp3` | 42.4 |
+| `g4.mp3` | 39.4 |
+| `g5.mp3` | 64.5 |
+| `g6.mp3` | 41.1 |
+| `g7.mp3` | 45.4 |
+| `g_sharp_4.mp3` | 22.8 |
+| `g_sharp_5.mp3` | 17.8 |
+| `g_sharp_6.mp3` | 51.2 |
+| `g_sharp_7.mp3` | 38.0 |

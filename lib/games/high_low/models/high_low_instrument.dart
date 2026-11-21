@@ -274,7 +274,7 @@ enum HighLowInstrument {
     HighLowInstrument.trumpet: Duration(milliseconds: 1390),
     HighLowInstrument.tuba: Duration(milliseconds: 860),
     HighLowInstrument.violin: Duration(milliseconds: 720),
-    HighLowInstrument.xylophone: Duration(milliseconds: 115),
+    HighLowInstrument.xylophone: Duration(milliseconds: 110),
   };
 
   /// How many times a round's introduction plays this instrument's note: the
