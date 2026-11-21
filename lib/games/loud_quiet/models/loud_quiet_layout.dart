@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/painting.dart';
 import 'loud_quiet_round.dart';
 import '../../high_low/widgets/character_art.dart';
+import '../../high_low/models/scene_layout.dart';
 
 /// Where everything in the Loud or Quiet scene sits (Trello card 162), as
 /// pure geometry so it can be tested at real phone sizes.
@@ -304,14 +305,20 @@ class LoudQuietLayout {
 
   double get piperFeetY => screen.height + piperHeight * 0.05;
 
+  /// Her widest pose touches the true screen edge, NOT inset by the safe
+  /// area: a decorative character may bleed to the edge, interactive chrome
+  /// may not. See SceneLayout.piperLeftInset (Cooper, 2026-11-21).
   double get piperLeftInset {
     final frame = _spriteWidth(CharacterArt.piper, piperHeight);
     final widest = _widestPose(CharacterArt.piper, piperHeight);
-    return insets.left + _margin + (widest - frame) / 2;
+    return (widest * (1 + SceneLayout.maxCharacterGrowth) - frame) / 2;
   }
 
   double get piperRight =>
-      insets.left + _margin + _widestPose(CharacterArt.piper, piperHeight);
+      piperLeftInset +
+      (_spriteWidth(CharacterArt.piper, piperHeight) +
+              _widestPose(CharacterArt.piper, piperHeight)) /
+          2;
 
   Rect piperBounds({double pulse = 0}) {
     final frame = _spriteWidth(CharacterArt.piper, piperHeight);

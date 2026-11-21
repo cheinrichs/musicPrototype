@@ -124,12 +124,13 @@ void main() {
         });
 
         test(
-          'Piper stands at the left edge, inside the safe area, between half '
+          'Piper stands at the TRUE left edge (not the safe area: Cooper, '
+          '2026-11-21), between half '
           'and three-quarters of the height, cropped at the ankles at most',
           () {
             final layout = l();
             final piper = layout.piperBounds(pulse: grow);
-            expect(piper.left, greaterThanOrEqualTo(insets.left - 0.5));
+            expect(piper.left, closeTo(0, 1e-6));
             expect(
               layout.piperHeight,
               greaterThanOrEqualTo(size.height * LoudQuietLayout.piperShare),

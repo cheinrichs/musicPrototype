@@ -311,14 +311,26 @@ class SceneLayout {
   /// cut off her feet at most").
   double get piperFeetY => screen.height + piperHeight * 0.05;
 
-  /// Piper's `Positioned.left`: the device's own inset plus a margin, measured
-  /// to her *widest* pose — her celebration and thinking art is wider than her
-  /// mouth frames and drawn centred on them, so it reaches left of the
-  /// sprite's own box.
+  /// Piper's `Positioned.left`: her WIDEST pose touches the true screen
+  /// edge (Cooper, on device, 2026-11-21: "Piper could be moved farther to
+  /// the left and also made not to move with the buffer"). Her celebration
+  /// and thinking art is wider than her mouth frames and drawn centred on
+  /// them, so the frame sits in by half the difference; and she is placed
+  /// for her largest, at the peak of [maxCharacterGrowth] (she grows about
+  /// her feet), so the edge touches her and never crops her.
+  ///
+  /// ⚠️ DELIBERATELY NOT INSET BY THE SAFE AREA, AND NO MARGIN. Piper is a
+  /// DECORATIVE character: she may bleed to the edge, and the Dynamic Island
+  /// may cover part of her when it is on her side (Cooper accepted the same
+  /// for Clef's hand at A0, 2026-11-21). INTERACTIVE CHROME is the opposite:
+  /// the rail, buttons and anything a child must tap respect the safe area
+  /// (card 226, `lib/app/cutout_insets.dart`). Both are right. A later sweep
+  /// must not "fix" Piper back inside the inset. (Her height is unchanged:
+  /// [piperHeight] still budgets her room from the inset.)
   double get piperLeftInset {
     final frame = spriteWidth(CharacterArt.piper, piperHeight);
     final widest = _widestPose(CharacterArt.piper, piperHeight);
-    return insets.left + _margin + (widest - frame) / 2;
+    return (widest * (1 + maxCharacterGrowth) - frame) / 2;
   }
 
   /// The right edge of Piper at her widest pose. Her celebration and thinking

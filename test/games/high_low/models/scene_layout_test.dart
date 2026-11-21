@@ -164,12 +164,15 @@ void main() {
         }
       });
 
-      test('Piper stands at the LEFT edge, inside the safe area, at a '
+      test('Piper stands at the TRUE left edge, not inset by the safe area '
+          '(Cooper, 2026-11-21: a decorative character may bleed to the '
+          'edge; interactive chrome may not), at a '
           'clearly larger scale than Clef, with only a sliver of her own '
           'height (ankles at most) below the frame', () {
         final l = two();
         final piper = l.piperBounds(pulse: grow);
-        expect(piper.left, greaterThanOrEqualTo(insets.left));
+        // At her largest she just touches the edge: never cropped.
+        expect(piper.left, closeTo(0, 1e-6));
         expect(piper.right, lessThan(size.width * 0.35));
         expect(l.piperHeight, greaterThan(l.characterHeight * 1.5));
         expect(l.piperFeetY, greaterThan(size.height));

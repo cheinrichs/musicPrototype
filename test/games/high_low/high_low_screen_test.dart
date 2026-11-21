@@ -1215,10 +1215,10 @@ void main() {
       expect(find.byKey(const ValueKey('clef-mouth-0')), findsOneWidget);
     });
 
-    testWidgets('on a notched phone Piper never crosses the safe area, and '
-        'Clef never runs off the screen — Clef\'s right hand used to', (
-      tester,
-    ) async {
+    testWidgets('on a notched phone Piper stands at the TRUE left edge, not '
+        'inset by the safe area (Cooper, 2026-11-21: decorative, she may '
+        'bleed; the island may cover part of her), and Clef never runs off '
+        'the screen — Clef\'s right hand used to', (tester) async {
       tester.view.physicalSize = roomyViewport;
       tester.view.devicePixelRatio = 1.0;
       addTearDown(() {
@@ -1243,8 +1243,8 @@ void main() {
       await tester.pump(Duration.zero);
 
       final piper = tester.getRect(find.byKey(const ValueKey('piper-mouth-0')));
-      expect(piper.left, greaterThanOrEqualTo(47 - 0.5));
-      expect(piper.right, lessThanOrEqualTo(roomyViewport.width - 47 + 0.5));
+      expect(piper.left, greaterThanOrEqualTo(0));
+      expect(piper.left, lessThan(47), reason: 'not held inside the inset');
       // Clef is held only to the SCREEN, not the inset: at A0 she is one
       // size in both orientations and may reach into the band where the
       // Dynamic Island sits on one side (Cooper, 2026-11-20). Never past

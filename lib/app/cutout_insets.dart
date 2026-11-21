@@ -24,6 +24,13 @@ enum InterfaceOrientation { unknown, portrait, landscapeLeft, landscapeRight }
 ///
 /// ⚠️ When the orientation is unknown (launching, or not iOS), the
 /// symmetric inset is kept. A wrong guess looks worse than the old buffer.
+///
+/// ⚠️ WHO RESPECTS THE INSET (Cooper, 2026-11-21). INTERACTIVE CHROME does:
+/// the rail, buttons, anything a child must read or tap. DECORATIVE
+/// CHARACTERS do not, and may bleed under the island: Piper stands at the
+/// true left edge (`SceneLayout.piperLeftInset`, `LoudQuietLayout`), and
+/// A0's big Clef is held only to the screen (`SceneLayout.observeClefHeight`).
+/// Both are deliberate. A sweep must not move them back inside the inset.
 class CutoutInsets {
   CutoutInsets._();
 
