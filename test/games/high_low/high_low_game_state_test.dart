@@ -46,7 +46,7 @@ void main() {
     }
     for (final pole in ['higher', 'lower']) {
       expect(
-        'Keep tapping the $pole one.'.length,
+        'Listen for the $pole one.'.length,
         lessThanOrEqualTo(HighLowCaption.maxLength),
       );
     }
@@ -863,7 +863,12 @@ void main() {
 
         await tester.pump(const Duration(seconds: 6));
         expect(state.secondaryCaptionText, isNotNull);
-        expect(state.secondaryCaptionText, contains('Keep tapping'));
+        expect(state.secondaryCaptionText, contains('Listen for the'));
+        expect(
+          state.secondaryCaptionText,
+          isNot(contains('tap')),
+          reason: 'names no gesture: the bubble replaces tapping (card 231)',
+        );
       },
     );
   });

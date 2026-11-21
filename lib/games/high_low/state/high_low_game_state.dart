@@ -562,9 +562,12 @@ class HighLowGameState extends ChangeNotifier {
     }
     final prompt = currentPrompt;
     if (prompt == null) return null;
+    // Names no gesture: true while Explore is answered by tapping, and
+    // still true once card 231's bubble replaces the taps. "Keep tapping"
+    // would instruct a mechanic that is going away.
     return prompt.targetDirection == PitchDirection.higher
-        ? 'Keep tapping the higher one.'
-        : 'Keep tapping the lower one.';
+        ? 'Listen for the higher one.'
+        : 'Listen for the lower one.';
   }
 
   /// Whether the child can drag an instrument onto the tree slot right now.

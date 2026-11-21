@@ -244,7 +244,8 @@ class LoudQuietGameState extends ChangeNotifier {
         _status != GameStatus.awaitingInput) {
       return null;
     }
-    return 'Keep tapping the ${asksLoud ? 'loud' : 'quiet'} one.';
+    // Names no gesture: true for tapping now and for card 231's bubble.
+    return 'Listen for the ${asksLoud ? 'loud' : 'quiet'} one.';
   }
 
   // ---- the session ----

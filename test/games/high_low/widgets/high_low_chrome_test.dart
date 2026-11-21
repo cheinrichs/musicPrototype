@@ -252,7 +252,7 @@ void main() {
         at(find.byTooltip('Skip')),
       ];
       final captionBefore = at(find.byType(HighLowCaption));
-      await tester.pumpWidget(header(guidance: 'Keep tapping the higher one.'));
+      await tester.pumpWidget(header(guidance: 'Listen for the higher one.'));
       await tester.pump(AppAnimations.medium);
       expect([
         at(find.byTooltip('Close')),

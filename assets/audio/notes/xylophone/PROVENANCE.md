@@ -126,3 +126,10 @@ first. Speaker audibility: 98.7% of the energy is above 200 Hz on average
 | `a_sharp_7.mp3` | A♯7 | +14 c | -20.5 |
 | `b7.mp3` | B7 | +17 c | -19.4 |
 | `c8.mp3` | C8 | +19 c | -19.4 |
+
+## Softening the strike: there is nothing to swap to (2026-11-20)
+
+The source offers no soft (yarn) mallet: only rosewood (the one we use,
+mezzo-forte) and hard rubber. So "soften the xylophone's strike by taking
+a softer-mallet take" is CLOSED: no such take exists in Iowa's set. Do
+not re-investigate it. A softer strike would need a different source.

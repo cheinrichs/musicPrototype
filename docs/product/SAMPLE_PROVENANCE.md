@@ -97,6 +97,10 @@ Traced 2026-11-15. Nothing has been deleted.
   own compositions. Whether loose one-shot samples shipped inside an app
   count as that, or as redistributing the samples themselves, should be
   checked against the licence text. **Cooper's call; not decided here.**
+- **2026-11-20:** almost certainly Logic's own stock percussion, triggered
+  and bounced (24 instruments, one identical length, one 109 BPM project),
+  not original recordings; to confirm with Cooper. Marked INTENTIONALLY
+  UNUSED in the folder's own `PROVENANCE.md`. Not deleted.
 
 ## ⚠️ THE RULE FOR EVERY SAMPLE IN THE REPOSITORY (2026-11-20)
 

@@ -126,7 +126,7 @@ none of these match it. They stay as files until the recording pass decides.
 ## Captions — not voice lines, do not record
 
 On-screen text for the watching adult: `captionText` and `secondaryCaptionText` in
-`HighLowGameState` and `LoudQuietGameState`. ⚠️ The Explore secondary captions still teach
-the retired tapping mechanic: "Keep tapping the higher one." / "Keep tapping the lower one."
-(High vs Low) and "Keep tapping the loud one." / "…quiet one." (Loud or Quiet). They change
-with card 231's build, not with the recording.
+`HighLowGameState`, `captionText` and `guidanceText` in `LoudQuietGameState`. The Explore
+guidance that said "Keep tapping the higher one" (and the loud/quiet equivalent) was changed
+on 2026-11-20 to "Listen for the higher one." / "Listen for the loud one.": it names no
+gesture, so it is true for today's tapping and for card 231's bubble alike.
