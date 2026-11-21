@@ -1,339 +1,132 @@
-# Voice lines — living reference
+# Voice lines — implementation status
 
-Every spoken line in the app, in one place: what is recorded, what is wired into a
-round, what is still to record, and the rules that govern all of it. Sits alongside
-[`HIGH_LOW_TIERS.md`](HIGH_LOW_TIERS.md) and [`CHARACTER_VOICES.md`](CHARACTER_VOICES.md).
+**The wording lives in the Google Doc, not here:**
+[SongStone — Voice Lines (authoring copy)](https://docs.google.com/document/d/1TFaYuu4gTD9aDDd0QxO_9OTWkRIU1TID1jSoeTc95fY/edit).
+Edit wording there. The rules (control of error, talk in the gaps, name the position,
+Clef a fifth above Piper, and the rest) live there too.
 
-Update this file in the same commit as any line that is added, changed, wired, unwired or
-retired.
+This file tracks only what the build has: which lines are **recorded**, which are **wired**
+(a live round plays them), and **which asset** each maps to. Keeping the two jobs apart is
+deliberate: the skill-tree spreadsheet drifted out of sync because one document tried to be
+both the design and the build record.
 
-**Source of truth, in order:**
+- **Mechanic:** Trello card 231. At A1 Explore, in both games, repeated tapping is retired:
+  the child **pops a bubble to commit**.
+- **⚠️ NO AUDIO IS BEING GENERATED.** Trello card 210 stands: whether a human voice actor
+  replaces the provisional voices is open, and the inventory is large enough that nobody
+  wants to record it twice. Nothing below is wired until that is settled.
 
-1. `lib/audio/voice_line.dart` — the `VoiceLine` enum. What the code can play.
-2. `assets/audio/voice/` — the recorded `.mp3` files, one per enum member.
-3. `tool/build_voice_lines.py` — `UPLOAD_TO_VOICE_LINE`. The wording of record: each
-   recording's source filename transcribes the line Cooper delivered, and this map ties it
-   to its enum member.
+**Where the build's lines live:** `lib/audio/voice_line.dart` (`VoiceLine`, game lines),
+`lib/audio/shared_voice_line.dart` (`SharedVoiceLine`, lines any game uses),
+`assets/audio/voice/<enum name>.mp3` (one file per enum member), and
+`tool/build_voice_lines.py` (which source recording became which file).
 
-Wording below was checked against (3). The audio itself has not been auditioned against
-the text as part of this doc. Wired/unwired status was checked against the call sites in
-`lib/games/high_low/state/high_low_game_state.dart`.
+Update this file in the same commit as any line that is recorded, wired, unwired or retired.
 
-**Captions are not voice lines.** They are separate strings with a different audience and
-live in their own section at the end. Never record a caption.
-
----
-
-## The rules that govern all of it
-
-These are design rules. They are not checked by any code or test.
-
-- **One voice across every age band.** Tone does not ladder; only vocabulary does. The
-  reference is Bluey's Bandit — he talks to a six-year-old and a four-year-old completely
-  differently but is plainly the same person, and never talks down to the younger one.
-- **Describe the answer, never judge the attempt.** "That's the low one", "Ooh, nearly!" —
-  never "nope", "wrong one", "that's a no".
-- **Clef's voice must be audibly higher than Piper's.** In the delivered set Clef sits about
-  a fifth above her, roughly 196 Hz against 128 Hz. This outranks every other voice choice:
-  the characters own opposite poles, so vocal pitch is a second representation of the
-  concept. **If the voice changes, preserve this first.**
-- No sing-song presenter voice. No baby talk at any band. No over-praising. Real
-  conversational rhythm, comfortable leaving a gap.
-- **High/low vocabulary only.** Up/down belongs to Ascending/Descending.
-- **Side-agnostic** — never reference left or right. The layout keeps moving.
-- **Clef is never placed on the low one, and Piper never on the high one.** Clef owns high
-  (the top of the tree); Piper owns low (beside the tree, on the ground). The first-person
-  "give me" framing is retired along with the drag-to-character mechanic; see A2.
-- **Name the position, never the furniture.** No line calls a platform a branch, a shelf or
-  a step. See A2 for the reasoning.
-- **The "and…" pattern:** in A0 the two notes are narrated as one joined sentence, so each
-  narration line has an "and…" variant for the second note.
-
-**Levels:** the delivered set came in uneven — Clef spanned about 6.8 dB, Piper about 3.8 —
-and had to be evened in normalisation. Aim for the middle of each character's range.
-
-**Current generation settings** (from the source brief, not verifiable from the code):
-Piper = Gemini *Pulcherrima*, Newscaster style, natural pace, British (Brixton). Clef =
-*Despina*, Newscaster, natural pace, neutral. Both provisional and may be replaced by a
-human voice actor.
-
-**Age bands.** No age-band selector exists in the app yet. Lines for the 4-5 and 6-7 bands
-are recorded and committed but only the 2-3/4-5-shared lines are wired into a round today.
-The band picker is its own, unstarted epic (Trello card PqqgLOwF).
+Status checked against the code on 2026-11-20.
 
 ---
 
-# HIGH vs LOW
+## What the build plays today, against the doc's current wording
 
-Enum names are given in `code` format. "Wired" means a live round calls it today.
+"Matches the doc" means the recording says what the Google Doc now says. A recorded,
+wired line that no longer matches still plays until its replacement is recorded: silence
+would be worse.
 
-## A0 — Observe
+### High vs Low
 
-The pair plays and the characters narrate. Nothing here references the mechanic, so the
-tree change did not break these.
-
-| Character | Line | Enum | Recorded | Wired |
-|---|---|---|---|---|
-| Clef | "Ooh, that one sounds high." | `clefSaysHigh` | yes | yes |
-| Clef | "And ooh, that one sounds high." | `clefSaysHighSecond` | yes | yes |
-| Piper | "That one sounds low." | `piperSaysLow` | yes | yes |
-| Piper | "And that one sounds low." | `piperSaysLowSecond` | yes | yes |
-
-**Wording change from the first version of this doc.** The 2-3 original ("That sounds
-high.") is retired. The 4-5 wording with "one" is canonical for both bands: the four A0 files
-(`clefSaysHigh`, `clefSaysHighSecond`, `piperSaysLow`, `piperSaysLowSecond`) were re-recorded
-in place on 2026-09-07, so the original 2-3 takes no longer exist under those names.
-
-**A0 6-7 band:**
-
-| Character | Line | Enum | Recorded | Wired |
-|---|---|---|---|---|
-| Clef | "That note's higher." | `clefSaysHigher67` | yes | no |
-| Clef | "And that note's higher." | — | **no** | no |
-| Piper | "That one's lower." | `piperSaysLower67` | yes | no |
-| Piper | "And that one's lower." | `piperSaysLower67Second` | yes | no |
-
-Clef's second-note 6-7 line is not recorded, and no enum member exists for it. Until it does,
-6-7 Observe cannot be wired even once a band picker exists.
-
-## A1 — Explore
-
-| Character | Line | Enum | Recorded | Wired |
-|---|---|---|---|---|
-| Clef | "Ooh, listen for the high one." | `listenForHigh` | yes | yes |
-| Piper | "Listen for the low one." | `listenForLow` | yes | yes |
-| Clef | "Which one sounds high?" | `listenForHigh45` | yes | no |
-| Piper | "Which one sounds low?" | `listenForLow45` | yes | no |
-| Piper | "Listen for the lower note." | `listenForLower67` | yes | no |
-| Clef | "Listen for the higher note." | — | **no** | no |
-
-Corrections against the first version: Piper's line has no "Ooh," in the recording
-(`listenForLow` is the take Cooper confirmed as usable earlier), and the 4-5 and 6-7 lines
-were missing entirely.
-
-## A2 — Decide
-
-*Renamed from Drag 2026-10-05 (Trello card 181): this level is now **Decide** in code and here. "Drag" survives only where it means the motor capability.*
-
-**Currently in the app, superseded by the tree mechanic (interim):**
-
-| Character | Line | Enum | Recorded | Wired | Problem |
+| Stage | Line (by role) | Asset | Recorded | Wired | Matches the doc? |
 |---|---|---|---|---|---|
-| Clef | "Give me the high one." | `giveMeHigh` | yes | yes | First person. The drop target is a tree slot, not a character. |
-| Piper | "Give me the low one." | `giveMeLow` | yes | yes | Same, and Piper now stands beside the tree, not on it. |
+| A0 | Clef narration, first / second note | `clefSaysHigh`, `clefSaysHighSecond` | yes | yes | ⚠️ No. Recorded "Ooh, that one sounds high"; the doc now has "That sounds high" |
+| A0 | Piper narration, first / second note | `piperSaysLow`, `piperSaysLowSecond` | yes | yes | ⚠️ No. Recorded "That one sounds low"; the doc has "That sounds low" |
+| A1 | Clef intro | `listenForHigh` | yes | yes | ⚠️ No: superseded by the bubble line (below) |
+| A1 | Piper intro | `listenForLow` | yes | yes | ⚠️ No: superseded by the bubble line |
+| A2 | Clef / Piper ask | `giveMeHigh`, `giveMeLow` | yes | yes | ⚠️ No: RETIRED in the doc (first person, wrong target) |
+| any | Clef / Piper wrong-answer nudge | `tryAgainClef`, `tryAgainPiper` (shared) | yes | yes | ⚠️ No: RETIRED ("Nearly" is untrue with two options); replaced by "Hmm" |
+| A0 | Arrow cue | `pressTheArrowWhenDone` (shared) | no | yes | ⚠️ No: RETIRED ("press" → "tap", "done" → "ready"); the A0 sign-off carries the arrow now |
+| any | Character-tap giggle, Clef / Piper | `giggleClef`, `gigglePiper` (shared) | no | yes | ⚠️ No: the giggle is RETIRED |
 
-These are the only A2 lines a live round plays. They stay until the replacements below are
-recorded. Silence would be a worse interim than a dated but warm line (see the enum's own
-doc comment).
+### Loud or Quiet
 
-**Agreed replacements, 2026-10-05 — not recorded, no enum member, nothing wired to them:**
-
-| Character | Line |
-|---|---|
-| Clef | "Put the high one up here on top." |
-| Clef | "Pop the high one up on top." |
-| Piper | "Put the low one down on the bottom." |
-| Piper | "Pop the low one down at the bottom." |
-
-Clef says "up here" and it's true — he sits in the tree. Piper's lines carry no "here", so
-they work from the left of the screen.
-
-**Never call the platforms branches.** Cooper, 2026-10-05: "Clef sits on a branch sometimes.
-the instruments don't ever go on branches they go on weird tree platform things. So best not
-to name them." The one thing in that scene that really is a branch is where Clef perches, so
-"put it on the top branch" points at the character rather than the slot.
-
-**The rule this generalises to: name the POSITION, never the furniture.** "Up on top", "down
-at the bottom" — and on the Loud or Quiet dial, "the big end", "the quiet end". The platforms
-have no good word; "platform" is clunky, "step" implies climbing, "shelf" implies indoors.
-Naming the position sidesteps it, and keeps sidestepping it for whatever apparatus a future
-game invents. **For variety within a character, vary the verb rather than the noun.**
-
-**A2 4-5 band** (recorded, not wired — the replacements above supersede these for 2-3 and
-the 4-5 wording is a question rather than an instruction):
-
-| Character | Line | Enum | Recorded | Wired |
-|---|---|---|---|---|
-| Clef | "Can you give me the high one?" | `giveMeHigh45` | yes | no |
-| Piper | "Can you give me the low one?" | `giveMeLow45` | yes | no |
-
-**A2 6-7 band** (recorded, not wired; Clef's counterpart is not recorded):
-
-| Character | Line | Enum | Recorded | Wired |
-|---|---|---|---|---|
-| Piper | "Which note is lower?" | `whichIsLower67` | yes | no |
-| Clef | "Which note is higher?" | — | **no** | no |
-
-## Ordering
-
-Not recorded. The source draft has a paired "and…" line (Piper: "Put them in order — the
-lowest down at the bottom…", Clef: "…and the highest up at the top."). **There is no
-`VoiceLine` member for ordering in the code.** Nothing is wired and nothing is recorded.
-
-**Only one direction is needed.** On a vertical tree there is a single correct arrangement,
-so "low to high" and "high to low" describe the same ladder from opposite ends and place the
-instruments identically. Neither line counts the instruments, so both work unchanged for
-two- and three-instrument ordering.
-
-## Wrong-answer nudges — shared
-
-**Shared, not High/Low's** (Trello card 183). Two pools, one per character, in
-`SharedVoiceLine` (`lib/audio/shared_voice_line.dart`). Any game uses them. A game may replace
-one through its `voiceOverrides` map.
-
-**Rotation (built 2026-10-05, Trello card 151):** the line played last for a character is
-excluded from the next pick for that character. Random alone repeats too often to defeat the
-point. Implemented in `NudgePool` (`lib/games/shared/nudges.dart`).
-
-**When one fires (built 2026-10-05, Trello card 151):** five consistent taps on the same wrong
-option fire one nudge. One wrong tap gets nothing. The count is per option, so bouncing between
-two options never fires. A correct tap breaks a wrong run. Implemented in `FiveTapCounter`, and
-wired into Explore taps. **Not yet wired to Decide's wrong drops**, which still play a retry line
-on every wrong drop. See the open question on the card.
-
-| | Clef | Piper |
-|---|---|---|
-| 2-3 / 4-5 (wired, fixed) | "Ooh, nearly! Listen again." `tryAgainClef` — wired | "Nearly! Have another listen." `tryAgainPiper` — wired |
-| 4-5 (recorded, unwired) | "Ooh, so close! Let's hear that again." `tryAgainClef45` | "So close! Let's hear it again." `tryAgainPiper45` |
-| 6-7 | **not recorded** | "Not that one — one more listen." `tryAgainPiper67` (recorded, unwired) |
-| 8+ | — | "That's not it. Try again." `tryAgainPiper8plus` (recorded, unwired) |
-
-**Removed from the first version:** two Clef lines, "Ooh, not that one. Listen again." and
-"Ooh, that's not it. Listen again.", do not exist in the code or the script of record. They
-are not candidates for the pool unless someone writes and records them.
-
-The pool design holds: these describe the answer rather than judging the attempt, and the
-Piper pool is deliberately shared across bands rather than a compromise.
-
-## Arrow cue — shared
-
-| Character | Line | Enum | Recorded | Wired |
-|---|---|---|---|---|
-| Piper | "Press the arrow when you're done!" | `SharedVoiceLine.pressTheArrowWhenDone` | **no** | yes (Observe) |
-
-Shared across games (Trello card 183), in Piper's voice, decided 2026-10-05. It replaces the
-earlier unrecorded hook, "Tap the arrow when you're ready.", which is retired. **Wired but not
-recorded**, so it plays as a silent no-op until a take exists.
-
-## Character-tap giggles — shared
-
-| Character | Sound | Enum | Recorded | Wired |
-|---|---|---|---|---|
-| Clef | a giggle, **no words** | `SharedVoiceLine.giggleClef` | **no** | yes (High vs Low, Loud or Quiet) |
-| Piper | a giggle, **no words** | `SharedVoiceLine.gigglePiper` | **no** | yes (High vs Low, Loud or Quiet) |
-
-Trello card 195, decided 2026-10-11. The Listen Again button is gone: **tapping a character
-replays the round, the character first, then the notes.** The asking character says the round's
-cue. The other one giggles. They never repeat the cue, because a low-pole instruction in Clef's
-high voice would blur the roughly fifth-wide gap between the two voices, and that gap is itself a
-picture of the concept (CHARACTER_VOICES.md). In Observe there is no cue, so either tap replays
-the narrated notes.
-
-**Recording notes:** keep each giggle short, under a second, so the notes follow quickly. Keep
-it in each character's own register: Clef high, Piper low. **Wired but not recorded**, so both
-play as a silent no-op until takes exist.
-
-## Retired and naming
-
-- **`putClefOnLow` does not exist.** The first version of this doc flagged it as a
-  misnamed file still in the app. It was renamed on 2026-09-01 (commit `4c49ceb`, Card 101)
-  to `putMeOnLow` and later to `giveMeLow`. Nothing in the current code, assets, tool or
-  tests refers to it. The warning is withdrawn.
-- **`giveMeHigh`/`giveMeLow`** still carry the first-person framing in their names. They
-  name the line's content, not its character, and they retire with the rest of A2.
-- **Historical enum names:** `putMeOnHigh` → `giveMeHigh` (2026-09, when the drag direction
-  reversed).
+Nothing in the doc's Loud or Quiet section is recorded. The game today speaks only the
+shared nudges and giggles above (`lib/games/loud_quiet/state/loud_quiet_game_state.dart`).
 
 ---
 
-# LOUD or QUIET
+## To record (none recorded, none wired, no enum member yet)
 
-*Renamed from Loud or Soft 2026-10-05 (Trello card 182): "soft" also means texture to a small child. "Quiet" is the word a three-year-old already owns. The game is not built yet, so the rename is in the docs only.*
+Wording: the Google Doc. This is the list by role, so nothing is missed when recording
+resumes.
 
-Not yet recorded. A full draft inventory of roughly fifty lines exists separately and should
-be folded in here once agreed. There are no `VoiceLine` members for it.
+### New at A1 Explore, the bubble mechanic (card 231): 6 lines
 
-**Cast:** Clef owns LOUD, Piper owns SOFT — the same poles as High vs Low, because the two
-genuinely correlate.
+| Game | Role | Clef | Piper |
+|---|---|---|---|
+| High vs Low | Intro | "Listen for the high one…" | "Listen for the low one…" |
+| High vs Low | After | "Pop the bubble on the high one." | "Pop the bubble on the low one." |
+| Loud or Quiet | Intro | "Listen for the loud one…" | "Listen for the quiet one…" |
+| Loud or Quiet | After | "Pop the bubble on the loud one." | "Pop the bubble on the quiet one." |
+| Both games (shared) | Stall nudge | "Pop a bubble when you've decided." | "Pop a bubble when you're ready." |
 
-**Loud and soft live in the DELIVERY, never the recording level.** A stage whisper reads as
-quiet while staying audible; an actually-quiet take is the first thing lost on an iPad speaker
-in a noisy room. Record everything at the same level and let performance carry it.
+(That is ten takes for six roles: the stall nudge is one pair shared by both games.)
 
-**Not first person** — the drop target is the dial, so there is nobody to hand anything to.
+### Elsewhere, per the doc
 
----
-
-# CAPTIONS — do not record
-
-On-screen text, in `HighLowGameState.captionText` and `secondaryCaptionText`. A separate
-string with a different audience: the watching adult, who cannot rely on the child to read
-it. Captions name a destination, never a direction of travel, so they match the voice lines (2026-10-05).
-Captions are keyed by agency stage and pole only. They do not vary by age band or tier.
-
-| Stage | Pole | Caption (as in the code) |
-|---|---|---|
-| Observe (A0) | both | "Encourage them to tap each instrument." |
-| Explore (A1) | higher | "Let them tap both and find the higher one." |
-| Explore (A1) | lower | "Let them tap both and find the lower one." |
-| Decide (A2) | higher | "Help them put the higher one up on top." |
-| Decide (A2) | lower | "Help them put the lower one down at the bottom." |
-
-**Secondary guidance** appears in Explore only, about six seconds into an unanswered round:
-
-| Pole | Secondary caption |
-|---|---|
-| higher | "Encourage them to keep tapping the higher one." |
-| lower | "Encourage them to keep tapping the lower one." |
-
-Observe and Decide have no secondary caption. Their six-second nudges were removed along with
-the timed move-on control (Trello card xpAkja5b).
-
-**Corrections against the first version:**
-
-- The A0 caption is "Encourage them to tap each instrument." (the first version said "Let
-  them explore freely.").
-- "Clef sparkles when they find it" is not in the code and is withdrawn.
-- The A2 captions were rewritten for the tree on 2026-09-27 and no longer name a character.
-  The "⚠️ needs rewriting" is resolved.
-
-**Open contradiction, not yet resolved.** The first version said that at 4-5 captions should
-use "low" rather than "lower". The code's own design says captions vary by stage and pole
-only, not by age band, so this rule cannot be honoured with the current caption set. Pick
-one: either the captions split by band, or the "low"/"lower" rule is dropped.
-
-**A0 does not name which character owns which pole.** It hands the parent the answer, and a
-parent who says it aloud removes the listening.
+- **High vs Low A0:** the openings (one each), the narration in the doc's new wording, and the
+  sign-off (both record it, alternating).
+- **High vs Low A2:** intro and after, one each.
+- **Ordering:** one full line each, leading with her own pole.
+- **Nudges, both games:** a single **"Hmm"** per character. ⚠️ The six earlier nudges are
+  superseded. Do not re-expand them: Cooper will see whether "Hmm" feels insufficient in
+  game first.
+- **Loud or Quiet A0:** openings, narration, the occasional reactive lines, and the sign-off.
+- **Loud or Quiet A2:** the lock line, which is ALSO the Decide intro prompt (one line now,
+  each character recording only her own pole), and the after lines.
+  ⚠️ **"Far end" / "near end", not "loud end" / "quiet end".** The child already knows which
+  instrument is loud, so repeating the pole word locates nothing; "far" does. The far-is-loud
+  mapping is taught by the apparatus (card 208: the needle sweeps further for louder).
+  **"Far" means far ALONG THE DIAL, not far across the screen.** That distinction is what
+  retired "over at the far side". No layout change may break it: the loud end must stay the
+  end the needle reaches last.
+- **Shared celebration:** two per character.
 
 ---
 
-## Reconciliation log
+## Retired
 
-Changes made when this doc was first checked against the code:
+Asset status as of 2026-11-20. "Still wired" means the code still calls it: that is for the
+recording pass to resolve (wire the replacement and unwire this in the same commit), not
+before, per card 210.
 
-- **Wording corrected:** A0 lines (canonical 4-5 wording), Explore's Piper line (no "Ooh,").
-- **Added, recorded:** 4-5 and 6-7 lines for A1, A2 and nudges; the 8+ nudge; the arrow cue.
-- **Added, not recorded:** Clef's 6-7 second-note line, Clef's 6-7 A1 and A2 and nudge, the
-  ordering lines, the agreed 2026-10-05 A2 replacements.
-- **Marked as not existing:** the two Clef nudge lines in the first version, and
-  `putClefOnLow`.
-- **Marked as wired without a recording:** `tapTheArrowWhenReady`.
-- **Corrected status:** the A2 caption rewrite has landed; the "sparkles" caption is withdrawn.
-- **Open:** the low/lower caption contradiction.
+| Retired line | Why | Asset | Still wired? |
+|---|---|---|---|
+| A1 keep-going cue, "Try tapping the high one again and again", and its siblings, both games | Taught the dead tapping mechanic (card 231) | none: never recorded, never in the code | no |
+| Loud or Quiet stall nudges "Try tapping one", "Go on, give one a poke" | Same | none: never recorded, never in the code | no |
+| "Give me the high one" / "Give me the low one" | First person, wrong target | `giveMeHigh`, `giveMeLow` (+ `45` variants) | ⚠️ yes (A2) |
+| "Nearly" / "so close" nudges | Untrue with two options; evaluative | `tryAgainClef`, `tryAgainPiper` (+ `45`, `67`, `8plus` variants) | ⚠️ yes (the two base takes) |
+| The six-nudge set | Superseded by a single "Hmm" | as above | ⚠️ yes |
+| "Press the arrow when you're done!" | press → tap, done → ready | `pressTheArrowWhenDone` (not recorded) | ⚠️ yes (A0; silent, no file) |
+| The giggle | Retired in the doc | `giggleClef`, `gigglePiper` (not recorded) | ⚠️ yes (silent, no files) |
+| "Tap Piper Fox / Clef to hear it again" | Nobody to redirect to with one character on screen | none | no |
+| All "Pop the…" / "Pop it on the dial" variants of the British idiom | The British "pop" is killed so "pop the bubble" is unambiguous | none | no |
+| "over at the far side" | Side-specific; the layout moves | none | no |
+| "Ready when you are" | Redundant with the sign-off | none | no |
+| "That one was the soft one, have another listen" and that set | Wrong-answer commentary | none | no |
+| `putClefOnLow.mp3` | Misnamed: Clef never owns low | none (renamed long ago, commit `4c49ceb`) | no |
+
+**Recorded but never wired, now outside the doc:** the band variants `listenForHigh45`,
+`listenForLow45`, `giveMeHigh45`, `giveMeLow45`, `clefSaysHigher67`, `piperSaysLower67`,
+`piperSaysLower67Second`, `listenForLower67`, `whichIsLower67`, `tryAgainClef45`,
+`tryAgainPiper45`, `tryAgainPiper67`, `tryAgainPiper8plus`. The doc keeps tone the same across
+age bands and names only two vocabulary changes (2–3 "big/little", 8+ shorter prompts), so
+none of these match it. They stay as files until the recording pass decides.
 
 ---
 
-## Shared lines — how they are owned
+## Captions — not voice lines, do not record
 
-- `SpokenLine` (`lib/audio/spoken_line.dart`) is what the audio controller and the speaking
-  indicator take. Both `VoiceLine` (game lines) and `SharedVoiceLine` (app lines) implement it.
-- Shared lines keep their asset names, so no audio files moved.
-- Shared by default, overridden on purpose: a game passes `voiceOverrides` to replace one.
-
----
-
-## Maintenance
-
-Update this file whenever a line is added, changed, wired, unwired or retired, in the same
-commit as the asset. A line that exists only in a Trello card or a chat is a line that will be
-re-litigated.
+On-screen text for the watching adult: `captionText` and `secondaryCaptionText` in
+`HighLowGameState` and `LoudQuietGameState`. ⚠️ The Explore secondary captions still teach
+the retired tapping mechanic: "Keep tapping the higher one." / "Keep tapping the lower one."
+(High vs Low) and "Keep tapping the loud one." / "…quiet one." (Loud or Quiet). They change
+with card 231's build, not with the recording.
