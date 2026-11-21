@@ -1247,23 +1247,36 @@ class JourneyMapGeometry {
     return Offset(x, y + depth * 0.3);
   }
 
-  /// Clef's feet: well ahead — standing behind the stone after next,
-  /// beyond the path's far edge (the stone drawn over his feet, so he is
-  /// behind it, never on it) — and clear of the resting chest when it
-  /// stands there, past its right side.
+  /// Clef's feet (Cooper, 2026-11-21: "Clef should [not] line up directly
+  /// behind a stone, it feels like she's then associated with that stone").
+  ///
+  /// THE RULE, in map coordinates so it holds at every scroll position (the
+  /// whole map pans together; nothing here reads the screen):
+  /// - **x: in a GAP, never at a stone.** Midway between stones i+2 and
+  ///   i+3, well ahead of the pin. If the resting chest is there, the next
+  ///   gap on. A gap is a gap at any scroll, so she can never drift over a
+  ///   stone.
+  /// - **y: off the path, in the verge beyond its far edge**, as Piper
+  ///   stands in the grass on the near side. Her feet sit [_clefVerge] of
+  ///   the path's depth beyond the far edge, so she reads as a bystander,
+  ///   not a second avatar on the walkway.
   Offset clefFeet(int i) {
-    var x = stoneX(i + 2);
+    double gap(int k) => (stoneX(k) + stoneX(k + 1)) / 2;
     final chest = chestRect(JourneyState.nextMilestoneFrom(i));
     double half(double at) =>
         _widthFor(CharacterArt.clef, clefHeightAt(at)) / 2;
-    if (x + half(x) > chest.left && x - half(x) < chest.right) {
-      for (var pass = 0; pass < 4; pass++) {
-        x = chest.right + half(x) + 2;
-      }
+    var k = i + 2;
+    var x = gap(k);
+    while (x + half(x) > chest.left && x - half(x) < chest.right) {
+      x = gap(++k);
     }
     final (y, depth) = pathAt(x);
-    return Offset(x, y - depth * 0.6);
+    return Offset(x, y - depth * (0.5 + _clefVerge));
   }
+
+  /// How far beyond the path's far edge Clef's feet stand, as a share of
+  /// the path's depth: clearly in the grass.
+  static const double _clefVerge = 0.35;
 
   /// The map width not under the rail's panel.
   double get visibleWidth => size.width - RailLayout(size, padding).panelWidth;

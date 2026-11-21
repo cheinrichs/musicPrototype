@@ -74,6 +74,23 @@ void main() {
         }
       });
 
+      test('Clef never lines up behind a stone, and stands off the path '
+          'in the verge beyond it (Cooper, 2026-11-21). Stone indices and '
+          'map x, so it holds at every scroll position', () {
+        for (var i = 0; i < 40; i++) {
+          final feet = g.clefFeet(i);
+          for (var k = 0; k < i + 8; k++) {
+            expect(
+              (feet.dx - g.stoneX(k)).abs(),
+              greaterThan(g.stoneSize(k) * 0.4),
+              reason: 'stone $i: Clef over stone $k',
+            );
+          }
+          final (y, depth) = g.pathAt(feet.dx);
+          expect(feet.dy, lessThan(y - depth / 2), reason: '$i: on the path');
+        }
+      });
+
       test('Clef stands clear of the resting chest', () {
         for (var i = 0; i < 40; i++) {
           final feet = g.clefFeet(i);
