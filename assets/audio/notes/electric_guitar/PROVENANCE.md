@@ -1,5 +1,8 @@
 # Electric guitar note samples — provenance (Trello 228)
 
+✅ **APPROVED BY EAR** (Cooper, 2026-11-20, hearing E2, C4, A4 and C6:
+"those electric guitars sound good to me").
+
 ⚠️ **NOT YET USED, AND NOT SHIPPED** (2026-11-20). This folder is NOT
 registered in `pubspec.yaml`, so it does not ship. It was pulled because
 the Matching Grove has electric guitar cards (`cards_electricguitar_pair.png`)
@@ -33,6 +36,41 @@ Paul style). Emily is a solid body with humbuckers, like the Les Paul
 card. A clean, direct, amp-less tone, so it sounds plainer than the art
 might suggest: **Cooper to listen** (the art-versus-sound rule in
 docs/product/SAMPLE_PROVENANCE.md).
+
+## ⚠️ THE NOTE SET IS SPARSE — select from these, never assume chromatic
+
+| | |
+|---|---|
+| Spacing | every THREE semitones (a minor third) |
+| Range | E2 to D6 |
+| The 17 notes | E2, F♯2, A2, C3, D♯3, F♯3, A3, C4, D♯4, F♯4, A4, C5, D♯5, F♯5, A5, C6, D6 |
+| MIDI | 40, 42, 45, 48, 51, 54, 57, 60, 63, 66, 69, 72, 75, 78, 81, 84, 86 |
+
+(F♯2 is two semitones above E2 and D6 two above C6: the release's own
+ends.) Anything choosing notes or intervals for this instrument — a High
+vs Low pair, a Matching Grove melody, a chord for Bright & Dark (card 232)
+or Chord ID — must pick from the notes that EXIST. Never assume a
+semitone is there; never pitch-shift one in. When this becomes a
+`HighLowInstrument`, declare exactly these notes (every other MIDI in
+40-86 as missing), so `availableMidis` is this list.
+
+## Onsets aligned at import, for chords (2026-11-20)
+
+Every file was cut 10 ms before its first sound when it was made, so all
+17 start together. Measured (`tool/measure_note_onset.py`): first sound
+at 10-20 ms and the note itself (t6) at 30 ms in every file — the same
+common mark the rest of the library now shares. ONSETS, not peaks.
+Nothing further to trim.
+
+## ⚠️ NO INSTRUMENT ART: Matching Grove only, until Cooper draws a sheet
+
+There is no electric guitar INSTRUMENT sheet. `guitar_x3.png` is the
+acoustic guitar, and the only electric guitar art is the Matching Grove
+card pair (`cards_electricguitar_pair.png`). So these samples make the
+electric guitar playable in the MATCHING GROVE only. High vs Low, Loud or
+Quiet and Bright & Dark need a three-variant electric guitar sheet in the
+v3 style (centre variant for three-instrument rounds only). Do NOT stand
+the acoustic sheet in for it, and do not generate one.
 
 ## The notes: SPARSE, and that is fine
 
