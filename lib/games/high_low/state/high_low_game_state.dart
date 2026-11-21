@@ -686,13 +686,20 @@ class HighLowGameState extends ChangeNotifier {
   /// late completion can't clear a newer round's speaking state. Callers
   /// that don't need to block on the line finishing wrap this in
   /// `unawaited` themselves — the tracking still happens either way.
+  ///
+  /// Only the line that is STILL the current one clears the speaker. A
+  /// newer line stops the older clip, and the older line's completion used
+  /// to clear the newer speaker's flag, so she never moved for her own line
+  /// (Cooper, on device, 2026-11-21: at A0, when Clef spoke first, Piper's
+  /// mouth never moved; his 2.6 s line outran the 2.3 s gap before hers).
   Future<void> _speak(int token, SpokenLine line) async {
     _speakingIsPiper = line.isPiper;
     _speakingLine = line;
-    _speakingGeneration++;
+    final generation = ++_speakingGeneration;
     notifyListeners();
     await _audio.playVoiceLineAndAwait(line);
     if (token != _roundToken) return;
+    if (generation != _speakingGeneration) return;
     _speakingIsPiper = null;
     _speakingLine = null;
     notifyListeners();
@@ -822,9 +829,10 @@ class HighLowGameState extends ChangeNotifier {
     SpokenLine? line,
   ) async {
     final strikes = instrument.introStrikes;
+    Future<void>? speaking;
     if (line != null && strikes == 1) {
       _activeCaption = line;
-      unawaited(_speak(token, line));
+      speaking = _speak(token, line);
     }
     notifyListeners();
     final path = instrument.assetPathForMidi(midi);
@@ -842,7 +850,12 @@ class HighLowGameState extends ChangeNotifier {
       _activeCaption = line;
       await Future.wait([_speak(token, line), _delay(_noteRingDuration)]);
     } else {
-      await _delay(_noteRingDuration);
+      // The ring, and the line too if it is longer: the next instrument
+      // never sounds over this line, nor cuts it off (voice rule 4).
+      await Future.wait([
+        _delay(_noteRingDuration),
+        if (speaking != null) speaking,
+      ]);
     }
     return token == _roundToken;
   }

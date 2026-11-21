@@ -1,4 +1,8 @@
+import 'dart:async';
+import 'dart:math';
+
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ear_trainer/games/high_low/services/prompt_generator.dart';
 import 'package:ear_trainer/games/high_low/widgets/high_low_caption.dart';
 import 'package:ear_trainer/audio/audio_controller.dart';
 import 'package:ear_trainer/audio/sfx_type.dart';
@@ -1723,6 +1727,69 @@ void main() {
       state.dispose();
     });
   });
+
+  group('the speaker is the owner of the line playing now (Cooper, on device, '
+      '2026-11-21: at A0, when Clef spoke first, Piper\'s mouth never moved '
+      'for her own line)', () {
+    testWidgets('a line cut short by a newer one never clears the newer '
+        'speaker: two quick taps, Clef then Piper', (tester) async {
+      final audio = _OneClipAudio();
+      final state = HighLowGameState(
+        totalPrompts: 3,
+        agencyStage: AgencyStage.observe,
+        roundOrder: RoundOrder.blocked,
+        audio: audio,
+      );
+      state.startGame();
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 12));
+      expect(state.introPlaying, isFalse);
+
+      final high = state.currentPrompt!.higherSide;
+      state.tapInstrument(high); // Clef: "that one sounds high"
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(state.speakingIsPiper, isFalse);
+      state.tapInstrument(1 - high); // Piper, over the top of him
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(audio.cut, contains('clefSaysHigh'));
+      expect(
+        state.speakingIsPiper,
+        isTrue,
+        reason: 'Piper\'s line is still playing, so she is the speaker',
+      );
+      await tester.pump(const Duration(seconds: 3));
+      expect(state.speakingIsPiper, isNull);
+      state.dispose();
+    });
+
+    testWidgets('the intro never starts the next instrument over a line: '
+        'Clef\'s 2.6 s line outruns the 2.3 s ring, and is not cut', (
+      tester,
+    ) async {
+      var clefFirstLong = 0;
+      for (var seed = 1; seed <= 12; seed++) {
+        final audio = _OneClipAudio();
+        final state = HighLowGameState(
+          totalPrompts: 3,
+          agencyStage: AgencyStage.observe,
+          roundOrder: RoundOrder.blocked,
+          audio: audio,
+          generator: PromptGenerator(random: Random(seed)),
+        );
+        state.startGame();
+        await tester.pump();
+        final prompt = state.currentPrompt!;
+        if (prompt.leftIsHigher && state.leftInstrument.introStrikes == 1) {
+          clefFirstLong++;
+        }
+        await tester.pump(const Duration(seconds: 12));
+        expect(audio.cut, isEmpty, reason: 'seed $seed');
+        expect(audio.lines.length, 2, reason: 'seed $seed');
+        state.dispose();
+      }
+      expect(clefFirstLong, greaterThan(0), reason: 'the case must be met');
+    });
+  });
 }
 
 /// Records every voice line and note, in the order the game asks for them.
@@ -1768,6 +1835,51 @@ class _RecordingAudio implements AudioController {
   Future<void> playVoiceLineAndAwait(SpokenLine line) async {
     played.add(line.assetName);
   }
+
+  @override
+  Future<void> playAssetForScale(String path, {double volume = 1.0}) async {}
+
+  @override
+  Future<void> playSfx(SfxType sfx) async {}
+
+  @override
+  void stopCurrentNote() {}
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => null;
+}
+
+/// One clip at a time, like the real controller: a new line stops the one
+/// playing (its await resolves at once). Lines last their real lengths.
+class _OneClipAudio implements AudioController {
+  static const _lengths = {'clefSaysHigh': 2610, 'clefSaysHighSecond': 3600};
+  final List<String> lines = [];
+  final List<String> cut = [];
+  Completer<void>? _playing;
+  String? _playingName;
+  Timer? _timer;
+
+  @override
+  Future<void> playVoiceLineAndAwait(SpokenLine line) {
+    if (_playing != null && !_playing!.isCompleted) {
+      cut.add(_playingName!);
+      _timer?.cancel();
+      _playing!.complete();
+    }
+    lines.add(line.assetName);
+    final done = _playing = Completer<void>();
+    _playingName = line.assetName;
+    _timer = Timer(
+      Duration(milliseconds: _lengths[line.assetName] ?? 1930),
+      () {
+        if (!done.isCompleted) done.complete();
+      },
+    );
+    return done.future;
+  }
+
+  @override
+  Future<void> playVoiceLine(SpokenLine line) async {}
 
   @override
   Future<void> playAssetForScale(String path, {double volume = 1.0}) async {}
