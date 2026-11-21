@@ -142,8 +142,8 @@ void main() {
     expect(journey.chestPending, isTrue, reason: 'saved before the tap');
 
     await tester.tap(find.byKey(const ValueKey('chest')));
-    await run(tester, const Duration(seconds: 10));
-    expect(journey.current, 5);
+    await run(tester, const Duration(seconds: 16));
+    expect(journey.current, 6, reason: 'onto stone 6, then on to stone 7');
     expect(journey.chestPending, isFalse);
     expect(journey.decorations, hasLength(1));
     expect(journey.chestStone, 11);
@@ -176,28 +176,23 @@ void main() {
       4,
       reason: 'the rewards are still flying: everyone stays on stone 5',
     );
-    await run(tester, const Duration(seconds: 8));
-    expect(journey.current, 5);
+    await run(tester, const Duration(seconds: 16));
+    expect(journey.current, 6, reason: 'via stone 6, on to stone 7');
   });
 
-  testWidgets('stone 6 is a REWARD stone, never played: tapping it moves '
-      'everyone on to stone 7, whose games start on arrival', (tester) async {
+  testWidgets('stone 6 is a REWARD stone, never played: after a beat '
+      'everyone moves on to stone 7 by themselves, no tap (Cooper, '
+      '2026-11-21)', (tester) async {
     for (var i = 0; i < 5; i++) {
       journey.completeStone(journey.rewardsForCurrent());
     }
     expect(journey.current, 5);
-    await mount(tester);
     final rewardsBefore = journey.rewards.length;
-    await tester.tap(find.byKey(const ValueKey('stone-5')));
+    await mount(tester);
     await run(tester, const Duration(seconds: 3));
-    expect(journey.current, 6);
+    expect(journey.current, 6, reason: 'moved on without a tap');
     expect(journey.rewards.length, rewardsBefore, reason: 'nothing earned');
-    expect(journey.partsDone, 0);
-    expect(
-      find.byKey(const ValueKey('segment-1')),
-      findsOneWidget,
-      reason: 'stone 7\'s first game started',
-    );
+    expect(journey.partsDone, 0, reason: 'stone 7 not started by itself');
   });
 
   testWidgets('left before tapping the chest: on coming back it is still '
@@ -211,9 +206,9 @@ void main() {
     expect(journey.chestPending, isTrue);
     expect(journey.current, 4);
     await tester.tap(find.byKey(const ValueKey('chest')));
-    await run(tester, const Duration(seconds: 12));
+    await run(tester, const Duration(seconds: 16));
     expect(journey.chestPending, isFalse);
-    expect(journey.current, 5);
+    expect(journey.current, 6);
     expect(journey.decorations, hasLength(1));
   });
 }

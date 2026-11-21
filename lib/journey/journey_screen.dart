@@ -84,6 +84,12 @@ abstract final class JourneyTiming {
   static const chestWiggle = Duration(milliseconds: 750);
   static const chestClear = Duration(milliseconds: 400);
 
+  // Arriving on the reward stone (Cooper, 2026-11-21: the extra tap there
+  // was "redundant"): a moment to land, then everyone moves on by
+  // themselves. Long enough to feel like arriving somewhere, short enough
+  // that nobody wonders what to do.
+  static const rewardStoneBeat = Duration(milliseconds: 900);
+
   // The next chest's intermittent glow while the child is on the map
   // (wayfinding): a brief warm glow, then quiet — "a few seconds between
   // bursts", never a constant shimmer. Paused whenever anything else moves.
@@ -277,7 +283,13 @@ class _JourneyScreenState extends State<JourneyScreen> {
     if (!mounted) return;
     setState(() => _panning = false);
     // Left before tapping the chest: it is still there, still theirs.
-    if (_journey.chestPending) await _resumeChest();
+    if (_journey.chestPending) {
+      await _resumeChest();
+    } else if (JourneyState.isRewardStone(_journey.current)) {
+      // Left while standing on the reward stone: move on now.
+      await _passRewardStone();
+      if (mounted) setState(() => _beat = _Beat.none);
+    }
   }
 
   /// The child finished the stone before a chest and left before tapping
@@ -301,12 +313,9 @@ class _JourneyScreenState extends State<JourneyScreen> {
 
   void _startStone() {
     if (_beat != _Beat.none || _panning || _journey.chestPending) return;
-    // A reward stone is never played: tapping it moves everyone on, and
-    // the next stone's games start as they arrive.
-    if (JourneyState.isRewardStone(_journey.current)) {
-      unawaited(_passRewardStone());
-      return;
-    }
+    // A reward stone is never played, and everyone leaves it by
+    // themselves ([_passRewardStone]); a tap there does nothing.
+    if (JourneyState.isRewardStone(_journey.current)) return;
     _sfx(SfxType.tap);
     _journey.meet(_part.gameId);
     setState(() {
@@ -319,17 +328,18 @@ class _JourneyScreenState extends State<JourneyScreen> {
     });
   }
 
+  /// On the reward stone: a beat to land, then the pin, Piper and Clef
+  /// move on together to the next stone, which the child then plays as
+  /// any other. No tap.
   Future<void> _passRewardStone() async {
-    _sfx(SfxType.tap);
     setState(() {
       _arrowFrom = null;
       _beat = _Beat.settling;
     });
+    await _wait(JourneyTiming.rewardStoneBeat);
+    if (!mounted) return;
     _journey.passRewardStone();
     await _wait(JourneyTiming.pinMoves + JourneyTiming.arriveOnMap);
-    if (!mounted) return;
-    setState(() => _beat = _Beat.none);
-    _startStone();
   }
 
   StonePart get _part {
@@ -659,6 +669,9 @@ class _JourneyScreenState extends State<JourneyScreen> {
     if (!mounted) return;
 
     if (milestone) {
+      // Arrived on the reward stone: a beat, then on to the next stone.
+      await _passRewardStone();
+      if (!mounted) return;
       final g = _geometry();
       final next = _journey.chestStone;
       final back = _offsetFor(g, _journey.current);
@@ -677,7 +690,7 @@ class _JourneyScreenState extends State<JourneyScreen> {
     }
     if (!mounted) return;
     setState(() {
-      _arrowFrom = stone;
+      _arrowFrom = _journey.current - 1;
       _beat = _Beat.none;
     });
   }
