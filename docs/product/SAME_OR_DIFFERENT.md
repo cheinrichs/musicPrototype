@@ -283,7 +283,21 @@ spec keeps ONE instrument type throughout a trial, so whatever picks a
 trial's card set must treat them as two distinct instruments, never as
 two variants of "drum", and never mix them within a trial. (No code picks
 card sets yet; this is the rule for when it is built.)
-| electric guitar | NONE in any library we use | ⚠️ **NO.** Needs a third source and a new licence question. |
+
+⚠️ **TWO GUITARS, TWO INSTRUMENTS (2026-11-20), the same rule.**
+`cards_guitar_pair.png` is the acoustic guitar (Philharmonia samples) and
+`cards_electricguitar_pair.png` the electric (Karoryfer Emilyguitar). Two
+distinct instruments: never variants of "guitar", never mixed in a trial.
+
+⚠️ **The electric guitar's two cards are two different MODELS** (a red
+Strat and a blue Les Paul), not one guitar in two finishes like every
+other pair. The spec wants a non-matching pair to be "the same instrument
+type, clearly different visual variants". Both are unmistakably electric
+guitars (solid body, no sound hole, pickups), so they should read as two
+kinds of the same thing. But they differ more than any other pair, in
+body outline as well as colour. **Cooper to glance at the pair** before
+the Grove is built.
+| electric guitar | Karoryfer Emilyguitar (CC0), 17 notes E2–D6, sparse (every 3 semitones) | Yes, choosing melody notes only from the 17 that exist |
 
 Note: because the cards are symbolic (they say nothing about which
 instrument played), the card instrument and the audio instrument need not

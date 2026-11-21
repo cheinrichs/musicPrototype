@@ -288,5 +288,43 @@
   ],
   "naive_half_safe": true,
   "variants": 2
+ },
+ "bubble_burst_sheet.png": {
+  "width": 2172,
+  "slices": [
+   281,
+   558,
+   840,
+   1122,
+   1394,
+   1677,
+   1936
+  ],
+  "variants": 8,
+  "naive_even_cells_safe": false
+ },
+ "bubble_wiggle_sheet.png": {
+  "width": 2172,
+  "slices": [
+   428,
+   821,
+   1322,
+   1739
+  ],
+  "variants": 5,
+  "naive_even_cells_safe": false
+ },
+ "bubble_idle.png": {
+  "width": 1261,
+  "slices": [],
+  "variants": 1
+ },
+ "instruments_v3/electricguitar_x3.png": {
+  "width": 1991,
+  "slices": [
+   773,
+   1217
+  ],
+  "naive_thirds_safe": false
  }
 }

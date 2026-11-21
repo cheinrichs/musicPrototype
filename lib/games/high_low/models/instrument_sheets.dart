@@ -28,6 +28,13 @@ const instrumentSheets = <String, InstrumentSheet>{
     cuts: [747, 1411],
     boxes: [(142, 110, 537, 537), (815, 41, 523, 598), (1485, 112, 545, 539)],
   ),
+  'electricGuitar': InstrumentSheet(
+    'assets/images/characters/instruments/electricguitar_x3.png',
+    width: 1991,
+    height: 789,
+    cuts: [773, 1217],
+    boxes: [(373, 14, 351, 771), (824, 7, 343, 782), (1266, 14, 346, 774)],
+  ),
   'flute': InstrumentSheet(
     'assets/images/characters/instruments/flute_x3.png',
     width: 1536,

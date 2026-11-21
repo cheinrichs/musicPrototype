@@ -193,7 +193,25 @@ enum HighLowInstrument {
   // which meet at 1.00; the bigger stumps crowd the three-note screens, so
   // this reaches 1.00 on today's stumps instead. If the stumps do grow,
   // this goes to 0.75.
-  xylophone('xylophone', 'xylophone', 65, 108, displaySizeScale: 0.6);
+  xylophone('xylophone', 'xylophone', 65, 108, displaySizeScale: 0.6),
+
+  // ⚠️ A TRIAL INSTRUMENT: DEV PROFILE ONLY, like the xylophone, so Cooper
+  // hears it in a round before a child does (2026-11-20). Karoryfer's
+  // Emilyguitar (CC0), a solid-body electric; Cooper's three-variant
+  // sheet (Strat / Les Paul / Tele). A DISTINCT instrument from [guitar]
+  // (the acoustic), never a variant of it.
+  //
+  // ⚠️ SPARSE: sampled every three semitones, E2-D6 (17 real notes), so
+  // every other note in the span is missing. Rounds pick only from the
+  // notes that exist; nothing is pitch-shifted
+  // (assets/audio/notes/electric_guitar/PROVENANCE.md).
+  electricGuitar(
+    'electric guitar',
+    'electric_guitar',
+    40,
+    86,
+    missingMidis: _electricGuitarGaps,
+  );
 
   const HighLowInstrument(
     this.displayName,
@@ -275,6 +293,7 @@ enum HighLowInstrument {
     HighLowInstrument.tuba: Duration(milliseconds: 860),
     HighLowInstrument.violin: Duration(milliseconds: 720),
     HighLowInstrument.xylophone: Duration(milliseconds: 110),
+    HighLowInstrument.electricGuitar: Duration(milliseconds: 1580),
   };
 
   /// How many times a round's introduction plays this instrument's note: the
@@ -315,7 +334,7 @@ enum HighLowInstrument {
 
   /// Whether this is a trial instrument — playable only on the dev profile,
   /// behind the dev gate. See [inPlay].
-  bool get isTrial => this == xylophone;
+  bool get isTrial => this == xylophone || this == electricGuitar;
 
   /// Whether trial instruments join the rounds. Set at the start of a set:
   /// true ONLY on the dev profile with the dev gate's trial switch on, so a
@@ -430,6 +449,13 @@ enum HighLowInstrument {
   bool canPairWith(HighLowInstrument other, {required int minSemitones}) =>
       semitoneOverlapWith(other) >= minSemitones;
 }
+
+/// The electric guitar's MISSING notes: every note from E2 (40) to D6 (86)
+/// except the 17 Karoryfer sampled.
+const _electricGuitarGaps = {
+  41, 43, 44, 46, 47, 49, 50, 52, 53, 55, 56, 58, 59, 61, 62, 64, 65, //
+  67, 68, 70, 71, 73, 74, 76, 77, 79, 80, 82, 83, 85,
+};
 
 const _sampleNoteNames = [
   'c',

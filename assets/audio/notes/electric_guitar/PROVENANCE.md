@@ -3,12 +3,11 @@
 ✅ **APPROVED BY EAR** (Cooper, 2026-11-20, hearing E2, C4, A4 and C6:
 "those electric guitars sound good to me").
 
-⚠️ **NOT YET USED, AND NOT SHIPPED** (2026-11-20). This folder is NOT
-registered in `pubspec.yaml`, so it does not ship. It was pulled because
-the Matching Grove has electric guitar cards (`cards_electricguitar_pair.png`)
-and no electric guitar sound. It will be wired when a game uses it. To
-play in High vs Low or Loud or Quiet it would also need Cooper's
-three-variant electric guitar art, which does not exist yet.
+✅ **IN USE AS A TRIAL INSTRUMENT** (2026-11-20): `HighLowInstrument.electricGuitar`,
+dev profile only (the dev gate's "Trials" switch), with Cooper's
+three-variant sheet `electricguitar_x3.png`. The folder is registered in
+`pubspec.yaml`. Loud or Quiet plays D♯4; clipping room +1.0 dB; median
+ring 1580 ms (one strike in the intro).
 
 ## Source and licence
 
@@ -62,15 +61,14 @@ at 10-20 ms and the note itself (t6) at 30 ms in every file — the same
 common mark the rest of the library now shares. ONSETS, not peaks.
 Nothing further to trim.
 
-## ⚠️ NO INSTRUMENT ART: Matching Grove only, until Cooper draws a sheet
+## Art: its own three-variant sheet (2026-11-20)
 
-There is no electric guitar INSTRUMENT sheet. `guitar_x3.png` is the
-acoustic guitar, and the only electric guitar art is the Matching Grove
-card pair (`cards_electricguitar_pair.png`). So these samples make the
-electric guitar playable in the MATCHING GROVE only. High vs Low, Loud or
-Quiet and Bright & Dark need a three-variant electric guitar sheet in the
-v3 style (centre variant for three-instrument rounds only). Do NOT stand
-the acoustic sheet in for it, and do not generate one.
+`electricguitar_x3.png`: red Strat, blue Les Paul (the centre), sunburst
+Tele — three different solid-body MODELS, the first sheet whose variants
+are different shapes rather than one shape recoloured. All solid bodies,
+like Emily. ⚠️ A DISTINCT INSTRUMENT from the acoustic `guitar`
+(`guitar_x3.png`, Philharmonia): never a variant of "guitar", never mixed
+with it in a Matching Grove trial.
 
 ## The notes: SPARSE, and that is fine
 

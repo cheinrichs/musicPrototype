@@ -60,6 +60,14 @@ INSTRUMENTS = {
     # Not yet playable (no sprite art; loudness uneven across its range),
     # measured for when it joins.
     "xylophone": (65, 108, set()),
+    # Karoryfer, sampled every three semitones (E2-D6): every other note in
+    # the span is missing (assets/audio/notes/electric_guitar/PROVENANCE.md).
+    "electric_guitar": (
+        40,
+        86,
+        set(range(40, 87))
+        - {40, 42, 45, 48, 51, 54, 57, 60, 63, 66, 69, 72, 75, 78, 81, 84, 86},
+    ),
 }
 TRIM_DB = {"oboe": -3.0, "flute": -1.5, "guitar": -1.0}
 CEILING_DBTP = -1.0

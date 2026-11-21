@@ -55,6 +55,7 @@ flutter:
     - assets/audio/notes/percussion/
     - assets/audio/notes/bells/
     - assets/audio/notes/cello/
+    - assets/audio/notes/electric_guitar/
     - assets/audio/notes/flute/
     - assets/audio/notes/guitar/
     - assets/audio/notes/oboe/

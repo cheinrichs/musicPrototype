@@ -42,6 +42,7 @@ SHEETS = {
     "bells": "bells_x3_variants.png",
     "cello": "cello_x3.png",
     "drum": "drum_x3.png",
+    "electricGuitar": "electricguitar_x3.png",
     "flute": "flute_x3.png",
     "guitar": "guitar_x3.png",
     "oboe": "oboe_x3.png",

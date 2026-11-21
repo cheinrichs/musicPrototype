@@ -441,7 +441,8 @@ class _RoomStepper extends StatelessWidget {
   }
 }
 
-/// "Xylophone trial": brings the trial instruments into this set, so their
+/// "Trials": brings the trial instruments (xylophone, electric guitar) into
+/// this set, so their
 /// loudness can be judged by ear against the real ones. Dev gate only.
 class _TrialSwitch extends StatelessWidget {
   final bool on;
@@ -464,7 +465,7 @@ class _TrialSwitch extends StatelessWidget {
             size: 18,
           ),
           const SizedBox(width: 2),
-          Text('Xylophone', style: AppTypography.label.copyWith(fontSize: 12)),
+          Text('Trials', style: AppTypography.label.copyWith(fontSize: 12)),
         ],
       ),
     ),

@@ -144,6 +144,8 @@ class DynamicLadder {
     HighLowInstrument.violin: 7.0, // F♯5, −8.1
     // Trial only (dev profile): its peaks already sit at the ceiling.
     HighLowInstrument.xylophone: 0.5, // D♯6
+    // Trial only (dev profile), 2026-11-20.
+    HighLowInstrument.electricGuitar: 1.0, // D♯4, −2.5
   };
 
   /// [instrument]'s ceiling on this ladder, in dB above full.

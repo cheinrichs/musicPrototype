@@ -101,7 +101,8 @@ void main() {
 
     test('tuba pairs with guitar (its own G#3-B3 sits inside guitar\'s '
         'C3-B4), but with nothing else — every other instrument starts at '
-        'C4, one semitone above tuba\'s own top note', () {
+        'C4, one semitone above tuba\'s own top note. (The electric guitar, '
+        'a trial, spans E2-D6 too: its coarse range overlaps tuba\'s.)', () {
       expect(
         HighLowInstrument.tuba.canPairWith(
           HighLowInstrument.guitar,
@@ -111,7 +112,8 @@ void main() {
       );
       for (final other in HighLowInstrument.values) {
         if (other == HighLowInstrument.tuba ||
-            other == HighLowInstrument.guitar) {
+            other == HighLowInstrument.guitar ||
+            other == HighLowInstrument.electricGuitar) {
           continue;
         }
         expect(
