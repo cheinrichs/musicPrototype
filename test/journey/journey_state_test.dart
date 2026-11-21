@@ -4,8 +4,53 @@ import 'package:ear_trainer/journey/journey_state.dart';
 import 'package:ear_trainer/journey/reward_catalogue.dart';
 import 'package:ear_trainer/models/agency_stage.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  group('saved on the device, per profile (2026-11-21: it was in memory '
+      'only, and reset whenever the app closed)', () {
+    setUp(() => SharedPreferences.setMockInitialValues({}));
+
+    test('a fresh JourneyState reads back each child\'s stone, rewards, '
+        'plan, parts done and games met', () async {
+      final a = JourneyState()..useProfile('delaney');
+      a.planFor(AgencyStage.decide);
+      a.meet('high_low');
+      a.completeStone(a.rewardsForCurrent());
+      a.completeStone(a.rewardsForCurrent());
+      a.planFor(AgencyStage.decide);
+      a.finishPart();
+      final delaneyRewards = a.rewards.length;
+      a.useProfile('davis');
+      a.completeStone(a.rewardsForCurrent());
+      await a.saved;
+
+      final b = JourneyState();
+      await b.load();
+      b.useProfile('delaney');
+      expect(b.current, 2);
+      expect(b.rewards.length, delaneyRewards);
+      expect(b.partsDone, 1);
+      expect(b.gamesMet, {'high_low'});
+      expect(b.completedAt.length, 2);
+      expect(
+        b.planFor(AgencyStage.decide).toString(),
+        JourneyState.plan(2, 5).toString(),
+      );
+      b.useProfile('davis');
+      expect(b.current, 1);
+      expect(b.rewards.length, 1);
+    });
+
+    test('nothing saved yet: a new child starts at the first stone', () async {
+      final j = JourneyState();
+      await j.load();
+      j.useProfile('new');
+      expect(j.current, 0);
+      expect(j.rewards, isEmpty);
+    });
+  });
+
   group('milestones and the chest', () {
     test('every fifth stone is a milestone', () {
       expect(

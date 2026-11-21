@@ -26,8 +26,8 @@ class EarTrainerApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ProgressState()),
         ChangeNotifierProvider(create: (_) => SkillState()),
         ChangeNotifierProvider(create: (_) => DevSettingsState()..load()),
-        // In memory for the rough Journey build — see [JourneyState].
-        ChangeNotifierProvider(create: (_) => JourneyState()),
+        // Saved per profile on the device — see [JourneyState].
+        ChangeNotifierProvider(create: (_) => JourneyState()..load()),
       ],
       child: MaterialApp.router(
         title: 'Ear Trainer',

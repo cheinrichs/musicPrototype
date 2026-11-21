@@ -1,4 +1,8 @@
+import 'dart:async';
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/agency_stage.dart';
 import 'reward_catalogue.dart';
@@ -32,9 +36,11 @@ class StonePart {
 /// The Journey: which stone the child is on, what they have earned, and how
 /// far into the current stone they got (an X resumes, card 198 decisions).
 ///
-/// **In memory only** for this rough build — the flows are what is being
-/// judged; it resets when the app restarts. Kept per profile, so switching
-/// child doesn't share a path.
+/// **Saved on the device, per profile** (2026-11-21), so a child's path,
+/// rewards and an unclaimed chest survive the app closing — losing them
+/// would punish leaving. It was in memory only until then, and reset
+/// whenever iOS closed the app. [load] reads it at startup; every change
+/// writes it back ([_save]).
 class JourneyState extends ChangeNotifier {
   /// Every fifth stone is a milestone (card 204, "easily adjusted").
   static const int milestoneEvery = 5;
@@ -45,6 +51,59 @@ class JourneyState extends ChangeNotifier {
 
   final Map<String, _Progress> _byProfile = {};
   String _profile = '';
+
+  static const String _storageKey = 'journey_v1';
+
+  /// Reads every profile's journey. A profile touched before this finished
+  /// (only possible in the first instant after launch) keeps what it has
+  /// unless it is still untouched.
+  Future<void> load() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_storageKey);
+      if (raw == null) return;
+      final json = jsonDecode(raw) as Map<String, dynamic>;
+      json.forEach((id, value) {
+        final existing = _byProfile[id];
+        if (existing == null || existing.isUntouched) {
+          _byProfile[id] = _Progress.fromJson(value as Map<String, dynamic>);
+        }
+      });
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Journey: could not load saved progress ($e)');
+    }
+  }
+
+  /// Writes every profile's journey. Best effort: a failed write is logged,
+  /// never thrown into a celebration. Writes are CHAINED, so they land in
+  /// the order they were made: two quick saves racing could otherwise leave
+  /// the older snapshot as the last one written.
+  void _save() {
+    final data = jsonEncode({
+      for (final e in _byProfile.entries) e.key: e.value.toJson(),
+    });
+    _writing = _writing.then((_) async {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(_storageKey, data);
+      } catch (e) {
+        debugPrint('Journey: could not save progress ($e)');
+      }
+    });
+  }
+
+  Future<void> _writing = Future.value();
+
+  /// Resolves once every save made so far has been written.
+  @visibleForTesting
+  Future<void> get saved => _writing;
+
+  @override
+  void notifyListeners() {
+    _save();
+    super.notifyListeners();
+  }
 
   _Progress get _p => _byProfile.putIfAbsent(_profile, _Progress.new);
 
@@ -120,8 +179,13 @@ class JourneyState extends ChangeNotifier {
   /// The current stone's games: its length split into runs of at most two
   /// rounds, alternating games, starting from a different game each stone.
   /// Made once per stone and kept, so leaving and coming back resumes.
-  List<StonePart> planFor(AgencyStage agency) =>
-      _p.plan ??= plan(current, stoneLength(agency));
+  List<StonePart> planFor(AgencyStage agency) {
+    final existing = _p.plan;
+    if (existing != null) return existing;
+    final made = _p.plan = plan(current, stoneLength(agency));
+    _save();
+    return made;
+  }
 
   static List<StonePart> plan(int stone, int length) {
     final parts = <StonePart>[];
@@ -178,4 +242,54 @@ class _Progress {
   List<StonePart>? plan;
   int partsDone = 0;
   final Set<String> gamesMet = {};
+
+  _Progress();
+
+  bool get isUntouched =>
+      current == 0 && rewards.isEmpty && partsDone == 0 && gamesMet.isEmpty;
+
+  Map<String, dynamic> toJson() => {
+    'current': current,
+    'completedAt': [for (final d in completedAt) d.toIso8601String()],
+    'rewards': [
+      for (final r in rewards)
+        {'type': r.typeId, 'stone': r.stone, 'i': r.index},
+    ],
+    'plan': plan == null
+        ? null
+        : [
+            for (final p in plan!) {'game': p.gameId, 'rounds': p.rounds},
+          ],
+    'partsDone': partsDone,
+    'gamesMet': gamesMet.toList(),
+  };
+
+  factory _Progress.fromJson(Map<String, dynamic> j) {
+    final p = _Progress()
+      ..current = j['current'] as int? ?? 0
+      ..partsDone = j['partsDone'] as int? ?? 0;
+    p.completedAt.addAll([
+      for (final d in (j['completedAt'] as List? ?? const []))
+        DateTime.parse(d as String),
+    ]);
+    p.rewards.addAll([
+      for (final r in (j['rewards'] as List? ?? const []))
+        Reward(
+          (r as Map)['type'] as String,
+          r['stone'] as int,
+          r['i'] as int? ?? 0,
+        ),
+    ]);
+    final plan = j['plan'] as List?;
+    p.plan = plan == null
+        ? null
+        : [
+            for (final s in plan)
+              StonePart((s as Map)['game'] as String, s['rounds'] as int),
+          ];
+    p.gamesMet.addAll([
+      for (final g in (j['gamesMet'] as List? ?? const [])) g as String,
+    ]);
+    return p;
+  }
 }
