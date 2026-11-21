@@ -1215,8 +1215,10 @@ void main() {
       expect(find.byKey(const ValueKey('clef-mouth-0')), findsOneWidget);
     });
 
-    testWidgets('on a notched phone no character crosses the safe area — '
-        'Clef\'s right hand used to run off the screen', (tester) async {
+    testWidgets('on a notched phone Piper never crosses the safe area, and '
+        'Clef never runs off the screen — Clef\'s right hand used to', (
+      tester,
+    ) async {
       tester.view.physicalSize = roomyViewport;
       tester.view.devicePixelRatio = 1.0;
       addTearDown(() {
@@ -1240,15 +1242,21 @@ void main() {
       }
       await tester.pump(Duration.zero);
 
-      for (final name in ['clef-mouth-0', 'piper-mouth-0']) {
-        final rect = tester.getRect(find.byKey(ValueKey(name)));
-        expect(rect.left, greaterThanOrEqualTo(47 - 0.5), reason: name);
-        expect(
-          rect.right,
-          lessThanOrEqualTo(roomyViewport.width - 47 + 0.5),
-          reason: name,
-        );
-      }
+      final piper = tester.getRect(find.byKey(const ValueKey('piper-mouth-0')));
+      expect(piper.left, greaterThanOrEqualTo(47 - 0.5));
+      expect(piper.right, lessThanOrEqualTo(roomyViewport.width - 47 + 0.5));
+      // Clef is held only to the SCREEN, not the inset: at A0 she is one
+      // size in both orientations and may reach into the band where the
+      // Dynamic Island sits on one side (Cooper, 2026-11-20). Never past
+      // the corner margin, though.
+      final clef = tester.getRect(find.byKey(const ValueKey('clef-mouth-0')));
+      expect(clef.left, greaterThanOrEqualTo(0));
+      expect(
+        clef.right,
+        lessThanOrEqualTo(
+          roomyViewport.width - SceneLayout.observeClefEdgeMargin + 0.5,
+        ),
+      );
     });
 
     testWidgets('the top row (Trello card 216): close on its plate, a SHORT '

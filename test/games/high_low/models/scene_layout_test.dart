@@ -21,6 +21,23 @@ void main() {
   // pose's own scale-up, whichever is larger.
   final grow = max(SpeakingPulse.maxScaleDelta, 0.08);
 
+  test('A0 Clef is ONE size whichever way the phone is turned (Cooper, '
+      '2026-11-20): the inset does not change her', () {
+    const size = Size(874, 402);
+    final islandLeft = SceneLayout(
+      size,
+      insets: const EdgeInsets.fromLTRB(62, 0, 16, 20),
+      noteCount: 2,
+    );
+    final islandRight = SceneLayout(
+      size,
+      insets: const EdgeInsets.fromLTRB(16, 0, 62, 20),
+      noteCount: 2,
+    );
+    expect(islandRight.observeClefHeight, islandLeft.observeClefHeight);
+    expect(islandLeft.observeClefScale, greaterThan(4));
+  });
+
   test('the layout\'s own growth allowance covers the pulse and the '
       'celebration', () {
     expect(SceneLayout.maxCharacterGrowth, greaterThanOrEqualTo(grow));
@@ -42,12 +59,17 @@ void main() {
       );
 
       test('A0: Clef stands on the bottom platform, as large as fits — her '
-          'arm short of the right inset, her head under the top bar '
-          '(card 222)', () {
+          'arm short of the screen edge (NOT the inset: one size in both '
+          'orientations), her head under the top bar (card 222)', () {
         final l = two();
         expect(l.observeClefPerch, l.platform(2));
         final b = l.observeClefBounds(pulse: SceneLayout.maxCharacterGrowth);
-        expect(b.right, lessThanOrEqualTo(size.width - insets.right + 0.01));
+        expect(
+          b.right,
+          lessThanOrEqualTo(
+            size.width - SceneLayout.observeClefEdgeMargin + 0.01,
+          ),
+        );
         expect(
           b.top,
           greaterThanOrEqualTo(insets.top + SceneLayout.topBarClearance - 0.01),
@@ -55,7 +77,8 @@ void main() {
         expect(b.bottom, closeTo(l.observeClefPerch.dy, 0.01));
         // Limited by one of the two, never by an arbitrary multiplier.
         expect(
-          (b.right - (size.width - insets.right)).abs() < 0.5 ||
+          (b.right - (size.width - SceneLayout.observeClefEdgeMargin)).abs() <
+                  0.5 ||
               (b.top - insets.top - SceneLayout.topBarClearance).abs() < 0.5,
           isTrue,
         );

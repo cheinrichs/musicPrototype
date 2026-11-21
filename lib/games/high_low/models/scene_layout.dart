@@ -188,13 +188,19 @@ class SceneLayout {
   // WHAT LIMITS HER (and it is not the screen's height): the tree is pushed
   // right with a quarter of it off-screen, so the bottom platform sits near
   // the RIGHT edge (x = 777 of 874 on an iPhone 17), and she grows sideways
-  // as well as up. So the limit is how far her arm reaches right before the
-  // right inset — which, since Trello 226, is the Dynamic Island's 62 pt
-  // only when the island is on that side, and a corner margin otherwise —
-  // and, secondly, the top bar above her head.
+  // as well as up. Her arm stops at the SCREEN EDGE less a corner margin —
+  // NOT at the safe-area inset. Cooper, 2026-11-20: one fixed size in both
+  // orientations; when the Dynamic Island is on that side it covers most of
+  // one hand (he will judge it on a device). A character that changed size
+  // when the phone turned would look broken in a way that a hand partly
+  // behind the island does not. Her head stops under the top bar.
 
   /// Where Clef's feet go at A0: the bottom platform.
   Offset get observeClefPerch => platform(platformCentres.length - 1);
+
+  /// How far short of the screen's right edge her arm stops: clear of the
+  /// rounded corner (the same margin as `CutoutInsets.cornerMargin`).
+  static const double observeClefEdgeMargin = 16;
 
   /// Room kept clear at the top for the game's top bar (close, progress,
   /// caption, skip), measured off the renders.
@@ -215,12 +221,14 @@ class SceneLayout {
   }
 
   /// Clef's height at A0: as large as fits, at the peak of
-  /// [maxCharacterGrowth] — her arm short of the right inset, her head
-  /// short of the top bar.
+  /// [maxCharacterGrowth] — her arm short of the screen's right edge (less
+  /// [observeClefEdgeMargin]; deliberately NOT the safe-area inset, so she is
+  /// the same size whichever way the phone is turned), her head short of the
+  /// top bar.
   double get observeClefHeight {
     final grown = 1 + maxCharacterGrowth;
     final reach = _clefSpeakingReach;
-    final right = screen.width - insets.right - observeClefPerch.dx;
+    final right = screen.width - observeClefEdgeMargin - observeClefPerch.dx;
     final up = observeClefPerch.dy - insets.top - topBarClearance;
     return math.min(right / reach.right, up / reach.up) / grown;
   }
