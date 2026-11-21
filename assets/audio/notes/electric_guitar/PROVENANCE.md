@@ -33,9 +33,9 @@ three-variant electric guitar art, which does not exist yet.
 
 The cards show two solid-body electrics (a red Strat style, a blue Les
 Paul style). Emily is a solid body with humbuckers, like the Les Paul
-card. A clean, direct, amp-less tone, so it sounds plainer than the art
-might suggest: **Cooper to listen** (the art-versus-sound rule in
-docs/product/SAMPLE_PROVENANCE.md).
+card — not a hollowbody or archtop — so it reads against both cards. Its
+clean, direct, amp-less tone was approved by Cooper's ear (above), under
+the art-versus-sound rule in docs/product/SAMPLE_PROVENANCE.md.
 
 ## ⚠️ THE NOTE SET IS SPARSE — select from these, never assume chromatic
 
