@@ -160,7 +160,7 @@ and that is her, not the flute's art.
 | guitar | acoustic guitar | Philharmonia guitar (Philharmonia's is a classical, nylon-string guitar; our record does not say) | ⚠️ BORDERLINE: nylon is softer and rounder than the steel-string guitar most children picture; Cooper to listen |
 | drum | rope-tension snare drum | Philharmonia snare drum with snares | ✅ YES, confirmed 2026-11-20 by a musician Cooper consulted, by ear. (It was questioned on measured brightness; that conclusion was wrong. Do not reopen it on a number.) The tom is now its own instrument (below) |
 | tom-tom (new 2026-11-20) | concert tom on legs, chrome lugs, no snare; three variants and a card pair | Philharmonia tom-tom, struck once | Yes: drawn for this sample |
-| electric guitar (cards only) | solid-body electric | NONE | ⚠️ NO. Trello 228 |
+| electric guitar (cards only) | solid-body electric | Karoryfer Emilyguitar v1.001 (CC0), 17 notes E2–D6, pulled 2026-11-20, not yet shipped; see `assets/audio/notes/electric_guitar/PROVENANCE.md` | ⚠️ NO. Trello 228 |
 
 ## The playground's seven clips (`assets/audio/playground/`)
 
