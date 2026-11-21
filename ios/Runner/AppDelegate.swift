@@ -10,6 +10,10 @@ import UIKit
   /// Channel driven from lib/app/build_distribution.dart.
   private static let buildInfoChannel = "ear_trainer/build_info"
 
+  /// Channel driven from lib/app/cutout_insets.dart (Trello 226).
+  private static let interfaceOrientationChannel = "ear_trainer/interface_orientation"
+  private var orientationChannel: FlutterMethodChannel?
+
   override func application(
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
@@ -55,6 +59,63 @@ import UIKit
         return
       }
       result(AppDelegate.isInternalDistribution())
+    }
+
+    guard
+      let orientationRegistrar = engineBridge.pluginRegistry.registrar(
+        forPlugin: "InterfaceOrientationBridge")
+    else {
+      return
+    }
+
+    let orientation = FlutterMethodChannel(
+      name: AppDelegate.interfaceOrientationChannel,
+      binaryMessenger: orientationRegistrar.messenger()
+    )
+    orientation.setMethodCallHandler { call, result in
+      guard call.method == "current" else {
+        result(FlutterMethodNotImplemented)
+        return
+      }
+      result(AppDelegate.currentInterfaceOrientation())
+    }
+    orientationChannel = orientation
+
+    // Tell Dart when the interface turns. The device notification fires as
+    // the device moves; the scene's orientation is read once the interface
+    // has finished rotating, and only that is sent.
+    UIDevice.current.beginGeneratingDeviceOrientationNotifications()
+    NotificationCenter.default.addObserver(
+      forName: UIDevice.orientationDidChangeNotification,
+      object: nil,
+      queue: .main
+    ) { [weak self] _ in
+      DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+        self?.orientationChannel?.invokeMethod(
+          "changed", arguments: AppDelegate.currentInterfaceOrientation())
+      }
+    }
+  }
+
+  /// How the INTERFACE is laid out, from the window scene: "landscapeLeft",
+  /// "landscapeRight", "portrait", "portraitUpsideDown" or "unknown".
+  ///
+  /// Deliberately not `UIDevice.current.orientation`: that is the device's
+  /// physical attitude, includes face-up and face-down, and can disagree
+  /// with the interface (rotation lock). The Dynamic Island's side follows
+  /// the interface, so the interface is what lib/app/cutout_insets.dart
+  /// needs. "unknown" (no scene yet, at launch) keeps the symmetric inset.
+  private static func currentInterfaceOrientation() -> String {
+    let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+    let scene =
+      scenes.first { $0.activationState == .foregroundActive } ?? scenes.first
+    guard let interface = scene?.interfaceOrientation else { return "unknown" }
+    switch interface {
+    case .landscapeLeft: return "landscapeLeft"
+    case .landscapeRight: return "landscapeRight"
+    case .portrait: return "portrait"
+    case .portraitUpsideDown: return "portraitUpsideDown"
+    default: return "unknown"
     }
   }
 

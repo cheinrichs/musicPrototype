@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../journey/journey_state.dart';
 import '../ui/theme/theme.dart';
+import 'cutout_insets.dart';
 import 'router.dart';
 import 'state/dev_settings_state.dart';
 import 'state/profile_state.dart';
@@ -33,6 +34,8 @@ class EarTrainerApp extends StatelessWidget {
         debugShowCheckedModeBanner: false,
         theme: buildTheme(),
         routerConfig: appRouter,
+        // Trello 226: inset only the side the cutout is actually on.
+        builder: (context, child) => CutoutMediaQuery(child: child!),
       ),
     );
   }
