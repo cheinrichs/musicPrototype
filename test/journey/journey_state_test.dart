@@ -52,36 +52,49 @@ void main() {
   });
 
   group('milestones and the chest', () {
-    test('every fifth stone is a milestone', () {
+    test('a chest sits on every sixth stone, claimed by finishing the '
+        'stone before it (Cooper, 2026-11-21)', () {
       expect(
-        [for (var i = 0; i < 12; i++) JourneyState.isMilestone(i)],
-        [
-          false,
-          false,
-          false,
-          false,
-          true,
-          false,
-          false,
-          false,
-          false,
-          true,
-          false,
-          false,
-        ],
+        [for (var i = 0; i < 13; i++) JourneyState.isChestStone(i)],
+        [for (var i = 0; i < 13; i++) i == 5 || i == 11],
+      );
+      expect(
+        [for (var i = 0; i < 13; i++) JourneyState.isMilestone(i)],
+        [for (var i = 0; i < 13; i++) i == 4 || i == 10],
       );
     });
 
-    test('the one chest is always ahead, at the next milestone', () {
+    test('the one chest is always ahead: on stone 6 until it is claimed '
+        'from stone 5, then on stone 12', () {
       final j = JourneyState();
-      expect(j.chestStone, 4);
+      expect(j.chestStone, 5);
       for (var i = 0; i < 4; i++) {
         j.completeStone(j.rewardsForCurrent());
       }
       expect(j.current, 4);
-      expect(j.chestStone, 4, reason: 'standing on it');
+      expect(j.chestStone, 5, reason: 'on the next stone, waiting');
+      j.awaitChest();
+      expect(j.chestPending, isTrue);
       j.completeStone(j.rewardsForCurrent());
-      expect(j.chestStone, 9, reason: 'a new chest at the next milestone');
+      expect(j.current, 5, reason: 'arrived on the chest\'s stone');
+      expect(j.chestPending, isFalse);
+      expect(j.chestStone, 11, reason: 'a new chest at the next sixth');
+    });
+
+    test('an unclaimed chest is SAVED: a child who leaves before tapping '
+        'comes back to it', () async {
+      SharedPreferences.setMockInitialValues({});
+      final a = JourneyState()..useProfile('delaney');
+      for (var i = 0; i < 4; i++) {
+        a.completeStone(a.rewardsForCurrent());
+      }
+      a.awaitChest();
+      await a.saved;
+      final b = JourneyState();
+      await b.load();
+      b.useProfile('delaney');
+      expect(b.current, 4);
+      expect(b.chestPending, isTrue);
     });
   });
 

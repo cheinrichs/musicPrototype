@@ -72,6 +72,19 @@ abstract final class JourneyTiming {
   static const newChestPan = Duration(milliseconds: 1000);
   static const newChestDrop = Duration(milliseconds: 700);
   static const newChestHold = Duration(milliseconds: 900);
+
+  // The waiting chest's invitation (Cooper, 2026-11-21: the tap gates
+  // progress, so an ignored chest must invite again — never a voice line
+  // telling the child what to do). After this long untapped, and again at
+  // every repeat, it gives one BIGGER hop and a sparkle burst.
+  static const chestInviteEvery = Duration(seconds: 5);
+  static const chestInviteHop = Duration(milliseconds: 650);
+
+  // The next chest's intermittent glow while the child is on the map
+  // (wayfinding): a brief warm glow, then quiet — "a few seconds between
+  // bursts", never a constant shimmer. Paused whenever anything else moves.
+  static const chestGlowCycle = Duration(milliseconds: 4800);
+  static const chestGlowOn = Duration(milliseconds: 1400);
 }
 
 /// Where the celebration is.
@@ -139,6 +152,11 @@ class _JourneyScreenState extends State<JourneyScreen> {
   bool _chestHidden = false;
   bool _chestDropping = false;
 
+  /// Counts the waiting chest's invitations; each one replays its bigger
+  /// hop. [_chestInvite] fires them while the chest waits untapped.
+  int _chestNudges = 0;
+  Timer? _chestInvite;
+
   /// Decorations landed on the map but not yet banked.
   final List<Reward> _decorationsLanded = [];
 
@@ -176,6 +194,7 @@ class _JourneyScreenState extends State<JourneyScreen> {
 
   @override
   void dispose() {
+    _chestInvite?.cancel();
     _scroll.dispose();
     _sparkles.dispose();
     _ownRail?.dispose();
@@ -248,7 +267,25 @@ class _JourneyScreenState extends State<JourneyScreen> {
       if (!mounted) return;
       await _panTo(home, JourneyTiming.panBack);
     }
-    if (mounted) setState(() => _panning = false);
+    if (!mounted) return;
+    setState(() => _panning = false);
+    // Left before tapping the chest: it is still there, still theirs.
+    if (_journey.chestPending) await _resumeChest();
+  }
+
+  /// The child finished the stone before a chest and left before tapping
+  /// it (the claim is saved, see [JourneyState.chestPending]): straight
+  /// back to the hopping chest, then on as if they had never left.
+  Future<void> _resumeChest() async {
+    final stone = _journey.current;
+    final rewards = _journey.rewardsForCurrent();
+    setState(() {
+      _chestAt = stone + 1;
+      _beat = _Beat.chestWaking;
+    });
+    await _claimChest(stone, rewards);
+    if (!mounted) return;
+    await _settle(stone, rewards, milestone: true);
   }
 
   // ---------------------------------------------------------------------------
@@ -256,7 +293,7 @@ class _JourneyScreenState extends State<JourneyScreen> {
   // ---------------------------------------------------------------------------
 
   void _startStone() {
-    if (_beat != _Beat.none || _panning) return;
+    if (_beat != _Beat.none || _panning || _journey.chestPending) return;
     _sfx(SfxType.tap);
     _journey.meet(_part.gameId);
     setState(() {
@@ -303,6 +340,9 @@ class _JourneyScreenState extends State<JourneyScreen> {
       if (mounted) setState(() => _segment++);
       return;
     }
+    // The stone before a chest: its claim is saved NOW, so leaving at any
+    // point of the celebration still finds the chest waiting.
+    if (JourneyState.isMilestone(_journey.current)) _journey.awaitChest();
     // The whole stone counts toward agency, as one set (cards 198/199).
     if (mounted) {
       GameSession.recordFinishedSet(
@@ -380,29 +420,48 @@ class _JourneyScreenState extends State<JourneyScreen> {
     await _wait(JourneyTiming.backToMap);
   }
 
-  /// Milestone: back on the map, the chest behind this stone wakes and lifts
-  /// off; the child taps it; presents come out and fly to their places.
+  /// Milestone (Cooper, 2026-11-21): the child has finished the stone
+  /// BEFORE a chest stone. Back on the map, the chest on the next stone
+  /// hops up (the existing wake: plain → glow, lifting in sparkles); the
+  /// child taps it; the presents fly to their places. Only after that does
+  /// anyone travel ([_settle]), so the chest is claimed and gone before the
+  /// avatar steps onto its stone — nothing moves into an occupied spot.
   Future<void> _milestone(int stone, List<Reward> rewards) async {
     final g = _geometry();
+    // Saved first: leaving from here on keeps the chest theirs.
+    if (!_journey.chestPending) _journey.awaitChest();
     setState(() {
-      _chestAt = stone;
+      _chestAt = stone + 1;
       _gameVisible = false;
       _beat = _Beat.chestWaking;
     });
-    _scroll.jumpTo(_offsetFor(g, stone, at: 0.45));
+    _scroll.jumpTo(_offsetFor(g, stone, at: 0.4));
     await _wait(JourneyTiming.backToMap);
     if (!mounted) return;
     setState(() => _layerUp = false);
     await _wait(JourneyTiming.arriveOnMap);
     if (!mounted) return;
+    await _claimChest(stone, rewards);
+  }
 
+  /// The chest on stone+1 wakes and lifts, waits for the tap (inviting
+  /// again if ignored), opens, and its presents fly.
+  Future<void> _claimChest(int stone, List<Reward> rewards) async {
+    final g = _geometry();
     // Plain → glow crossfade (the same artwork), lifting in sparkles.
     setState(() => _chestAwake = true);
     _sparkles.play();
     await _wait(JourneyTiming.chestWake);
     if (!mounted) return;
     setState(() => _beat = _Beat.chestWaiting);
+    _chestInvite = Timer.periodic(JourneyTiming.chestInviteEvery, (_) {
+      if (!mounted || _beat != _Beat.chestWaiting) return;
+      setState(() => _chestNudges++);
+      _sparkles.play();
+    });
     await _waitForTap();
+    _chestInvite?.cancel();
+    _chestInvite = null;
     if (!mounted) return;
 
     _sfx(SfxType.reward);
@@ -414,7 +473,7 @@ class _JourneyScreenState extends State<JourneyScreen> {
     await _wait(JourneyTiming.chestOpenToPresents);
     if (!mounted) return;
     // Out of the chest's opening, not its middle.
-    final r = g.chestRect(stone, lifted: true);
+    final r = g.chestRect(stone + 1, lifted: true);
     final chest =
         Offset(r.center.dx, r.top + r.height * OpenChestArt.mouth) -
         _scrollOffset;
@@ -520,8 +579,15 @@ class _JourneyScreenState extends State<JourneyScreen> {
       _chestAt = null;
       _chestAwake = false;
       _chestOpened = false;
+      _chestNudges = 0;
     });
-    await _wait(JourneyTiming.stoneTurns);
+    // After a chest, the pan to the next chest waits for all three to
+    // arrive on its stone, so the arrival is never panned off screen.
+    await _wait(
+      milestone
+          ? JourneyTiming.pinMoves + JourneyTiming.arriveOnMap
+          : JourneyTiming.stoneTurns,
+    );
     if (!mounted) return;
 
     if (milestone) {
@@ -700,12 +766,12 @@ class _JourneyScreenState extends State<JourneyScreen> {
                   onPoke: _pokeSound,
                 ).animate().scaleXY(begin: 1.4, end: 1, duration: 400.ms),
               ),
-            // Clef stands beyond the path's far edge, and the chest behind
-            // its stone: both drawn before the stones — until the chest
-            // wakes and lifts off, when it is drawn over everything.
+            // Clef stands beyond the path's far edge, drawn before the
+            // stones. The chest sits ON its stone, so after them — and
+            // over everything once it wakes and lifts off.
             _buildCompanion(g, current, clef: true),
-            if (!_chestHidden && !_chestAwake) _buildChest(g, chestStone),
             for (var i = 0; i < count; i++) _buildStone(g, i, current),
+            if (!_chestHidden && !_chestAwake) _buildChest(g, chestStone),
             if (_arrowFrom != null && _arrowFrom! + 2 < count)
               _buildArrow(g, _arrowFrom!),
             _buildCompanion(g, current, clef: false),
@@ -820,6 +886,52 @@ class _JourneyScreenState extends State<JourneyScreen> {
           .animate(onPlay: (c) => c.repeat(reverse: true))
           .moveY(begin: 0, end: -r.height * 0.04, duration: 700.ms)
           .scaleXY(begin: 1, end: 1.04, duration: 700.ms);
+      // Ignored for a while: one BIGGER hop, then back to the small bob.
+      if (_chestNudges > 0) {
+        chest = KeyedSubtree(
+          key: ValueKey('chest-invite-$_chestNudges'),
+          child: chest
+              .animate()
+              .moveY(
+                begin: 0,
+                end: -r.height * 0.28,
+                duration: JourneyTiming.chestInviteHop * 0.4,
+                curve: Curves.easeOut,
+              )
+              .then()
+              .moveY(
+                begin: 0,
+                end: r.height * 0.28,
+                duration: JourneyTiming.chestInviteHop * 0.6,
+                curve: Curves.bounceOut,
+              ),
+        );
+      }
+    }
+    // Wayfinding: the next unclaimed chest glows now and then while the
+    // child is on the map — quieter than the pin, and only while nothing
+    // else moves (the pin itself is still at rest).
+    if (!_chestAwake && !_chestDropping && _beat == _Beat.none && !_panning) {
+      chest = Stack(
+        fit: StackFit.expand,
+        children: [
+          chest,
+          IgnorePointer(
+            child: Image.asset(JourneyArt.chestGlow, fit: BoxFit.contain)
+                .animate(onPlay: (c) => c.repeat())
+                .custom(
+                  duration: JourneyTiming.chestGlowCycle,
+                  builder: (context, t, child) {
+                    final on =
+                        JourneyTiming.chestGlowOn.inMilliseconds /
+                        JourneyTiming.chestGlowCycle.inMilliseconds;
+                    final v = t < on ? math.sin(math.pi * t / on) : 0.0;
+                    return Opacity(opacity: 0.6 * v, child: child);
+                  },
+                ),
+          ),
+        ],
+      );
     }
     if (_chestDropping) {
       chest = chest
@@ -1162,18 +1274,21 @@ class JourneyMapGeometry {
   /// waiting for the tap, opening) it rises up and out to the right, clear
   /// of the pin — which is the biggest thing on the map and would otherwise
   /// cover the very chest the child has to tap.
+  /// The chest ON stone [i] (Cooper, 2026-11-21: "the treasure chest
+  /// should sit on the stone"): its base on the stone's top, a little wider
+  /// than the stone. [lifted] is the existing wake: the same chest, risen
+  /// above its stone and a little larger, to be tapped.
   Rect chestRect(int i, {bool lifted = false}) {
     final st = stoneSize(i);
-    final s = st * 1.35;
+    final s = st * 1.05;
+    // The stone's ellipse is ~45% of its cell's height; its top surface is
+    // about a tenth of a cell above the centre.
+    final foot = stoneCentre(i) + Offset(0, -st * 0.04);
     if (lifted) {
-      final pin = pinRect(i);
-      final centre = Offset(pin.right + s * 0.45, pin.center.dy);
-      return Rect.fromCenter(center: centre, width: s * 1.15, height: s * 1.15);
+      final ls = s * 1.15;
+      return Rect.fromLTWH(foot.dx - ls / 2, foot.dy - ls * 1.25, ls, ls);
     }
-    // The stone's ellipse is ~45% of its cell's height, so its back edge
-    // is ~0.22 of a cell above the centre.
-    final foot = stoneCentre(i) + Offset(st * 0.08, -st * 0.17);
-    return Rect.fromLTWH(foot.dx - s / 2, foot.dy - s * 0.76, s, s);
+    return Rect.fromLTWH(foot.dx - s / 2, foot.dy - s * 0.82, s, s);
   }
 
   // 0.257 of the screen: the avatar the size it was drawn at before its
@@ -1262,7 +1377,7 @@ class JourneyMapGeometry {
   ///   not a second avatar on the walkway.
   Offset clefFeet(int i) {
     double gap(int k) => (stoneX(k) + stoneX(k + 1)) / 2;
-    final chest = chestRect(JourneyState.nextMilestoneFrom(i));
+    final chest = chestRect(JourneyState.nextChestFrom(i + 1));
     double half(double at) =>
         _widthFor(CharacterArt.clef, clefHeightAt(at)) / 2;
     var k = i + 2;

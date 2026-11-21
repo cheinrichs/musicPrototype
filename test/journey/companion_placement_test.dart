@@ -1,5 +1,6 @@
 import 'package:ear_trainer/games/high_low/widgets/character_art.dart';
 import 'package:ear_trainer/journey/journey_screen.dart';
+import 'package:ear_trainer/journey/journey_state.dart';
 import 'package:flutter/painting.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -95,11 +96,7 @@ void main() {
         for (var i = 0; i < 40; i++) {
           final feet = g.clefFeet(i);
           final clef = frame(CharacterArt.clef, feet, g.clefHeightAt(feet.dx));
-          var m = i;
-          while ((m + 1) % 5 != 0) {
-            m++;
-          }
-          final chest = g.chestRect(m);
+          final chest = g.chestRect(JourneyState.nextChestFrom(i + 1));
           expect(
             clef.right <= chest.left || clef.left >= chest.right,
             isTrue,

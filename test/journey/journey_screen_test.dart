@@ -139,10 +139,57 @@ void main() {
     await run(tester, const Duration(seconds: 6));
     expect(journey.current, 4, reason: 'waiting for the chest to be tapped');
 
+    expect(journey.chestPending, isTrue, reason: 'saved before the tap');
+
     await tester.tap(find.byKey(const ValueKey('chest')));
     await run(tester, const Duration(seconds: 10));
     expect(journey.current, 5);
+    expect(journey.chestPending, isFalse);
     expect(journey.decorations, hasLength(1));
-    expect(journey.chestStone, 9);
+    expect(journey.chestStone, 11);
+  });
+
+  testWidgets('the chest on stone 6: an ignored chest invites again with a '
+      'bigger hop (no voice line), and nobody travels until the rewards '
+      'have landed', (tester) async {
+    await mount(tester);
+    await tester.tap(find.text('DEV: to milestone'));
+    await run(tester, const Duration(seconds: 2));
+    await tester.tap(find.text('DEV: finish stone'));
+    await run(tester, const Duration(seconds: 6));
+    expect(find.byKey(const ValueKey('chest-invite-1')), findsNothing);
+    await run(tester, const Duration(seconds: 5));
+    expect(
+      find.byKey(const ValueKey('chest-invite-1')),
+      findsOneWidget,
+      reason: 'untapped for a while: one bigger hop',
+    );
+
+    await tester.tap(find.byKey(const ValueKey('chest')));
+    await run(tester, const Duration(milliseconds: 2500));
+    expect(
+      journey.current,
+      4,
+      reason: 'the rewards are still flying: everyone stays on stone 5',
+    );
+    await run(tester, const Duration(seconds: 8));
+    expect(journey.current, 5);
+  });
+
+  testWidgets('left before tapping the chest: on coming back it is still '
+      'there, still theirs, and claiming it moves everyone on', (tester) async {
+    for (var i = 0; i < 4; i++) {
+      journey.completeStone(journey.rewardsForCurrent());
+    }
+    journey.awaitChest();
+    await mount(tester);
+    await run(tester, const Duration(seconds: 3));
+    expect(journey.chestPending, isTrue);
+    expect(journey.current, 4);
+    await tester.tap(find.byKey(const ValueKey('chest')));
+    await run(tester, const Duration(seconds: 12));
+    expect(journey.chestPending, isFalse);
+    expect(journey.current, 5);
+    expect(journey.decorations, hasLength(1));
   });
 }

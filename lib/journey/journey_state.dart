@@ -42,8 +42,9 @@ class StonePart {
 /// whenever iOS closed the app. [load] reads it at startup; every change
 /// writes it back ([_save]).
 class JourneyState extends ChangeNotifier {
-  /// Every fifth stone is a milestone (card 204, "easily adjusted").
-  static const int milestoneEvery = 5;
+  /// A chest sits ON every sixth stone (Cooper, 2026-11-21: "the treasure
+  /// chest should sit on the stone, and it should be every 6th stone").
+  static const int milestoneEvery = 6;
 
   /// The games a stone draws from — the two built ones. Never the same
   /// game twice in a row.
@@ -126,18 +127,41 @@ class JourneyState extends ChangeNotifier {
 
   List<Reward> get rewards => List.unmodifiable(_p.rewards);
 
-  static bool isMilestone(int stone) => (stone + 1) % milestoneEvery == 0;
+  /// Whether a chest sits on [stone]: every sixth (indices 5, 11, 17…).
+  static bool isChestStone(int stone) => (stone + 1) % milestoneEvery == 0;
 
-  /// The one chest on the map: behind the next milestone at or after the
-  /// child's stone — always ahead, never behind (card 204).
-  int get chestStone => nextMilestoneFrom(current);
+  /// Whether finishing [stone] claims a chest: the stone BEFORE a chest
+  /// stone (Cooper, 2026-11-21: "When the child completes the 5th stone
+  /// the treasure chest hops up … the kid taps it, the rewards fly to their
+  /// place, and then the characters all progress onto the 6th stone").
+  static bool isMilestone(int stone) => isChestStone(stone + 1);
 
-  static int nextMilestoneFrom(int stone) {
+  /// The one chest on the map: on the next chest stone AHEAD of the child —
+  /// never the one they stand on, whose chest they claimed to get there
+  /// (card 204: always ahead, never behind).
+  int get chestStone => nextChestFrom(current + 1);
+
+  /// The first chest stone at or after [stone].
+  static int nextChestFrom(int stone) {
     var s = stone;
-    while (!isMilestone(s)) {
+    while (!isChestStone(s)) {
       s++;
     }
     return s;
+  }
+
+  /// The current stone is played and its chest is waiting to be tapped:
+  /// SAVED, so a child who leaves before tapping comes back to the same
+  /// chest, still theirs (never lost for leaving). Cleared when it is
+  /// claimed ([completeStone]).
+  bool get chestPending => _p.chestPending;
+
+  /// The current (milestone) stone's games are all played; its chest now
+  /// waits for the tap.
+  void awaitChest() {
+    assert(isMilestone(current));
+    _p.chestPending = true;
+    notifyListeners();
   }
 
   int countOf(String typeId) =>
@@ -224,7 +248,8 @@ class JourneyState extends ChangeNotifier {
       ..rewards.addAll(earned)
       ..current += 1
       ..plan = null
-      ..partsDone = 0;
+      ..partsDone = 0
+      ..chestPending = false;
     notifyListeners();
   }
 
@@ -242,6 +267,7 @@ class _Progress {
   List<StonePart>? plan;
   int partsDone = 0;
   final Set<String> gamesMet = {};
+  bool chestPending = false;
 
   _Progress();
 
@@ -262,12 +288,14 @@ class _Progress {
           ],
     'partsDone': partsDone,
     'gamesMet': gamesMet.toList(),
+    'chestPending': chestPending,
   };
 
   factory _Progress.fromJson(Map<String, dynamic> j) {
     final p = _Progress()
       ..current = j['current'] as int? ?? 0
-      ..partsDone = j['partsDone'] as int? ?? 0;
+      ..partsDone = j['partsDone'] as int? ?? 0
+      ..chestPending = j['chestPending'] as bool? ?? false;
     p.completedAt.addAll([
       for (final d in (j['completedAt'] as List? ?? const []))
         DateTime.parse(d as String),
