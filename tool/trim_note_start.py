@@ -76,10 +76,28 @@ def find_onset(x: np.ndarray) -> int:
     return lo + int(hits[0]) if len(hits) else block
 
 
-def trim(x: np.ndarray) -> tuple[np.ndarray, int]:
+FIRST_SOUND_BELOW_PEAK_DB = 40.0
+
+
+def find_first_sound(x: np.ndarray) -> int:
+    """The start of the first 10 ms block within [FIRST_SOUND_BELOW_PEAK_DB]
+    of the note's own RMS peak: where the sound BEGINS, before any of its
+    attack. For a note that swells (a pianissimo trumpet takes ~230 ms to
+    reach full level), [find_onset] lands well into the swell and would cut
+    the attack; this never does."""
+    hop = SR // 100
+    n = len(x) // hop
+    rms = np.sqrt(np.mean(x[: n * hop].reshape(n, hop) ** 2, axis=1))
+    db = 20 * np.log10(np.maximum(rms, 1e-9))
+    return int(np.argmax(db > db.max() - FIRST_SOUND_BELOW_PEAK_DB)) * hop
+
+
+def trim(x: np.ndarray, to_first_sound: bool = False) -> tuple[np.ndarray, int]:
     """Returns the trimmed signal, the same length as [x], and the number of
-    samples cut from its start."""
-    cut = max(0, find_onset(x) - int(PRE_ROLL_S * SR))
+    samples cut from its start. [to_first_sound] cuts only the silence before
+    the sound begins (see [find_first_sound]); otherwise up to the strike."""
+    onset = find_first_sound(x) if to_first_sound else find_onset(x)
+    cut = max(0, onset - int(PRE_ROLL_S * SR))
     y = x[cut:].copy()
     n = min(int(FADE_IN_S * SR), len(y))
     y[:n] *= np.linspace(0, 1, n)
@@ -109,6 +127,14 @@ def self_test() -> None:
     # No lead-in: nothing (or next to nothing) is cut.
     _, cut = trim(pluck.copy())
     assert cut / SR < 0.002, cut / SR
+    # A SWELL (a pianissimo trumpet) after 200 ms of silence: to_first_sound
+    # cuts only the silence, never into the 300 ms rise.
+    swell = np.sin(2 * np.pi * 440 * t) * np.minimum(t / 0.3, 1) * 0.5
+    x = np.concatenate([np.zeros(int(0.2 * SR)), swell])
+    _, cut = trim(x, to_first_sound=True)
+    assert 0.18 < cut / SR <= 0.2, cut / SR
+    _, deep = trim(x)
+    assert deep > cut, "the strike finder would have cut into the swell"
     print("self-test passed")
 
 
@@ -117,6 +143,9 @@ def main() -> None:
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("files", nargs="*", type=Path)
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--to-first-sound", action="store_true",
+                    help="cut only the silence before the sound begins, never "
+                         "into a slow attack (find_first_sound)")
     ap.add_argument("--self-test", action="store_true")
     args = ap.parse_args()
     if args.self_test:
@@ -132,7 +161,7 @@ def main() -> None:
             # Always measure the ORIGINAL, so a re-run reports the true cut.
             source = original if original.exists() else mp3
             x = decode(source, work)
-            y, cut = trim(x)
+            y, cut = trim(x, to_first_sound=args.to_first_sound)
             print(f"{rel}: cut {cut / SR * 1000:.1f} ms ({cut} samples at {SR} Hz)")
             if args.dry_run:
                 continue
