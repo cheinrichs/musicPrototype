@@ -1,11 +1,13 @@
 import 'package:ear_trainer/app/config.dart';
 import 'package:ear_trainer/app/rail_shell.dart';
+import 'package:ear_trainer/app/state/profile_state.dart';
 import 'package:ear_trainer/journey/journey_art.dart';
 import 'package:ear_trainer/journey/journey_screen.dart';
 import 'package:ear_trainer/journey/journey_state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// Walks both celebrations through the dev shortcut, which celebrates the
 /// child's stone without playing it — the flows are the same either way.
@@ -36,6 +38,42 @@ void main() {
     );
     // The opening pan: to the chest and back.
     await run(tester, const Duration(seconds: 4));
+  }
+
+  for (final dev in [false, true]) {
+    testWidgets('the DEV buttons show only on the dev profile, even on an '
+        'internal build (Cooper, 2026-11-21: they were on a child\'s journey) '
+        '— ${dev ? 'dev profile: shown' : 'child: hidden'}', (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      final profiles = ProfileState();
+      await tester.runAsync(() async {
+        await profiles.load();
+        profiles.selectProfile(
+          await profiles.addProfile(dev ? 'Cooper' : 'Delaney', isDev: dev),
+        );
+      });
+      expect(profiles.canUseDevTools, dev);
+      tester.view.physicalSize = const Size(844, 390) * 3;
+      tester.view.devicePixelRatio = 3;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider.value(value: journey),
+            ChangeNotifierProvider.value(value: profiles),
+          ],
+          child: const MaterialApp(home: RailShell()),
+        ),
+      );
+      await run(tester, const Duration(seconds: 4));
+      for (final label in [
+        'DEV: finish stone',
+        'DEV: to milestone',
+        'DEV: reset',
+      ]) {
+        expect(find.text(label), dev ? findsOneWidget : findsNothing);
+      }
+    });
   }
 
   RailController rail(WidgetTester tester) => Provider.of<RailController>(

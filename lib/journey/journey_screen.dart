@@ -655,7 +655,15 @@ class _JourneyScreenState extends State<JourneyScreen> {
                 onTap: () => GoRouter.of(context).go(AppRoutes.profilePicker),
               ),
             ),
-          if (devToolsEnabled && !inStone && !_panning) _buildDevBar(g),
+          // The dev profile only, on an internal build (Cooper, 2026-11-21:
+          // they showed on a child's journey, where "reset" would wipe her
+          // progress and "finish stone" would skip play and corrupt the
+          // data promotion reads). The same gate as the games' dev setup;
+          // without a ProfileState (widget tests only) the build flag.
+          if ((_profiles()?.canUseDevTools ?? devToolsEnabled) &&
+              !inStone &&
+              !_panning)
+            _buildDevBar(g),
         ],
       ),
     );
