@@ -149,20 +149,24 @@ void main() {
     expect(journey.chestStone, 11);
   });
 
-  testWidgets('the chest on stone 6: an ignored chest invites again with a '
-      'bigger hop (no voice line), and nobody travels until the rewards '
-      'have landed', (tester) async {
+  testWidgets('the chest EVENT: it comes forward to nearly fill the screen '
+      'and wiggles on arrival, wiggles again while ignored (no voice line), '
+      'and nobody travels until the rewards have landed and it has cleared', (
+    tester,
+  ) async {
     await mount(tester);
     await tester.tap(find.text('DEV: to milestone'));
     await run(tester, const Duration(seconds: 2));
     await tester.tap(find.text('DEV: finish stone'));
     await run(tester, const Duration(seconds: 6));
-    expect(find.byKey(const ValueKey('chest-invite-1')), findsNothing);
+    final chest = tester.getRect(find.byKey(const ValueKey('chest')));
+    expect(chest.height, greaterThan(390 * 0.85), reason: 'nearly the screen');
+    expect(find.byKey(const ValueKey('chest-invite-1')), findsOneWidget);
     await run(tester, const Duration(seconds: 5));
     expect(
-      find.byKey(const ValueKey('chest-invite-1')),
+      find.byKey(const ValueKey('chest-invite-2')),
       findsOneWidget,
-      reason: 'untapped for a while: one bigger hop',
+      reason: 'untapped: it wiggles again',
     );
 
     await tester.tap(find.byKey(const ValueKey('chest')));
@@ -174,6 +178,26 @@ void main() {
     );
     await run(tester, const Duration(seconds: 8));
     expect(journey.current, 5);
+  });
+
+  testWidgets('stone 6 is a REWARD stone, never played: tapping it moves '
+      'everyone on to stone 7, whose games start on arrival', (tester) async {
+    for (var i = 0; i < 5; i++) {
+      journey.completeStone(journey.rewardsForCurrent());
+    }
+    expect(journey.current, 5);
+    await mount(tester);
+    final rewardsBefore = journey.rewards.length;
+    await tester.tap(find.byKey(const ValueKey('stone-5')));
+    await run(tester, const Duration(seconds: 3));
+    expect(journey.current, 6);
+    expect(journey.rewards.length, rewardsBefore, reason: 'nothing earned');
+    expect(journey.partsDone, 0);
+    expect(
+      find.byKey(const ValueKey('segment-1')),
+      findsOneWidget,
+      reason: 'stone 7\'s first game started',
+    );
   });
 
   testWidgets('left before tapping the chest: on coming back it is still '

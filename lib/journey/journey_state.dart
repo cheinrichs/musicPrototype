@@ -122,7 +122,8 @@ class JourneyState extends ChangeNotifier {
   /// The stone the child is on (0-based). Every stone before it is done.
   int get current => _p.current;
 
-  /// When each finished stone was finished — recorded, not gated on.
+  /// When each stone was finished (or, for a reward stone, passed) —
+  /// recorded, not gated on.
   List<DateTime> get completedAt => List.unmodifiable(_p.completedAt);
 
   List<Reward> get rewards => List.unmodifiable(_p.rewards);
@@ -155,6 +156,25 @@ class JourneyState extends ChangeNotifier {
   /// chest, still theirs (never lost for leaving). Cleared when it is
   /// claimed ([completeStone]).
   bool get chestPending => _p.chestPending;
+
+  /// A chest stone is a REWARD stone (Cooper, 2026-11-21): the child
+  /// arrives on it by claiming its chest from the stone before, and it is
+  /// never played. Tapping it moves everyone on to the next stone, whose
+  /// games then start ([passRewardStone]).
+  static bool isRewardStone(int stone) => isChestStone(stone);
+
+  /// Moves the child off the reward stone they stand on, to the next
+  /// stone: no games, no rewards, and nothing for agency to judge (no set
+  /// is recorded). [completedAt] still notes when it was passed.
+  void passRewardStone({DateTime? at}) {
+    assert(isRewardStone(current));
+    _p
+      ..completedAt.add(at ?? DateTime.now())
+      ..current += 1
+      ..plan = null
+      ..partsDone = 0;
+    notifyListeners();
+  }
 
   /// The current (milestone) stone's games are all played; its chest now
   /// waits for the tap.

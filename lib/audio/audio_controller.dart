@@ -180,6 +180,28 @@ class AudioController {
     });
   }
 
+  /// A decorative chime (the Journey chest's twinkle): plays [path] at
+  /// [volume] on its own voice, so chimes ring over one another instead of
+  /// cutting off like [playAssetForScale]'s notes, and never cuts a note or
+  /// a voice line either. Fire and forget.
+  Future<void> playChime(String path, {double volume = 1.0}) async {
+    if (!_isInitialized || _isMuted) return;
+    if (!_noteCache.containsKey(path)) {
+      await _preloadAssetPath(path);
+    }
+    final source = _noteCache[path];
+    if (source != null) await _soloud!.play(source, volume: volume);
+  }
+
+  /// Whether a voice line (or other clip) is sounding right now. Effects
+  /// that must never play over a voice line check this first.
+  bool get isClipPlaying {
+    final handle = _currentClipHandle;
+    return _isInitialized &&
+        handle != null &&
+        _soloud!.getIsValidVoiceHandle(handle);
+  }
+
   /// How long the sample at [path] really plays — its decoded length, not a
   /// guess — or null if audio isn't running or it can't load. Loud or
   /// Quiet's needle times its return to rest by this (Trello card 208):
