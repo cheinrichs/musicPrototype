@@ -215,6 +215,55 @@ void main() {
     );
   });
 
+  group('the round\'s FIRST ANSWER, for tier evidence (Cooper, 2026-11-22): '
+      'the first tap at Explore, the first drop at Decide', () {
+    testWidgets('Explore: the first tap after the intro is the answer (it '
+        'was never recorded before: a retired hint flag blocked it)', (
+      tester,
+    ) async {
+      final state = HighLowGameState(
+        totalPrompts: 2,
+        agencyStage: AgencyStage.explore,
+        conceptTier: ConceptTier.t1,
+      );
+      state.startGame();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 4700));
+      final prompt = state.currentPrompt!;
+      state.tapInstrument(1 - prompt.targetSide);
+      state.tapInstrument(prompt.targetSide);
+      for (var i = 0; i < 6; i++) {
+        state.tapInstrument(prompt.targetSide);
+        await tester.pump(const Duration(milliseconds: 300));
+      }
+      await tester.pump(const Duration(seconds: 3));
+      final r = state.instrumentation.first;
+      expect(r.firstResponseCorrect, isFalse, reason: 'the first tap missed');
+      expect(r.notesHeardBeforeFirstResponse, isTrue);
+      state.dispose();
+    });
+
+    testWidgets('Decide: a tap is only listening; the first DROP is the '
+        'answer', (tester) async {
+      final state = HighLowGameState(
+        totalPrompts: 2,
+        agencyStage: AgencyStage.decide,
+        conceptTier: ConceptTier.t1,
+      );
+      state.startGame();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 4700));
+      final prompt = state.currentPrompt!;
+      state.tapInstrument(1 - prompt.targetSide);
+      await tester.pump(const Duration(milliseconds: 300));
+      state.dropInstrument(prompt.targetSide);
+      await tester.pump();
+      expect(state.instrumentation.single.firstResponseCorrect, isTrue);
+      await tester.pump(const Duration(seconds: 3));
+      state.dispose();
+    });
+  });
+
   group('HighLowGameState — Trigger (A2)', () {
     testWidgets(
       'a correct drop records a result, shows correct feedback, and advances',

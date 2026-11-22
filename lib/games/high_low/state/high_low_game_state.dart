@@ -200,13 +200,6 @@ class HighLowGameState extends ChangeNotifier {
   /// prevent).
   bool? _firstResponseHeardBothNotes;
 
-  /// Whether Participate's target-side instrument has started sparkling
-  /// yet this round — used only to gate [_firstResponseCorrect] below to
-  /// "before any hint existed"; no longer drives anything on screen
-  /// itself (Trello card RqdPFKLf retired the old continuous
-  /// instrument-sparkle hint in favor of [_characterSparkleIsPiper]'s
-  /// per-tap character sparkle).
-  bool _hintVisible = false;
   DragFeedback _dragFeedback = DragFeedback.none;
   int? _lastDropSide;
   SpokenLine? _activeCaption;
@@ -717,7 +710,6 @@ class HighLowGameState extends ChangeNotifier {
     _playingIndex = null;
     _dragFeedback = DragFeedback.none;
     _lastDropSide = null;
-    _hintVisible = false;
     _waitedForPlaythrough = true;
     _firstResponseSide = null;
     _firstResponseCorrect = null;
@@ -864,7 +856,6 @@ class HighLowGameState extends ChangeNotifier {
     if (token != _roundToken) return;
     _introPlaying = false;
     _playingIndex = null;
-    _hintVisible = agencyStage == AgencyStage.explore;
     _status = GameStatus.awaitingInput;
 
     // Fresh 6-second window every time a round becomes actionable — the
@@ -917,12 +908,6 @@ class HighLowGameState extends ChangeNotifier {
       return;
     }
 
-    // Captured before `_finishIntro` (below) can flip it — the tap that
-    // cuts the intro short is exactly "the tap before Clef sparkles" the
-    // instrumentation cares about, so it must be judged against the hint
-    // state as it stood *before* this tap, not after.
-    final hintWasVisible = _hintVisible;
-
     if (_introPlaying && agencyStage != AgencyStage.observe) {
       _waitedForPlaythrough = false;
       _audio.stopCurrentNote();
@@ -935,11 +920,14 @@ class HighLowGameState extends ChangeNotifier {
       _finishIntro(token);
     }
 
-    // Record the first response of the round, if made before any hint
-    // existed — Observe has no target to score against.
-    if (_firstResponseSide == null &&
-        agencyStage != AgencyStage.observe &&
-        !hintWasVisible) {
+    // The round's FIRST ANSWER, for tier evidence (Cooper, 2026-11-22):
+    // at Explore it is the first tap — the first tap of a round always
+    // comes before any sparkle, which only a correct tap makes. At Decide
+    // a tap is only listening; the answer is the first DROP (see
+    // [dropInstrument]). Observe has no answer at all. (The old
+    // `hintWasVisible` gate here dated from a retired continuous hint and
+    // stopped every post-intro Explore tap being recorded.)
+    if (_firstResponseSide == null && agencyStage == AgencyStage.explore) {
       _firstResponseSide = side;
       _firstResponseCorrect = side == prompt.targetSide;
       _firstResponseHeardBothNotes = _bothNotesHeard;

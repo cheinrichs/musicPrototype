@@ -409,7 +409,9 @@ class LoudQuietGameState extends ChangeNotifier {
       _timer?.cancel();
       _becomeAnswerable(++_token);
     }
-    _firstResponseSide ??= side;
+    // The first answer (tier evidence): a tap only at Explore. At Decide a
+    // tap is listening and the answer is the first drop.
+    if (agencyStage == AgencyStage.explore) _firstResponseSide ??= side;
     _ring(side);
     // Every tap is its own complete needle gesture, even the same
     // instrument four times running (card 208) — see [_playSide].
