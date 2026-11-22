@@ -76,21 +76,23 @@ void main() {
   group('the saved evidence', () {
     setUp(() => SharedPreferences.setMockInitialValues({}));
 
-    test('keeps only the last ten slots, per game', () {
+    test('keeps the last 20 slots (room for the demotion window of 10 '
+        'answered); the promotion window is the last 10, per game', () {
       final s = TierProgressState();
-      for (var i = 0; i < 12; i++) {
+      for (var i = 0; i < 22; i++) {
         s.recordRounds(
           profileId: 'd',
           gameId: 'high_low',
           childLevel: 0,
           playedLevel: 0,
           agency: AgencyStage.decide,
-          rounds: [round(correct: i >= 2)],
+          rounds: [round(correct: i >= 12)],
         );
       }
       final g = s.gameRecord('d', 'high_low')!;
-      expect(g.slots, hasLength(10));
-      expect(g.rights, 10, reason: 'the two early wrongs fell out');
+      expect(g.slots, hasLength(20));
+      expect(g.recent, hasLength(10));
+      expect(g.rights, 10, reason: 'the last ten were right');
       expect(s.gameRecord('d', 'loud_quiet'), isNull);
     });
 
@@ -190,13 +192,33 @@ void tierAdvancementTests() {
       expect(judge('rrrrrrrrrr', sets: 2).change, TierChange.promote);
     });
 
-    test('DEMOTES at or below half right over 8+ answered, with no lockout, '
-        'and never below T1', () {
-      expect(judge('rrrrwwww', sets: 0).change, TierChange.demote);
-      expect(judge('rrrrwwwwss').change, TierChange.demote);
-      expect(judge('rrrrrwww').change, TierChange.hold, reason: '5 of 8');
-      expect(judge('rrrwwww').change, TierChange.hold, reason: 'only 7');
+    test('DEMOTES at 40% or fewer right over the last 10 ANSWERED rounds '
+        '(Cooper, 2026-11-22), with no lockout, never below T1', () {
+      expect(judge('rrrrwwwwww', sets: 0).change, TierChange.demote);
+      expect(
+        judge('rrrrwwwwwwss').change,
+        TierChange.demote,
+        reason: 'skips are left out: still the last 10 answered',
+      );
+      expect(judge('rrrrrwwwww').change, TierChange.hold, reason: '50%');
+      expect(judge('rrwwwwwww').change, TierChange.hold, reason: 'only 9');
       expect(judge('wwwwwwwwww', level: 0).change, TierChange.hold);
+    });
+
+    test('the bar is CLEARLY BELOW CHANCE, from the level\'s choices: '
+        '4 of 10 with two, 2 of 10 with three', () {
+      expect(TierAdvancement.demotionMaxRights(2), 4);
+      expect(TierAdvancement.demotionMaxRights(3), 2);
+      TierChange three(String codes) => TierAdvancement.evaluate(
+        record: rec(codes, level: 4),
+        level: 4,
+        ceiling: 5,
+        setsSinceAgencyChange: 99,
+        label: 'step 5',
+        choices: 3,
+      ).change;
+      expect(three('rrrwwwwwww'), TierChange.hold, reason: '30% is above 23%');
+      expect(three('rrwwwwwwww'), TierChange.demote);
     });
   });
 }

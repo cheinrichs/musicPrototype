@@ -214,7 +214,8 @@ This needs the per-round tracking log to enforce — something has to know what 
 
 - **Tier is per game**, on the profile (`levels`); every child starts at T1, nothing inferred from history.
 - **Evidence:** the round's first answer — the first tap at Explore (before any sparkle), the first drop at Decide — given after the sounds finished. Skips are neutral slots (never right). Observe, early answers and left sets are not evidence. Only rounds played at the child's own level count.
-- **Promote** at 8 right of the last 10 rounds of that game at that level. **Demote** at or below half right over 8+ answered rounds; never below T1.
+- **Promote** at 8 right of the last 10 rounds of that game at that level. **Demote** when the last 10 ANSWERED rounds are clearly below chance: chance minus 10 points, from the level's number of choices — 4 of 10 with two, 2 of 10 with three (Cooper, 2026-11-22, replacing "half of 8", which over repeated checks would eventually have demoted almost every child). Never below T1.
+- **Promotion stops at what the child's agency can play** (Observe: T1; Explore: two notes; Loud or Quiet's three-instrument steps need Decide).
 - **Evaluated once per set, at its end — never per round** (a guesser gets one ~5.5% chance per check; continuous checks would let one through).
 - **Lockout:** no tier promotion in the set agency changed, nor the one after. Demotion has no lockout.
 - **Ceiling: T4** until the three-note "which is highest" layout exists (T5–T8 show a placeholder today).

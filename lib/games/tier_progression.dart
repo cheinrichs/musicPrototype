@@ -33,9 +33,13 @@ enum TierSlot {
 
 /// Which rounds are tier evidence, and what each says.
 abstract final class TierEvidence {
-  /// The window: the last this-many slots in a game, at the child's current
-  /// level there.
+  /// The PROMOTION window: the last this-many slots in a game (skips
+  /// included, as neutral slots), at the child's current level there.
   static const int window = 10;
+
+  /// How many slots are kept: enough for the DEMOTION window, which is the
+  /// last 10 ANSWERED rounds (skips excluded), with room for skips.
+  static const int kept = 20;
 
   /// What [round], played at [agency], says about the child's hearing, or
   /// null when it says nothing:
@@ -68,17 +72,33 @@ class GameTierRecord {
   GameTierRecord({required this.level, List<TierSlot>? slots})
     : slots = slots ?? [];
 
-  int get rights => slots.where((s) => s == TierSlot.right).length;
-  int get answered => slots.where((s) => s != TierSlot.skipped).length;
+  /// The promotion window: the last [TierEvidence.window] slots.
+  List<TierSlot> get recent => slots.length <= TierEvidence.window
+      ? slots
+      : slots.sublist(slots.length - TierEvidence.window);
+
+  /// Right answers in the promotion window.
+  int get rights => recent.where((s) => s == TierSlot.right).length;
+
+  /// The last [count] ANSWERED rounds (skips left out), oldest first.
+  List<TierSlot> lastAnswered(int count) {
+    final answered = [
+      for (final s in slots)
+        if (s != TierSlot.skipped) s,
+    ];
+    return answered.length <= count
+        ? answered
+        : answered.sublist(answered.length - count);
+  }
 
   /// "6 right of 10" — how far along the window is, for an adult.
   String get summary =>
-      '$rights right of ${slots.length}'
-      '${slots.length < TierEvidence.window ? ' (window ${TierEvidence.window})' : ''}';
+      '$rights right of ${recent.length}'
+      '${recent.length < TierEvidence.window ? ' (window ${TierEvidence.window})' : ''}';
 
   void add(TierSlot slot) {
     slots.add(slot);
-    while (slots.length > TierEvidence.window) {
+    while (slots.length > TierEvidence.kept) {
       slots.removeAt(0);
     }
   }
@@ -294,9 +314,33 @@ abstract final class TierAdvancement {
   /// Right answers needed in a full window to promote (Cooper: "8/10").
   static const int promotionRights = 8;
 
-  /// Answered rounds (skips excluded) the window must hold before a
-  /// demotion can be judged.
-  static const int demotionMinAnswered = 8;
+  /// DEMOTION (Cooper, 2026-11-22: "let's change to the 40% at 10 rounds"):
+  /// over the last [demotionAnswered] ANSWERED rounds at this level, demote
+  /// when the share right is at or below chance minus
+  /// [demotionMarginBelowChance] — "clearly below chance". Chance comes from
+  /// the level's number of choices ([chance]): 50% with two, so the bar is
+  /// 40% (4 of 10); a third with three, so about 23% (2 of 10). The rule is
+  /// written once; three-note levels need no rewrite.
+  ///
+  /// ⚠️ DO NOT LOOSEN THIS BACK. The check runs again at EVERY set, so its
+  /// per-check odds compound. The old rule (at or below half of 8)
+  /// demoted a child of true 65% ability 29% of the time per check and a
+  /// 75% child 11% — over enough sets it would have demoted almost every
+  /// child, whatever their ability. This rule: a 65% child 9.5%, a 75%
+  /// child 2%. A child genuinely at chance is still demoted 38% of the time
+  /// per check, so because the check repeats, a real struggler is caught
+  /// within two or three sets. A looser bar buys nothing and guarantees
+  /// false demotions over time.
+  static const int demotionAnswered = 10;
+  static const double demotionMarginBelowChance = 0.10;
+
+  /// The chance of a guess being right with [choices] options.
+  static double chance(int choices) => 1 / choices;
+
+  /// The most right answers out of [demotionAnswered] that still demote.
+  static int demotionMaxRights(int choices) =>
+      ((chance(choices) - demotionMarginBelowChance) * demotionAnswered + 1e-9)
+          .floor();
 
   /// Sets after an agency change in which a tier promotion waits.
   static const int lockoutSets = 1;
@@ -307,17 +351,24 @@ abstract final class TierAdvancement {
     required int ceiling,
     required int setsSinceAgencyChange,
     required String label,
+    int choices = 2,
   }) {
     final rights = record.rights;
-    final answered = record.answered;
-    final n = record.slots.length;
+    final n = record.recent.length;
 
+    final lastAnswered = record.lastAnswered(demotionAnswered);
+    final answeredRights = lastAnswered
+        .where((s) => s == TierSlot.right)
+        .length;
+    final maxRights = demotionMaxRights(choices);
     if (level > 0 &&
-        answered >= demotionMinAnswered &&
-        rights * 2 <= answered) {
+        lastAnswered.length >= demotionAnswered &&
+        answeredRights <= maxRights) {
       return TierEvaluation(
         TierChange.demote,
-        '$rights right of $answered answered at $label — at or below chance',
+        '$answeredRights right of the last $demotionAnswered answered at '
+        '$label — clearly below chance ($maxRights or fewer of '
+        '$demotionAnswered with $choices choices)',
       );
     }
     if (n < TierEvidence.window || rights < promotionRights) {

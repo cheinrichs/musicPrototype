@@ -248,6 +248,7 @@ abstract final class GameSession {
           ceiling: GameLevels.playableCeiling(gameId, next ?? current),
           setsSinceAgencyChange: record.setsSinceAgencyChange,
           label: GameLevels.label(gameId, level),
+          choices: GameLevels.choicesAt(gameId, level),
         );
         final moved = switch (verdict.change) {
           TierChange.promote => level + 1,

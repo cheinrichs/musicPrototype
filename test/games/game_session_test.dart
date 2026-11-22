@@ -337,8 +337,8 @@ void main() {
       expect(profiles.activeProfile!.levelOf('loud_quiet'), 2);
     });
 
-    testWidgets('DEMOTION: at chance over 8+ answered rounds, back down a '
-        'tier, with no lockout', (tester) async {
+    testWidgets('DEMOTION: 40% or fewer of the last 10 answered, back down '
+        'a tier, with no lockout', (tester) async {
       final (profiles, tiers, context) = await setUpChild(
         tester,
         AgencyStage.decide,
@@ -346,10 +346,22 @@ void main() {
       await tester.runAsync(
         () => profiles.setLevel(profiles.activeProfile!, 'high_low', 2),
       );
-      await playSet(tester, context, profiles, [true, false, true, false]);
+      await playSet(tester, context, profiles, [
+        true,
+        false,
+        true,
+        false,
+        false,
+      ]);
       expect(profiles.activeProfile!.levelOf('high_low'), 2);
-      await playSet(tester, context, profiles, [false, true, false, false]);
-      expect(profiles.activeProfile!.levelOf('high_low'), 1);
+      await playSet(tester, context, profiles, [
+        false,
+        true,
+        false,
+        true,
+        false,
+      ]);
+      expect(profiles.activeProfile!.levelOf('high_low'), 1, reason: '4 of 10');
     });
   });
 

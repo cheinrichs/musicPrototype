@@ -45,6 +45,14 @@ abstract final class GameLevels {
     return reachable < ceiling ? reachable : ceiling;
   }
 
+  /// How many options a round at [level] of [gameId] offers — what chance
+  /// is measured against (tier demotion: TierAdvancement.chance).
+  static int choicesAt(String gameId, int level) => switch (gameId) {
+    highLow => ConceptTier.values[level.clamp(0, 7)].noteCount,
+    loudQuiet => DynamicLadder.standard[level].instrumentCount,
+    _ => 2,
+  };
+
   /// [level] brought onto [gameId]'s playable ladder.
   static int clamp(String gameId, int level) =>
       level.clamp(0, ceilingOf(gameId));
