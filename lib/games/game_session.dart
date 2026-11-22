@@ -243,7 +243,9 @@ abstract final class GameSession {
         final verdict = TierAdvancement.evaluate(
           record: game,
           level: level,
-          ceiling: GameLevels.ceilingOf(gameId),
+          // What the child's agency NOW can play — after any agency
+          // change this set.
+          ceiling: GameLevels.playableCeiling(gameId, next ?? current),
           setsSinceAgencyChange: record.setsSinceAgencyChange,
           label: GameLevels.label(gameId, level),
         );

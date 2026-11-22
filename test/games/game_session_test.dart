@@ -298,6 +298,45 @@ void main() {
       expect(profiles.activeProfile!.levelOf('high_low'), 1);
     });
 
+    testWidgets('an Explore child at Loud or Quiet step 3 holds there, '
+        'however well they do: step 4 needs three instruments, which only '
+        'Decide plays (else they would be stranded with no evidence)', (
+      tester,
+    ) async {
+      final (profiles, tiers, context) = await setUpChild(
+        tester,
+        AgencyStage.explore,
+      );
+      await tester.runAsync(
+        () => profiles.setLevel(profiles.activeProfile!, 'loud_quiet', 2),
+      );
+      for (var i = 0; i < 3; i++) {
+        await tester.runAsync(() async {
+          GameSession.recordFinishedSet(
+            context,
+            SetReport(
+              gameType: 'loud_quiet',
+              agency: AgencyStage.explore,
+              rounds: [
+                for (var r = 0; r < 4; r++)
+                  RoundInstrumentation(
+                    promptNumber: 1,
+                    waitedForPlaythrough: true,
+                    firstResponseCorrect: true,
+                    listenAgainCount: 0,
+                    wrongTapCount: 5,
+                  ),
+              ],
+              correctCount: 4,
+              level: 2,
+            ),
+          );
+        });
+      }
+      expect(profiles.activeProfile!.agencyOverride, AgencyStage.explore);
+      expect(profiles.activeProfile!.levelOf('loud_quiet'), 2);
+    });
+
     testWidgets('DEMOTION: at chance over 8+ answered rounds, back down a '
         'tier, with no lockout', (tester) async {
       final (profiles, tiers, context) = await setUpChild(

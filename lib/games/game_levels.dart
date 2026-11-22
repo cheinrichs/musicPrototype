@@ -10,6 +10,10 @@
 /// every child starts at level 0 and climbs (Cooper, 2026-11-22).
 library;
 
+import '../models/agency_stage.dart';
+import '../models/concept_tier.dart';
+import 'loud_quiet/models/dynamic_ladder.dart';
+
 abstract final class GameLevels {
   static const String highLow = 'high_low';
   static const String loudQuiet = 'loud_quiet';
@@ -25,6 +29,21 @@ abstract final class GameLevels {
     loudQuiet => 5,
     _ => 0,
   };
+
+  /// The highest level a child at [agency] can actually PLAY in [gameId],
+  /// within [ceilingOf]. Promotion stops here: a level above it would be
+  /// played lower, so no round would ever count again and the child could
+  /// neither climb nor come back down (High vs Low: Observe plays T1 only,
+  /// Explore two notes only; Loud or Quiet: three instruments need Decide).
+  static int playableCeiling(String gameId, AgencyStage agency) {
+    final ceiling = ceilingOf(gameId);
+    final reachable = switch (gameId) {
+      highLow => ConceptTier.highestReachableAt(agency).index,
+      loudQuiet => DynamicLadder.standard.clampedTo(ceiling, agency),
+      _ => 0,
+    };
+    return reachable < ceiling ? reachable : ceiling;
+  }
 
   /// [level] brought onto [gameId]'s playable ladder.
   static int clamp(String gameId, int level) =>
