@@ -10,6 +10,7 @@ import 'package:ear_trainer/games/game_catalogue.dart';
 import 'package:ear_trainer/games/game_session.dart';
 import 'package:ear_trainer/games/high_low/models/round_instrumentation.dart';
 import 'package:ear_trainer/games/high_low/services/agency_advancement.dart';
+import 'package:ear_trainer/games/tier_progression.dart';
 import 'package:ear_trainer/models/agency_stage.dart';
 import 'package:ear_trainer/ui/components/round_set_progress_bar.dart';
 
@@ -25,12 +26,14 @@ RoundInstrumentation _round({bool skipped = false}) => RoundInstrumentation(
 Future<void> _withContext(
   WidgetTester tester,
   ProfileState profiles,
-  void Function(BuildContext) body,
-) async {
+  void Function(BuildContext) body, {
+  TierProgressState? tiers,
+}) async {
   await tester.pumpWidget(
     MultiProvider(
       providers: [
         ChangeNotifierProvider.value(value: profiles),
+        ChangeNotifierProvider.value(value: tiers ?? TierProgressState()),
         ChangeNotifierProvider(create: (_) => DevSettingsState()),
         ChangeNotifierProvider(create: (_) => ProgressState()),
       ],
@@ -156,6 +159,60 @@ void main() {
     });
     expect(result?.change, AgencyChange.advance);
     expect(profiles.activeProfile?.agencyOverride, AgencyStage.explore);
+  });
+
+  testWidgets('a STONE records tier evidence PER GAME from its parts, each '
+      'at its own level, while agency reads the merged set', (tester) async {
+    final profiles = ProfileState();
+    final tiers = TierProgressState();
+    await tester.runAsync(() async {
+      await profiles.load();
+      final d = await profiles.addProfile('Delaney');
+      profiles.selectProfile(d);
+      await profiles.setAgencyOverride(d, AgencyStage.decide);
+    });
+    late BuildContext context;
+    await _withContext(tester, profiles, (c) => context = c, tiers: tiers);
+    RoundInstrumentation answered(bool correct) => RoundInstrumentation(
+      promptNumber: 1,
+      waitedForPlaythrough: true,
+      firstResponseCorrect: correct,
+      notesHeardBeforeFirstResponse: true,
+      listenAgainCount: 0,
+    );
+    final hl = SetReport(
+      gameType: 'high_low',
+      agency: AgencyStage.decide,
+      rounds: [answered(true), answered(false)],
+      correctCount: 1,
+      level: 0,
+    );
+    final lq = SetReport(
+      gameType: 'loud_quiet',
+      agency: AgencyStage.decide,
+      rounds: [answered(true)],
+      correctCount: 1,
+      level: 0,
+    );
+    await tester.runAsync(() async {
+      GameSession.recordFinishedSet(
+        context,
+        SetReport(
+          gameType: 'journey_stone',
+          agency: AgencyStage.decide,
+          rounds: [...hl.rounds, ...lq.rounds],
+          correctCount: 2,
+        ),
+        parts: [hl, lq],
+      );
+    });
+    final id = profiles.activeProfile!.id;
+    expect(tiers.gameRecord(id, 'high_low')!.slots, [
+      TierSlot.right,
+      TierSlot.wrong,
+    ]);
+    expect(tiers.gameRecord(id, 'loud_quiet')!.slots, [TierSlot.right]);
+    expect(tiers.gameRecord(id, 'journey_stone'), isNull);
   });
 
   test('a report counts what the child finished and what the adult '

@@ -389,6 +389,8 @@ class _JourneyScreenState extends State<JourneyScreen> {
           rounds: <RoundInstrumentation>[for (final r in _reports) ...r.rounds],
           correctCount: _reports.fold(0, (n, r) => n + r.correctCount),
         ),
+        // Tier is per game: each game's own rounds, at its own level.
+        parts: List.of(_reports),
       );
     }
     _reports.clear();

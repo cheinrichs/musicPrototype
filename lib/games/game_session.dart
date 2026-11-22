@@ -8,6 +8,7 @@ import '../models/agency_stage.dart';
 import '../models/round_set_length.dart';
 import 'high_low/models/round_instrumentation.dart';
 import 'high_low/services/agency_advancement.dart';
+import 'tier_progression.dart';
 
 /// How a set of a game is started — the one interface every game takes, so
 /// anything that launches games (the games screen today, a Journey stone
@@ -148,11 +149,17 @@ class SetReport {
   final List<RoundInstrumentation> rounds;
   final int correctCount;
 
+  /// The level the set was PLAYED at, on this game's own ladder (see
+  /// `GameLevels`) — which agency may hold below the child's own level.
+  /// Tier evidence only counts rounds played at the child's level.
+  final int? level;
+
   const SetReport({
     required this.gameType,
     required this.agency,
     required this.rounds,
     required this.correctCount,
+    this.level,
   });
 
   /// Rounds the adult's Skip ended.
@@ -173,10 +180,15 @@ abstract final class GameSession {
   /// profile value; a Journey moving a child between games depends on that.
   /// The reason for a change is only [debugPrint]ed until the tracking log
   /// exists to receive it.
+  ///
+  /// It also records the set's TIER evidence, per game: a stone passes its
+  /// games' own reports as [parts] (its [report] merges them for agency,
+  /// which is global); a library set is its own one part.
   static AgencyEvaluation? recordFinishedSet(
     BuildContext context,
-    SetReport report,
-  ) {
+    SetReport report, {
+    List<SetReport>? parts,
+  }) {
     _read<ProgressState>(context)?.completeSession(
       gameType: report.gameType,
       correctCount: report.correctCount,
@@ -203,6 +215,21 @@ abstract final class GameSession {
         '(${evaluation.reason})',
       );
       profiles.setAgencyOverride(profile, next);
+    }
+
+    final tiers = _read<TierProgressState>(context);
+    if (tiers != null) {
+      for (final part in parts ?? [report]) {
+        tiers.recordRounds(
+          profileId: profile.id,
+          gameId: part.gameType,
+          childLevel: profile.levelOf(part.gameType),
+          playedLevel: part.level,
+          agency: part.agency,
+          rounds: part.rounds,
+        );
+      }
+      tiers.finishSet(profile.id, agencyChanged: next != null);
     }
     return evaluation;
   }

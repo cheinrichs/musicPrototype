@@ -271,6 +271,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
         agency: _gameState.agencyStage,
         rounds: _gameState.instrumentation,
         correctCount: _gameState.correctCount,
+        level: _gameState.conceptTier.index,
       );
       // Hosted (a stone): the report goes back to the host, which records
       // it and decides what comes next. Off the listener, and only once.

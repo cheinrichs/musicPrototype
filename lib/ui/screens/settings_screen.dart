@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../app/config.dart';
 import '../../app/state/profile_state.dart';
 import '../../games/game_levels.dart';
+import '../../games/tier_progression.dart';
 import '../../journey/journey_art.dart';
 import '../../models/agency_stage.dart';
 import '../../models/profile.dart';
@@ -59,7 +61,8 @@ class SettingsScreen extends StatelessWidget {
                     (GameLevels.highLow, 'High vs Low'),
                     (GameLevels.loudQuiet, 'Loud or Quiet'),
                   ])
-                    '$name ${GameLevels.label(id, child.levelOf(id))}',
+                    '$name ${GameLevels.label(id, child.levelOf(id))}'
+                        '${_evidence(context, child.id, id)}',
                 ].join(' · '),
               ),
               trailing: const Icon(Icons.chevron_right_rounded),
@@ -225,4 +228,18 @@ class ChildSettingsScreen extends StatelessWidget {
       );
     },
   );
+}
+
+/// "(6 right of 10)" — how far a child's tier evidence has got in a game,
+/// so an adult can see why a level is or is not moving.
+String _evidence(BuildContext context, String profileId, String gameId) {
+  try {
+    final g = Provider.of<TierProgressState>(
+      context,
+      listen: false,
+    ).gameRecord(profileId, gameId);
+    return g == null || g.slots.isEmpty ? '' : ' (${g.summary})';
+  } on ProviderNotFoundException {
+    return '';
+  }
 }

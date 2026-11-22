@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import '../games/tier_progression.dart';
 import '../journey/journey_state.dart';
 import '../ui/theme/theme.dart';
 import 'cutout_insets.dart';
@@ -26,6 +27,8 @@ class EarTrainerApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => ProgressState()),
         ChangeNotifierProvider(create: (_) => SkillState()),
         ChangeNotifierProvider(create: (_) => DevSettingsState()..load()),
+        // Each child's tier evidence, per game — see [TierProgressState].
+        ChangeNotifierProvider(create: (_) => TierProgressState()..load()),
         // Saved per profile on the device — see [JourneyState].
         ChangeNotifierProvider(create: (_) => JourneyState()..load()),
       ],

@@ -151,6 +151,7 @@ class _LoudQuietScreenState extends State<LoudQuietScreen> {
         agency: _game.agencyStage,
         rounds: _game.records,
         correctCount: _game.correctCount,
+        level: _game.playedStep,
       );
       // Hosted (a stone): the report goes back to the host, which records
       // it and decides what comes next. Off the listener, and only once.
