@@ -215,6 +215,105 @@ void main() {
     expect(tiers.gameRecord(id, 'journey_stone'), isNull);
   });
 
+  group('tier progression end to end, through the set\'s end', () {
+    RoundInstrumentation answered(bool correct) => RoundInstrumentation(
+      promptNumber: 1,
+      waitedForPlaythrough: true,
+      firstResponseCorrect: correct,
+      notesHeardBeforeFirstResponse: true,
+      listenAgainCount: 0,
+    );
+
+    Future<(ProfileState, TierProgressState, BuildContext)> setUpChild(
+      WidgetTester tester,
+      AgencyStage agency,
+    ) async {
+      final profiles = ProfileState();
+      final tiers = TierProgressState();
+      await tester.runAsync(() async {
+        await profiles.load();
+        final d = await profiles.addProfile('Delaney');
+        profiles.selectProfile(d);
+        await profiles.setAgencyOverride(d, agency);
+      });
+      late BuildContext context;
+      await _withContext(tester, profiles, (c) => context = c, tiers: tiers);
+      return (profiles, tiers, context);
+    }
+
+    Future<void> playSet(
+      WidgetTester tester,
+      BuildContext context,
+      ProfileState profiles,
+      List<bool> answers,
+    ) => tester.runAsync(() async {
+      final p = profiles.activeProfile!;
+      GameSession.recordFinishedSet(
+        context,
+        SetReport(
+          gameType: 'high_low',
+          agency: p.agencyOverride!,
+          rounds: [for (final a in answers) answered(a)],
+          correctCount: answers.where((a) => a).length,
+          level: p.levelOf('high_low'),
+        ),
+      );
+    });
+
+    testWidgets('8 right of 10 at A2 moves High vs Low from T1 to T2 at a '
+        'set\'s end — and Loud or Quiet stays where it was', (tester) async {
+      final (profiles, tiers, context) = await setUpChild(
+        tester,
+        AgencyStage.decide,
+      );
+      await playSet(tester, context, profiles, [true, true, true, true, false]);
+      expect(profiles.activeProfile!.levelOf('high_low'), 0);
+      await playSet(tester, context, profiles, [true, true, false, true, true]);
+      expect(profiles.activeProfile!.levelOf('high_low'), 1);
+      expect(profiles.activeProfile!.levelOf('loud_quiet'), 0);
+      final id = profiles.activeProfile!.id;
+      expect(tiers.gameRecord(id, 'high_low')!.slots, isEmpty);
+      expect(tiers.recordOf(id).log.last, contains('promote'));
+    });
+
+    testWidgets('LOCKOUT: a set that moves agency holds the tier; the next '
+        'set still waits; the one after promotes', (tester) async {
+      final (profiles, tiers, context) = await setUpChild(
+        tester,
+        AgencyStage.explore,
+      );
+      // 4 rounds at Explore, all clean and right: agency promotes to A2.
+      await playSet(tester, context, profiles, [true, true, true, true]);
+      expect(profiles.activeProfile!.agencyOverride, AgencyStage.decide);
+      await playSet(tester, context, profiles, List.filled(6, true));
+      final id = profiles.activeProfile!.id;
+      expect(tiers.gameRecord(id, 'high_low')!.rights, 10);
+      expect(
+        profiles.activeProfile!.levelOf('high_low'),
+        0,
+        reason: '10 right of 10, but agency changed last set',
+      );
+      expect(tiers.recordOf(id).log.last, contains('waiting: agency changed'));
+      await playSet(tester, context, profiles, [true]);
+      expect(profiles.activeProfile!.levelOf('high_low'), 1);
+    });
+
+    testWidgets('DEMOTION: at chance over 8+ answered rounds, back down a '
+        'tier, with no lockout', (tester) async {
+      final (profiles, tiers, context) = await setUpChild(
+        tester,
+        AgencyStage.decide,
+      );
+      await tester.runAsync(
+        () => profiles.setLevel(profiles.activeProfile!, 'high_low', 2),
+      );
+      await playSet(tester, context, profiles, [true, false, true, false]);
+      expect(profiles.activeProfile!.levelOf('high_low'), 2);
+      await playSet(tester, context, profiles, [false, true, false, false]);
+      expect(profiles.activeProfile!.levelOf('high_low'), 1);
+    });
+  });
+
   test('a report counts what the child finished and what the adult '
       'skipped', () {
     final report = SetReport(

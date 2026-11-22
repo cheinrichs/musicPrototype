@@ -216,6 +216,19 @@ class TierProgressState extends ChangeNotifier {
     _changed();
   }
 
+  /// Adds a line to [profileId]'s decision log.
+  void note(String profileId, String line) {
+    recordOf(profileId).note(line);
+    _changed();
+  }
+
+  /// [profileId] has moved to [level] in [gameId]: the window starts again,
+  /// since evidence at one level is not evidence for another.
+  void startLevel(String profileId, String gameId, int level) {
+    recordOf(profileId).games[gameId] = GameTierRecord(level: level);
+    _changed();
+  }
+
   void _changed() {
     _save();
     notifyListeners();
@@ -239,5 +252,94 @@ class TierProgressState extends ChangeNotifier {
         debugPrint('Tier evidence: could not save ($e)');
       }
     });
+  }
+}
+
+/// What one tier evaluation recommends.
+enum TierChange { promote, demote, hold }
+
+class TierEvaluation {
+  final TierChange change;
+  final String reason;
+  const TierEvaluation(this.change, this.reason);
+}
+
+/// Decides whether a child's level in one game moves — the SAME mechanism
+/// as agency (`AgencyAdvancement`: count qualifying rounds against a share,
+/// in any order, skips neutral), with tier's own, stricter numbers, because
+/// the costs are not symmetric: promoting agency too early only changes how
+/// the child acts; promoting tier too early puts them in sounds they cannot
+/// tell apart, and nothing tells them why (Cooper, 2026-11-22).
+///
+/// | | agency | tier |
+/// |---|---|---|
+/// | evidence | one set (3–5 rounds) | the last [TierEvidence.window] rounds of this game at this level, across sets |
+/// | promote at | 60% of the set (3 of 5) | [promotionRights] of [TierEvidence.window] right |
+/// | a guessing child passes one check | ~50% | ~5.5% (8 of 10 on a two-way choice) |
+///
+/// ⚠️ EVALUATED ONCE PER SET, AT THE SET'S END — NEVER AFTER EVERY ROUND.
+/// The 5.5% is the chance a guessing child passes ONE check. Re-checking a
+/// rolling window after every round gives them a fresh chance each round,
+/// and over a few dozen rounds a guesser passes almost surely. Checking at
+/// set boundaries keeps the checks few and the figure honest. Do not
+/// "improve" this to continuous evaluation.
+///
+/// - **Lockout** (the zigzag rule, "one new demand per step"): no tier
+///   PROMOTION in a set in which agency changed, nor in the [lockoutSets]
+///   set after it. Agency goes first; the evidence keeps building, so the
+///   tier rises at the first set allowed.
+/// - **Demotion** has no lockout: it only ever eases, and a child stranded
+///   above their hearing cannot say so.
+abstract final class TierAdvancement {
+  /// Right answers needed in a full window to promote (Cooper: "8/10").
+  static const int promotionRights = 8;
+
+  /// Answered rounds (skips excluded) the window must hold before a
+  /// demotion can be judged.
+  static const int demotionMinAnswered = 8;
+
+  /// Sets after an agency change in which a tier promotion waits.
+  static const int lockoutSets = 1;
+
+  static TierEvaluation evaluate({
+    required GameTierRecord record,
+    required int level,
+    required int ceiling,
+    required int setsSinceAgencyChange,
+    required String label,
+  }) {
+    final rights = record.rights;
+    final answered = record.answered;
+    final n = record.slots.length;
+
+    if (level > 0 &&
+        answered >= demotionMinAnswered &&
+        rights * 2 <= answered) {
+      return TierEvaluation(
+        TierChange.demote,
+        '$rights right of $answered answered at $label — at or below chance',
+      );
+    }
+    if (n < TierEvidence.window || rights < promotionRights) {
+      return TierEvaluation(
+        TierChange.hold,
+        '$rights right of $n at $label '
+        '($promotionRights of ${TierEvidence.window} needed)',
+      );
+    }
+    if (level >= ceiling) {
+      return TierEvaluation(
+        TierChange.hold,
+        '$rights right of $n at $label, at the ceiling',
+      );
+    }
+    if (setsSinceAgencyChange <= lockoutSets) {
+      return TierEvaluation(
+        TierChange.hold,
+        '$rights right of $n at $label, earned — waiting: agency changed '
+        '${setsSinceAgencyChange == 0 ? 'this set' : 'last set'}',
+      );
+    }
+    return TierEvaluation(TierChange.promote, '$rights right of $n at $label');
   }
 }

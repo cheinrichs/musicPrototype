@@ -8,6 +8,7 @@ import '../models/agency_stage.dart';
 import '../models/round_set_length.dart';
 import 'high_low/models/round_instrumentation.dart';
 import 'high_low/services/agency_advancement.dart';
+import 'game_levels.dart';
 import 'tier_progression.dart';
 
 /// How a set of a game is started — the one interface every game takes, so
@@ -230,6 +231,42 @@ abstract final class GameSession {
         );
       }
       tiers.finishSet(profile.id, agencyChanged: next != null);
+      // Tier: evaluated HERE, once per set, never per round — see
+      // TierAdvancement for why.
+      final record = tiers.recordOf(profile.id);
+      for (final gameId in {
+        for (final p in parts ?? [report]) p.gameType,
+      }) {
+        final game = record.games[gameId];
+        if (game == null) continue;
+        final level = profile.levelOf(gameId);
+        final verdict = TierAdvancement.evaluate(
+          record: game,
+          level: level,
+          ceiling: GameLevels.ceilingOf(gameId),
+          setsSinceAgencyChange: record.setsSinceAgencyChange,
+          label: GameLevels.label(gameId, level),
+        );
+        final moved = switch (verdict.change) {
+          TierChange.promote => level + 1,
+          TierChange.demote => level - 1,
+          TierChange.hold => null,
+        };
+        tiers.note(
+          profile.id,
+          '${DateTime.now().toIso8601String().substring(0, 16)} $gameId '
+          '${verdict.change.name}: ${verdict.reason}',
+        );
+        if (moved != null) {
+          debugPrint(
+            'Tier ${verdict.change.name} ($gameId): ${profile.name} '
+            '${GameLevels.label(gameId, level)} -> '
+            '${GameLevels.label(gameId, moved)} (${verdict.reason})',
+          );
+          tiers.startLevel(profile.id, gameId, moved);
+          profiles.setLevel(profile, gameId, moved);
+        }
+      }
     }
     return evaluation;
   }
