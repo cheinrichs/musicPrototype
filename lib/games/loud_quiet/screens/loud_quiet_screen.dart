@@ -19,6 +19,7 @@ import '../../../ui/components/drop_snap.dart';
 import '../../../ui/components/game_screen_layout.dart';
 import '../../../ui/components/round_set_end.dart';
 import '../../../ui/theme/theme.dart';
+import '../../game_levels.dart';
 import '../../game_session.dart';
 import '../../high_low/models/high_low_instrument.dart';
 import '../../high_low/models/scene_layout.dart';
@@ -96,11 +97,13 @@ class _LoudQuietScreenState extends State<LoudQuietScreen> {
     if (!_showDevGate) {
       if (widget.gameState == null) {
         // The set asked for, or the child's own — as High vs Low does.
-        final entry = widget.entry ?? GameEntry.forActiveChild(context);
+        final entry =
+            widget.entry ??
+            GameEntry.forActiveChild(context, gameId: GameLevels.loudQuiet);
         _game.agencyStage = entry.agency;
-        // entry.tier is a concept tier — High vs Low's axis — and means
-        // nothing here: Loud or Quiet has its own ladder (card 220). The
-        // set plays at step 0 until per-game progression exists.
+        // The child's own step on Loud or Quiet's ladder (card 220) — its
+        // level in THIS game, never High vs Low's tier.
+        _game.step = GameLevels.clamp(GameLevels.loudQuiet, entry.level ?? 0);
       }
       WidgetsBinding.instance.addPostFrameCallback((_) => _game.startGame());
     }

@@ -257,6 +257,18 @@ class ProfileState extends ChangeNotifier {
     notifyListeners();
     await _save();
   }
+
+  /// Sets [profile]'s level in [gameId] as PLAY moved it (tier promotion
+  /// or demotion). See `GameLevels`.
+  Future<void> setLevel(Profile profile, String gameId, int level) async {
+    final current = _profiles.firstWhere(
+      (p) => p.id == profile.id,
+      orElse: () => profile,
+    );
+    _replace(current.copyWith(levels: {...current.levels, gameId: level}));
+    notifyListeners();
+    await _save();
+  }
 }
 
 /// The setup quiz's four answers (card 202) — never more.

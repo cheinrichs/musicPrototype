@@ -3,6 +3,43 @@ import 'package:ear_trainer/models/agency_stage.dart';
 import 'package:ear_trainer/models/profile.dart';
 
 void main() {
+  group('per-game levels (tier is per game)', () {
+    test('a profile saved before levels existed loads unchanged, at T1 in '
+        'every game: no migration, nothing lost', () {
+      final old = Profile.fromJson({
+        'id': 'd1',
+        'name': 'Delaney',
+        'isDev': false,
+        'avatar': 3,
+        'ageBand': 'fourFive',
+        'agencyOverride': 'decide',
+        'agencySource': 'play',
+      });
+      expect(old.levels, isEmpty);
+      expect(old.levelOf('high_low'), 0);
+      expect(old.levelOf('loud_quiet'), 0);
+      expect(old.agencyOverride, AgencyStage.decide);
+      expect(old.avatar, 3);
+    });
+
+    test('levels round-trip, and junk falls back to level 0', () {
+      final p = const Profile(
+        id: 'd1',
+        name: 'Delaney',
+      ).copyWith(levels: {'high_low': 2, 'loud_quiet': 1});
+      final back = Profile.fromJson(p.toJson());
+      expect(back.levelOf('high_low'), 2);
+      expect(back.levelOf('loud_quiet'), 1);
+      final junk = Profile.fromJson({
+        'id': 'x',
+        'name': 'X',
+        'levels': {'high_low': 'two', 'loud_quiet': -1},
+      });
+      expect(junk.levelOf('high_low'), 0);
+      expect(junk.levelOf('loud_quiet'), 0);
+    });
+  });
+
   group('Profile (Trello card 170)', () {
     test('round-trips through JSON, including a null agency override', () {
       const profile = Profile(id: 'abc', name: 'Delaney');

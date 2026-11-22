@@ -67,6 +67,12 @@ class Profile {
   /// Where [agencyOverride] came from.
   final AgencySource? agencySource;
 
+  /// The child's level in each game, by game id ('high_low', 'loud_quiet'):
+  /// an index into that game's own ladder (see `GameLevels`). Missing means
+  /// level 0 — so a profile saved before levels existed loads unchanged, at
+  /// T1 everywhere, with no migration.
+  final Map<String, int> levels;
+
   static const int avatarCount = 16;
 
   const Profile({
@@ -77,7 +83,11 @@ class Profile {
     this.ageBand,
     this.agencyOverride,
     this.agencySource,
+    this.levels = const {},
   });
+
+  /// This child's level in [gameId]; 0 until play moves it.
+  int levelOf(String gameId) => levels[gameId] ?? 0;
 
   /// The avatar to show: the chosen one, or — for a profile made before
   /// the quiz — a stable one derived from its id, so it keeps the same
@@ -100,6 +110,7 @@ class Profile {
     AgeBand? ageBand,
     AgencyStage? agencyOverride,
     AgencySource? agencySource,
+    Map<String, int>? levels,
     bool clearAgencyOverride = false,
   }) => Profile(
     id: id,
@@ -113,6 +124,7 @@ class Profile {
     agencySource: clearAgencyOverride
         ? null
         : (agencySource ?? this.agencySource),
+    levels: levels ?? this.levels,
   );
 
   Map<String, dynamic> toJson() => {
@@ -123,6 +135,7 @@ class Profile {
     'ageBand': ageBand?.name,
     'agencyOverride': agencyOverride?.name,
     'agencySource': agencySource?.name,
+    'levels': levels,
   };
 
   factory Profile.fromJson(Map<String, dynamic> json) => Profile(
@@ -135,7 +148,17 @@ class Profile {
     ageBand: AgeBand.byName(json['ageBand'] as String?),
     agencyOverride: _agencyStageByName(json['agencyOverride'] as String?),
     agencySource: AgencySource.byName(json['agencySource'] as String?),
+    levels: _levelsFrom(json['levels']),
   );
+
+  /// Anything unreadable is dropped (that game falls back to level 0),
+  /// never a crash.
+  static Map<String, int> _levelsFrom(Object? raw) => {
+    if (raw is Map)
+      for (final e in raw.entries)
+        if (e.key is String && e.value is int && (e.value as int) >= 0)
+          e.key as String: e.value as int,
+  };
 
   /// Out of range (a smaller sheet one day) falls back to the derived one,
   /// never a crash.

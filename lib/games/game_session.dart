@@ -5,7 +5,6 @@ import '../app/state/dev_settings_state.dart';
 import '../app/state/profile_state.dart';
 import '../app/state/progress_state.dart';
 import '../models/agency_stage.dart';
-import '../models/concept_tier.dart';
 import '../models/round_set_length.dart';
 import 'high_low/models/round_instrumentation.dart';
 import 'high_low/services/agency_advancement.dart';
@@ -16,7 +15,8 @@ import 'high_low/services/agency_advancement.dart';
 ///
 /// - [agency] is the child's, and global — one value per child, never per
 ///   game (decided for the Journey, cards 198/199).
-/// - [tier] is the concept tier to play at; null leaves it to the game.
+/// - [level] is the child's level in THIS game — an index into the game's
+///   own ladder (see `GameLevels`); null leaves it to the game (level 0).
 /// - [rounds] is how many rounds the set runs. A stone will ask for exact
 ///   counts (one Observe round, one Explore round); the games screen asks
 ///   for the per-agency length (card 196).
@@ -75,7 +75,7 @@ class ProgressSource {
 @immutable
 class GameEntry {
   final AgencyStage agency;
-  final ConceptTier? tier;
+  final int? level;
   final int rounds;
 
   /// What the progress bar counts — required, so every way into a game
@@ -90,7 +90,7 @@ class GameEntry {
 
   const GameEntry({
     required this.agency,
-    this.tier,
+    this.level,
     required this.rounds,
     required this.progress,
     this.onFinished,
@@ -100,17 +100,21 @@ class GameEntry {
   /// Whether something hosts this set and takes its report.
   bool get hosted => onFinished != null;
 
-  /// The active child's own set: their agency (Observe with no profile — the
-  /// least demanding level), at the live per-agency round count.
-  factory GameEntry.forActiveChild(BuildContext context) {
-    final agency =
-        _read<ProfileState>(context)?.activeProfile?.agencyOverride ??
-        AgencyStage.observe;
+  /// The active child's own set of [gameId]: their agency (Observe with no
+  /// profile — the least demanding level) and their level in that game, at
+  /// the live per-agency round count.
+  factory GameEntry.forActiveChild(
+    BuildContext context, {
+    required String gameId,
+  }) {
+    final profile = _read<ProfileState>(context)?.activeProfile;
+    final agency = profile?.agencyOverride ?? AgencyStage.observe;
     final lengths =
         _read<DevSettingsState>(context)?.roundSetLength ??
         RoundSetLength.standard;
     return GameEntry(
       agency: agency,
+      level: profile?.levelOf(gameId),
       rounds: lengths.lengthFor(agency),
       progress: const ProgressSource.ownSet(),
     );
@@ -120,15 +124,15 @@ class GameEntry {
   bool operator ==(Object other) =>
       other is GameEntry &&
       other.agency == agency &&
-      other.tier == tier &&
+      other.level == level &&
       other.rounds == rounds &&
       other.progress == progress;
 
   @override
-  int get hashCode => Object.hash(agency, tier, rounds, progress);
+  int get hashCode => Object.hash(agency, level, rounds, progress);
 
   @override
-  String toString() => 'GameEntry($agency, $tier, $rounds rounds)';
+  String toString() => 'GameEntry($agency, level $level, $rounds rounds)';
 }
 
 /// What a game reports when its set ends: enough for whatever launched it to

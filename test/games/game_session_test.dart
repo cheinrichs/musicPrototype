@@ -80,11 +80,11 @@ void main() {
     await _withContext(
       tester,
       ProfileState(),
-      (c) => entry = GameEntry.forActiveChild(c),
+      (c) => entry = GameEntry.forActiveChild(c, gameId: 'high_low'),
     );
     expect(entry.agency, AgencyStage.observe);
     expect(entry.rounds, 3);
-    expect(entry.tier, isNull);
+    expect(entry.level, isNull);
   });
 
   testWidgets('the active child\'s set opens at THEIR agency, at that '
@@ -100,10 +100,37 @@ void main() {
     await _withContext(
       tester,
       profiles,
-      (c) => entry = GameEntry.forActiveChild(c),
+      (c) => entry = GameEntry.forActiveChild(c, gameId: 'high_low'),
     );
     expect(entry.agency, AgencyStage.explore);
     expect(entry.rounds, 4);
+    expect(entry.level, 0, reason: 'every child starts at T1');
+  });
+
+  testWidgets('a child\'s level is PER GAME (agency is global, tier is per '
+      'game): each game\'s entry carries that game\'s own level, saved', (
+    tester,
+  ) async {
+    final profiles = ProfileState();
+    await tester.runAsync(() async {
+      await profiles.load();
+      final davis = await profiles.addProfile('Davis');
+      profiles.selectProfile(davis);
+      await profiles.setLevel(davis, 'high_low', 2);
+      await profiles.setLevel(profiles.activeProfile!, 'loud_quiet', 1);
+    });
+    late GameEntry hl, lq;
+    await _withContext(tester, profiles, (c) {
+      hl = GameEntry.forActiveChild(c, gameId: 'high_low');
+      lq = GameEntry.forActiveChild(c, gameId: 'loud_quiet');
+    });
+    expect(hl.level, 2);
+    expect(lq.level, 1);
+    final reloaded = ProfileState();
+    await tester.runAsync(reloaded.load);
+    final davis = reloaded.profiles.firstWhere((p) => p.name == 'Davis');
+    expect(davis.levelOf('high_low'), 2);
+    expect(davis.levelOf('loud_quiet'), 1);
   });
 
   testWidgets('a finished set moves the CHILD\'s agency, whichever game it '

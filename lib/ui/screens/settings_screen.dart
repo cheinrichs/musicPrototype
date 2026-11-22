@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../app/config.dart';
 import '../../app/state/profile_state.dart';
+import '../../games/game_levels.dart';
 import '../../journey/journey_art.dart';
 import '../../models/agency_stage.dart';
 import '../../models/profile.dart';
@@ -54,6 +55,11 @@ class SettingsScreen extends StatelessWidget {
                 [
                   if (child.ageBand != null) 'Age ${child.ageBand!.label}',
                   dragAnswers[child.agencyOverride ?? AgencyStage.observe]!,
+                  for (final (id, name) in [
+                    (GameLevels.highLow, 'High vs Low'),
+                    (GameLevels.loudQuiet, 'Loud or Quiet'),
+                  ])
+                    '$name ${GameLevels.label(id, child.levelOf(id))}',
                 ].join(' · '),
               ),
               trailing: const Icon(Icons.chevron_right_rounded),

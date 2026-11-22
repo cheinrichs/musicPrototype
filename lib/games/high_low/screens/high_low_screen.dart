@@ -29,6 +29,7 @@ import '../../../ui/components/game_screen_layout.dart';
 import '../../../ui/components/glow_wiggle_character.dart';
 import '../../../ui/theme/theme.dart';
 import '../models/high_low_instrument.dart';
+import '../../game_levels.dart';
 import '../../game_session.dart';
 import '../models/round_report.dart';
 import '../services/round_report_service.dart';
@@ -216,9 +217,16 @@ class _HighLowScreenState extends State<HighLowScreen> {
       // stage) has already made that choice on purpose, and must not be
       // overridden by whatever profile happens to be active.
       if (widget.gameState == null) {
-        final entry = widget.entry ?? GameEntry.forActiveChild(context);
+        final entry =
+            widget.entry ??
+            GameEntry.forActiveChild(context, gameId: GameLevels.highLow);
         _gameState.agencyStage = entry.agency;
-        if (entry.tier != null) _gameState.conceptTier = entry.tier!;
+        // The child's own tier in this game, held at the playable ceiling
+        // (T4 until the three-note layout exists; see GameLevels).
+        if (entry.level != null) {
+          _gameState.conceptTier = ConceptTier
+              .values[GameLevels.clamp(GameLevels.highLow, entry.level!)];
+        }
       }
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _gameState.startGame();
@@ -1048,9 +1056,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
   }) {
     // A0: big, on the bottom platform (card 222; see SceneLayout).
     final observe = _gameState.agencyStage == AgencyStage.observe;
-    final height = observe
-        ? layout.observeClefHeight
-        : layout.characterHeight;
+    final height = observe ? layout.observeClefHeight : layout.characterHeight;
     final feet = observe ? layout.observeClefPerch : layout.clefPerch;
     final boxWidth = height * 2;
     return Positioned(

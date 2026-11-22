@@ -1125,6 +1125,8 @@ class _JourneyScreenState extends State<JourneyScreen> {
                 child: gameScreens[part.gameId]!(
                   GameEntry(
                     agency: _agency,
+                    // The child's level in THIS game (tier is per game).
+                    level: _profiles()?.activeProfile?.levelOf(part.gameId),
                     rounds: part.rounds,
                     // The bar counts the stone, not this game's share.
                     progress: _stoneProgress,
