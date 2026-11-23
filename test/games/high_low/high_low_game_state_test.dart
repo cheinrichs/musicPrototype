@@ -865,6 +865,7 @@ void main() {
       'to demonstrate',
       (tester) async {
         final state = HighLowGameState(
+          observeFlight: false,
           totalPrompts: 2,
           agencyStage: AgencyStage.observe,
         );
@@ -1179,6 +1180,7 @@ void main() {
     testWidgets('the arrow records every tap in order, repeats included, on '
         'the completed round', (tester) async {
       final state = HighLowGameState(
+        observeFlight: false,
         totalPrompts: 2,
         agencyStage: AgencyStage.observe,
       );
@@ -1200,6 +1202,7 @@ void main() {
     testWidgets('a new round starts with an empty sequence — one round\'s taps '
         'never leak into the next', (tester) async {
       final state = HighLowGameState(
+        observeFlight: false,
         totalPrompts: 3,
         agencyStage: AgencyStage.observe,
       );
@@ -1464,11 +1467,53 @@ void main() {
       state.dispose();
     });
 
-    testWidgets('with the flag off (the live default) the arrow advances at '
-        'once, exactly as before — nothing changes ahead of the device check', (
+    testWidgets('card 231: each instrument plays its note AS IT LANDS, '
+        'lowest first; taps during the flight are ignored, not sounded', (
       tester,
     ) async {
+      final audio = _OrderAudio();
       final state = HighLowGameState(
+        totalPrompts: 2,
+        agencyStage: AgencyStage.observe,
+        roundOrder: RoundOrder.blocked,
+        audio: audio,
+      );
+      state.startGame();
+      await tester.pump(const Duration(seconds: 6));
+      state.tapInstrument(0);
+      state.tapInstrument(1);
+      await tester.pump(const Duration(seconds: 3));
+      final p = state.currentPrompt!;
+      String pathOf(int side) =>
+          (side == 0 ? state.leftInstrument : state.rightInstrument)
+              .assetPathForMidi(side == 0 ? p.firstMidi : p.secondMidi);
+      final low = p.firstMidi < p.secondMidi ? 0 : 1;
+      audio.events.clear();
+      state.tapArrow();
+      state.tapInstrument(0);
+      expect(
+        audio.events.where((e) => e.startsWith('note:')),
+        isEmpty,
+        reason: 'a tap during the flight is ignored',
+      );
+      await tester.pump(HighLowGameState.observeFlightStepDuration);
+      expect(audio.events.where((e) => e.startsWith('note:')), [
+        'note:${pathOf(low)}',
+      ]);
+      await tester.pump(HighLowGameState.observeFlightStepDuration);
+      expect(audio.events.where((e) => e.startsWith('note:')), [
+        'note:${pathOf(low)}',
+        'note:${pathOf(1 - low)}',
+      ]);
+      await tester.pump(const Duration(seconds: 2));
+      state.dispose();
+    });
+
+    testWidgets('the flight is ON by default since card 231; with it off (a '
+        'dev option) the arrow advances at once', (tester) async {
+      expect(HighLowGameState().observeFlight, isTrue);
+      final state = HighLowGameState(
+        observeFlight: false,
         totalPrompts: 2,
         agencyStage: AgencyStage.observe,
         roundOrder: RoundOrder.blocked,

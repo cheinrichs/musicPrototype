@@ -674,7 +674,10 @@ void main() {
         });
 
         // Observe (A0) — the earned arrow only ever appears there.
-        final state = HighLowGameState(agencyStage: AgencyStage.observe);
+        final state = HighLowGameState(
+          agencyStage: AgencyStage.observe,
+          observeFlight: false,
+        );
         screenState = state;
         await tester.pumpWidget(
           MaterialApp(
@@ -1202,6 +1205,24 @@ void main() {
       state.dispose();
     });
 
+    testWidgets('A0 (card 231): when the arrow sends the instruments flying, '
+        'Clef slides off the screen to the right, revealing the platforms', (
+      tester,
+    ) async {
+      final state = await pumpKnownRound(tester, stage: AgencyStage.observe);
+      final before = tester.getRect(find.byKey(const ValueKey('clef-mouth-0')));
+      expect(before.left, lessThan(roomyViewport.width));
+      state.tapInstrument(0);
+      state.tapInstrument(1);
+      await tester.pump(const Duration(seconds: 3));
+      state.tapArrow();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 800));
+      final after = tester.getRect(find.byKey(const ValueKey('clef-mouth-0')));
+      expect(after.left, greaterThan(roomyViewport.width), reason: 'off right');
+      state.dispose();
+    });
+
     testWidgets('the bubbles (card 231): one over each instrument at EXACTLY '
         'the same height, a 60 pt touch square each, never touching', (
       tester,
@@ -1454,6 +1475,7 @@ void main() {
         final state = HighLowGameState(
           totalPrompts: AgencyAdvancement.roundsRequired,
           agencyStage: AgencyStage.observe,
+          observeFlight: false,
         );
         final router = GoRouter(
           initialLocation: AppRoutes.highLow,
@@ -1527,7 +1549,10 @@ void main() {
       tester.view.physicalSize = roomyViewport;
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
-      final state = HighLowGameState(agencyStage: AgencyStage.observe);
+      final state = HighLowGameState(
+        agencyStage: AgencyStage.observe,
+        observeFlight: false,
+      );
       expect(state.totalPrompts, 3, reason: 'Observe: the shared setting');
       final router = GoRouter(
         initialLocation: AppRoutes.highLow,
@@ -1671,7 +1696,6 @@ void main() {
         // Not disposed here: the screen owns it (ownsGameState: true).
       });
     }
-
   });
 
   group('device feedback on build 87 (Trello cards 191, 193)', () {

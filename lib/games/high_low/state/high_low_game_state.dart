@@ -323,7 +323,7 @@ class HighLowGameState extends ChangeNotifier {
     this.agencyStage = AgencyStage.decide,
     ConceptTier conceptTier = ConceptTier.t1,
     this.roundOrder = RoundOrder.blocked,
-    this.observeFlight = false,
+    this.observeFlight = true,
     this.voiceOverrides = const {},
     NudgePool? nudges,
   }) : _totalPromptsOverride = totalPrompts,
@@ -334,11 +334,10 @@ class HighLowGameState extends ChangeNotifier {
        _sequencer = sequencer ?? RoundSequencer();
 
   /// Whether the earned arrow starts the Observe flight to the tree (see
-  /// [observeFlightPlan]). Off by default: until the flight has been checked
-  /// on a device, the arrow keeps its immediate advance, so the game a child
-  /// plays does not change ahead of that check. The dev gate can turn it on
-  /// (`DevSettingsState.observeFlight`) so Cooper can see it on the adult
-  /// profile. Settable before [startGame], like [agencyStage].
+  /// [observeFlightPlan]). ON by default since card 231 (Cooper: at A0
+  /// "both instruments then fly to their places" — pure demonstration, each
+  /// note sounding as it lands). The dev gate can still turn it off.
+  /// Settable before [startGame], like [agencyStage].
   bool observeFlight;
 
   /// Lines this game replaces in the app's shared set (Trello card 183): a
@@ -916,6 +915,9 @@ class HighLowGameState extends ChangeNotifier {
     // underway until the arrow is pressed, so tapping stays fully live
     // before that.
     if (advanceUnderway) {
+      // Observe's flight (card 231): taps are IGNORED while it runs — not
+      // queued, not sounded; the landing notes are the sound to hear.
+      if (isObserveFlying) return;
       _soundTap(side, prompt);
       return;
     }
@@ -1407,6 +1409,16 @@ class HighLowGameState extends ChangeNotifier {
     _observeFlightTimer = Timer(observeFlightStepDuration, () {
       _observeFlightTimer = null;
       if (token != _roundToken) return;
+      // The instrument that just arrived plays its note AS IT LANDS (card
+      // 231): the moment "high sound" and "top of the tree" are welded
+      // together.
+      final prompt = currentPrompt;
+      final landed = _observeFlightPlan![_observeFlightStep];
+      if (prompt != null) {
+        final instrument = landed == 0 ? leftInstrument : rightInstrument;
+        final midi = landed == 0 ? prompt.firstMidi : prompt.secondMidi;
+        unawaited(_audio.playAssetForScale(instrument.assetPathForMidi(midi)));
+      }
       _observeFlightStep++;
       if (_observeFlightStep < _observeFlightPlan!.length) {
         _scheduleObserveFlightStep(token);

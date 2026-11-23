@@ -915,6 +915,9 @@ class _HighLowScreenState extends State<HighLowScreen> {
     return aboveBox > belowBar ? aboveBox : belowBar;
   }
 
+  /// How long A0's Clef takes to slide off as the instruments fly.
+  static const Duration clefSlideOff = Duration(milliseconds: 700);
+
   /// The bubble art's size and its touch square (card 231: about 38 pt,
   /// padded to 60 pt for small fingers).
   static const double bubbleSize = 38;
@@ -1110,8 +1113,15 @@ class _HighLowScreenState extends State<HighLowScreen> {
     final height = observe ? layout.observeClefHeight : layout.characterHeight;
     final feet = observe ? layout.observeClefPerch : layout.clefPerch;
     final boxWidth = height * 2;
-    return Positioned(
-      left: feet.dx - boxWidth / 2,
+    // A0 (card 231): as the instruments fly to their places, Clef SLIDES off
+    // to the right — a reveal, not a fade: the motion pulls the eye to the
+    // platforms she uncovers.
+    final slidingOff = observe && _gameState.isObserveFlying;
+    return AnimatedPositioned(
+      key: const ValueKey('hl-clef-slot'),
+      duration: clefSlideOff,
+      curve: Curves.easeInCubic,
+      left: feet.dx - boxWidth / 2 + (slidingOff ? layout.screen.width : 0),
       width: boxWidth,
       bottom: layout.screen.height - feet.dy,
       child: Align(

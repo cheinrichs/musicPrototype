@@ -44,7 +44,7 @@ class DevSettingsState extends ChangeNotifier {
   /// (Trello card 173) instead of advancing at once. Off by default, so a
   /// child's game is unchanged until Cooper has seen the flight on a device;
   /// this is how he sees it.
-  bool _observeFlight = false;
+  bool _observeFlight = true;
 
   /// How many rounds a set runs at each agency stage (Trello card 196). The
   /// one shared setting every game reads — not a dev override of something
