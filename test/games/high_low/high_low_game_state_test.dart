@@ -215,34 +215,98 @@ void main() {
     );
   });
 
-  group('the round\'s FIRST ANSWER, for tier evidence (Cooper, 2026-11-22): '
-      'the first tap at Explore, the first drop at Decide', () {
-    testWidgets('Explore: the first tap after the intro is the answer (it '
-        'was never recorded before: a retired hint flag blocked it)', (
-      tester,
-    ) async {
+  group('Explore\'s bubbles (Trello card 231): tapping listens, popping '
+      'answers', () {
+    Future<(HighLowGameState, _OrderAudio)> start(WidgetTester tester) async {
+      final audio = _OrderAudio();
       final state = HighLowGameState(
-        totalPrompts: 2,
+        totalPrompts: 3,
         agencyStage: AgencyStage.explore,
         conceptTier: ConceptTier.t1,
+        audio: audio,
       );
       state.startGame();
       await tester.pump();
+      return (state, audio);
+    }
+
+    testWidgets('no bubble can be popped before both sounds have played', (
+      tester,
+    ) async {
+      final (state, _) = await start(tester);
+      expect(state.bubblesActive, isFalse);
+      state.popBubble(state.currentPrompt!.targetSide);
+      expect(state.burstSide, isNull);
       await tester.pump(const Duration(milliseconds: 4700));
-      final prompt = state.currentPrompt!;
-      state.tapInstrument(1 - prompt.targetSide);
-      state.tapInstrument(prompt.targetSide);
-      for (var i = 0; i < 6; i++) {
-        state.tapInstrument(prompt.targetSide);
-        await tester.pump(const Duration(milliseconds: 300));
-      }
-      await tester.pump(const Duration(seconds: 3));
-      final r = state.instrumentation.first;
-      expect(r.firstResponseCorrect, isFalse, reason: 'the first tap missed');
-      expect(r.notesHeardBeforeFirstResponse, isTrue);
+      expect(state.bubblesActive, isTrue);
       state.dispose();
     });
 
+    testWidgets('taps only play: however many right taps, the round stays '
+        'open and nothing is answered', (tester) async {
+      final (state, _) = await start(tester);
+      await tester.pump(const Duration(milliseconds: 4700));
+      final target = state.currentPrompt!.targetSide;
+      for (var i = 0; i < 7; i++) {
+        state.tapInstrument(target);
+        await tester.pump(const Duration(milliseconds: 200));
+      }
+      expect(state.dragFeedback, DragFeedback.none);
+      expect(state.bubblesActive, isTrue);
+      expect(state.instrumentation, isEmpty);
+      state.dispose();
+    });
+
+    testWidgets('a RIGHT pop is the first answer: it bursts, then the '
+        'instrument flies and plays its note on landing, and the round '
+        'resolves', (tester) async {
+      final (state, audio) = await start(tester);
+      await tester.pump(const Duration(milliseconds: 4700));
+      final prompt = state.currentPrompt!;
+      final target = prompt.targetSide;
+      final path = (target == 0 ? state.leftInstrument : state.rightInstrument)
+          .assetPathForMidi(target == 0 ? prompt.firstMidi : prompt.secondMidi);
+      audio.events.clear();
+      state.popBubble(target);
+      expect(state.burstSide, target);
+      expect(state.dragFeedback, DragFeedback.none, reason: 'bursting first');
+      await tester.pump(HighLowGameState.bubbleBurst);
+      expect(state.dragFeedback, DragFeedback.correct, reason: 'flying');
+      expect(audio.events, isNot(contains('note:$path')));
+      await tester.pump(HighLowGameState.bubbleFlight);
+      expect(audio.events, contains('note:$path'), reason: 'on landing');
+      final r = state.instrumentation.single;
+      expect(r.firstResponseCorrect, isTrue);
+      expect(r.notesHeardBeforeFirstResponse, isTrue);
+      await tester.pump(const Duration(seconds: 2));
+      expect(state.currentPromptIndex, 1);
+      state.dispose();
+    });
+
+    testWidgets('a WRONG pop wiggles and nothing else: no burst, the '
+        'instrument never moves, it stays the round\'s first answer, and it '
+        'counts as a wrong attempt', (tester) async {
+      final (state, _) = await start(tester);
+      await tester.pump(const Duration(milliseconds: 4700));
+      final target = state.currentPrompt!.targetSide;
+      state.popBubble(1 - target);
+      await tester.pump(const Duration(seconds: 2));
+      expect(state.wigglesOf(1 - target), 1);
+      expect(state.burstSide, isNull);
+      expect(state.dragFeedback, DragFeedback.none);
+      expect(state.bubblesActive, isTrue, reason: 'try again, freely');
+      state.popBubble(target);
+      await tester.pump(const Duration(seconds: 1));
+      final r = state.instrumentation.single;
+      expect(r.firstResponseCorrect, isFalse);
+      expect(r.wrongTapCount, 1);
+      await tester.pump(const Duration(seconds: 2));
+      state.dispose();
+    });
+  });
+
+  group('the round\'s FIRST ANSWER, for tier evidence (Cooper, 2026-11-22): '
+      'the first tap at Explore, the first drop at Decide', () {
     testWidgets('Decide: a tap is only listening; the first DROP is the '
         'answer', (tester) async {
       final state = HighLowGameState(
@@ -926,246 +990,6 @@ void main() {
     );
   });
 
-  group('HighLowGameState — Participate\'s cumulative sparkle (Trello card '
-      'RqdPFKLf)', () {
-    testWidgets('a correct tap sparkles the INSTRUMENT the child got right '
-        '(Trello card 189) and adds to the cumulative count; a wrong tap adds '
-        'nothing but is never a failure', (tester) async {
-      final state = HighLowGameState(
-        totalPrompts: 1,
-        agencyStage: AgencyStage.explore,
-      );
-      state.startGame();
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 4700));
-
-      final targetSide = state.currentPrompt!.targetSide;
-      final wrongSide = 1 - targetSide;
-
-      expect(state.sparkleSide, isNull, reason: 'nothing found yet');
-      state.tapInstrument(targetSide);
-      await tester.pump();
-      expect(
-        state.sparkleSide,
-        targetSide,
-        reason: 'the instrument the child chose answers',
-      );
-      expect(state.correctTapProgress, 1);
-      await tester.pump(const Duration(seconds: 3));
-      expect(
-        state.sparkleSide,
-        targetSide,
-        reason: 'progress, not a response: it stays for the round',
-      );
-
-      state.tapInstrument(wrongSide);
-      await tester.pump();
-      expect(state.status, GameStatus.awaitingInput);
-      expect(state.correctCount, 0, reason: 'a wrong tap is never a failure');
-      expect(
-        state.correctTapProgress,
-        1,
-        reason:
-            'a wrong tap adds nothing, but must never subtract either '
-            '— the sparkle must never go backwards',
-      );
-      state.dispose();
-    });
-
-    // Every interaction must behave correctly when tapped as fast as a child
-    // can tap (docs/product/STANDING_RULES.md). Cooper on device: spamming
-    // the right instrument after the confetti hung the round.
-    testWidgets('tapped far faster than the celebration: taps after the '
-        'fifth still sound but cannot delay, re-score or re-record the '
-        'round, which still advances', (tester) async {
-      final state = HighLowGameState(
-        totalPrompts: 2,
-        agencyStage: AgencyStage.explore,
-      );
-      state.startGame();
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 4700));
-      final target = state.currentPrompt!.targetSide;
-      for (var i = 0; i < 5; i++) {
-        state.tapInstrument(target);
-        await tester.pump();
-      }
-      expect(state.advanceUnderway, isTrue);
-      expect(state.confettiTrigger, 1);
-
-      // A tap mid-celebration still makes its instrument ring.
-      state.tapInstrument(1 - target);
-      expect(state.playingIndex, 1 - target);
-
-      // 60 taps, 30 ms apart — 1.8 s of spam, longer than the 1.2 s
-      // celebration, which used to restart on every one.
-      // Stops at the advance: taps after it belong to the next round, which
-      // is live and would rightly count.
-      var advancedAt = -1;
-      for (var i = 0; i < 60; i++) {
-        state.tapInstrument(target);
-        await tester.pump(const Duration(milliseconds: 30));
-        if (state.currentPromptIndex == 1) {
-          advancedAt = i;
-          break;
-        }
-      }
-      expect(advancedAt, isNot(-1), reason: 'the round still advances');
-      expect(
-        advancedAt * 30,
-        lessThan(1300),
-        reason: 'on time, not delayed by the taps',
-      );
-      expect(state.correctCount, 1, reason: 'counted once');
-      expect(state.confettiTrigger, 1, reason: 'no second burst');
-      expect(state.instrumentation.first.correctTapCount, 5);
-      state.dispose();
-    });
-
-    testWidgets('Observe: tapping after both are heard stays fully live; '
-        'once the arrow sends them flying, taps cannot stop the advance', (
-      tester,
-    ) async {
-      final state = HighLowGameState(
-        totalPrompts: 2,
-        agencyStage: AgencyStage.observe,
-      )..observeFlight = true;
-      state.startGame();
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 4700));
-      for (var i = 0; i < 20; i++) {
-        state.tapInstrument(i % 2);
-        await tester.pump(const Duration(milliseconds: 30));
-      }
-      expect(state.showArrow, isTrue);
-      expect(state.advanceUnderway, isFalse);
-      expect(state.currentPromptIndex, 0, reason: 'the child decides when');
-
-      state.tapArrow();
-      expect(state.advanceUnderway, isTrue);
-      for (var i = 0; i < 120; i++) {
-        state.tapInstrument(i % 2);
-        await tester.pump(const Duration(milliseconds: 30));
-      }
-      expect(state.currentPromptIndex, 1);
-      expect(state.instrumentation, hasLength(1));
-      state.dispose();
-    });
-
-    testWidgets(
-      'the count is cumulative, not consecutive — wrong taps in between '
-      'do not reset it, and five total resolves the round with a '
-      'confetti trigger',
-      (tester) async {
-        final state = HighLowGameState(
-          totalPrompts: 2,
-          agencyStage: AgencyStage.explore,
-        );
-        state.startGame();
-        await tester.pump();
-        await tester.pump(const Duration(milliseconds: 4700));
-
-        final targetSide = state.currentPrompt!.targetSide;
-        final wrongSide = 1 - targetSide;
-        expect(state.confettiTrigger, 0);
-
-        // 3 correct, 1 wrong (must not undo any of the 3), 2 more correct
-        // — 5 total, never 5 *in a row*.
-        for (var i = 0; i < 3; i++) {
-          state.tapInstrument(targetSide);
-          await tester.pump();
-        }
-        expect(state.correctTapProgress, 3);
-
-        state.tapInstrument(wrongSide);
-        await tester.pump();
-        expect(state.correctTapProgress, 3);
-
-        state.tapInstrument(targetSide);
-        await tester.pump();
-        expect(state.correctTapProgress, 4);
-
-        state.tapInstrument(targetSide);
-        await tester.pump();
-
-        expect(
-          state.correctCount,
-          1,
-          reason: 'the fifth correct tap resolves it',
-        );
-        expect(state.dragFeedback, DragFeedback.correct);
-        expect(
-          state.confettiTrigger,
-          1,
-          reason: 'the confetti burst fires exactly on the fifth',
-        );
-        expect(
-          state.instrumentation.single.correctTapCount,
-          5,
-          reason: 'logged for assessment',
-        );
-        expect(
-          state.instrumentation.single.wrongTapCount,
-          1,
-          reason:
-              'the one wrong tap is still logged, even though it '
-              'never counted against the gate',
-        );
-
-        await tester.pump(const Duration(milliseconds: 1300));
-        expect(state.currentPromptIndex, 1);
-        state.dispose();
-      },
-    );
-
-    testWidgets('never applies at Observe or Trigger', (tester) async {
-      for (final stage in [AgencyStage.observe, AgencyStage.decide]) {
-        final state = HighLowGameState(totalPrompts: 1, agencyStage: stage);
-        state.startGame();
-        await tester.pump();
-        await tester.pump(const Duration(milliseconds: 4700));
-
-        final targetSide = state.currentPrompt!.targetSide;
-        for (var i = 0; i < 5; i++) {
-          state.tapInstrument(targetSide);
-          await tester.pump();
-        }
-
-        expect(
-          state.correctTapProgress,
-          0,
-          reason: '$stage: only Participate tracks this',
-        );
-        expect(state.correctCount, 0, reason: '$stage');
-        state.dispose();
-      }
-    });
-
-    testWidgets('never advances at Trigger — tapping stays pure exploration', (
-      tester,
-    ) async {
-      final state = HighLowGameState(
-        totalPrompts: 1,
-        agencyStage: AgencyStage.decide,
-      );
-      // Disposed explicitly at the end — see the matching comment on the
-      // Observe "a tap never cuts the intro" test above.
-      state.startGame();
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 4700));
-
-      final targetSide = state.currentPrompt!.targetSide;
-      for (var i = 0; i < 5; i++) {
-        state.tapInstrument(targetSide);
-        await tester.pump();
-      }
-
-      expect(state.correctCount, 0);
-      expect(state.status, GameStatus.awaitingInput);
-      state.dispose();
-    });
-  });
-
   group('HighLowGameState — speaking indicator (Trello card PIm7xE6n)', () {
     testWidgets(
       'nobody speaks before the game starts; the correct character speaks '
@@ -1679,28 +1503,6 @@ void main() {
       audio: audio ?? _RecordingAudio(),
       voiceOverrides: overrides,
     );
-
-    testWidgets('Explore: five consistent taps on the wrong option play one '
-        'nudge from the speaking character\'s own pool', (tester) async {
-      final audio = _RecordingAudio();
-      final state = stateWith(AgencyStage.explore, audio: audio);
-      state.startGame();
-      await tester.pump();
-      final wrong = 1 - state.currentPrompt!.targetSide;
-
-      for (var i = 0; i < 5; i++) {
-        state.tapInstrument(wrong);
-      }
-      await tester.pump();
-
-      final nudges = audio.played.where(nudgeNames.contains).toList();
-      expect(nudges, hasLength(1));
-      final owner = state.targetCharacterIsPiper
-          ? NudgePool.piperLines
-          : NudgePool.clefLines;
-      expect(owner.map((l) => l.name), contains(nudges.single));
-      state.dispose();
-    });
 
     testWidgets('Explore: four wrong taps, or wrong taps bounced between two '
         'options, play nothing', (tester) async {

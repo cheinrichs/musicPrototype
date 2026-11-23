@@ -1006,8 +1006,9 @@ void main() {
     Future<HighLowGameState> pumpKnownRound(
       WidgetTester tester, {
       AgencyStage? stage,
+      Size viewport = roomyViewport,
     }) async {
-      tester.view.physicalSize = roomyViewport;
+      tester.view.physicalSize = viewport;
       tester.view.devicePixelRatio = 1.0;
       addTearDown(() {
         tester.view.resetPhysicalSize();
@@ -1161,51 +1162,64 @@ void main() {
       state.dispose();
     });
 
-    testWidgets('at Explore, the five-wrong-tap nudge makes the target think, '
-        'for the nudge line or the retry minimum', (tester) async {
+    testWidgets('at Explore, two wrong bubble pops in a row (a pattern, '
+        'never one) make the target think, for the nudge line or the retry '
+        'minimum', (tester) async {
       final state = await pumpKnownRound(tester, stage: AgencyStage.explore);
       final wrong = 1 - state.currentPrompt!.targetSide;
-      for (var tap = 1; tap <= 4; tap++) {
-        state.tapInstrument(wrong);
-        await tester.pump();
-        expect(
-          showing(tester).where((n) => n.endsWith('thinking')),
-          isEmpty,
-          reason: 'wrong tap $tap is below the five-tap rule',
-        );
-      }
-      state.tapInstrument(wrong);
+      state.popBubble(wrong);
+      await tester.pump();
+      expect(
+        showing(tester).where((n) => n.endsWith('thinking')),
+        isEmpty,
+        reason: 'one wrong pop gets nothing',
+      );
+      state.popBubble(wrong);
       await tester.pump();
       expect(showing(tester).where((n) => n.endsWith('thinking')).length, 1);
-      expect(
-        showing(tester).where((n) => n.contains('-mouth-')).length,
-        1,
-        reason: 'the one standing by just speaks',
-      );
-
       // The test audio resolves lines at once, so the minimum dwell governs.
       await tester.pump(const Duration(milliseconds: 1500));
       expect(showing(tester).where((n) => n.endsWith('thinking')), isEmpty);
       state.dispose();
     });
 
-    testWidgets('at Explore, a correct tap during the nudge ends the thinking '
+    testWidgets('at Explore, a correct pop during the nudge ends the thinking '
         'pose at once — a right answer is never met with doubt', (
       tester,
     ) async {
       final state = await pumpKnownRound(tester, stage: AgencyStage.explore);
       final target = state.currentPrompt!.targetSide;
-      for (var tap = 1; tap <= 5; tap++) {
-        state.tapInstrument(1 - target);
-      }
+      state.popBubble(1 - target);
+      state.popBubble(1 - target);
       await tester.pump();
       expect(showing(tester).where((n) => n.endsWith('thinking')).length, 1);
-
-      state.tapInstrument(target);
+      state.popBubble(target);
       await tester.pump();
       expect(showing(tester).where((n) => n.endsWith('thinking')), isEmpty);
-      await tester.pump(const Duration(milliseconds: 1500));
+      // Burst, then the flight; disposed before the next round's intro.
+      await tester.pump(const Duration(milliseconds: 600));
+      await tester.pump(const Duration(milliseconds: 600));
       state.dispose();
+    });
+
+    testWidgets('the bubbles (card 231): one over each instrument at EXACTLY '
+        'the same height, a 60 pt touch square each, never touching', (
+      tester,
+    ) async {
+      for (final viewport in [roomyViewport, const Size(667, 375)]) {
+        final state = await pumpKnownRound(
+          tester,
+          stage: AgencyStage.explore,
+          viewport: viewport,
+        );
+        final a = tester.getRect(find.byKey(const ValueKey('bubble-0')));
+        final b = tester.getRect(find.byKey(const ValueKey('bubble-1')));
+        expect(a.top, b.top, reason: 'the same height');
+        expect(a.width, 60);
+        expect(b.left - a.right, greaterThan(20), reason: '$viewport');
+        state.dispose();
+        await tester.pumpWidget(const SizedBox());
+      }
     });
 
     testWidgets('Piper has her own mouth frames — the stopgap sheet — and '
@@ -1658,93 +1672,6 @@ void main() {
       });
     }
 
-    // The sighting itself: the jump came on a *correct tap* at Explore,
-    // which is when the "found it" sparkle mounted inside the character's
-    // Stack, sizing itself to unbounded constraints (an assert in debug, an
-    // infinitely large character box in release). The sparkle has since
-    // moved onto the instrument (Trello card 189); this still guards both
-    // characters on every frame of correct taps, and now also pins where the
-    // sparkle is and that it builds up and stays.
-    testWidgets('a correct tap at Explore sparkles on the instrument — one '
-        'more each tap, staying for the round — without moving either '
-        'character', (tester) async {
-      tester.view.physicalSize = roomyViewport;
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(() {
-        tester.view.resetPhysicalSize();
-        tester.view.resetDevicePixelRatio();
-      });
-      final state = HighLowGameState(
-        totalPrompts: 3,
-        agencyStage: AgencyStage.explore,
-        generator: PromptGenerator(random: Random(1)),
-      );
-      await tester.pumpWidget(
-        MaterialApp(home: HighLowScreen(gameState: state, ownsGameState: true)),
-      );
-      await tester.pump();
-      for (var i = 0; i < 4; i++) {
-        await tester.pump(const Duration(milliseconds: 1200));
-      }
-      await tester.pump(Duration.zero);
-
-      Offset feetOf(CharacterArt art) => tester
-          .getRect(
-            find.byWidgetPredicate((w) => w is CharacterSprite && w.art == art),
-          )
-          .bottomCenter;
-      final piperSettled = feetOf(CharacterArt.piper);
-      final clefSettled = feetOf(CharacterArt.clef);
-
-      var sawSparkle = false;
-      Future<void> sampleFrames(int count, String when) async {
-        for (var frame = 0; frame < count; frame++) {
-          await tester.pump(const Duration(milliseconds: 16));
-          if (find.text('✨').evaluate().isNotEmpty) sawSparkle = true;
-          expect(tester.takeException(), isNull, reason: when);
-          for (final (name, art, settled) in [
-            ('Piper', CharacterArt.piper, piperSettled),
-            ('Clef', CharacterArt.clef, clefSettled),
-          ]) {
-            expect(
-              (feetOf(art) - settled).distance,
-              lessThan(2.0),
-              reason: '$name\'s feet moved $when',
-            );
-          }
-        }
-      }
-
-      final target = state.currentPrompt!.targetSide;
-      final targetAsset = target == 0
-          ? state.leftInstrument.looksFor(2)[0]
-          : state.rightInstrument.looksFor(2)[1];
-      Rect targetRect() => tester.getRect(
-        find.byWidgetPredicate(
-          (w) => w is InstrumentLookImage && w.look == targetAsset,
-        ),
-      );
-
-      // Four, not five: the fifth correct tap resolves the round.
-      for (var tap = 1; tap <= 4; tap++) {
-        state.tapInstrument(target);
-        await sampleFrames(20, 'after correct tap $tap');
-        final sparkles = find.text('✨');
-        expect(sparkles, findsNWidgets(tap), reason: 'one more each tap');
-        for (final s in sparkles.evaluate()) {
-          final c = tester.getRect(find.byWidget(s.widget)).center;
-          expect(
-            targetRect().inflate(targetRect().width * 0.3).contains(c),
-            isTrue,
-            reason: 'on the instrument the child chose',
-          );
-        }
-      }
-      // Progress, not a response: still there well after the last tap.
-      await sampleFrames(120, 'after the taps');
-      expect(sawSparkle, isTrue);
-      expect(find.text('✨'), findsNWidgets(4), reason: 'it stays');
-    });
   });
 
   group('device feedback on build 87 (Trello cards 191, 193)', () {

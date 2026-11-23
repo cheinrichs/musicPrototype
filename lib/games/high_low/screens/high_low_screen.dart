@@ -16,6 +16,7 @@ import '../../../models/agency_stage.dart';
 import '../../../models/concept_tier.dart';
 import '../../../models/musical_skill.dart';
 import '../../../models/game_status.dart';
+import '../../../ui/components/answer_bubble.dart';
 import '../../../ui/components/arc_flight.dart';
 import '../../../ui/components/continue_bar.dart';
 import '../../../ui/components/instrument_sparkle.dart';
@@ -882,9 +883,58 @@ class _HighLowScreenState extends State<HighLowScreen> {
             rect: ContinueBar.rectFor(layout.screen, layout.insets),
             child: ContinueBar(onTap: _gameState.tapArrow),
           ),
+        // Explore's bubbles (card 231), one over each instrument, BOTH AT
+        // EXACTLY THE SAME HEIGHT — a bubble higher over the high one would
+        // give the answer away without a sound. Over everything, to be
+        // tapped.
+        if (_gameState.agencyStage == AgencyStage.explore)
+          for (final side in [0, 1])
+            if (_gameState.bubblesActive || _gameState.burstSide == side)
+              _buildBubble(
+                layout,
+                side,
+                bubbleCentreY(layout, size.height, groundY, charSize),
+              ),
         // No Listen Again button (Trello card 195): tapping either character
         // replays the round — see [_tappable].
       ],
+    );
+  }
+
+  /// The bubbles' shared height: just above the instruments' box (the same
+  /// box for both sides), and clear of the top bar.
+  static double bubbleCentreY(
+    SceneLayout layout,
+    double screenHeight,
+    double groundY,
+    double charSize,
+  ) {
+    final aboveBox = screenHeight - groundY - charSize - bubbleHit / 2;
+    final belowBar =
+        layout.insets.top + SceneLayout.topBarClearance + bubbleHit / 2;
+    return aboveBox > belowBar ? aboveBox : belowBar;
+  }
+
+  /// The bubble art's size and its touch square (card 231: about 38 pt,
+  /// padded to 60 pt for small fingers).
+  static const double bubbleSize = 38;
+  static const double bubbleHit = 60;
+
+  Widget _buildBubble(SceneLayout layout, int side, double centreY) {
+    final x = layout.stumpAnchorX(side);
+    return Positioned(
+      key: ValueKey('bubble-$side'),
+      left: x - bubbleHit / 2,
+      top: centreY - bubbleHit / 2,
+      child: AnswerBubble(
+        size: bubbleSize,
+        hitSize: bubbleHit,
+        bursting: _gameState.burstSide == side,
+        wiggles: _gameState.wigglesOf(side),
+        onPop: _gameState.bubblesActive
+            ? () => _gameState.popBubble(side)
+            : null,
+      ),
     );
   }
 
@@ -1155,7 +1205,11 @@ class _HighLowScreenState extends State<HighLowScreen> {
     // the character") — Participate's five-cumulative-correct-taps
     // resolution has no drag concept to visually echo, so it only pulses
     // below.
-    final travelling = celebratingThis && isTrigger;
+    // Explore travels too (card 231): a correct bubble sends the instrument
+    // to its place on the tree — the app carries it, as A2's child does.
+    final travelling =
+        celebratingThis &&
+        (isTrigger || _gameState.agencyStage == AgencyStage.explore);
     final targetLeft = travelling
         ? landing.dx - charSize / 2
         : anchorX - charSize / 2;

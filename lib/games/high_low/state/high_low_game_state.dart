@@ -238,7 +238,15 @@ class HighLowGameState extends ChangeNotifier {
   /// The screen remembers the last value it acted on and fires its
   /// [ConfettiController] whenever this changes, rather than this class
   /// owning any Flutter-side animation controller itself.
-  int _confettiTrigger = 0;
+  // Explore's five-tap confetti retired with the taps (card 231); kept as
+  // the screen's confetti hook.
+  final int _confettiTrigger = 0;
+
+  // Explore's bubbles (Trello card 231). See [popBubble].
+  int? _burstSide;
+  final List<int> _wiggles = [0, 0];
+  int _wrongPopStreak = 0;
+  Timer? _landingNoteTimer;
 
   /// Which instrument sides have been tapped at least once this round,
   /// Observe only — its completion criterion (Trello card RqdPFKLf):
@@ -714,6 +722,10 @@ class HighLowGameState extends ChangeNotifier {
     _firstResponseSide = null;
     _firstResponseCorrect = null;
     _firstResponseHeardBothNotes = null;
+    _burstSide = null;
+    _wrongPopStreak = 0;
+    _landingNoteTimer?.cancel();
+    _landingNoteTimer = null;
     _listenAgainCount = 0;
     _missedDrops.clear();
     _correctTapCumulative = 0;
@@ -920,18 +932,9 @@ class HighLowGameState extends ChangeNotifier {
       _finishIntro(token);
     }
 
-    // The round's FIRST ANSWER, for tier evidence (Cooper, 2026-11-22):
-    // at Explore it is the first tap — the first tap of a round always
-    // comes before any sparkle, which only a correct tap makes. At Decide
-    // a tap is only listening; the answer is the first DROP (see
-    // [dropInstrument]). Observe has no answer at all. (The old
-    // `hintWasVisible` gate here dated from a retired continuous hint and
-    // stopped every post-intro Explore tap being recorded.)
-    if (_firstResponseSide == null && agencyStage == AgencyStage.explore) {
-      _firstResponseSide = side;
-      _firstResponseCorrect = side == prompt.targetSide;
-      _firstResponseHeardBothNotes = _bothNotesHeard;
-    }
+    // A tap is never the round's answer: at Explore the answer is popping
+    // a bubble ([popBubble], card 231), at Decide the first drop
+    // ([dropInstrument]); Observe has no answer at all.
 
     // Observe's per-note narration comes before the arrow-coverage check
     // below so its speaker is already reflected in [_speakingIsPiper] —
@@ -962,40 +965,92 @@ class HighLowGameState extends ChangeNotifier {
           );
         }
       }
-    } else if (agencyStage == AgencyStage.explore) {
-      // A repeated correct tap is an answer, not noise — a child who
-      // knows it has no other way to show it (Trello card RqdPFKLf).
-      // Cumulative, not consecutive: a wrong tap adds nothing but must
-      // never subtract either, or the sparkle would go backwards — a
-      // failure signal at a stage that must have none. This deliberately
-      // makes the gate generous; the criterion is for progression, the
-      // logged wrong-tap count is for assessment. Five cumulative
-      // correct taps resolve the round in a confetti burst.
-      if (side == prompt.targetSide) {
-        _stopConsidering();
-        _correctTapCumulative++;
-        if (_correctTapCumulative >= 5) {
-          _confettiTrigger++;
-          _celebrateCorrect(side);
-        }
-      } else {
-        _wrongTapCount++;
-      }
-      // The five-tap rule (Trello card 151): five consistent taps on one
-      // wrong option fire one gentle nudge. Every tap goes through the
-      // counter, so a correct tap in between breaks a wrong run. A single
-      // wrong tap gets nothing; five says the child really thinks it is that
-      // one, and that is what the nudge answers.
-      final fired = _exploreTaps.tap(side);
-      if (fired && side != prompt.targetSide) {
-        final nudge = _nudges.next(
-          targetCharacterIsPiper ? NudgeSpeaker.piper : NudgeSpeaker.clef,
-        );
-        unawaited(_considerWhileNudging(_roundToken, _shared(nudge)));
-      }
     }
+    // Explore (card 231): a tap ONLY plays the instrument — it is listening.
+    // The answer is popping a bubble ([popBubble]); the old repeated-tap
+    // resolution (five correct taps, the per-tap sparkle, the five-tap
+    // nudge) is retired with it.
 
     _soundTap(side, prompt);
+  }
+
+  /// How long a correct bubble's burst plays before the instrument flies
+  /// (8 frames at 65 ms — `AnswerBubble.burstDuration`, checked by test).
+  static const Duration bubbleBurst = Duration(milliseconds: 520);
+
+  /// How long the instrument takes to reach its slot (the screen's slide).
+  static const Duration bubbleFlight = Duration(milliseconds: 500);
+
+  /// Whether Explore's bubbles can be popped now: only once the intro has
+  /// played both sounds (so every pop is a valid answer), and not once the
+  /// round is answered.
+  bool get bubblesActive =>
+      agencyStage == AgencyStage.explore &&
+      _status == GameStatus.awaitingInput &&
+      _burstSide == null &&
+      _dragFeedback != DragFeedback.correct;
+
+  /// The side whose bubble burst (a correct pop), or null.
+  int? get burstSide => _burstSide;
+
+  /// Bumped at every wrong pop on [side] — each bump wiggles its bubble.
+  int wigglesOf(int side) => _wiggles[side];
+
+  /// Explore's answer (Trello card 231): the child pops the bubble over
+  /// [side].
+  ///
+  /// **The pop is the round's FIRST ANSWER** for tier evidence (Cooper,
+  /// 2026-11-22): deliberate, and only possible after both sounds played —
+  /// clean evidence, where the first tap was an approximation.
+  ///
+  /// - **Right:** the bubble bursts, then the instrument flies to its slot
+  ///   (the slot appears as it lands) and plays its note on landing.
+  /// - **Wrong:** the bubble wiggles and does not burst; the instrument
+  ///   never moves; nothing speaks (control of error, card 212). A wrong pop
+  ///   counts as Explore's wrong attempt for agency (two or fewer per round
+  ///   still qualifies). Two wrong pops in a row — a pattern, never one —
+  ///   get the existing gentle nudge; no new lines.
+  void popBubble(int side) {
+    if (!bubblesActive) return;
+    final prompt = currentPrompt;
+    if (prompt == null) return;
+    final correct = side == prompt.targetSide;
+    _firstResponseSide ??= side;
+    _firstResponseCorrect ??= correct;
+    _firstResponseHeardBothNotes ??= _bothNotesHeard;
+    if (correct) {
+      _stopConsidering();
+      _burstSide = side;
+      _wrongPopStreak = 0;
+      notifyListeners();
+      final token = _roundToken;
+      _schedule(bubbleBurst, () {
+        if (token != _roundToken) return;
+        _celebrateCorrect(side);
+        final landing = _roundToken;
+        _landingNoteTimer?.cancel();
+        _landingNoteTimer = Timer(bubbleFlight, () {
+          _landingNoteTimer = null;
+          if (landing != _roundToken) return;
+          final instrument = side == 0 ? leftInstrument : rightInstrument;
+          final midi = side == 0 ? prompt.firstMidi : prompt.secondMidi;
+          unawaited(
+            _audio.playAssetForScale(instrument.assetPathForMidi(midi)),
+          );
+        });
+      });
+      return;
+    }
+    _wrongTapCount++;
+    _wiggles[side]++;
+    _wrongPopStreak++;
+    if (_wrongPopStreak == 2) {
+      final nudge = _nudges.next(
+        targetCharacterIsPiper ? NudgeSpeaker.piper : NudgeSpeaker.clef,
+      );
+      unawaited(_considerWhileNudging(_roundToken, _shared(nudge)));
+    }
+    notifyListeners();
   }
 
   /// The round is resolved and leaving: a correct answer's celebration is
@@ -1431,6 +1486,7 @@ class HighLowGameState extends ChangeNotifier {
     _cancelTapRingTimer();
     _cancelObserveFlightTimer();
     _stopConsidering();
+    _landingNoteTimer?.cancel();
     super.dispose();
   }
 }
