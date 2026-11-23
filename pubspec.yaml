@@ -75,6 +75,7 @@ flutter:
     - assets/images/icons/
     - assets/images/stickers/
     - assets/images/ui/
+    - assets/images/ui/bubble/
     - assets/images/backgrounds/
     - assets/images/backgrounds/learning_paths/
     - assets/images/backgrounds/props/
