@@ -234,8 +234,10 @@ class _OrderingScreenState extends State<OrderingScreen> {
 
   Widget _buildStump(OrderingLayout layout, int note) {
     final feet = layout.stumpFeet(note);
-    final width =
-        layout.stumpInstrumentSize * SceneLayout.stumpWidthOfInstrument;
+    final width = SceneLayout.stumpWidthFor(
+      layout.stumpInstrumentSize,
+      layout.noteCount,
+    );
     final isA = note.isEven;
     final height = width * (isA ? 794 / 1512 : 781 / 1506);
     return Positioned(

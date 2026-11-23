@@ -8,6 +8,7 @@ import 'package:ear_trainer/games/high_low/ordering/ordering_layout.dart';
 import 'package:ear_trainer/games/high_low/widgets/speaking_pulse.dart';
 
 void main() {
+  stumpGrowthTests();
   // Real landscape phones: an SE-sized screen, an iPhone 14 (notch insets),
   // iPhone 17 and a Pro Max.
   const cases = {
@@ -393,4 +394,14 @@ void main() {
       });
     });
   }
+}
+
+void stumpGrowthTests() {
+  test('stumps grow +40% with two in a row and +20% with three (Cooper, '
+      '2026-11-23); the instruments do not grow', () {
+    expect(SceneLayout.stumpGrowthFor(2), 1.4);
+    expect(SceneLayout.stumpGrowthFor(3), 1.2);
+    expect(SceneLayout.stumpWidthFor(100, 2), closeTo(133, 1e-9));
+    expect(SceneLayout.stumpWidthFor(100, 3), closeTo(114, 1e-9));
+  });
 }

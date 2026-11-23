@@ -325,7 +325,10 @@ class _LoudQuietScreenState extends State<LoudQuietScreen> {
 
   Widget _buildStump(LoudQuietLayout layout, int side) {
     const surface = SceneLayout.stumpSurfaceFraction;
-    final width = layout.instrumentSize * SceneLayout.stumpWidthOfInstrument;
+    final width = SceneLayout.stumpWidthFor(
+      layout.instrumentSize,
+      layout.instrumentCount,
+    );
     // Alternating stumps, so neighbours never match.
     final isA = side.isEven;
     final height = width * (isA ? 794 / 1512 : 781 / 1506);

@@ -1005,7 +1005,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
     // from the background art": "the stumps are too big ... match the
     // mockup's proportions"), scaled to the instrument standing on it
     // rather than the source art's own resolution.
-    final width = charSize * SceneLayout.stumpWidthOfInstrument;
+    final width = SceneLayout.stumpWidthFor(charSize, 2);
     final height = width * naturalHeight / naturalWidth;
     final belowSurface = height * (1 - SceneLayout.stumpSurfaceFraction);
 

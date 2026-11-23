@@ -490,17 +490,24 @@ class SceneLayout {
   double get instrumentsRight =>
       stumpAnchorX(noteCount - 1) + instrumentSize / 2;
 
-  /// How far below the ground line a stump's art reaches: the stump is
-  /// [stumpWidthOfInstrument] of the instrument's width, about half as tall as
-  /// it is wide, and its top surface is [stumpSurfaceFraction] of the way
-  /// down it (see `HighLowScreen._buildStump`).
-  ///
-  /// One value for every game's stumps (High vs Low, ordering, Loud or
-  /// Quiet). Cooper suggested +25% (1.1875) on 2026-11-20; rendered, it made
-  /// neighbouring stumps overlap on an SE's three-note ordering screen and
-  /// touch in Loud or Quiet's three, and left the flute and bells looking
-  /// undersized, so it waits on his call.
+  /// The stump's width as a share of the instrument's box, before
+  /// [stumpGrowthFor]. About half as tall as it is wide; its top surface is
+  /// [stumpSurfaceFraction] of the way down it (see `_buildStump` in each
+  /// game).
   static const stumpWidthOfInstrument = 0.95;
+
+  /// How much bigger the stumps are drawn than [stumpWidthOfInstrument],
+  /// by how many stand in a row (Cooper, 2026-11-23, after renders at
+  /// +25/40/55%): **+40% with two, +20% with three**. Every game that
+  /// stands instruments on stumps (High vs Low, ordering, Loud or Quiet).
+  /// Three cannot take more: their bases already touch at about +8–20%,
+  /// and at +40% three stumps merge into one clump. The instruments do NOT
+  /// grow with them.
+  static double stumpGrowthFor(int count) => count >= 3 ? 1.2 : 1.4;
+
+  /// The stump's width for [instrumentSize], with [count] in the row.
+  static double stumpWidthFor(double instrumentSize, int count) =>
+      instrumentSize * stumpWidthOfInstrument * stumpGrowthFor(count);
   static const stumpAspect = 794 / 1512;
 
   /// Fraction of the stump art's height, from the top, down to the front rim
