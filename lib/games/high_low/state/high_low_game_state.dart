@@ -974,6 +974,18 @@ class HighLowGameState extends ChangeNotifier {
     _soundTap(side, prompt);
   }
 
+  /// Wrong pops in a row before the existing gentle nudge (Cooper,
+  /// 2026-11-23: two). WHY TWO WORKS: with TWO bubbles one is right and one
+  /// wrong, so two wrong pops in a row means popping the SAME rejected
+  /// bubble again — the other option is by definition right. That is
+  /// confusion or testing, not bad luck: the pattern rule 2 wants answered.
+  ///
+  /// ⚠️ ITS LIMIT: with THREE instruments (card 233's T5–T8), two wrong
+  /// pops can be two DIFFERENT wrong answers — far more plausibly
+  /// exploration. Revisit this number when three-instrument rounds arrive;
+  /// do not let it carry over by default.
+  static const int nudgeAfterWrongPops = 2;
+
   /// How long a correct bubble's burst plays before the instrument flies
   /// (8 frames at 65 ms — `AnswerBubble.burstDuration`, checked by test).
   static const Duration bubbleBurst = Duration(milliseconds: 520);
@@ -1044,7 +1056,7 @@ class HighLowGameState extends ChangeNotifier {
     _wrongTapCount++;
     _wiggles[side]++;
     _wrongPopStreak++;
-    if (_wrongPopStreak == 2) {
+    if (_wrongPopStreak == nudgeAfterWrongPops) {
       final nudge = _nudges.next(
         targetCharacterIsPiper ? NudgeSpeaker.piper : NudgeSpeaker.clef,
       );
