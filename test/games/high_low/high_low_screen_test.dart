@@ -31,6 +31,7 @@ import 'package:ear_trainer/games/high_low/widgets/high_low_caption.dart';
 import 'package:ear_trainer/models/agency_stage.dart';
 import 'package:ear_trainer/models/game_status.dart';
 import 'package:ear_trainer/models/round_order.dart';
+import 'package:ear_trainer/ui/components/answer_bubble.dart';
 import 'package:ear_trainer/ui/components/drop_snap.dart';
 import 'package:ear_trainer/ui/components/progress_dots.dart';
 
@@ -1220,6 +1221,47 @@ void main() {
       await tester.pump(const Duration(milliseconds: 800));
       final after = tester.getRect(find.byKey(const ValueKey('clef-mouth-0')));
       expect(after.left, greaterThan(roomyViewport.width), reason: 'off right');
+      state.dispose();
+    });
+
+    testWidgets('the bubbles are there from the start, ASLEEP (Cooper, '
+        '2026-11-27); a tap on a sleeping bubble does nothing; both wake in '
+        'the same frame once both sounds have played', (tester) async {
+      tester.view.physicalSize = roomyViewport;
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+      final state = HighLowGameState(
+        totalPrompts: 3,
+        agencyStage: AgencyStage.explore,
+        generator: PromptGenerator(random: Random(1)),
+      );
+      await tester.pumpWidget(
+        MaterialApp(home: HighLowScreen(gameState: state)),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      List<AnswerBubble> bubbles() =>
+          tester.widgetList<AnswerBubble>(find.byType(AnswerBubble)).toList();
+      expect(bubbles(), hasLength(2), reason: 'present on load');
+      expect(bubbles().every((b) => !b.awake), isTrue, reason: 'asleep');
+      await tester.tap(find.byKey(const ValueKey('bubble-0')));
+      await tester.tap(find.byKey(const ValueKey('bubble-1')));
+      await tester.pump();
+      expect(state.wigglesOf(0) + state.wigglesOf(1), 0, reason: 'no wiggle');
+      expect(state.burstSide, isNull);
+      expect(state.instrumentation, isEmpty);
+      var wokeAt = <bool>[];
+      for (var i = 0; i < 40 && !bubbles().first.awake; i++) {
+        await tester.pump(const Duration(milliseconds: 200));
+        wokeAt = bubbles().map((b) => b.awake).toList();
+        expect(
+          wokeAt.toSet(),
+          hasLength(1),
+          reason: 'never one before the other',
+        );
+      }
+      expect(bubbles().every((b) => b.awake), isTrue);
+      expect(state.bubblesActive, isTrue);
       state.dispose();
     });
 

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
@@ -32,8 +33,15 @@ class AnswerBubble extends StatefulWidget {
   /// Bumped by the caller for every wrong pop: each bump wiggles once.
   final int wiggles;
 
-  /// Null when the bubble cannot be popped (it is not drawn as disabled —
-  /// nothing about it changes; a tap simply does nothing).
+  /// Awake: full brightness and size, bobbing gently, poppable. ASLEEP
+  /// (Cooper, 2026-11-27: the bubbles should be there "immediately upon
+  /// loading"): present from the start but dimmer, smaller and still, and a
+  /// tap does nothing — no wiggle (the wiggle means "wrong answer" and must
+  /// not also mean "not yet"), no sound. The game wakes both together once
+  /// both sounds have played, so the WAKING is the cue to choose.
+  final bool awake;
+
+  /// Called on a tap while [awake]; never while asleep.
   final VoidCallback? onPop;
 
   const AnswerBubble({
@@ -42,8 +50,20 @@ class AnswerBubble extends StatefulWidget {
     this.hitSize = 60,
     this.bursting = false,
     this.wiggles = 0,
+    this.awake = true,
     this.onPop,
   });
+
+  /// How long a bubble takes to wake.
+  static const Duration wake = Duration(milliseconds: 450);
+
+  /// How a sleeping bubble differs from an awake one.
+  static const double asleepOpacity = 0.5;
+  static const double asleepScale = 0.8;
+
+  /// The awake bubble's gentle bob: one cycle, and how far.
+  static const Duration bob = Duration(milliseconds: 1800);
+  static const double bobHeight = 2.5;
 
   static const Duration burstFrame = Duration(milliseconds: 65);
   static const Duration wiggleFrame = Duration(milliseconds: 90);
@@ -106,19 +126,32 @@ class _AnswerBubbleState extends State<AnswerBubble> {
   @override
   Widget build(BuildContext context) {
     final frame = _frame;
+    final awake = widget.awake;
+    Widget art = frame == null
+        ? const SizedBox.expand()
+        : CustomMultiChildLayout(
+            delegate: _CentreOn(),
+            children: [LayoutId(id: 0, child: _frameImage(frame.$1, frame.$2))],
+          );
+    if (awake && frame?.$1 == 'idle') {
+      art = _Bob(child: art);
+    }
     return SizedBox.square(
       dimension: widget.hitSize,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
-        onTap: frame == null ? null : widget.onPop,
-        child: frame == null
-            ? const SizedBox.expand()
-            : CustomMultiChildLayout(
-                delegate: _CentreOn(),
-                children: [
-                  LayoutId(id: 0, child: _frameImage(frame.$1, frame.$2)),
-                ],
-              ),
+        // Asleep, a tap is swallowed and does nothing at all.
+        onTap: frame == null ? null : (awake ? widget.onPop : () {}),
+        child: AnimatedOpacity(
+          opacity: awake ? 1 : AnswerBubble.asleepOpacity,
+          duration: AnswerBubble.wake,
+          child: AnimatedScale(
+            scale: awake ? 1 : AnswerBubble.asleepScale,
+            duration: AnswerBubble.wake,
+            curve: Curves.easeOutBack,
+            child: art,
+          ),
+        ),
       ),
     );
   }
@@ -152,4 +185,40 @@ class _CentreOn extends MultiChildLayoutDelegate {
 
   @override
   bool shouldRelayout(_CentreOn old) => false;
+}
+
+/// The awake bubble's gentle bob. Both bubbles wake in the same frame, so
+/// their bobs start together and stay in step — neither marked out.
+class _Bob extends StatefulWidget {
+  final Widget child;
+  const _Bob({required this.child});
+
+  @override
+  State<_Bob> createState() => _BobState();
+}
+
+class _BobState extends State<_Bob> with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: AnswerBubble.bob,
+  )..repeat();
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: _c,
+    builder: (context, child) => Transform.translate(
+      offset: Offset(
+        0,
+        -AnswerBubble.bobHeight * math.sin(_c.value * 2 * math.pi),
+      ),
+      child: child,
+    ),
+    child: widget.child,
+  );
 }

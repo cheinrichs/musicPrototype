@@ -889,7 +889,7 @@ class _HighLowScreenState extends State<HighLowScreen> {
         // tapped.
         if (_gameState.agencyStage == AgencyStage.explore)
           for (final side in [0, 1])
-            if (_gameState.bubblesActive || _gameState.burstSide == side)
+            if (_gameState.bubblesShown || _gameState.burstSide == side)
               _buildBubble(
                 layout,
                 side,
@@ -934,6 +934,8 @@ class _HighLowScreenState extends State<HighLowScreen> {
         hitSize: bubbleHit,
         bursting: _gameState.burstSide == side,
         wiggles: _gameState.wigglesOf(side),
+        // Asleep until both sounds have played; then both wake together.
+        awake: _gameState.bubblesActive || _gameState.burstSide == side,
         onPop: _gameState.bubblesActive
             ? () => _gameState.popBubble(side)
             : null,

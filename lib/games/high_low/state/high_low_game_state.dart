@@ -1004,6 +1004,16 @@ class HighLowGameState extends ChangeNotifier {
       _burstSide == null &&
       _dragFeedback != DragFeedback.correct;
 
+  /// Whether Explore's bubbles are on screen: from the moment the round
+  /// loads (asleep until [bubblesActive]), until the round is answered —
+  /// then only the burst one, while it plays.
+  bool get bubblesShown =>
+      agencyStage == AgencyStage.explore &&
+      _status != GameStatus.completed &&
+      _status != GameStatus.notStarted &&
+      _dragFeedback != DragFeedback.correct &&
+      _burstSide == null;
+
   /// The side whose bubble burst (a correct pop), or null.
   int? get burstSide => _burstSide;
 
